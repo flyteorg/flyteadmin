@@ -38,7 +38,6 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-// TODO(katrogan): Should this be hard-coded
 const parentContainerQueueKey = "parent_queue"
 const childContainerQueueKey = "child_queue"
 const noSourceExecutionID = 0

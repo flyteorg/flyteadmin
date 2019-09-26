@@ -129,7 +129,6 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 
 	executionManager := manager.NewExecutionManager(
 		db, configuration, dataStorageClient, workflowExecutor, adminScope.NewSubScope("execution_manager"),
-		// TODO(katrogan): Once we standardize on a user metrics naming scheme change the value of this scope.
 		adminScope.NewSubScope("user_execution_metrics"), publisher, urlData)
 
 	scheduledWorkflowExecutor := workflowScheduler.GetWorkflowExecutor(executionManager, launchPlanManager)
@@ -138,7 +137,6 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 		scheduledWorkflowExecutor.Run()
 		logger.Info(context.Background(), "Successfully started running the scheduled workflow executor")
 	}()
-	// TODO(katrogan): Graceful termination handling for workflow executor.
 
 	// Serve profiling endpoints.
 	go func() {
