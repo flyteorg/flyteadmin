@@ -85,6 +85,7 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 	workflowExecutor := workflowengine.NewFlytePropeller(
 		applicationConfiguration.RoleNameKey,
 		executionCluster,
+		configuration.NamespaceMappingConfiguration(),
 		adminScope.NewSubScope("executor").NewSubScope("flytepropeller"))
 	logger.Info(context.Background(), "Successfully created a workflow executor engine")
 	dataStorageClient, err := storage.NewDataStore(storeConfig, adminScope.NewSubScope("storage"))
