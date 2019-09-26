@@ -26,8 +26,6 @@ import (
 	k8_api_err "k8s.io/apimachinery/pkg/api/errors"
 )
 
-const namespaceFormat = "%s-%s"
-
 var deletePropagationBackground = v1.DeletePropagationBackground
 
 type propellerMetrics struct {
@@ -45,6 +43,7 @@ type FlytePropeller struct {
 	builder     interfaces.FlyteWorkflowInterface
 	roleNameKey string
 	metrics     propellerMetrics
+	config      runtimeInterfaces.NamespaceMappingConfiguration
 }
 
 type FlyteWorkflowBuilder struct{}
@@ -92,7 +91,8 @@ func (c *FlytePropeller) ExecuteWorkflow(ctx context.Context, inputs interfaces.
 		c.metrics.InvalidExecutionID.Inc()
 		return errors.NewFlyteAdminErrorf(codes.Internal, "invalid execution id")
 	}
-	namespace := fmt.Sprintf(namespaceFormat, inputs.ExecutionID.GetProject(), inputs.ExecutionID.GetDomain())
+	namespaceMapping = c.config.GetNamespaceMappingConfig()
+	namespace := common.GetNamespaceName(namespaceMapping, inputs.ExecutionID.GetProject(), inputs.ExecutionID.GetDomain())
 	flyteWf, err := c.builder.BuildFlyteWorkflow(&inputs.WfClosure, inputs.Inputs, inputs.ExecutionID, namespace)
 	if err != nil {
 		c.metrics.WorkflowBuildFailure.Inc()
@@ -167,7 +167,7 @@ func newPropellerMetrics(scope promutils.Scope) propellerMetrics {
 }
 
 func NewFlytePropeller(roleNameKey, kubeConfig, master string, configuration runtimeInterfaces.ClusterConfiguration,
-	scope promutils.Scope) interfaces.Executor {
+	namespaceMappingConfiguration runtimeInterfaces.NamespaceMappingConfiguration, scope promutils.Scope) interfaces.Executor {
 	kubeConfigScope := scope.NewSubScope("kubeconfig")
 	kubeConfiguration, err := flytek8s.GetRestClientConfig(kubeConfig, master, configuration)
 	if err != nil {
@@ -189,5 +189,6 @@ func NewFlytePropeller(roleNameKey, kubeConfig, master string, configuration run
 		builder:     &FlyteWorkflowBuilder{},
 		roleNameKey: roleNameKey,
 		metrics:     newPropellerMetrics(scope),
+		config:      namespaceMappingconfiguration,
 	}
 }
