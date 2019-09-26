@@ -6,16 +6,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func getRandomeMultiClusterForTest() RandomMultiCluster {
-	return RandomMultiCluster{
+func getRandomeMultiClusterForTest() RandomClusterSelector {
+	return RandomClusterSelector{
 		executionTargetMap: map[string]ExecutionTarget{
 			"cluster-1": {
-				ID: "t1",
+				ID:      "t1",
+				Enabled: true,
 			},
 			"cluster-2": {
-				ID: "t2",
+				ID:      "t2",
+				Enabled: true,
+			},
+			"cluster-disabled": {
+				ID: "t4",
 			},
 		},
+		totalEnabledClusterCount: 2,
 	}
 }
 
@@ -24,12 +30,14 @@ func TestRandomMultiClusterGetTarget(t *testing.T) {
 	target, err := cluster.GetTarget(&ExecutionTargetSpec{TargetID: "cluster-1"})
 	assert.Nil(t, err)
 	assert.Equal(t, "t1", target.ID)
-	target, err = cluster.GetTarget(&ExecutionTargetSpec{TargetID: "cluster-2"})
+	assert.True(t, target.Enabled)
+	target, err = cluster.GetTarget(&ExecutionTargetSpec{TargetID: "cluster-disabled"})
 	assert.Nil(t, err)
-	assert.Equal(t, "t2", target.ID)
+	assert.Equal(t, "t4", target.ID)
+	assert.False(t, target.Enabled)
 }
 
-func TestRandomMultiClusterGetRamdomTarget(t *testing.T) {
+func TestRandomMultiClusterGetRandomTarget(t *testing.T) {
 	cluster := getRandomeMultiClusterForTest()
 	target, err := cluster.GetTarget(nil)
 	assert.Nil(t, err)

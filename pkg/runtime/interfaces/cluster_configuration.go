@@ -11,6 +11,7 @@ type ClusterConfig struct {
 	Name     string `json:"name"`
 	Endpoint string `json:"endpoint"`
 	Auth     Auth   `json:"auth"`
+	Enabled  bool   `json:"enabled"`
 }
 
 type Auth struct {
@@ -19,12 +20,10 @@ type Auth struct {
 	CertPath  string `json:"certPath"`
 }
 
-type ClusterMode string
+type ClusterSelection string
 
 var (
-	ClusterModeDefault ClusterMode
-	ClusterModeSingle  ClusterMode = "Single"
-	ClusterModeMulti   ClusterMode = "Multi"
+	ClusterSelectionRandom ClusterSelection
 )
 
 func (auth Auth) GetCA() ([]byte, error) {
@@ -44,9 +43,8 @@ func (auth Auth) GetToken() (string, error) {
 }
 
 type Clusters struct {
-	ClusterConfigs []ClusterConfig `json:"clusterConfigs"`
-	CurrentCluster string          `json:"currentCluster"`
-	ClusterMode    ClusterMode     `json:"clusterMode"`
+	ClusterConfigs   []ClusterConfig  `json:"clusterConfigs"`
+	ClusterSelection ClusterSelection `json:"clusterSelection"`
 }
 
 // Provides values set in runtime configuration files.
@@ -55,9 +53,6 @@ type ClusterConfiguration interface {
 	// Returns clusters defined in runtime configuration files.
 	GetClusterConfigs() []ClusterConfig
 
-	// The current cluster to run the load
-	GetCurrentCluster() *ClusterConfig
-
-	// The cluster mode setting
-	GetClusterMode() ClusterMode
+	// The cluster selection strategy setting
+	GetClusterSelection() ClusterSelection
 }

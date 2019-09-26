@@ -17,11 +17,11 @@ var clusterConfig = config.MustRegisterSection(clustersKey, &interfaces.Clusters
 // Implementation of an interfaces.ClusterConfiguration
 type ClusterConfigurationProvider struct{}
 
-func (p *ClusterConfigurationProvider) GetClusterMode() interfaces.ClusterMode {
+func (p *ClusterConfigurationProvider) GetClusterSelection() interfaces.ClusterSelection {
 	if clusterConfig != nil {
-		return clusterConfig.GetConfig().(*interfaces.Clusters).ClusterMode
+		return clusterConfig.GetConfig().(*interfaces.Clusters).ClusterSelection
 	}
-	return interfaces.ClusterModeDefault
+	return interfaces.ClusterSelectionRandom
 }
 
 func (p *ClusterConfigurationProvider) GetClusterConfigs() []interfaces.ClusterConfig {
@@ -31,20 +31,6 @@ func (p *ClusterConfigurationProvider) GetClusterConfigs() []interfaces.ClusterC
 	}
 	logger.Warningf(context.Background(), "Failed to find clusters in config. Returning an empty slice")
 	return make([]interfaces.ClusterConfig, 0)
-}
-
-func (p *ClusterConfigurationProvider) GetCurrentCluster() *interfaces.ClusterConfig {
-	if clusterConfig != nil {
-		clusters := clusterConfig.GetConfig().(*interfaces.Clusters)
-		currentCluster := clusters.CurrentCluster
-		for _, cluster := range clusters.ClusterConfigs {
-			if cluster.Name == currentCluster {
-				return &cluster
-			}
-		}
-	}
-	logger.Warningf(context.Background(), "Failed to find current cluster in config.")
-	return nil
 }
 
 func NewClusterConfigurationProvider() interfaces.ClusterConfiguration {

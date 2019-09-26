@@ -17,6 +17,7 @@ type ExecutionTarget struct {
 	ID          string
 	FlyteClient flyteclient.Interface
 	Client      client.Client
+	Enabled     bool
 }
 
 func getRestClientFromKubeConfig(scope promutils.Scope, kubeConfiguration *rest.Config) (*flyteclient.Clientset, error) {
@@ -47,5 +48,6 @@ func NewExecutionTarget(scope promutils.Scope, k8sCluster runtime.ClusterConfig)
 		FlyteClient: flyteClient,
 		Client:      client,
 		ID:          k8sCluster.Name,
+		Enabled:     k8sCluster.Enabled,
 	}, nil
 }
