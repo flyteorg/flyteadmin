@@ -37,7 +37,6 @@ import (
 
 const namespaceFormat = "%s-%s"
 const namespaceVariable = "namespace"
-const domainVariable = "domain"
 const templateVariableFormat = "{{ %s }}"
 const replaceAllInstancesOfString = -1
 
