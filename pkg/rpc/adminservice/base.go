@@ -3,6 +3,7 @@ package adminservice
 import (
 	"context"
 	"fmt"
+	"github.com/lyft/flyteadmin/pkg/executioncluster"
 	"runtime/debug"
 
 	"github.com/lyft/flytestdlib/profutils"
@@ -75,11 +76,14 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 	db := repositories.GetRepository(
 		repositories.POSTGRES, dbConfig, adminScope.NewSubScope("database"))
 	storeConfig := storage.GetConfig()
-	workflowExecutor := workflowengine.NewFlytePropeller(
-		applicationConfiguration.RoleNameKey,
+	executionCluster := executioncluster.GetExecutionCluster(
+		adminScope.NewSubScope("executor").NewSubScope("cluster"),
 		kubeConfig,
 		master,
-		configuration.ClusterConfiguration(),
+		configuration.ClusterConfiguration())
+	workflowExecutor := workflowengine.NewFlytePropeller(
+		applicationConfiguration.RoleNameKey,
+		executionCluster,
 		adminScope.NewSubScope("executor").NewSubScope("flytepropeller"))
 	logger.Info(context.Background(), "Successfully created a workflow executor engine")
 	dataStorageClient, err := storage.NewDataStore(storeConfig, adminScope.NewSubScope("storage"))
@@ -124,7 +128,7 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 
 	executionManager := manager.NewExecutionManager(
 		db, configuration, dataStorageClient, workflowExecutor, adminScope.NewSubScope("execution_manager"),
-		// TODO: Once we standardize on a user metrics naming scheme change the value of this scope.
+		// TODO(katrogan): Once we standardize on a user metrics naming scheme change the value of this scope.
 		adminScope.NewSubScope("user_execution_metrics"), publisher, urlData)
 
 	scheduledWorkflowExecutor := workflowScheduler.GetWorkflowExecutor(executionManager, launchPlanManager)
@@ -133,7 +137,7 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 		scheduledWorkflowExecutor.Run()
 		logger.Info(context.Background(), "Successfully started running the scheduled workflow executor")
 	}()
-	// TODO: Graceful termination handling for workflow executor.
+	// TODO(katrogan): Graceful termination handling for workflow executor.
 
 	// Serve profiling endpoints.
 	go func() {

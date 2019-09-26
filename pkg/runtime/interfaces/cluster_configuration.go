@@ -19,6 +19,14 @@ type Auth struct {
 	CertPath  string `json:"certPath"`
 }
 
+type ClusterMode string
+
+var (
+	ClusterModeDefault ClusterMode = ""
+	ClusterModeSingle ClusterMode = "Single"
+	ClusterModeMulti  ClusterMode = "Multi"
+)
+
 func (auth Auth) GetCA() ([]byte, error) {
 	cert, err := ioutil.ReadFile(auth.CertPath)
 	if err != nil {
@@ -38,6 +46,7 @@ func (auth Auth) GetToken() (string, error) {
 type Clusters struct {
 	ClusterConfigs []ClusterConfig `json:"clusterConfigs"`
 	CurrentCluster string          `json:"currentCluster"`
+	ClusterMode    ClusterMode     `json:"clusterMode"`
 }
 
 // Provides values set in runtime configuration files.
@@ -48,4 +57,7 @@ type ClusterConfiguration interface {
 
 	// The current cluster to run the load
 	GetCurrentCluster() *ClusterConfig
+
+	// The cluster mode setting
+	GetClusterMode() ClusterMode
 }

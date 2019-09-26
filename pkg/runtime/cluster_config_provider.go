@@ -17,6 +17,13 @@ var clusterConfig = config.MustRegisterSection(clustersKey, &interfaces.Clusters
 // Implementation of an interfaces.ClusterConfiguration
 type ClusterConfigurationProvider struct{}
 
+func (p *ClusterConfigurationProvider) GetClusterMode() interfaces.ClusterMode {
+	if clusterConfig != nil {
+		return clusterConfig.GetConfig().(*interfaces.Clusters).ClusterMode
+	}
+	return interfaces.ClusterModeDefault
+}
+
 func (p *ClusterConfigurationProvider) GetClusterConfigs() []interfaces.ClusterConfig {
 	if clusterConfig != nil {
 		clusters := clusterConfig.GetConfig().(*interfaces.Clusters)
@@ -41,5 +48,13 @@ func (p *ClusterConfigurationProvider) GetCurrentCluster() *interfaces.ClusterCo
 }
 
 func NewClusterConfigurationProvider() interfaces.ClusterConfiguration {
-	return &ClusterConfigurationProvider{}
+	clusterConfigProvider := ClusterConfigurationProvider{}
+	clusterNameMap := make(map[string]bool)
+	for _, config := range clusterConfigProvider.GetClusterConfigs() {
+		if clusterNameMap[config.Name] {
+			panic("Duplicate cluster names in runtime config")
+		}
+		clusterNameMap[config.Name] = true
+	}
+	return &clusterConfigProvider
 }
