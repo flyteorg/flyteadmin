@@ -10,7 +10,7 @@ import (
 )
 
 type ExecutionTargetSpec struct {
-	TargetId string
+	TargetID string
 }
 
 type ExecutionTarget struct {

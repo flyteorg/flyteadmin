@@ -1,8 +1,9 @@
 package executioncluster
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func getRandomeMultiClusterForTest() RandomMultiCluster {
@@ -20,10 +21,10 @@ func getRandomeMultiClusterForTest() RandomMultiCluster {
 
 func TestRandomMultiClusterGetTarget(t *testing.T) {
 	cluster := getRandomeMultiClusterForTest()
-	target, err := cluster.GetTarget(&ExecutionTargetSpec{TargetId: "cluster-1"})
+	target, err := cluster.GetTarget(&ExecutionTargetSpec{TargetID: "cluster-1"})
 	assert.Nil(t, err)
 	assert.Equal(t, "t1", target.ID)
-	target, err = cluster.GetTarget(&ExecutionTargetSpec{TargetId: "cluster-2"})
+	target, err = cluster.GetTarget(&ExecutionTargetSpec{TargetID: "cluster-2"})
 	assert.Nil(t, err)
 	assert.Equal(t, "t2", target.ID)
 }
@@ -38,7 +39,7 @@ func TestRandomMultiClusterGetRamdomTarget(t *testing.T) {
 
 func TestRandomMultiClusterGetRemoteTarget(t *testing.T) {
 	cluster := getRandomeMultiClusterForTest()
-	_, err := cluster.GetTarget(&ExecutionTargetSpec{TargetId: "cluster-3"})
+	_, err := cluster.GetTarget(&ExecutionTargetSpec{TargetID: "cluster-3"})
 	assert.NotNil(t, err)
 	assert.EqualError(t, err, "invalid cluster target cluster-3")
 }

@@ -111,7 +111,7 @@ func getFakeExecutionCluster() executioncluster.ClusterInterface {
 	fakeCluster := cluster_mock.MockCluster{}
 	fakeCluster.SetGetTargetCallback(func(spec *executioncluster.ExecutionTargetSpec) (target *executioncluster.ExecutionTarget, e error) {
 		return &executioncluster.ExecutionTarget{
-			ID: "C1",
+			ID:          "C1",
 			FlyteClient: &FakeK8FlyteClient{},
 		}, nil
 	})

@@ -6,7 +6,7 @@ type GetTargetFunc func(*executioncluster.ExecutionTargetSpec) (*executioncluste
 type GetAllValidTargetsFunc func() []executioncluster.ExecutionTarget
 
 type MockCluster struct {
-	getTargetFunc GetTargetFunc
+	getTargetFunc          GetTargetFunc
 	getAllValidTargetsFunc GetAllValidTargetsFunc
 }
 
@@ -17,7 +17,6 @@ func (m *MockCluster) SetGetTargetCallback(getTargetFunc GetTargetFunc) {
 func (m *MockCluster) SetGetAllValidTargetsCallback(getAllValidTargetsFunc GetAllValidTargetsFunc) {
 	m.getAllValidTargetsFunc = getAllValidTargetsFunc
 }
-
 
 func (m *MockCluster) GetTarget(execCluster *executioncluster.ExecutionTargetSpec) (*executioncluster.ExecutionTarget, error) {
 	if m.getTargetFunc != nil {
@@ -32,4 +31,3 @@ func (m *MockCluster) GetAllValidTargets() []executioncluster.ExecutionTarget {
 	}
 	return nil
 }
-

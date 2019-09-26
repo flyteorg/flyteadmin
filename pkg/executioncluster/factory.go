@@ -1,8 +1,8 @@
 package executioncluster
 
 import (
-	"errors"
 	"fmt"
+
 	"github.com/lyft/flytestdlib/promutils"
 
 	runtime "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
@@ -17,7 +17,7 @@ func GetExecutionTargetMap(scope promutils.Scope, clusterConfig runtime.ClusterC
 	executionTargetMap := make(map[string]ExecutionTarget)
 	for _, cluster := range clusterConfig.GetClusterConfigs() {
 		if _, ok := executionTargetMap[cluster.Name]; ok {
-			return nil, errors.New(fmt.Sprintf("duplicate clusters for name %s", cluster.Name))
+			return nil, fmt.Errorf("duplicate clusters for name %s", cluster.Name)
 		}
 		executionTarget, err := NewExecutionTarget(scope, cluster)
 		if err != nil {

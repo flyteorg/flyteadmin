@@ -1,8 +1,8 @@
 package executioncluster
 
 import (
-	"errors"
 	"fmt"
+
 	runtime "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
 	"github.com/lyft/flytestdlib/promutils"
 )
@@ -14,10 +14,10 @@ type SingleCluster struct {
 
 func (s SingleCluster) GetTarget(spec *ExecutionTargetSpec) (*ExecutionTarget, error) {
 	if spec != nil {
-		if val, ok := s.executionTargetMap[spec.TargetId]; ok {
+		if val, ok := s.executionTargetMap[spec.TargetID]; ok {
 			return &val, nil
 		}
-		return nil, errors.New(fmt.Sprintf("invalid cluster target %s", spec.TargetId))
+		return nil, fmt.Errorf("invalid cluster target %s", spec.TargetID)
 	}
 	return &s.currentExecutionTarget, nil
 }
@@ -28,7 +28,6 @@ func (s SingleCluster) GetAllValidTargets() []ExecutionTarget {
 	}
 }
 
-
 func NewSingleExecutionCluster(scope promutils.Scope, clusterConfig runtime.ClusterConfiguration) (ClusterInterface, error) {
 	var currentClusterConfig *runtime.ClusterConfig
 	currentCluster := clusterConfig.GetCurrentCluster()
@@ -38,7 +37,7 @@ func NewSingleExecutionCluster(scope promutils.Scope, clusterConfig runtime.Clus
 		}
 	}
 	if currentClusterConfig == nil {
-		return nil, errors.New("failed to find current cluster in config")
+		return nil, fmt.Errorf("failed to find current cluster in config")
 	}
 	currentExecutionTarget, err := NewExecutionTarget(scope, *currentClusterConfig)
 	if err != nil {

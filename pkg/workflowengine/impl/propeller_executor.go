@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"fmt"
+
 	"github.com/lyft/flyteadmin/pkg/executioncluster"
 	"github.com/lyft/flyteadmin/pkg/workflowengine/interfaces"
 
@@ -143,7 +144,7 @@ func (c *FlytePropeller) TerminateWorkflowExecution(
 	}
 	namespace := fmt.Sprintf(namespaceFormat, input.ExecutionID.GetProject(), input.ExecutionID.GetDomain())
 	target, err := c.executionCluster.GetTarget(&executioncluster.ExecutionTargetSpec{
-		TargetId: input.Cluster,
+		TargetID: input.Cluster,
 	})
 	if err != nil {
 		return errors.NewFlyteAdminErrorf(codes.Internal, err.Error())

@@ -1,8 +1,9 @@
 package executioncluster
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestInClusterGetTarget(t *testing.T) {
@@ -20,7 +21,7 @@ func TestInClusterGetRemoteTarget(t *testing.T) {
 	cluster := InCluster{
 		target: ExecutionTarget{},
 	}
-	_, err := cluster.GetTarget(&ExecutionTargetSpec{TargetId: "t1"})
+	_, err := cluster.GetTarget(&ExecutionTargetSpec{TargetID: "t1"})
 	assert.EqualError(t, err, "remote target t1 is not supported")
 }
 

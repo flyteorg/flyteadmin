@@ -3,7 +3,6 @@ package clusterresource
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flyteadmin/pkg/executioncluster"
 	"io/ioutil"
 	"os"
 	"path"
@@ -11,6 +10,10 @@ import (
 	"runtime/debug"
 	"strings"
 	"time"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/lyft/flyteadmin/pkg/executioncluster"
 
 	"github.com/lyft/flyteadmin/pkg/common"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
@@ -231,7 +234,7 @@ func (c *controller) syncNamespace(ctx context.Context, namespace NamespaceName)
 					logger.Debugf(ctx, "Resource [%+v] in namespace [%s] already exists - attempting update instead",
 						k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace)
 					c.metrics.AppliedTemplateExists.Inc()
-					err = target.Client.Patch(ctx, k8sObj)
+					err = target.Client.Patch(ctx, k8sObj, client.MergeFrom(k8sObj))
 					if err != nil {
 						c.metrics.TemplateUpdateErrors.Inc()
 						logger.Infof(ctx, "Failed to update resource [%+v] in namespace [%s] with err :%v",

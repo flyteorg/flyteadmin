@@ -22,9 +22,9 @@ type Auth struct {
 type ClusterMode string
 
 var (
-	ClusterModeDefault ClusterMode = ""
-	ClusterModeSingle ClusterMode = "Single"
-	ClusterModeMulti  ClusterMode = "Multi"
+	ClusterModeDefault ClusterMode
+	ClusterModeSingle  ClusterMode = "Single"
+	ClusterModeMulti   ClusterMode = "Multi"
 )
 
 func (auth Auth) GetCA() ([]byte, error) {

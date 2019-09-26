@@ -2,6 +2,7 @@ package executioncluster
 
 import (
 	"fmt"
+
 	"github.com/lyft/flyteadmin/pkg/flytek8s"
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/pkg/errors"
@@ -13,8 +14,8 @@ type InCluster struct {
 }
 
 func (i InCluster) GetTarget(spec *ExecutionTargetSpec) (*ExecutionTarget, error) {
-	if spec != nil && spec.TargetId != "" {
-		return nil, errors.New(fmt.Sprintf("remote target %s is not supported", spec.TargetId))
+	if spec != nil && spec.TargetID != "" {
+		return nil, errors.New(fmt.Sprintf("remote target %s is not supported", spec.TargetID))
 	}
 	return &i.target, nil
 }
