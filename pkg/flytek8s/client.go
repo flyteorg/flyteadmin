@@ -70,7 +70,7 @@ func GetRestClientConfig(kubeConfig, master string,
 	return kubeConfiguration, nil
 }
 
-// Iniitalizes a kubernetes Client which performs CRD operations on Kubernetes objects
+// Initializes a kubernetes Client which performs CRD operations on Kubernetes objects
 func NewKubeClient(kubeConfig, master string, k8sCluster *runtimeInterfaces.ClusterConfig) (client.Client, error) {
 	kubeConfiguration, err := GetRestClientConfig(kubeConfig, master, k8sCluster)
 	if err != nil {
