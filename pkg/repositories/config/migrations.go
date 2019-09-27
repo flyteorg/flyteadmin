@@ -115,5 +115,8 @@ var Migrations = []*gormigrate.Migration{
 		Migrate: func(tx *gorm.DB) error {
 			return tx.AutoMigrate(&models.Execution{}).Error
 		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&models.Execution{}).Error
+		},
 	},
 }
