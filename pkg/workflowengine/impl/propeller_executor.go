@@ -115,7 +115,8 @@ func (c *FlytePropeller) ExecuteWorkflow(ctx context.Context, input interfaces.E
 	annotations := addMapValues(input.Annotations, flyteWf.Annotations)
 	flyteWf.Annotations = annotations
 
-	targetCluster, err := c.executionCluster.GetTarget(nil)
+	var executionTargetSpec executioncluster.ExecutionTargetSpec
+	targetCluster, err := c.executionCluster.GetTarget(&executionTargetSpec)
 	if err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to create workflow in propeller %v", err)
 	}

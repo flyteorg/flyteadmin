@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func getRandomeMultiClusterForTest() RandomClusterSelector {
+func getRandomClusterSelectorForTest() RandomClusterSelector {
 	return RandomClusterSelector{
 		executionTargetMap: map[string]ExecutionTarget{
 			"cluster-1": {
@@ -25,8 +25,8 @@ func getRandomeMultiClusterForTest() RandomClusterSelector {
 	}
 }
 
-func TestRandomMultiClusterGetTarget(t *testing.T) {
-	cluster := getRandomeMultiClusterForTest()
+func TestRandomClusterSelectorGetTarget(t *testing.T) {
+	cluster := getRandomClusterSelectorForTest()
 	target, err := cluster.GetTarget(&ExecutionTargetSpec{TargetID: "cluster-1"})
 	assert.Nil(t, err)
 	assert.Equal(t, "t1", target.ID)
@@ -37,23 +37,23 @@ func TestRandomMultiClusterGetTarget(t *testing.T) {
 	assert.False(t, target.Enabled)
 }
 
-func TestRandomMultiClusterGetRandomTarget(t *testing.T) {
-	cluster := getRandomeMultiClusterForTest()
+func TestRandomClusterSelectorGetRandomTarget(t *testing.T) {
+	cluster := getRandomClusterSelectorForTest()
 	target, err := cluster.GetTarget(nil)
 	assert.Nil(t, err)
 	assert.NotNil(t, target)
 	assert.NotEmpty(t, target.ID)
 }
 
-func TestRandomMultiClusterGetRemoteTarget(t *testing.T) {
-	cluster := getRandomeMultiClusterForTest()
+func TestRandomClusterSelectorGetRemoteTarget(t *testing.T) {
+	cluster := getRandomClusterSelectorForTest()
 	_, err := cluster.GetTarget(&ExecutionTargetSpec{TargetID: "cluster-3"})
 	assert.NotNil(t, err)
 	assert.EqualError(t, err, "invalid cluster target cluster-3")
 }
 
-func TestRandomMultiClusterGetAllValidTargets(t *testing.T) {
-	cluster := getRandomeMultiClusterForTest()
+func TestRandomClusterSelectorGetAllValidTargets(t *testing.T) {
+	cluster := getRandomClusterSelectorForTest()
 	targets := cluster.GetAllValidTargets()
 	assert.Equal(t, 2, len(targets))
 }

@@ -17,7 +17,7 @@ var clusterConfig = config.MustRegisterSection(clustersKey, &interfaces.Clusters
 // Implementation of an interfaces.ClusterConfiguration
 type ClusterConfigurationProvider struct{}
 
-func (p *ClusterConfigurationProvider) GetClusterSelection() interfaces.ClusterSelection {
+func (p *ClusterConfigurationProvider) GetClusterSelectionStrategy() interfaces.ClusterSelectionStrategy {
 	if clusterConfig != nil {
 		return clusterConfig.GetConfig().(*interfaces.Clusters).ClusterSelection
 	}

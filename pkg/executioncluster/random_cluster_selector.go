@@ -39,7 +39,7 @@ func (s RandomClusterSelector) GetAllValidTargets() []ExecutionTarget {
 }
 
 func (s RandomClusterSelector) GetTarget(spec *ExecutionTargetSpec) (*ExecutionTarget, error) {
-	if spec != nil {
+	if spec != nil && spec.TargetID != "" {
 		if val, ok := s.executionTargetMap[spec.TargetID]; ok {
 			return &val, nil
 		}

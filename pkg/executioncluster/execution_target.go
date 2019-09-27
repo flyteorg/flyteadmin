@@ -9,10 +9,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// Spec to determine the execution target
 type ExecutionTargetSpec struct {
 	TargetID string
 }
 
+// Client object of the target execution cluster
 type ExecutionTarget struct {
 	ID          string
 	FlyteClient flyteclient.Interface
@@ -31,6 +33,7 @@ func getRestClientFromKubeConfig(scope promutils.Scope, kubeConfiguration *rest.
 	return fc, nil
 }
 
+// Creates a new Execution target for a cluster based on config passed in.
 func NewExecutionTarget(scope promutils.Scope, k8sCluster runtime.ClusterConfig) (*ExecutionTarget, error) {
 	kubeConf, err := flytek8s.GetRestClientConfigForCluster(k8sCluster)
 	if err != nil {

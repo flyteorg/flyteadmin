@@ -20,10 +20,10 @@ type Auth struct {
 	CertPath  string `json:"certPath"`
 }
 
-type ClusterSelection string
+type ClusterSelectionStrategy string
 
 var (
-	ClusterSelectionRandom ClusterSelection
+	ClusterSelectionRandom ClusterSelectionStrategy
 )
 
 func (auth Auth) GetCA() ([]byte, error) {
@@ -43,8 +43,8 @@ func (auth Auth) GetToken() (string, error) {
 }
 
 type Clusters struct {
-	ClusterConfigs   []ClusterConfig  `json:"clusterConfigs"`
-	ClusterSelection ClusterSelection `json:"clusterSelection"`
+	ClusterConfigs   []ClusterConfig          `json:"clusterConfigs"`
+	ClusterSelection ClusterSelectionStrategy `json:"clusterSelectionStrategy"`
 }
 
 // Provides values set in runtime configuration files.
@@ -54,5 +54,5 @@ type ClusterConfiguration interface {
 	GetClusterConfigs() []ClusterConfig
 
 	// The cluster selection strategy setting
-	GetClusterSelection() ClusterSelection
+	GetClusterSelectionStrategy() ClusterSelectionStrategy
 }

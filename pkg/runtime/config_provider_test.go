@@ -35,7 +35,7 @@ func TestClusterConfig(t *testing.T) {
 
 	configProvider := NewConfigurationProvider()
 	clusterConfig := configProvider.ClusterConfiguration()
-	assert.Equal(t, interfaces.ClusterSelectionRandom, clusterConfig.GetClusterSelection())
+	assert.Equal(t, interfaces.ClusterSelectionRandom, clusterConfig.GetClusterSelectionStrategy())
 	clusters := clusterConfig.GetClusterConfigs()
 	assert.Equal(t, 2, len(clusters))
 

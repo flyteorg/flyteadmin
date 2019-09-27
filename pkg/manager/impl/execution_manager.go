@@ -677,7 +677,7 @@ func (m *ExecutionManager) publishNotifications(ctx context.Context, request adm
 	logger.Debugf(ctx, "publishing notifications for execution [%+v] in state [%+v] for notifications [%+v]",
 		request.Event.ExecutionId, request.Event.Phase, notificationsList)
 	for _, notification := range notificationsList {
-		// 1. Check if the notification phase matches the current one.
+		// Check if the notification phase matches the current one.
 		var matchPhase = false
 		for _, phase := range notification.Phases {
 			if phase == request.Event.Phase {
