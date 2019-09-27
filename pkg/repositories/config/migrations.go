@@ -116,7 +116,7 @@ var Migrations = []*gormigrate.Migration{
 			return tx.AutoMigrate(&models.Execution{}).Error
 		},
 		Rollback: func(tx *gorm.DB) error {
-			return tx.AutoMigrate(&models.Execution{}).Error
+			return return tx.Exec("ALTER TABLE executions DROP COLUMN IF EXISTS cluster").Error 
 		},
 	},
 }
