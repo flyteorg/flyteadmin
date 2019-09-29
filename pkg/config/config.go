@@ -2,43 +2,63 @@ package config
 
 import (
 	"fmt"
-
 	"github.com/lyft/flytestdlib/config"
 )
 
-const SectionKey = "application"
+const SectionKey = "server"
 
-//go:generate pflags Config
-//TODO add instructions on how to generate certs
+//go:generate pflags ServerConfig
 
-type Config struct {
-	HTTPPort   int    `json:"httpPort" pflag:",On which http port to serve admin"`
-	GrpcPort   int    `json:"grpcPort" pflag:",On which grpc port to serve admin"`
-	KubeConfig string `json:"kube-config" pflag:",Path to kubernetes client config file."`
-	Master     string `json:"master" pflag:",The address of the Kubernetes API server."`
-	Secure     bool   `json:"secure" pflag:",Whether to run admin in secure mode or not"`
+type ServerConfig struct {
+	HTTPPort   int                   `json:"httpPort" pflag:",On which http port to serve admin"`
+	GrpcPort   int                   `json:"grpcPort" pflag:",On which grpc port to serve admin"`
+	KubeConfig string                `json:"kube-config" pflag:",Path to kubernetes client config file."`
+	Master     string                `json:"master" pflag:",The address of the Kubernetes API server."`
+	Security   ServerSecurityOptions `json:"security"`
 }
 
-var applicationConfig = config.MustRegisterSection(SectionKey, &Config{})
-
-func GetConfig() *Config {
-	return applicationConfig.GetConfig().(*Config)
+type ServerSecurityOptions struct {
+	Secure  bool         `json:"secure"`
+	Ssl     SslOptions   `json:"ssl"`
+	UseAuth bool         `json:"useAuth"`
+	Oauth   OauthOptions `json:"oauth"`
 }
 
-func SetConfig(c *Config) {
-	if err := applicationConfig.SetConfig(c); err != nil {
+type SslOptions struct {
+	CertificateFile string `json:"certificateFile"`
+	KeyFile         string `json:"keyFile"`
+}
+
+type OauthOptions struct {
+	ClientId         string `json:"clientId"`
+	ClientSecretFile string `json:"clientSecretFile"`
+	JwksUrl          string `json:"jwksUrl"`
+	Issuer           string `json:"issuer"`
+	AuthorizeUrl     string `json:"authorizeUrl"`
+	TokenUrl         string `json:"tokenUrl"`
+	RedirectUrl      string `json:"redirectUrl"`
+}
+
+var serverConfig = config.MustRegisterSection(SectionKey, &ServerConfig{})
+
+func GetConfig() *ServerConfig {
+	return serverConfig.GetConfig().(*ServerConfig)
+}
+
+func SetConfig(s *ServerConfig) {
+	if err := serverConfig.SetConfig(s); err != nil {
 		panic(err)
 	}
 }
 
-func (c Config) GetHostAddress() string {
-	return fmt.Sprintf(":%d", c.HTTPPort)
+func (s ServerConfig) GetHostAddress() string {
+	return fmt.Sprintf(":%d", s.HTTPPort)
 }
 
-func (c Config) GetGrpcHostAddress() string {
-	return fmt.Sprintf(":%d", c.GrpcPort)
+func (s ServerConfig) GetGrpcHostAddress() string {
+	return fmt.Sprintf(":%d", s.GrpcPort)
 }
 
 func init() {
-	SetConfig(&Config{})
+	SetConfig(&ServerConfig{})
 }

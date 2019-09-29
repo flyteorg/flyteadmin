@@ -2,12 +2,24 @@
 # Real configuration when running inside K8s (local or otherwise) lives in a ConfigMap
 # Look in the artifacts directory in the flyte repo for what's actually run
 # https://github.com/lyft/flyte/blob/b47565c9998cde32b0b5f995981e3f3c990fa7cd/artifacts/flyteadmin.yaml#L72
-application:
+server:
   httpPort: 8088
   grpcPort: 8089
+  security:
+    secure: false
+    ssl:
+      certificateFile: "/path/to/server.pem"
+      keyFile: "/path/to/server.key"
+    useAuth: false
+    oauth:
+      clientId: yourclientid
+      clientSecretFile: "/path/to/oauth/secret"
+      jwksUrl: "https://idp.com/oauth/discovery"
+      issuer: "https://idp.com/oauth2/default"
+      authorizeUrl: "https://idp.com/oauth2/authorize"
+      tokenUrl: "https://idp.com/oauth2/token"
+      redirectUrl: "https://localhost:8088/callback"
 flyteadmin:
-  someBoolean: true
-  someOtherBoolean: false
   runScheduler: false
   roleNameKey: "iam.amazonaws.com/role"
   metricsScope: "flyte:"
@@ -16,8 +28,8 @@ flyteadmin:
     host: "http://localhost:8088"
   # This last must be in order! For example, a file path would be prefixed with metadata/admin/...
   metadataStoragePrefix:
-  - "metadata"
-  - "admin"
+    - "metadata"
+    - "admin"
 database:
   port: 5432
   username: postgres
@@ -76,32 +88,32 @@ queues:
     - primary: "gpu_primary"
       dynamic: "gpu_dynamic"
       attributes:
-      - gpu
+        - gpu
     - primary: "critical"
       dynamic: "critical"
       attributes:
-      - critical
+        - critical
     - primary: "default"
       dynamic: "default"
       attributes:
-      - defaultclusters
+        - defaultclusters
     - primary: "my_queue_1"
       domain: "production"
       workflowName: "my_workflow_1"
       tags:
-      - critical
+        - critical
     - primary: "my_queue_1"
       domain: "production"
       workflowName: "my_workflow_2"
       tags:
-      - gpu
+        - gpu
     - primary: "my_queue_3"
       domain: "production"
       workflowName: "my_workflow_3"
       tags:
-      - critical
+        - critical
     - tags:
-      - default
+        - default
 task_resources:
   defaults:
     cpu: 100m

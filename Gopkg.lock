@@ -267,6 +267,14 @@
   version = "v0.3.1"
 
 [[projects]]
+  digest = "1:e72d1ebb8d395cf9f346fd9cbc652e5ae222dd85e0ac842dc57f175abed6d195"
+  name = "github.com/gorilla/securecookie"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "e59506cc896acb7f7bf732d4fdf5e25f7ccd8983"
+  version = "v1.1.1"
+
+[[projects]]
   digest = "1:16e1cbd76f0d4152b5573f08f38b451748f74ec59b99a004a7481342b3fc05af"
   name = "github.com/graymeta/stow"
   packages = [
@@ -282,10 +290,11 @@
   revision = "903027f87de7054953efcdb8ba70d5dc02df38c7"
 
 [[projects]]
-  digest = "1:73513cdd52d6f0768201cebbf82612aa39a9d8022bc6337815cd504e532281b7"
+  digest = "1:1f55998daa744c99341b0fade96711455e8c31525b4744080c5e48bafadff736"
   name = "github.com/grpc-ecosystem/go-grpc-middleware"
   packages = [
     ".",
+    "auth",
     "retry",
     "util/backoffutils",
     "util/metautils",
@@ -407,6 +416,19 @@
   pruneopts = "UT"
   revision = "f55edac94c9bbba5d6182a4be46d86a2c9b5b50e"
   version = "v1.0.2"
+
+[[projects]]
+  digest = "1:aea1c53d4757225e70d19ddd87e7843a25897b3c4f3901a2ab07e04586a5b76a"
+  name = "github.com/lestrrat-go/jwx"
+  packages = [
+    "internal/base64",
+    "internal/option",
+    "jwa",
+    "jwk",
+  ]
+  pruneopts = "UT"
+  revision = "5d60d87d07ddea9874404944870bec81aabcf574"
+  version = "v0.9.0"
 
 [[projects]]
   digest = "1:0ead8e64fe356bd9221605e3ec40b4438509868018cbbbaaaff3ebae1b69b78b"
@@ -1114,6 +1136,7 @@
     "github.com/aws/aws-sdk-go/service/ses",
     "github.com/aws/aws-sdk-go/service/ses/sesiface",
     "github.com/benbjohnson/clock",
+    "github.com/dgrijalva/jwt-go",
     "github.com/gogo/protobuf/proto",
     "github.com/golang/glog",
     "github.com/golang/protobuf/jsonpb",
@@ -1122,10 +1145,13 @@
     "github.com/golang/protobuf/ptypes/duration",
     "github.com/golang/protobuf/ptypes/struct",
     "github.com/golang/protobuf/ptypes/timestamp",
+    "github.com/gorilla/securecookie",
+    "github.com/grpc-ecosystem/go-grpc-middleware/auth",
     "github.com/grpc-ecosystem/go-grpc-prometheus",
     "github.com/grpc-ecosystem/grpc-gateway/runtime",
     "github.com/jinzhu/gorm",
     "github.com/jinzhu/gorm/dialects/postgres",
+    "github.com/lestrrat-go/jwx/jwk",
     "github.com/lib/pq",
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin",
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core",
@@ -1155,10 +1181,12 @@
     "github.com/spf13/cobra",
     "github.com/spf13/pflag",
     "github.com/stretchr/testify/assert",
+    "golang.org/x/oauth2",
     "google.golang.org/grpc",
     "google.golang.org/grpc/codes",
     "google.golang.org/grpc/credentials",
     "google.golang.org/grpc/grpclog",
+    "google.golang.org/grpc/metadata",
     "google.golang.org/grpc/status",
     "gopkg.in/gormigrate.v1",
     "k8s.io/apimachinery/pkg/api/errors",
