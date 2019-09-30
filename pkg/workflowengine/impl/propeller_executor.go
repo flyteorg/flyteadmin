@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+	"flyteadmin/pkg/common"
 	"fmt"
 
 	"github.com/lyft/flyteadmin/pkg/flytek8s"
@@ -166,10 +167,10 @@ func newPropellerMetrics(scope promutils.Scope) propellerMetrics {
 	}
 }
 
-func NewFlytePropeller(roleNameKey, kubeConfig, master string, configuration runtimeInterfaces.ClusterConfiguration,
-	namespaceMappingConfiguration runtimeInterfaces.NamespaceMappingConfiguration, scope promutils.Scope) interfaces.Executor {
+func NewFlytePropeller(roleNameKey, kubeConfig, master string, configuration runtimeInterfaces.PropellerExecutorConfiguration,
+	scope promutils.Scope) interfaces.Executor {
 	kubeConfigScope := scope.NewSubScope("kubeconfig")
-	kubeConfiguration, err := flytek8s.GetRestClientConfig(kubeConfig, master, configuration)
+	kubeConfiguration, err := flytek8s.GetRestClientConfig(kubeConfig, master, configuration.GetClusterResourceConfiguration())
 	if err != nil {
 		kubeConfigScope.MustNewCounter(
 			"kubeconfig_get_error",
@@ -189,6 +190,6 @@ func NewFlytePropeller(roleNameKey, kubeConfig, master string, configuration run
 		builder:     &FlyteWorkflowBuilder{},
 		roleNameKey: roleNameKey,
 		metrics:     newPropellerMetrics(scope),
-		config:      namespaceMappingconfiguration,
+		config:      configuration.GetNamespaceMappingConfiguration(),
 	}
 }
