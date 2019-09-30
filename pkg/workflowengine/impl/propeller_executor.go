@@ -146,8 +146,7 @@ func (c *FlytePropeller) TerminateWorkflowExecution(
 		c.metrics.InvalidExecutionID.Inc()
 		return errors.NewFlyteAdminErrorf(codes.Internal, "invalid execution id")
 	}
-	namespaceMapping = c.config.GetNamespaceMappingConfig()
-	namespace := common.GetNamespaceName(namespaceMapping, inputs.ExecutionID.GetProject(), inputs.ExecutionID.GetDomain())
+	namespace := common.GetNamespaceName(c.config.GetNamespaceMappingConfig(), inputs.ExecutionID.GetProject(), inputs.ExecutionID.GetDomain())
 	target, err := c.executionCluster.GetTarget(&executioncluster.ExecutionTargetSpec{
 		TargetID: input.Cluster,
 	})

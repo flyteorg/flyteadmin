@@ -283,8 +283,7 @@ func (c *controller) Sync(ctx context.Context) error {
 	var errs = make([]error, 0)
 	for _, project := range projects {
 		for _, domain := range *domains {
-			namespaceMapping = c.config.NamespaceMappingConfiguration().GetNamespaceMappingConfig()
-			namespace := common.GetNamespaceName(namespaceMapping, project.Identifier, domain.Name)
+			namespace := common.GetNamespaceName(c.config.NamespaceMappingConfiguration().GetNamespaceMappingConfig(), project.Identifier, domain.Name)
 			err := c.syncNamespace(ctx, namespace)
 			if err != nil {
 				logger.Warningf(ctx, "Failed to create cluster resources for namespace [%s] with err: %v", namespace, err)
