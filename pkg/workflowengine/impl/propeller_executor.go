@@ -3,7 +3,6 @@ package impl
 import (
 	"context"
 	"flyteadmin/pkg/common"
-	"fmt"
 
 	"github.com/lyft/flyteadmin/pkg/executioncluster"
 	"github.com/lyft/flyteadmin/pkg/workflowengine/interfaces"
@@ -41,7 +40,7 @@ type FlytePropeller struct {
 	builder          interfaces.FlyteWorkflowInterface
 	roleNameKey      string
 	metrics          propellerMetrics
-	config      runtimeInterfaces.NamespaceMappingConfiguration
+	config           runtimeInterfaces.NamespaceMappingConfiguration
 }
 
 type FlyteWorkflowBuilder struct{}
@@ -144,7 +143,8 @@ func (c *FlytePropeller) TerminateWorkflowExecution(
 		c.metrics.InvalidExecutionID.Inc()
 		return errors.NewFlyteAdminErrorf(codes.Internal, "invalid execution id")
 	}
-	namespace := fmt.Sprintf(namespaceFormat, input.ExecutionID.GetProject(), input.ExecutionID.GetDomain())
+	namespaceMapping = c.config.GetNamespaceMappingConfig()
+	namespace := common.GetNamespaceName(namespaceMapping, inputs.ExecutionID.GetProject(), inputs.ExecutionID.GetDomain())
 	target, err := c.executionCluster.GetTarget(&executioncluster.ExecutionTargetSpec{
 		TargetID: input.Cluster,
 	})
@@ -182,40 +182,14 @@ func newPropellerMetrics(scope promutils.Scope) propellerMetrics {
 	}
 }
 
-<<<<<<< HEAD
-func NewFlytePropeller(roleNameKey, kubeConfig, master string, configuration runtimeInterfaces.PropellerExecutorConfiguration,
-	scope promutils.Scope) interfaces.Executor {
-	kubeConfigScope := scope.NewSubScope("kubeconfig")
-	kubeConfiguration, err := flytek8s.GetRestClientConfig(kubeConfig, master, configuration.GetClusterResourceConfiguration())
-	if err != nil {
-		kubeConfigScope.MustNewCounter(
-			"kubeconfig_get_error",
-			"count of errors encountered fetching and initializing kube config").Inc()
-		panic(err)
-	}
-	fc, err := flyteclient.NewForConfig(kubeConfiguration)
-	if err != nil {
-		kubeConfigScope.MustNewCounter(
-			"flyteclient_initialization_error",
-			"count of errors encountered initializing a flyte client from kube config").Inc()
-		panic(err)
-	}
-
-	return &FlytePropeller{
-		client:      fc,
-		builder:     &FlyteWorkflowBuilder{},
-		roleNameKey: roleNameKey,
-		metrics:     newPropellerMetrics(scope),
-		config:      configuration.GetNamespaceMappingConfiguration(),
-=======
 func NewFlytePropeller(roleNameKey string, executionCluster executioncluster.ClusterInterface,
-	scope promutils.Scope) interfaces.Executor {
+	scope promutils.Scope, configuration interfaces.NamespaceMappingConfiguration) interfaces.Executor {
 
 	return &FlytePropeller{
 		executionCluster: executionCluster,
 		builder:          &FlyteWorkflowBuilder{},
 		roleNameKey:      roleNameKey,
 		metrics:          newPropellerMetrics(scope),
->>>>>>> d48c7cc874ab77d83048ee33ff9d22dcebc7c309
+		config:           configuration,
 	}
 }
