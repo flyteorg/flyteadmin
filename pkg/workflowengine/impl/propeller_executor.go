@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+	"flyteadmin/pkg/common"
 	"fmt"
 
 	interfaces2 "github.com/lyft/flyteadmin/pkg/executioncluster/interfaces"
@@ -90,14 +91,8 @@ func (c *FlytePropeller) ExecuteWorkflow(ctx context.Context, input interfaces.E
 		c.metrics.InvalidExecutionID.Inc()
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "invalid execution id")
 	}
-<<<<<<< HEAD
-	namespace := fmt.Sprintf(namespaceFormat, input.ExecutionID.GetProject(), input.ExecutionID.GetDomain())
-	flyteWf, err := c.builder.BuildFlyteWorkflow(&input.WfClosure, input.Inputs, input.ExecutionID, namespace)
-=======
-	namespaceMapping = c.config.GetNamespaceMappingConfig()
-	namespace := common.GetNamespaceName(namespaceMapping, inputs.ExecutionID.GetProject(), inputs.ExecutionID.GetDomain())
+	namespace := common.GetNamespaceName(c.config.GetNamespaceMappingConfig(), inputs.ExecutionID.GetProject(), inputs.ExecutionID.GetDomain())
 	flyteWf, err := c.builder.BuildFlyteWorkflow(&inputs.WfClosure, inputs.Inputs, inputs.ExecutionID, namespace)
->>>>>>> add namepace configuration
 	if err != nil {
 		c.metrics.WorkflowBuildFailure.Inc()
 		logger.Infof(ctx, "failed to build the workflow [%+v] %v",
@@ -191,6 +186,7 @@ func newPropellerMetrics(scope promutils.Scope) propellerMetrics {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 func NewFlytePropeller(roleNameKey string, executionCluster interfaces2.ClusterInterface,
 	scope promutils.Scope) interfaces.Executor {
 
@@ -202,8 +198,12 @@ func NewFlytePropeller(roleNameKey string, executionCluster interfaces2.ClusterI
 =======
 func NewFlytePropeller(roleNameKey, kubeConfig, master string, configuration runtimeInterfaces.ClusterConfiguration,
 	namespaceMappingConfiguration runtimeInterfaces.NamespaceMappingConfiguration, scope promutils.Scope) interfaces.Executor {
+=======
+func NewFlytePropeller(roleNameKey, kubeConfig, master string, configuration runtimeInterfaces.PropellerExecutorConfiguration,
+	scope promutils.Scope) interfaces.Executor {
+>>>>>>> use propeller executor configuration
 	kubeConfigScope := scope.NewSubScope("kubeconfig")
-	kubeConfiguration, err := flytek8s.GetRestClientConfig(kubeConfig, master, configuration)
+	kubeConfiguration, err := flytek8s.GetRestClientConfig(kubeConfig, master, configuration.GetClusterResourceConfiguration())
 	if err != nil {
 		kubeConfigScope.MustNewCounter(
 			"kubeconfig_get_error",
@@ -223,7 +223,11 @@ func NewFlytePropeller(roleNameKey, kubeConfig, master string, configuration run
 		builder:     &FlyteWorkflowBuilder{},
 		roleNameKey: roleNameKey,
 		metrics:     newPropellerMetrics(scope),
+<<<<<<< HEAD
 		config:      namespaceMappingconfiguration,
 >>>>>>> add namepace configuration
+=======
+		config:      configuration.GetNamespaceMappingConfiguration(),
+>>>>>>> use propeller executor configuration
 	}
 }
