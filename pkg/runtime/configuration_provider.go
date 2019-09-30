@@ -57,5 +57,10 @@ func NewConfigurationProvider() interfaces.Configuration {
 		whitelistConfiguration:              NewWhitelistConfigurationProvider(),
 		registrationValidationConfiguration: NewRegistrationValidationProvider(),
 		clusterResourceConfiguration:        NewClusterResourceConfigurationProvider(),
+<<<<<<< HEAD
+=======
+		namespaceMappingConfiguration:       NewNamespaceMappingConfigurationProvider(),
+		propellerExecutorConfiguration:      NewPropellerExecutorConfigurationProvider(),
+>>>>>>> update propeller executor config
 	}
 }
