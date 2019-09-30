@@ -50,7 +50,7 @@ func (p *ConfigurationProvider) NamespaceMappingConfiguration() interfaces.Names
 }
 
 func (p *ConfigurationProvider) PropellerExecutorConfiguration() interfaces.PropellerConfiguration {
-	return p.PropellerExecutorConfiguration
+	return p.propellerExecutorConfiguration
 }
 
 func NewConfigurationProvider() interfaces.Configuration {
