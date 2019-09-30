@@ -8,12 +8,12 @@ import (
 
 func TestGetNamespaceName(t *testing.T) {
 	testCases := []struct {
-		mapping string
+		mapping NamespaceMapping
 		project string
 		domain  string
 		want    string
 	}{
-		{"", "project", "production", "project-production"},
+		{Domain, "project", "production", "project-production"},
 		{"bad-value", "project", "development", "project-development"},
 		{"domain", "project", "production", "production"},
 	}

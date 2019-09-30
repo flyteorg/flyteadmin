@@ -8,16 +8,33 @@ import (
 	"github.com/lyft/flytestdlib/logger"
 )
 
-const namespaceMappingKey = "namespace_mapping"
+const (
+	namespaceMappingKey = "namespace_mapping"
+	domainVariable      = "domain"
+)
 
 var namespaceMappingConfig = config.MustRegisterSection(namespaceMappingKey, &interfaces.NamespaceMappingConfig{})
 
 type NamespaceMappingConfigurationProvider struct{}
 
-func (p *NamespaceMappingConfigurationProvider) GetNamespaceMappingConfig() string {
+func (p *NamespaceMappingConfigurationProvider) GetNamespaceMappingConfig() NamespaceMapping {
+	var string mapping
 	if namespaceMappingConfig != nil && namespaceMappingConfig.GetConfig() != nil {
-		return namespaceMappingConfig.GetConfig().(*interfaces.NamespaceMappingConfig).Mapping
+		mapping := namespaceMappingConfig.GetConfig().(*interfaces.NamespaceMappingConfig).Mapping
+	}
+
+	switch mapping {
+	case domainVariable:
+		logger.Warningf(context.Background(), "Failed to find namespace mapping in config, defaulting to <project>-<domain>")
+		return Domain
+	default:
+		logger.Warningf(context.Background(), "Unsupported value for namespace_mapping in config, defaulting to <project>-<domain>")
+		return ProjectDomain
 	}
 	logger.Warningf(context.Background(), "Failed to find namespace mapping in config, defaulting to <project>-<domain>")
-	return ""
+	return ProjectDomain
+}
+
+func NewNamespaceMappingConfigurationProvider() interfaces.NamespaceMappingConfiguration {
+	return &NamespaceMappingConfigurationProvider{}
 }
