@@ -14,7 +14,6 @@ type ConfigurationProvider struct {
 	registrationValidationConfiguration interfaces.RegistrationValidationConfiguration
 	clusterResourceConfiguration        interfaces.ClusterResourceConfiguration
 	namespaceMappingConfiguration       interfaces.NamespaceMappingConfiguration
-	propellerExecutorConfiguration      interfaces.PropellerExecutorConfiguration
 }
 
 func (p *ConfigurationProvider) ApplicationConfiguration() interfaces.ApplicationConfiguration {
@@ -49,10 +48,6 @@ func (p *ConfigurationProvider) NamespaceMappingConfiguration() interfaces.Names
 	return p.namespaceMappingConfiguration
 }
 
-func (p *ConfigurationProvider) PropellerExecutorConfiguration() interfaces.PropellerConfiguration {
-	return p.propellerExecutorConfiguration
-}
-
 func NewConfigurationProvider() interfaces.Configuration {
 	return &ConfigurationProvider{
 		applicationConfiguration:            NewApplicationConfigurationProvider(),
@@ -63,6 +58,5 @@ func NewConfigurationProvider() interfaces.Configuration {
 		registrationValidationConfiguration: NewRegistrationValidationProvider(),
 		clusterResourceConfiguration:        NewClusterResourceConfigurationProvider(),
 		namespaceMappingConfiguration:       NewNamespaceMappingConfigurationProvider(),
-		propellerExecutorConfiguration:      NewPropellerExecutorConfigurationProvider(),
 	}
 }
