@@ -185,7 +185,6 @@ func GetAuthenticationInterceptor(oauth config.OauthOptions) func(context.Contex
 			return ctx, nil
 		}
 
-		logger.Infof(ctx, "=========\nToken parsed: %v\n", tokenStr)
 		token, err := jwt.Parse(tokenStr, jwtVerifier.GetKey)
 		if err != nil {
 			return nil, status.Errorf(codes.Unauthenticated, "could not parse token string into object: %s %s", tokenStr, err)

@@ -206,7 +206,7 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig) error {
 	}
 
 	grpcServer, err := newGRPCServer(ctx, cfg,
-		grpc.Creds(credentials.NewClientTLSFromCert(certPool, cfg.GetHostAddress())))
+		grpc.Creds(credentials.NewServerTLSFromCert(cert)))
 	if err != nil {
 		return errors.Wrap(err, "failed to create GRPC server")
 	}

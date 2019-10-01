@@ -325,6 +325,14 @@
   version = "v1.10.0"
 
 [[projects]]
+  digest = "1:9a0de3882cd5fa16871caff91af7265a254931181d1212322f5c6e18a9be7df4"
+  name = "github.com/grpc/grpc-go"
+  packages = ["credentials/oauth"]
+  pruneopts = "UT"
+  revision = "f6d0f9ee430895e87ef1ceb5ac8f39725bafceef"
+  version = "v1.24.0"
+
+[[projects]]
   digest = "1:7fae9ec96d10b2afce0da23c378c8b3389319b7f92fa092f2621bba3078cfb4b"
   name = "github.com/hashicorp/golang-lru"
   packages = ["simplelru"]
@@ -1146,9 +1154,11 @@
     "github.com/golang/protobuf/ptypes/struct",
     "github.com/golang/protobuf/ptypes/timestamp",
     "github.com/gorilla/securecookie",
+    "github.com/grpc-ecosystem/go-grpc-middleware",
     "github.com/grpc-ecosystem/go-grpc-middleware/auth",
     "github.com/grpc-ecosystem/go-grpc-prometheus",
     "github.com/grpc-ecosystem/grpc-gateway/runtime",
+    "github.com/grpc/grpc-go/credentials/oauth",
     "github.com/jinzhu/gorm",
     "github.com/jinzhu/gorm/dialects/postgres",
     "github.com/lestrrat-go/jwx/jwk",
