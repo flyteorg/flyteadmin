@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	namespaceMappingKey = "namespace_mapping"
-	domainVariable      = "domain"
+	namespaceMappingKey   = "namespace_mapping"
+	domainVariable        = "domain"
+	projectDomainVariable = "project-domain"
 )
 
 var namespaceMappingConfig = config.MustRegisterSection(namespaceMappingKey, &interfaces.NamespaceMappingConfig{})
@@ -26,8 +27,9 @@ func (p *NamespaceMappingConfigurationProvider) GetNamespaceMappingConfig() comm
 
 	switch mapping {
 	case domainVariable:
-		logger.Warningf(context.Background(), "Failed to find namespace mapping in config, defaulting to <project>-<domain>")
 		return common.Domain
+	case projectDomainVariable:
+		return common.ProjectDomain
 	default:
 		logger.Warningf(context.Background(), "Unsupported value for namespace_mapping in config, defaulting to <project>-<domain>")
 		return common.ProjectDomain
