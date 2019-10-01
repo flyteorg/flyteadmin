@@ -117,6 +117,7 @@ var Migrations = []*gormigrate.Migration{
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return tx.Exec("ALTER TABLE executions DROP COLUMN IF EXISTS cluster").Error
+<<<<<<< HEAD
 		},
 	},
 	// Update projects table to add description column
@@ -137,6 +138,8 @@ var Migrations = []*gormigrate.Migration{
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return tx.Exec("ALTER TABLE executions DROP COLUMN IF EXISTS InputsURI, DROP COLUMN IF EXISTS UserInputsURI").Error
+=======
+>>>>>>> fix compile issues
 		},
 	},
 }

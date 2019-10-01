@@ -10,5 +10,4 @@ type Configuration interface {
 	RegistrationValidationConfiguration() RegistrationValidationConfiguration
 	ClusterResourceConfiguration() ClusterResourceConfiguration
 	NamespaceMappingConfiguration() NamespaceMappingConfiguration
-	PropellerExecutorConfiguration() PropellerExecutorConfiguration
 }

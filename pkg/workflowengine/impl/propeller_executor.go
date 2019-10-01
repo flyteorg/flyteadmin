@@ -2,11 +2,15 @@ package impl
 
 import (
 	"context"
-	"flyteadmin/pkg/common"
 
+<<<<<<< HEAD
 	interfaces2 "github.com/lyft/flyteadmin/pkg/executioncluster/interfaces"
 
+=======
+	"github.com/lyft/flyteadmin/pkg/common"
+>>>>>>> fix compile issues
 	"github.com/lyft/flyteadmin/pkg/executioncluster"
+	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
 	"github.com/lyft/flyteadmin/pkg/workflowengine/interfaces"
 
 	"github.com/lyft/flytestdlib/promutils"
@@ -90,8 +94,8 @@ func (c *FlytePropeller) ExecuteWorkflow(ctx context.Context, input interfaces.E
 		c.metrics.InvalidExecutionID.Inc()
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "invalid execution id")
 	}
-	namespace := common.GetNamespaceName(c.config.GetNamespaceMappingConfig(), inputs.ExecutionID.GetProject(), inputs.ExecutionID.GetDomain())
-	flyteWf, err := c.builder.BuildFlyteWorkflow(&inputs.WfClosure, inputs.Inputs, inputs.ExecutionID, namespace)
+	namespace := common.GetNamespaceName(c.config.GetNamespaceMappingConfig(), input.ExecutionID.GetProject(), input.ExecutionID.GetDomain())
+	flyteWf, err := c.builder.BuildFlyteWorkflow(&input.WfClosure, input.Inputs, input.ExecutionID, namespace)
 	if err != nil {
 		c.metrics.WorkflowBuildFailure.Inc()
 		logger.Infof(ctx, "failed to build the workflow [%+v] %v",
@@ -146,7 +150,7 @@ func (c *FlytePropeller) TerminateWorkflowExecution(
 		c.metrics.InvalidExecutionID.Inc()
 		return errors.NewFlyteAdminErrorf(codes.Internal, "invalid execution id")
 	}
-	namespace := common.GetNamespaceName(c.config.GetNamespaceMappingConfig(), inputs.ExecutionID.GetProject(), inputs.ExecutionID.GetDomain())
+	namespace := common.GetNamespaceName(c.config.GetNamespaceMappingConfig(), input.ExecutionID.GetProject(), input.ExecutionID.GetDomain())
 	target, err := c.executionCluster.GetTarget(&executioncluster.ExecutionTargetSpec{
 		TargetID: input.Cluster,
 	})
@@ -184,8 +188,13 @@ func newPropellerMetrics(scope promutils.Scope) propellerMetrics {
 	}
 }
 
+<<<<<<< HEAD
 func NewFlytePropeller(roleNameKey string, executionCluster interfaces2.ClusterInterface,
 	scope promutils.Scope, configuration interfaces.NamespaceMappingConfiguration) interfaces.Executor {
+=======
+func NewFlytePropeller(roleNameKey string, executionCluster executioncluster.ClusterInterface,
+	scope promutils.Scope, configuration runtimeInterfaces.NamespaceMappingConfiguration) interfaces.Executor {
+>>>>>>> fix compile issues
 
 	return &FlytePropeller{
 		executionCluster: executionCluster,

@@ -3,6 +3,7 @@ package runtime
 import (
 	"context"
 
+	"github.com/lyft/flyteadmin/pkg/common"
 	"github.com/lyft/flyteadmin/pkg/runtime/interfaces"
 	"github.com/lyft/flytestdlib/config"
 	"github.com/lyft/flytestdlib/logger"
@@ -17,22 +18,22 @@ var namespaceMappingConfig = config.MustRegisterSection(namespaceMappingKey, &in
 
 type NamespaceMappingConfigurationProvider struct{}
 
-func (p *NamespaceMappingConfigurationProvider) GetNamespaceMappingConfig() NamespaceMapping {
-	var string mapping
+func (p *NamespaceMappingConfigurationProvider) GetNamespaceMappingConfig() common.NamespaceMapping {
+	var mapping string
 	if namespaceMappingConfig != nil && namespaceMappingConfig.GetConfig() != nil {
-		mapping := namespaceMappingConfig.GetConfig().(*interfaces.NamespaceMappingConfig).Mapping
+		mapping = namespaceMappingConfig.GetConfig().(*interfaces.NamespaceMappingConfig).Mapping
 	}
 
 	switch mapping {
 	case domainVariable:
 		logger.Warningf(context.Background(), "Failed to find namespace mapping in config, defaulting to <project>-<domain>")
-		return Domain
+		return common.Domain
 	default:
 		logger.Warningf(context.Background(), "Unsupported value for namespace_mapping in config, defaulting to <project>-<domain>")
-		return ProjectDomain
+		return common.ProjectDomain
 	}
 	logger.Warningf(context.Background(), "Failed to find namespace mapping in config, defaulting to <project>-<domain>")
-	return ProjectDomain
+	return common.ProjectDomain
 }
 
 func NewNamespaceMappingConfigurationProvider() interfaces.NamespaceMappingConfiguration {
