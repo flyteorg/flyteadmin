@@ -8,6 +8,7 @@ import (
 
 	"github.com/lyft/flyteadmin/pkg/executioncluster"
 	cluster_mock "github.com/lyft/flyteadmin/pkg/executioncluster/mocks"
+	"github.com/lyft/flyteadmin/pkg/runtime"
 
 	"github.com/lyft/flyteadmin/pkg/workflowengine/interfaces"
 
@@ -31,6 +32,7 @@ import (
 var fakeFlyteWF = FakeFlyteWorkflowV1alpha1{}
 var scope = promutils.NewTestScope()
 var propellerTestMetrics = newPropellerMetrics(scope)
+var config = runtime.NewConfigurationProvider().NamespaceMappingConfiguration()
 
 var roleNameKey = "iam.amazonaws.com/role"
 var clusterName = "C1"
@@ -43,6 +45,7 @@ func getFlytePropellerForTest(execCluster executioncluster.ClusterInterface, bui
 		builder:          builder,
 		roleNameKey:      roleNameKey,
 		metrics:          propellerTestMetrics,
+		config:           config,
 	}
 }
 

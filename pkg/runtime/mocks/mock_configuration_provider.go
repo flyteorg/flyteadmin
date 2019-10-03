@@ -62,8 +62,8 @@ func NewMockConfigurationProvider(
 	queueConfiguration interfaces.QueueConfiguration,
 	clusterConfiguration interfaces.ClusterConfiguration,
 	taskResourceConfiguration interfaces.TaskResourceConfiguration,
-	namespaceMappingConfiguration interfaces.NamespaceMappingConfiguration,
-	whitelistConfiguration interfaces.WhitelistConfiguration) interfaces.Configuration {
+	whitelistConfiguration interfaces.WhitelistConfiguration,
+	namespaceMappingConfiguration interfaces.NamespaceMappingConfiguration) interfaces.Configuration {
 	return &MockConfigurationProvider{
 		applicationConfiguration:      applicationConfiguration,
 		queueConfiguration:            queueConfiguration,
