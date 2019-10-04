@@ -125,20 +125,30 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, grpcAddress st
 	// Register the actual Server that will service gRPC traffic
 	var gwmux *runtime.ServeMux
 	if cfg.Security.UseAuth {
+		// Configuration and setup
 		oauthConfig, err := auth.GetOauth2Config(cfg.Security.Oauth)
 		if err != nil {
 			logger.Errorf(ctx, "Could not load OAuth2 settings %s", err)
 			return nil, err
 		}
+
+		jwksUrl := cfg.Security.Oauth.JwksUrl
+		jwtVerifier := auth.JwtVerifier{Url: jwksUrl}
+		cookieManager, err := auth.NewCookieManager(ctx, cfg.Security.Oauth.CookieHashKeyFile, cfg.Security.Oauth.CookieBlockKeyFile)
+		if err != nil {
+			logger.Errorf(ctx, "Error creating cookie manager %s", err)
+			return nil, err
+		}
+
 		// Add HTTP handlers for OAuth2 endpoints
 		mux.HandleFunc("/login_page", loginPage)
-		mux.HandleFunc("/login", auth.RefreshTokensIfExists(ctx, oauthConfig, cfg.Security.Oauth.JwksUrl,
+		mux.HandleFunc("/login", auth.RefreshTokensIfExists(ctx, oauthConfig, jwtVerifier, cookieManager,
 			auth.GetLoginHandler(ctx, oauthConfig)))
-		mux.HandleFunc("/callback", auth.GetCallbackHandler(ctx, oauthConfig))
+		mux.HandleFunc("/callback", auth.GetCallbackHandler(ctx, oauthConfig, cookieManager))
 
 		gwmux = runtime.NewServeMux(
 			runtime.WithMarshalerOption("application/octet-stream", &runtime.ProtoMarshaller{}),
-			runtime.WithMetadata(auth.GetHttpRequestCookieToMetadataHandler()))
+			runtime.WithMetadata(auth.GetHttpRequestCookieToMetadataHandler(cookieManager)))
 	} else {
 		gwmux = runtime.NewServeMux(
 			runtime.WithMarshalerOption("application/octet-stream", &runtime.ProtoMarshaller{}))

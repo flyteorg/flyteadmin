@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	grpcauth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
@@ -18,6 +17,7 @@ import (
 	"strings"
 )
 
+// Move to config file
 func GetOauth2Config(options config.OauthOptions) (oauth2.Config, error) {
 	secretBytes, err := ioutil.ReadFile(options.ClientSecretFile)
 	if err != nil {
@@ -42,14 +42,14 @@ var AllowedChars = []rune("abcdefghijklmnopqrstuvwxyz1234567890")
 
 // Look for access token and refresh token, if both are present and the access token is expired, then attempt to
 // refresh. Otherwise do nothing and proceed to the next handler. If successfully refreshed, proceed to the landing page.
-func RefreshTokensIfExists(ctx context.Context, oauth oauth2.Config, jwksUrl string, handlerFunc http.HandlerFunc) http.HandlerFunc {
-	jwtVerifier := JwtVerifier{Url: jwksUrl}
-	return func(writer http.ResponseWriter, request *http.Request) {
+func RefreshTokensIfExists(ctx context.Context, oauth oauth2.Config, jwtVerifier JwtVerifier, cookieManager CookieManager,
+		handlerFunc http.HandlerFunc) http.HandlerFunc {
 
+	return func(writer http.ResponseWriter, request *http.Request) {
 		// Since we only do one thing if there are no errors anywhere along the chain, we can save code by just
 		// using one variable and checking for errors at the end.
 		var err error
-		accessToken, refreshToken, err := RetrieveTokenValues(ctx, request)
+		accessToken, refreshToken, err := cookieManager.RetrieveTokenValues(ctx, request)
 		if err == nil && accessToken != "" && refreshToken != "" {
 			jwtToken, e := jwt.Parse(accessToken, jwtVerifier.GetKey)
 			err = e
@@ -60,7 +60,8 @@ func RefreshTokensIfExists(ctx context.Context, oauth oauth2.Config, jwksUrl str
 				err = e
 				if err == nil {
 					logger.Debugf(ctx, "Access token refreshed. Saving new tokens into cookies.")
-					err = setTokenCookies(ctx, writer, newToken)
+					err = cookieManager.SetTokenCookies(ctx, writer, newToken)
+
 					if err == nil {
 						http.Redirect(writer, request, "/api/v1/projects", http.StatusTemporaryRedirect)
 						return
@@ -92,7 +93,7 @@ func GetLoginHandler(ctx context.Context, oauth oauth2.Config) http.HandlerFunc 
 	}
 }
 
-func GetCallbackHandler(ctx context.Context, oauth oauth2.Config) http.HandlerFunc {
+func GetCallbackHandler(ctx context.Context, oauth oauth2.Config, manager CookieManager) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		logger.Infof(ctx, "In callback: **")
 		authorizationCode := request.FormValue(AuthorizationResponseCodeType)
@@ -118,7 +119,7 @@ func GetCallbackHandler(ctx context.Context, oauth oauth2.Config) http.HandlerFu
 		fmt.Printf("Token.Access: %s\nToken.Refresh: %s\nToken.Type: %s\nToken.Expiry: %v\n",
 			token.AccessToken, token.RefreshToken, token.TokenType, token.Expiry.Unix())
 
-		err = setTokenCookies(ctx, writer, token)
+		err = manager.SetTokenCookies(ctx, writer, token)
 		if err != nil {
 			logger.Errorf(ctx, "Error setting encrypted JWT cookie %s", err)
 			writer.WriteHeader(http.StatusForbidden)
@@ -127,31 +128,6 @@ func GetCallbackHandler(ctx context.Context, oauth oauth2.Config) http.HandlerFu
 
 		http.Redirect(writer, request, "/api/v1/projects", http.StatusTemporaryRedirect)
 	}
-}
-
-func setTokenCookies(ctx context.Context, writer http.ResponseWriter, token *oauth2.Token) error {
-	if token == nil {
-		logger.Errorf(ctx, "Attempting to set cookies with nil token")
-		return errors.New("token was nil")
-	}
-
-	jwtCookie, err := NewSecureCookie(accessTokenCookie, token.AccessToken)
-	if err != nil {
-		logger.Errorf(ctx, "Error generating encrypted JWT cookie %s", err)
-		return err
-	}
-	http.SetCookie(writer, &jwtCookie)
-
-	// Set the refresh cookie if there is a refresh token
-	if token.RefreshToken != "" {
-		refreshCookie, err := NewSecureCookie(refreshTokenCookie, token.RefreshToken)
-		if err != nil {
-			logger.Errorf(ctx, "Error generating encrypted JWT cookie %s", err)
-			return err
-		}
-		http.SetCookie(writer, &refreshCookie)
-	}
-	return nil
 }
 
 func AuthenticationLoggingInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
@@ -214,21 +190,17 @@ type HttpRequestToMetadataAnnotator func(ctx context.Context, request *http.Requ
 
 // This is effectively middleware for the grpc gateway, it allows us to modify the translation between HTTP request
 // and gRPC request.
-func GetHttpRequestCookieToMetadataHandler() HttpRequestToMetadataAnnotator {
+func GetHttpRequestCookieToMetadataHandler(cookieManager CookieManager) HttpRequestToMetadataAnnotator {
 	return func(ctx context.Context, request *http.Request) metadata.MD {
-		c, err := request.Cookie(accessTokenCookie)
-		if c == nil || err != nil {
-			logger.Infof(ctx, "Could not find access token cookie at %s", request.RequestURI)
+		// TODO: Improve error handling
+		accessToken, _, _ := cookieManager.RetrieveTokenValues(ctx, request)
+		if accessToken == "" {
+			logger.Infof(ctx, "Could not find access token cookie while requesting %s", request.RequestURI)
 			return nil
 		}
-		decryptedValue, err := ReadSecureCookie(ctx, *c)
-		if err != nil {
-			logger.Errorf(ctx, "Error reading secure cookie %s", err)
-			return nil
-		}
-		fmt.Printf("Decoded %v from %v\n", c.Value, decryptedValue)
+		fmt.Printf("HTTP Annotation: Decoded access token %s\n", accessToken)
 		return metadata.MD{
-			"authorization": []string{fmt.Sprintf("Bearer %s", decryptedValue)},
+			"authorization": []string{fmt.Sprintf("Bearer %s", accessToken)},
 		}
 	}
 }

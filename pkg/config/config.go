@@ -37,6 +37,11 @@ type OauthOptions struct {
 	AuthorizeUrl     string `json:"authorizeUrl"`
 	TokenUrl         string `json:"tokenUrl"`
 	RedirectUrl      string `json:"redirectUrl"`
+
+	// These should point to files that contain base64 encoded secrets. See the TestSecureCookieLifecycle() unit test.
+	// See https://github.com/gorilla/securecookie#examples for more information
+	CookieHashKeyFile string `json:"cookieHashKeyFile"`
+	CookieBlockKeyFile string `json:"cookieBlockKeyFile"`
 }
 
 var serverConfig = config.MustRegisterSection(SectionKey, &ServerConfig{})

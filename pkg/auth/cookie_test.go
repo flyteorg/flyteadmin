@@ -1,15 +1,26 @@
 package auth
 
 import (
+	"context"
 	"encoding/base64"
-	"fmt"
 	"github.com/gorilla/securecookie"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
-func TestBasdf(t *testing.T)  {
+// This function can also be called locally to generate new keys
+func TestSecureCookieLifecycle(t *testing.T)  {
+	hashKey := securecookie.GenerateRandomKey(64)
+	assert.True(t, base64.RawStdEncoding.EncodeToString(hashKey) != "")
 
-	out := securecookie.GenerateRandomKey(32)
-	fmt.Println(base64.RawStdEncoding.EncodeToString(out))
+	blockKey := securecookie.GenerateRandomKey(32)
+	assert.True(t, base64.RawStdEncoding.EncodeToString(blockKey) != "")
+
+	cookie, err := NewSecureCookie("choc", "chip", hashKey, blockKey)
+	assert.NoError(t, err)
+
+	value, err := ReadSecureCookie(context.Background(), cookie, hashKey, blockKey)
+	assert.NoError(t, err)
+	assert.Equal(t, "chip", value)
 }
 

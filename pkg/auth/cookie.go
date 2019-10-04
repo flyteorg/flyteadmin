@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -11,7 +10,6 @@ import (
 	"github.com/lyft/flytestdlib/logger"
 	"math/rand"
 	"net/http"
-	_ "net/http/pprof" // Required to serve application.
 	"time"
 )
 
@@ -19,9 +17,6 @@ const accessTokenCookie = "my-jwt-cookie"
 const refreshTokenCookie = "my-refresh-cookie"
 const csrfStateCookie = "my-csrf-state"
 
-// TODO: Replace with proper key management and remove from code - local testing keys only
-var hashKey, _ = base64.RawStdEncoding.DecodeString("rekd8I2k9UTE+qK3+8hVoG9c5CEM7QuYoNfAszkPf1I")
-var blockKey, _ = base64.RawStdEncoding.DecodeString("jLDuQkVQyps4QLJEZaGRHiZbFWe8V5oTxZ7bmNkL7Iw")
 
 func HashCsrfState(csrf string) string {
 	shaBytes := sha256.Sum256([]byte(csrf))
@@ -30,7 +25,7 @@ func HashCsrfState(csrf string) string {
 	return hash
 }
 
-func NewSecureCookie(cookieName, value string) (http.Cookie, error) {
+func NewSecureCookie(cookieName, value string, hashKey, blockKey []byte) (http.Cookie, error) {
 	var s = securecookie.New(hashKey, blockKey)
 	if encoded, err := s.Encode(cookieName, value); err == nil {
 		return http.Cookie{
@@ -42,7 +37,7 @@ func NewSecureCookie(cookieName, value string) (http.Cookie, error) {
 	}
 }
 
-func ReadSecureCookie(ctx context.Context, cookie http.Cookie) (string, error) {
+func ReadSecureCookie(ctx context.Context, cookie http.Cookie, hashKey, blockKey []byte) (string, error) {
 	var s = securecookie.New(hashKey, blockKey)
 	var value string
 	if err := s.Decode(cookie.Name, cookie.Value, &value); err == nil {
@@ -53,6 +48,7 @@ func ReadSecureCookie(ctx context.Context, cookie http.Cookie) (string, error) {
 		return "", err
 	}
 }
+
 func NewCsrfToken(seed int64) string {
 	rand.Seed(seed)
 	csrfToken := [10]rune{}
@@ -92,35 +88,4 @@ func VerifyCsrfCookie(ctx context.Context, request *http.Request) (bool, error) 
 		return false, nil
 	}
 	return true, nil
-}
-
-func RetrieveTokenValues(ctx context.Context, request *http.Request) (accessToken string, refreshToken string, err error) {
-	if request == nil {
-		err = errors.New("nil http request")
-		return
-	}
-	jwtCookie, err := request.Cookie(accessTokenCookie)
-	if err != nil || jwtCookie == nil {
-		logger.Errorf(ctx, "Could not detect existing access token cookie")
-		return
-	}
-	logger.Debugf(ctx, "Existing JWT cookie found")
-	accessToken, err = ReadSecureCookie(ctx, *jwtCookie)
-	if err != nil {
-		logger.Errorf(ctx, "Error reading existing secure JWT cookie %s", err)
-		return
-	}
-
-	refreshCookie, err := request.Cookie(refreshTokenCookie)
-	if err != nil || refreshCookie == nil {
-		logger.Debugf(ctx, "Could not detect existing access token cookie")
-		return
-	}
-	logger.Debugf(ctx, "Existing refresh cookie found")
-	refreshToken, err = ReadSecureCookie(ctx, *refreshCookie)
-	if err != nil{
-		logger.Errorf(ctx, "Error reading existing secure refresh cookie %s", err)
-		return
-	}
-	return
 }
