@@ -33,15 +33,20 @@ type OauthOptions struct {
 	ClientId         string `json:"clientId"`
 	ClientSecretFile string `json:"clientSecretFile"`
 	JwksUrl          string `json:"jwksUrl"`
-	Issuer           string `json:"issuer"`
 	AuthorizeUrl     string `json:"authorizeUrl"`
 	TokenUrl         string `json:"tokenUrl"`
 	RedirectUrl      string `json:"redirectUrl"`
+	Claims           Claims `json:"claims"`
 
 	// These should point to files that contain base64 encoded secrets. See the TestSecureCookieLifecycle() unit test.
 	// See https://github.com/gorilla/securecookie#examples for more information
-	CookieHashKeyFile string `json:"cookieHashKeyFile"`
+	CookieHashKeyFile  string `json:"cookieHashKeyFile"`
 	CookieBlockKeyFile string `json:"cookieBlockKeyFile"`
+}
+
+type Claims struct {
+	Audience string `json:"aud"`
+	Issuer   string `json:"iss"`
 }
 
 var serverConfig = config.MustRegisterSection(SectionKey, &ServerConfig{})

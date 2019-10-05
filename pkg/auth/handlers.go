@@ -3,9 +3,9 @@ package auth
 import (
 	"context"
 	"fmt"
-	"github.com/dgrijalva/jwt-go"
 	grpcauth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/lyft/flyteadmin/pkg/config"
+	"github.com/lyft/flytestdlib/errors"
 	"github.com/lyft/flytestdlib/logger"
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
@@ -42,37 +42,40 @@ var AllowedChars = []rune("abcdefghijklmnopqrstuvwxyz1234567890")
 
 // Look for access token and refresh token, if both are present and the access token is expired, then attempt to
 // refresh. Otherwise do nothing and proceed to the next handler. If successfully refreshed, proceed to the landing page.
-func RefreshTokensIfExists(ctx context.Context, oauth oauth2.Config, jwtVerifier JwtVerifier, cookieManager CookieManager,
-		handlerFunc http.HandlerFunc) http.HandlerFunc {
+func RefreshTokensIfExists(ctx context.Context, oauth oauth2.Config, options config.OauthOptions, jwtVerifier JwtVerifier, cookieManager CookieManager,
+	handlerFunc http.HandlerFunc) http.HandlerFunc {
 
 	return func(writer http.ResponseWriter, request *http.Request) {
 		// Since we only do one thing if there are no errors anywhere along the chain, we can save code by just
 		// using one variable and checking for errors at the end.
 		var err error
 		accessToken, refreshToken, err := cookieManager.RetrieveTokenValues(ctx, request)
-		if err == nil && accessToken != "" && refreshToken != "" {
-			jwtToken, e := jwt.Parse(accessToken, jwtVerifier.GetKey)
-			err = e
-			if validationErr, ok := err.(*jwt.ValidationError); ok &&
-				validationErr.Errors == jwt.ValidationErrorExpired && jwtToken != nil {
-				logger.Debugf(ctx, "Expired access token found, attempting to refresh")
-				newToken, e := GetRefreshedToken(ctx, oauth, *jwtToken, refreshToken)
-				err = e
-				if err == nil {
-					logger.Debugf(ctx, "Access token refreshed. Saving new tokens into cookies.")
-					err = cookieManager.SetTokenCookies(ctx, writer, newToken)
 
+		if err == nil && accessToken != "" && refreshToken != "" {
+			t, e := ParseAndValidate(ctx, options, accessToken, jwtVerifier.GetKey)
+			if t == nil {
+				err = errors.Errorf(ErrNilJwt, "No token object found after parsing")
+			} else {
+				err = e
+				if err != nil && errors.IsCausedBy(err, ErrTokenExpired) {
+					logger.Debugf(ctx, "Expired access token found, attempting to refresh")
+					newToken, e := GetRefreshedToken(ctx, oauth, *t, refreshToken)
+					err = e
 					if err == nil {
-						http.Redirect(writer, request, "/api/v1/projects", http.StatusTemporaryRedirect)
-						return
+						logger.Debugf(ctx, "Access token refreshed. Saving new tokens into cookies.")
+						err = cookieManager.SetTokenCookies(ctx, writer, newToken)
 					}
 				}
 			}
 		}
 
 		if err != nil {
-			logger.Errorf(ctx, "Error in refresh token handler %s", err)
+			logger.Errorf(ctx, "Error in refresh token handler %s, redirecting to login handler", err)
 			handlerFunc(writer, request)
+			return
+		} else {
+			// TODO: Redirect URL needs to be configured
+			http.Redirect(writer, request, "/api/v1/projects", http.StatusTemporaryRedirect)
 			return
 		}
 	}
@@ -95,13 +98,12 @@ func GetLoginHandler(ctx context.Context, oauth oauth2.Config) http.HandlerFunc 
 
 func GetCallbackHandler(ctx context.Context, oauth oauth2.Config, manager CookieManager) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		logger.Infof(ctx, "In callback: **")
+		logger.Debugf(ctx, "Running callback handler...")
 		authorizationCode := request.FormValue(AuthorizationResponseCodeType)
-		fmt.Printf("Auth code: %s\n", authorizationCode)
 
-		validCsrf, err := VerifyCsrfCookie(ctx, request)
+		validCsrf := VerifyCsrfCookie(ctx, request)
 		if !validCsrf {
-			logger.Infof(ctx, "Invalid CSRF token cookie, error [%s]", err)
+			logger.Infof(ctx, "Invalid CSRF token cookie")
 			writer.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -146,39 +148,34 @@ func GetAuthenticationInterceptor(oauth config.OauthOptions) func(context.Contex
 		Url: oauth.JwksUrl,
 	}
 	return func(ctx context.Context) (context.Context, error) {
-		logger.Debugf(ctx,"Running authentication gRPC interceptor")
-		// Check if auth is enabled at all
-		// Selectively apply authentication based on configuration to only certain endpoints
+		logger.Debugf(ctx, "Running authentication gRPC interceptor")
 		tokenStr, err := grpcauth.AuthFromMD(ctx, "bearer")
 		if err != nil {
-			logger.Debugf(ctx,"Could not retrieve bearer token from metadata %v", err)
+			logger.Debugf(ctx, "Could not retrieve bearer token from metadata %v", err)
 			return ctx, nil
 		}
 
 		// Currently auth is optional
 		if tokenStr == "" {
-			logger.Debugf(ctx,"Bearer token is empty, skipping parsing")
+			logger.Debugf(ctx, "Bearer token is empty, skipping parsing")
 			return ctx, nil
 		}
 
-		token, err := jwt.Parse(tokenStr, jwtVerifier.GetKey)
+		token, err := ParseAndValidate(ctx, oauth, tokenStr, jwtVerifier.GetKey)
+		if token == nil {
+			return ctx, status.Errorf(codes.Unauthenticated, "Token was nil after parsing %s", tokenStr)
+		}
 		if err != nil {
-			return nil, status.Errorf(codes.Unauthenticated, "could not parse token string into object: %s %s", tokenStr, err)
+			return ctx, status.Errorf(codes.Unauthenticated, "could not parse token string into object: %s %s", tokenStr, err)
 		}
 
-		claims := token.Claims.(jwt.MapClaims)
-		claims.VerifyAudience("api://default", true)
-		claims.VerifyIssuer(oauth.Issuer, true)
-
-		if userEmail, ok := claims["sub"]; ok {
-			if userEmail.(string) != "" {
-				logger.Debugf(ctx, "Authenticated request for %s", userEmail.(string))
-				newCtx := WithUserEmail(context.WithValue(ctx, "tokenInfo", tokenStr), userEmail.(string))
-				return newCtx, nil
-			}
+		userEmail,err := GetSubClaim(token)
+		if err != nil {
+			return ctx, status.Errorf(codes.Unauthenticated, "no email or empty email found")
+		} else {
+			newCtx := WithUserEmail(context.WithValue(ctx, "tokenInfo", tokenStr), userEmail)
+			return newCtx, nil
 		}
-
-		return nil, status.Errorf(codes.Unauthenticated, "no email or empty email found")
 	}
 }
 

@@ -3,7 +3,7 @@ package auth
 import (
 	"context"
 	"encoding/base64"
-	"errors"
+	"github.com/lyft/flytestdlib/errors"
 	"github.com/lyft/flytestdlib/logger"
 	"golang.org/x/oauth2"
 	"io/ioutil"
@@ -23,11 +23,11 @@ func NewCookieManager(ctx context.Context, hashKeyFile, blockKeyFile string) (Co
 	logger.Infof(ctx, "Instantiating cookie manager")
 	hashKeyBytes, err := ioutil.ReadFile(hashKeyFile)
 	if err != nil {
-		return CookieManager{}, err
+		return CookieManager{}, errors.Wrapf(ErrConfigFileRead, err, "Could not read hash key file")
 	}
 	blockKeyBytes, err := ioutil.ReadFile(blockKeyFile)
 	if err != nil {
-		return CookieManager{}, err
+		return CookieManager{}, errors.Wrapf(ErrConfigFileRead, err, "Could not read block key file")
 	}
 
 	// Add error handling
@@ -40,13 +40,10 @@ func NewCookieManager(ctx context.Context, hashKeyFile, blockKeyFile string) (Co
 	}, nil
 }
 
+// TODO: Separate refresh token from access token, remove named returns, and use stdlib errors.
 func (c CookieManager) RetrieveTokenValues(ctx context.Context, request *http.Request) (accessToken string,
 	refreshToken string, err error) {
 
-	if request == nil {
-		err = errors.New("nil http request")
-		return
-	}
 	jwtCookie, err := request.Cookie(accessTokenCookie)
 	if err != nil || jwtCookie == nil {
 		logger.Errorf(ctx, "Could not detect existing access token cookie")
@@ -76,7 +73,7 @@ func (c CookieManager) RetrieveTokenValues(ctx context.Context, request *http.Re
 func (c CookieManager) SetTokenCookies(ctx context.Context, writer http.ResponseWriter, token *oauth2.Token) error {
 	if token == nil {
 		logger.Errorf(ctx, "Attempting to set cookies with nil token")
-		return errors.New("token was nil")
+		return errors.Errorf(ErrTokenNil, "Attempting to set cookies with nil token")
 	}
 
 	jwtCookie, err := NewSecureCookie(accessTokenCookie, token.AccessToken, c.hashKey, c.blockKey)
@@ -90,7 +87,7 @@ func (c CookieManager) SetTokenCookies(ctx context.Context, writer http.Response
 	if token.RefreshToken != "" {
 		refreshCookie, err := NewSecureCookie(refreshTokenCookie, token.RefreshToken, c.hashKey, c.blockKey)
 		if err != nil {
-			logger.Errorf(ctx, "Error generating encrypted JWT cookie %s", err)
+			logger.Errorf(ctx, "Error generating encrypted refresh cookie %s", err)
 			return err
 		}
 		http.SetCookie(writer, &refreshCookie)

@@ -4,9 +4,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
-	"fmt"
 	"github.com/gorilla/securecookie"
+	"github.com/lyft/flytestdlib/errors"
 	"github.com/lyft/flytestdlib/logger"
 	"math/rand"
 	"net/http"
@@ -17,11 +16,13 @@ const accessTokenCookie = "my-jwt-cookie"
 const refreshTokenCookie = "my-refresh-cookie"
 const csrfStateCookie = "my-csrf-state"
 
+const (
+	ErrSecureCookie errors.ErrorCode = "SECURE_COOKIE_ERROR"
+)
 
 func HashCsrfState(csrf string) string {
 	shaBytes := sha256.Sum256([]byte(csrf))
 	hash := hex.EncodeToString(shaBytes[:])
-	fmt.Printf("Hashed |%s| to |%s|\n", csrf, hash)
 	return hash
 }
 
@@ -33,7 +34,7 @@ func NewSecureCookie(cookieName, value string, hashKey, blockKey []byte) (http.C
 			Value: encoded,
 		}, nil
 	} else {
-		return http.Cookie{}, err
+		return http.Cookie{}, errors.Wrapf(ErrSecureCookie, err, "Error creating secure cookie")
 	}
 }
 
@@ -41,11 +42,10 @@ func ReadSecureCookie(ctx context.Context, cookie http.Cookie, hashKey, blockKey
 	var s = securecookie.New(hashKey, blockKey)
 	var value string
 	if err := s.Decode(cookie.Name, cookie.Value, &value); err == nil {
-		fmt.Printf("Decrypted %s to\n%s", cookie.Value, value)
 		return value, nil
 	} else {
 		logger.Errorf(ctx, "Error reading secure cookie %s %s", cookie.Name, err)
-		return "", err
+		return "", errors.Wrapf(ErrSecureCookie, err, "Error reading secure cookie %s", cookie.Name)
 	}
 }
 
@@ -68,24 +68,20 @@ func NewCsrfCookie() http.Cookie {
 	}
 }
 
-func VerifyCsrfCookie(ctx context.Context, request *http.Request) (bool, error) {
-	if request == nil {
-		logger.Error(ctx, "Cannot verify csrf from an empty HTTP request")
-		return false, errors.New("request was nil")
-	}
+func VerifyCsrfCookie(ctx context.Context, request *http.Request) bool {
 	csrfState := request.FormValue(CsrfFormKey)
 	if csrfState == "" {
 		logger.Errorf(ctx, "Empty state in callback, %s", request.Form)
-		return false, nil
+		return false
 	}
 	csrfCookie, err := request.Cookie(csrfStateCookie)
 	if csrfCookie == nil || err != nil {
 		logger.Errorf(ctx, "Could not find csrf cookie")
-		return false, nil
+		return false
 	}
 	if HashCsrfState(csrfCookie.Value) != csrfState {
 		logger.Errorf(ctx, "CSRF token does not match state %s, %s vs %s", csrfCookie.Value, HashCsrfState(csrfCookie.Value), csrfState)
-		return false, nil
+		return false
 	}
-	return true, nil
+	return true
 }

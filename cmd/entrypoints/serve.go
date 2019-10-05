@@ -142,8 +142,8 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, grpcAddress st
 
 		// Add HTTP handlers for OAuth2 endpoints
 		mux.HandleFunc("/login_page", loginPage)
-		mux.HandleFunc("/login", auth.RefreshTokensIfExists(ctx, oauthConfig, jwtVerifier, cookieManager,
-			auth.GetLoginHandler(ctx, oauthConfig)))
+		mux.HandleFunc("/login", auth.RefreshTokensIfExists(ctx, oauthConfig, cfg.Security.Oauth, jwtVerifier,
+			cookieManager, auth.GetLoginHandler(ctx, oauthConfig)))
 		mux.HandleFunc("/callback", auth.GetCallbackHandler(ctx, oauthConfig, cookieManager))
 
 		gwmux = runtime.NewServeMux(
@@ -165,7 +165,7 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, grpcAddress st
 }
 
 func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig) error {
-	logger.Infof(ctx, "Serving FlyteAdmin Insecure")
+	logger.Infof(ctx, "Serving Flyte Admin Insecure")
 	grpcServer, err := newGRPCServer(ctx, cfg)
 	if err != nil {
 		return errors.Wrap(err, "failed to create GRPC server")
