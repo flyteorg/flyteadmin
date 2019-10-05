@@ -96,8 +96,8 @@ func GetRefreshedToken(ctx context.Context, oauth oauth2.Config, token jwt.Token
 func constructMapClaims(claims config.Claims) jwt.MapClaims {
 	// TODO: iterate
 	return jwt.MapClaims{
-		"aud": claims.Audience,
-		"iss": claims.Issuer,
+		Aud: claims.Audience,
+		Iss: claims.Issuer,
 	}
 }
 

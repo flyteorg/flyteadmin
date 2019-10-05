@@ -8,3 +8,7 @@ const RefreshToken = "refresh_token"
 
 // IDP specific
 const OfflineAccessType = "offline_access"
+
+// JWT
+const Aud = "aud"
+const Iss = "iss"

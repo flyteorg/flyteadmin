@@ -118,8 +118,6 @@ func GetCallbackHandler(ctx context.Context, oauth oauth2.Config, manager Cookie
 			writer.WriteHeader(http.StatusForbidden)
 			return
 		}
-		fmt.Printf("Token.Access: %s\nToken.Refresh: %s\nToken.Type: %s\nToken.Expiry: %v\n",
-			token.AccessToken, token.RefreshToken, token.TokenType, token.Expiry.Unix())
 
 		err = manager.SetTokenCookies(ctx, writer, token)
 		if err != nil {
