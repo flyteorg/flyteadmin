@@ -422,7 +422,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("security.oauth.redirectUrl", testValue)
 			if vString, err := cmdFlags.GetString("security.oauth.redirectUrl"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.RedirectUrl)
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.CallbackUrl)
 
 			} else {
 				assert.FailNow(t, err.Error())

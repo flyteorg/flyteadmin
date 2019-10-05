@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/lestrrat-go/jwx/jwk"
-	"github.com/lyft/flyteadmin/pkg/config"
 	"github.com/lyft/flytestdlib/errors"
 	"github.com/lyft/flytestdlib/logger"
 	"golang.org/x/oauth2"
@@ -93,7 +92,7 @@ func GetRefreshedToken(ctx context.Context, oauth oauth2.Config, token jwt.Token
 	return newToken, nil
 }
 
-func constructMapClaims(claims config.Claims) jwt.MapClaims {
+func constructMapClaims(claims Claims) jwt.MapClaims {
 	// TODO: iterate
 	return jwt.MapClaims{
 		Aud: claims.Audience,
@@ -101,7 +100,7 @@ func constructMapClaims(claims config.Claims) jwt.MapClaims {
 	}
 }
 
-func ParseAndValidate(ctx context.Context, options config.OauthOptions, accessToken string,
+func ParseAndValidate(ctx context.Context, options OAuthOptions, accessToken string,
 	keyFunc jwt.Keyfunc) (*jwt.Token, error) {
 
 	t, err := jwt.ParseWithClaims(accessToken, constructMapClaims(options.Claims), keyFunc)

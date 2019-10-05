@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"github.com/lyft/flyteadmin/pkg/auth"
 	"github.com/lyft/flytestdlib/config"
 )
 
@@ -18,35 +19,15 @@ type ServerConfig struct {
 }
 
 type ServerSecurityOptions struct {
-	Secure  bool         `json:"secure"`
-	Ssl     SslOptions   `json:"ssl"`
-	UseAuth bool         `json:"useAuth"`
-	Oauth   OauthOptions `json:"oauth"`
+	Secure  bool              `json:"secure"`
+	Ssl     SslOptions        `json:"ssl"`
+	UseAuth bool              `json:"useAuth"`
+	Oauth   auth.OAuthOptions `json:"oauth"`
 }
 
 type SslOptions struct {
 	CertificateFile string `json:"certificateFile"`
 	KeyFile         string `json:"keyFile"`
-}
-
-type OauthOptions struct {
-	ClientId         string `json:"clientId"`
-	ClientSecretFile string `json:"clientSecretFile"`
-	JwksUrl          string `json:"jwksUrl"`
-	AuthorizeUrl     string `json:"authorizeUrl"`
-	TokenUrl         string `json:"tokenUrl"`
-	RedirectUrl      string `json:"redirectUrl"`
-	Claims           Claims `json:"claims"`
-
-	// These should point to files that contain base64 encoded secrets. See the TestSecureCookieLifecycle() unit test.
-	// See https://github.com/gorilla/securecookie#examples for more information
-	CookieHashKeyFile  string `json:"cookieHashKeyFile"`
-	CookieBlockKeyFile string `json:"cookieBlockKeyFile"`
-}
-
-type Claims struct {
-	Audience string `json:"aud"`
-	Issuer   string `json:"iss"`
 }
 
 var serverConfig = config.MustRegisterSection(SectionKey, &ServerConfig{})

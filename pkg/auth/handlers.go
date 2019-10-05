@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	grpcauth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
-	"github.com/lyft/flyteadmin/pkg/config"
 	"github.com/lyft/flytestdlib/errors"
 	"github.com/lyft/flytestdlib/logger"
 	"golang.org/x/oauth2"
@@ -12,38 +11,15 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-	"io/ioutil"
 	"net/http"
-	"strings"
 )
-
-// Move to config file
-func GetOauth2Config(options config.OauthOptions) (oauth2.Config, error) {
-	secretBytes, err := ioutil.ReadFile(options.ClientSecretFile)
-	if err != nil {
-		return oauth2.Config{}, err
-	}
-	secret := strings.TrimSuffix(string(secretBytes), "\n")
-	return oauth2.Config{
-		RedirectURL:  options.RedirectUrl,
-		ClientID:     options.ClientId,
-		ClientSecret: secret,
-		// Offline access needs to be specified in order to return a refresh token in the exchange.
-		// TODO: Second parameter is IDP specific - move to config. Also handle case where a refresh token is not allowed
-		Scopes: []string{OidcScope, OfflineAccessType},
-		Endpoint: oauth2.Endpoint{
-			AuthURL:  options.AuthorizeUrl,
-			TokenURL: options.TokenUrl,
-		},
-	}, nil
-}
 
 var AllowedChars = []rune("abcdefghijklmnopqrstuvwxyz1234567890")
 
 // Look for access token and refresh token, if both are present and the access token is expired, then attempt to
 // refresh. Otherwise do nothing and proceed to the next handler. If successfully refreshed, proceed to the landing page.
-func RefreshTokensIfExists(ctx context.Context, oauth oauth2.Config, options config.OauthOptions, jwtVerifier JwtVerifier, cookieManager CookieManager,
-	handlerFunc http.HandlerFunc) http.HandlerFunc {
+func RefreshTokensIfExists(ctx context.Context, oauth oauth2.Config, options OAuthOptions, jwtVerifier JwtVerifier,
+	cookieManager CookieManager, handlerFunc http.HandlerFunc) http.HandlerFunc {
 
 	return func(writer http.ResponseWriter, request *http.Request) {
 		// Since we only do one thing if there are no errors anywhere along the chain, we can save code by just
@@ -74,8 +50,7 @@ func RefreshTokensIfExists(ctx context.Context, oauth oauth2.Config, options con
 			handlerFunc(writer, request)
 			return
 		} else {
-			// TODO: Redirect URL needs to be configured
-			http.Redirect(writer, request, "/api/v1/projects", http.StatusTemporaryRedirect)
+			http.Redirect(writer, request, options.RedirectUrl, http.StatusTemporaryRedirect)
 			return
 		}
 	}
@@ -96,7 +71,7 @@ func GetLoginHandler(ctx context.Context, oauth oauth2.Config) http.HandlerFunc 
 	}
 }
 
-func GetCallbackHandler(ctx context.Context, oauth oauth2.Config, manager CookieManager) http.HandlerFunc {
+func GetCallbackHandler(ctx context.Context, oauth oauth2.Config, options OAuthOptions, manager CookieManager) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		logger.Debugf(ctx, "Running callback handler...")
 		authorizationCode := request.FormValue(AuthorizationResponseCodeType)
@@ -126,7 +101,7 @@ func GetCallbackHandler(ctx context.Context, oauth oauth2.Config, manager Cookie
 			return
 		}
 
-		http.Redirect(writer, request, "/api/v1/projects", http.StatusTemporaryRedirect)
+		http.Redirect(writer, request, options.RedirectUrl, http.StatusTemporaryRedirect)
 	}
 }
 
@@ -140,10 +115,10 @@ func AuthenticationLoggingInterceptor(ctx context.Context, req interface{}, info
 // This function will only look for a token from the request metadata, verify it, and extract the user email if valid.
 // Unless there is an error, it will not return an unauthorized status. That is up to subsequent functions to decide,
 // based on configuration.  We don't want to require authentication for all endpoints.
-func GetAuthenticationInterceptor(oauth config.OauthOptions) func(context.Context) (context.Context, error) {
+func GetAuthenticationInterceptor(options OAuthOptions) func(context.Context) (context.Context, error) {
 	// TODO: Use library after library has been written
 	jwtVerifier := JwtVerifier{
-		Url: oauth.JwksUrl,
+		Url: options.JwksUrl,
 	}
 	return func(ctx context.Context) (context.Context, error) {
 		logger.Debugf(ctx, "Running authentication gRPC interceptor")
@@ -159,7 +134,7 @@ func GetAuthenticationInterceptor(oauth config.OauthOptions) func(context.Contex
 			return ctx, nil
 		}
 
-		token, err := ParseAndValidate(ctx, oauth, tokenStr, jwtVerifier.GetKey)
+		token, err := ParseAndValidate(ctx, options, tokenStr, jwtVerifier.GetKey)
 		if token == nil {
 			return ctx, status.Errorf(codes.Unauthenticated, "Token was nil after parsing %s", tokenStr)
 		}
@@ -167,7 +142,7 @@ func GetAuthenticationInterceptor(oauth config.OauthOptions) func(context.Contex
 			return ctx, status.Errorf(codes.Unauthenticated, "could not parse token string into object: %s %s", tokenStr, err)
 		}
 
-		userEmail,err := GetSubClaim(token)
+		userEmail, err := GetSubClaim(token)
 		if err != nil {
 			return ctx, status.Errorf(codes.Unauthenticated, "no email or empty email found")
 		} else {

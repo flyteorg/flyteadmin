@@ -7,6 +7,7 @@ import (
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpcauth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/lyft/flyteadmin/pkg/auth"
+	"github.com/lyft/flyteadmin/pkg/server"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/credentials"
 	"net"
@@ -144,7 +145,7 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, grpcAddress st
 		mux.HandleFunc("/login_page", loginPage)
 		mux.HandleFunc("/login", auth.RefreshTokensIfExists(ctx, oauthConfig, cfg.Security.Oauth, jwtVerifier,
 			cookieManager, auth.GetLoginHandler(ctx, oauthConfig)))
-		mux.HandleFunc("/callback", auth.GetCallbackHandler(ctx, oauthConfig, cookieManager))
+		mux.HandleFunc("/callback", auth.GetCallbackHandler(ctx, oauthConfig, cfg.Security.Oauth, cookieManager))
 
 		gwmux = runtime.NewServeMux(
 			runtime.WithMarshalerOption("application/octet-stream", &runtime.ProtoMarshaller{}),
@@ -210,7 +211,7 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 }
 
 func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig) error {
-	certPool, cert, err := auth.GetSslCredentials(ctx, cfg.Security.Ssl.CertificateFile, cfg.Security.Ssl.KeyFile)
+	certPool, cert, err := server.GetSslCredentials(ctx, cfg.Security.Ssl.CertificateFile, cfg.Security.Ssl.KeyFile)
 	if err != nil {
 		return err
 	}
