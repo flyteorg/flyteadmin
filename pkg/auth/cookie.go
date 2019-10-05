@@ -20,6 +20,8 @@ const (
 	ErrSecureCookie errors.ErrorCode = "SECURE_COOKIE_ERROR"
 )
 
+var AllowedChars = []rune("abcdefghijklmnopqrstuvwxyz1234567890")
+
 func HashCsrfState(csrf string) string {
 	shaBytes := sha256.Sum256([]byte(csrf))
 	hash := hex.EncodeToString(shaBytes[:])

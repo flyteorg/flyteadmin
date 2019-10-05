@@ -14,8 +14,6 @@ import (
 	"net/http"
 )
 
-var AllowedChars = []rune("abcdefghijklmnopqrstuvwxyz1234567890")
-
 // Look for access token and refresh token, if both are present and the access token is expired, then attempt to
 // refresh. Otherwise do nothing and proceed to the next handler. If successfully refreshed, proceed to the landing page.
 func RefreshTokensIfExists(ctx context.Context, oauth oauth2.Config, options OAuthOptions, jwtVerifier JwtVerifier,
