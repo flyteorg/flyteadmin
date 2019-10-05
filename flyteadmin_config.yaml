@@ -15,10 +15,15 @@ server:
       clientId: yourclientid
       clientSecretFile: "/path/to/oauth/secret"
       jwksUrl: "https://idp.com/oauth/discovery"
-      issuer: "https://idp.com/oauth2/default"
       authorizeUrl: "https://idp.com/oauth2/authorize"
       tokenUrl: "https://idp.com/oauth2/token"
-      redirectUrl: "https://localhost:8088/callback"
+      callbackUrl: "https://localhost:8088/callback"
+      cookieHashKeyFile: "/path/to/admin_cookie_hash_key"
+      cookieBlockKeyFile: "/path/to/admin_cookie_block_key"
+      redirectUrl: "/api/v1/projects"
+      claims:
+        iss: "https://idp.com"
+        aud: "api://default"
 flyteadmin:
   runScheduler: false
   roleNameKey: "iam.amazonaws.com/role"
