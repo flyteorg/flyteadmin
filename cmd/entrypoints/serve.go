@@ -65,6 +65,8 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, opts ...grpc.S
 	var chainedUnaryInterceptors grpc.UnaryServerInterceptor
 	if cfg.Security.UseAuth {
 		logger.Infof(ctx, "Creating gRPC server with authentication")
+		// TODO: See comment at other instantiation of Provider in this file. This is a duplicate for now until
+		//       we can clean up code and merge them.
 		oidcCtx := oidc.ClientContext(ctx, &http.Client{})
 		provider, err := oidc.NewProvider(oidcCtx, cfg.Security.Oauth.Claims.Issuer)
 		if err != nil {
