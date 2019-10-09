@@ -142,8 +142,8 @@ func UpdateTaskExecutionModel(request *admin.TaskExecutionEventRequest, taskExec
 	taskExecutionClosure.Phase = request.Event.Phase
 	taskExecutionClosure.UpdatedAt = request.Event.OccurredAt
 	taskExecutionClosure.Logs = request.Event.Logs
-	if (existingTaskPhase == core.TaskExecution_QUEUED || existingTaskPhase == core.TaskExecution_UNKNOWN) && taskExecutionModel.Phase == core.TaskExecution_RUNNING {
-		err = addTaskStartedState(request, taskExecutionModel, taskExecutionClosure)
+	if existingTaskPhase == core.TaskExecution_QUEUED.String() && taskExecutionModel.Phase == core.TaskExecution_RUNNING.String() {
+		err = addTaskStartedState(request, taskExecutionModel, &taskExecutionClosure)
 		if err != nil {
 			return err
 		}
