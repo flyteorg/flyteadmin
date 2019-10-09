@@ -6,21 +6,24 @@ import (
 )
 
 type CreateProjectModelInput struct {
-	Identifier string
-	Name       string
+	Identifier  string
+	Name        string
+	Description string
 }
 
-func CreateProjectModel(identifier, name string) models.Project {
+func CreateProjectModel(identifier, name string, description string) models.Project {
 	return models.Project{
-		Identifier: identifier,
-		Name:       name,
+		Identifier:  identifier,
+		Name:        name,
+		Description: description,
 	}
 }
 
 func FromProjectModel(projectModel models.Project, domains []*admin.Domain) admin.Project {
 	project := admin.Project{
-		Id:   projectModel.Identifier,
-		Name: projectModel.Name,
+		Id:          projectModel.Identifier,
+		Name:        projectModel.Name,
+		Description: projectModel.Description,
 	}
 	project.Domains = domains
 	return project
