@@ -11,11 +11,11 @@ type CreateProjectModelInput struct {
 	Description string
 }
 
-func CreateProjectModel(identifier, name string, description string) models.Project {
+func CreateProjectModel(project *admin.Project) models.Project {
 	return models.Project{
-		Identifier:  identifier,
-		Name:        name,
-		Description: description,
+		Identifier:  project.Id,
+		Name:        project.Name,
+		Description: project.Description,
 	}
 }
 

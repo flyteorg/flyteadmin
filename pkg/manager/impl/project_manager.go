@@ -27,7 +27,7 @@ func (m *ProjectManager) CreateProject(ctx context.Context, request admin.Projec
 	if err := validation.ValidateProjectRegisterRequest(request); err != nil {
 		return nil, err
 	}
-	projectModel := transformers.CreateProjectModel(request.Project.Id, request.Project.Name, request.Project.Description)
+	projectModel := transformers.CreateProjectModel(request.Project)
 	err := m.db.ProjectRepo().Create(ctx, projectModel)
 	if err != nil {
 		return nil, err

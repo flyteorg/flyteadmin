@@ -12,7 +12,11 @@ import (
 
 func TestCreateProjectModel(t *testing.T) {
 
-	projectModel := CreateProjectModel("project_id", "project_name", "project_description")
+	projectModel := CreateProjectModel(&admin.Project{
+		Id:          "project_id",
+		Name:        "project_name",
+		Description: "project_description",
+	})
 
 	assert.Equal(t, models.Project{
 		Identifier:  "project_id",
