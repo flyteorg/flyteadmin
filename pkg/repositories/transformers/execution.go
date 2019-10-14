@@ -13,6 +13,7 @@ import (
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/logger"
 	"google.golang.org/grpc/codes"
+	"github.com/lyft/flytestdlib/storage"
 )
 
 // Request parameters for calls to CreateExecutionModel.
@@ -22,16 +23,19 @@ type CreateExecutionModelInput struct {
 	LaunchPlanID          uint
 	WorkflowID            uint
 	Phase                 core.WorkflowExecution_Phase
-	ExecutionInputs       *core.LiteralMap
 	CreatedAt             time.Time
 	Notifications         []*admin.Notification
 	WorkflowIdentifier    *core.Identifier
 	ParentNodeExecutionID uint
 	Cluster               string
+	InputsUri             storage.DataReference
 }
 
 // Transforms a ExecutionCreateRequest to a Execution model
 func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, error) {
+	// Clear deprecated fields from old clients to save space in database.
+	input.RequestSpec.Inputs = nil
+
 	spec, err := proto.Marshal(input.RequestSpec)
 	if err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "Failed to serialize execution spec: %v", err)
@@ -41,7 +45,6 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to serialize execution created at time")
 	}
 	closure := admin.ExecutionClosure{
-		ComputedInputs: input.ExecutionInputs,
 		Phase:          input.Phase,
 		CreatedAt:      createdAt,
 		UpdatedAt:      createdAt,
@@ -57,6 +60,7 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 	if err != nil {
 		return nil, errors.NewFlyteAdminError(codes.Internal, "Failed to serialize launch plan status")
 	}
+
 	executionModel := &models.Execution{
 		ExecutionKey: models.ExecutionKey{
 			Project: input.WorkflowExecutionID.Project,
@@ -72,6 +76,7 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 		ExecutionUpdatedAt:    &input.CreatedAt,
 		ParentNodeExecutionID: input.ParentNodeExecutionID,
 		Cluster:               input.Cluster,
+		InputsUri:             input.InputsUri,
 	}
 	if input.RequestSpec.Metadata != nil {
 		executionModel.Mode = int32(input.RequestSpec.Metadata.Mode)
@@ -163,6 +168,10 @@ func FromExecutionModel(executionModel models.Execution) (*admin.Execution, erro
 			AbortCause: executionModel.AbortCause,
 		}
 	}
+
+	// Clear deprecated fields to reduce message size.
+	spec.Inputs = nil
+	closure.ComputedInputs = nil
 	return &admin.Execution{
 		Id:      &id,
 		Spec:    &spec,

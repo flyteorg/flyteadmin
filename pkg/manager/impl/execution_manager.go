@@ -36,6 +36,9 @@ import (
 
 	"github.com/benbjohnson/clock"
 	"github.com/golang/protobuf/proto"
+	"github.com/lyft/flyteadmin/pkg/manager/impl/shared"
+	"github.com/lyft/flyteadmin/pkg/config"
+	"k8s.io/apiserver/pkg/admission/configuration"
 )
 
 const parentContainerQueueKey = "parent_queue"
@@ -154,6 +157,18 @@ func (m *ExecutionManager) addLabelsAndAnnotations(requestSpec *admin.ExecutionS
 	return nil
 }
 
+func (m *ExecutionManager) offloadInputs(ctx context.Context, literalMap *core.LiteralMap, identifier *core.WorkflowExecutionIdentifier) (storage.DataReference, error) {
+	// Offload inputs to blob storage.
+	inputsUri, err := m.storageClient.ConstructReference(ctx, m.storageClient.GetBaseContainerFQN(ctx), shared.Metadata, identifier.Project, identifier.Domain, identifier.Name, shared.Inputs)
+	if err != nil {
+		return "", err
+	}
+	if err := m.storageClient.WriteProtobuf(ctx, inputsUri, defaultStorageOptions, literalMap); err != nil {
+		return "", err
+	}
+	return inputsUri, nil
+}
+
 func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	ctx context.Context, request admin.ExecutionCreateRequest, requestedAt time.Time) (*models.Execution, error) {
 	err := validation.ValidateExecutionRequest(ctx, request, m.db, m.config.ApplicationConfiguration())
@@ -172,7 +187,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		return nil, err
 	}
 	executionInputs, err := validation.CheckAndFetchInputsForExecution(
-		request.Spec.Inputs,
+		request.Inputs,
 		launchPlan.Spec.FixedInputs,
 		launchPlan.Closure.ExpectedInputs,
 	)
@@ -180,7 +195,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	if err != nil {
 		logger.Debugf(ctx, "Failed to CheckAndFetchInputsForExecution with request.Spec.Inputs: %+v"+
 			"fixed inputs: %+v and expected inputs: %+v with err %v",
-			request.Spec.Inputs, launchPlan.Spec.FixedInputs, launchPlan.Closure.ExpectedInputs, err)
+			request.Inputs, launchPlan.Spec.FixedInputs, launchPlan.Closure.ExpectedInputs, err)
 		return nil, err
 	}
 	workflow, err := util.GetWorkflow(ctx, m.db, m.storageClient, *launchPlan.Spec.WorkflowId)
@@ -216,6 +231,12 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	// Dynamically assign execution queues.
 	m.populateExecutionQueue(ctx, *workflow.Id, workflow.Closure.CompiledWorkflow)
 
+	inputsUri, err := m.offloadInputs(ctx, executionInputs, &workflowExecutionID)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: Reduce CRD size and use offloaded input URI to blob store instead.
 	executeWorkflowInputs := workflowengineInterfaces.ExecuteWorkflowInput{
 		ExecutionID: &workflowExecutionID,
 		WfClosure:   *workflow.Closure.CompiledWorkflow,
@@ -259,12 +280,12 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		WorkflowID:          launchPlanModel.WorkflowID,
 		// The execution is not considered running until the propeller sends a specific event saying so.
 		Phase:                 core.WorkflowExecution_UNDEFINED,
-		ExecutionInputs:       executionInputs,
 		CreatedAt:             m._clock.Now(),
 		Notifications:         notificationsSettings,
 		WorkflowIdentifier:    workflow.Id,
 		ParentNodeExecutionID: parentNodeExecutionID,
 		Cluster:               execInfo.Cluster,
+		InputsUri:             inputsUri,
 	})
 	if err != nil {
 		logger.Infof(ctx, "Failed to create execution model in transformer for id: [%+v] with err: %v",
@@ -298,6 +319,10 @@ func (m *ExecutionManager) createExecutionModel(
 func (m *ExecutionManager) CreateExecution(
 	ctx context.Context, request admin.ExecutionCreateRequest, requestedAt time.Time) (
 	*admin.ExecutionCreateResponse, error) {
+	// Prior to  flyteidl v0.15.0, Inputs was held in ExecutionSpec. Ensure older clients continue to work.
+	if request.Inputs == nil || len(request.Inputs.Literals) == 0 {
+		request.Inputs = request.GetSpec().GetInputs()
+	}
 	executionModel, err := m.launchExecutionAndPrepareModel(ctx, request, requestedAt)
 	if err != nil {
 		return nil, err
@@ -328,12 +353,17 @@ func (m *ExecutionManager) RelaunchExecution(
 	if executionSpec.Metadata == nil {
 		executionSpec.Metadata = &admin.ExecutionMetadata{}
 	}
+	inputs := new(core.LiteralMap)
+	if err := m.storageClient.ReadProtobuf(ctx, existingExecutionModel.InputsUri, inputs); err != nil {
+		return nil, err
+	}
 	executionSpec.Metadata.Mode = admin.ExecutionMetadata_RELAUNCH
 	executionModel, err := m.launchExecutionAndPrepareModel(ctx, admin.ExecutionCreateRequest{
 		Project: request.Id.Project,
 		Domain:  request.Id.Domain,
 		Name:    request.Name,
 		Spec:    executionSpec,
+		Inputs:  inputs,
 	}, requestedAt)
 	if err != nil {
 		return nil, err
@@ -578,6 +608,15 @@ func (m *ExecutionManager) GetExecution(
 		return nil, transformerErr
 	}
 
+	// TODO: Remove the publishing to deprecated fields (Inputs) after a smooth migration has been completed of our existing users
+	// For now, publish to deprecated fields thus ensuring old clients don't break
+	if len(executionModel.InputsUri) > 0 {
+		if err := m.storageClient.ReadProtobuf(ctx, executionModel.InputsUri, execution.Closure.ComputedInputs); err != nil {
+			return nil, err
+		}
+		execution.Spec.Inputs = execution.Closure.ComputedInputs
+	}
+
 	return execution, nil
 }
 
@@ -600,8 +639,33 @@ func (m *ExecutionManager) GetExecutionData(
 			return nil, err
 		}
 	}
+	inputsUri := executionModel.InputsUri
+
+	// Prior to flyteidl v0.15.0, Inputs were held in ExecutionSpec and were not offloaded. Ensure we can return the inputs as expected.
+	if len(inputsUri) == 0 {
+		spec := new(admin.ExecutionSpec)
+		// We must not use the FromExecutionModel method because it empties deprecated fields.
+		if err := proto.Unmarshal(executionModel.Spec, spec); err != nil {
+			return nil, err
+		}
+		inputsUri, err := m.offloadInputs(ctx, spec.Inputs, request.Id)
+		if err != nil {
+			return nil, err
+		}
+		// Update model so as not to offload again.
+		executionModel.InputsUri = inputsUri
+		if err := m.db.ExecutionRepo().UpdateExecution(ctx, *executionModel); err != nil {
+			return nil, err
+		}
+	}
+
+	inputsUrlBlob, err := m.urlData.Get(ctx, executionModel.InputsUri.String())
+	if err != nil {
+		return nil, err
+	}
 	return &admin.WorkflowExecutionGetDataResponse{
 		Outputs: &signedOutputsURLBlob,
+		Inputs: &inputsUrlBlob,
 	}, nil
 }
 

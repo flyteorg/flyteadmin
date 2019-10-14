@@ -157,11 +157,11 @@ func (e *workflowExecutor) formulateExecutionCreateRequest(
 				Mode:        admin.ExecutionMetadata_SCHEDULED,
 				ScheduledAt: kickoffTimeProto,
 			},
-			// No additional inputs beyond the to-be-filled-out kickoff time arg are specified.
-			Inputs: &core.LiteralMap{
-				Literals: map[string]*core.Literal{},
-			},
-			// Likewise, no dynamic notifications are configured either.
+			// No dynamic notifications are configured either.
+		},
+		// No additional inputs beyond the to-be-filled-out kickoff time arg are specified.
+		Inputs: &core.LiteralMap{
+			Literals: map[string]*core.Literal{},
 		},
 	}
 	return executionRequest
