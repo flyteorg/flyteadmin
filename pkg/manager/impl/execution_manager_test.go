@@ -416,6 +416,7 @@ func TestCreateExecutionDatabaseFailure(t *testing.T) {
 func TestCreateExecutionVerifyDbModel(t *testing.T) {
 	request := testutils.GetExecutionRequest()
 	repository := getMockRepositoryForExecTest()
+	storageClient := getMockStorageForExecTest(context.Background())
 	setDefaultLpCallbackForExecTest(repository)
 	mockClock := clock.NewMock()
 	createdAt := time.Now()
@@ -434,22 +435,27 @@ func TestCreateExecutionVerifyDbModel(t *testing.T) {
 		}
 		assert.Nil(t, specValue.Inputs)
 
-		// TODO: Fetch inputs from InputURI and check this
-		// fooValue := utils.MustMakeLiteral("foo-value-1")
-		// assert.Equal(t, 1, len(specValue.Inputs.Literals))
-		// assert.EqualValues(t, specValue.Inputs.Literals["foo"], fooValue)
-
 		var closureValue admin.ExecutionClosure
 		err = proto.Unmarshal(input.Closure, &closureValue)
 		if err != nil {
 			return err
 		}
 		assert.Nil(t, closureValue.ComputedInputs)
-		// TODO: Fetch closure inputs and check this.  NOTE: THESE ARE DIFFERENT FROM ABOVE!
-		// barValue := utils.MustMakeLiteral("bar-value")
-		// assert.Equal(t, len(closureValue.ComputedInputs.Literals), 2)
-		// assert.EqualValues(t, closureValue.ComputedInputs.Literals["foo"], fooValue)
-		// assert.EqualValues(t, closureValue.ComputedInputs.Literals["bar"], barValue)
+
+		var userInputs, inputs core.LiteralMap
+		if err := storageClient.ReadProtobuf(ctx, storage.DataReference(input.UserInputsUri), &userInputs); err != nil {
+			return err
+		}
+		if err := storageClient.ReadProtobuf(ctx, storage.DataReference(input.InputsUri), &inputs); err != nil {
+			return err
+		}
+		fooValue := utils.MustMakeLiteral("foo-value-1")
+		assert.Equal(t, 1, len(userInputs.Literals))
+		assert.EqualValues(t, userInputs.Literals["foo"], fooValue)
+		barValue := utils.MustMakeLiteral("bar-value")
+		assert.Equal(t, len(inputs.Literals), 2)
+		assert.EqualValues(t, inputs.Literals["foo"], fooValue)
+		assert.EqualValues(t, inputs.Literals["bar"], barValue)
 		assert.Equal(t, core.WorkflowExecution_UNDEFINED, closureValue.Phase)
 		assert.Equal(t, createdAt, *input.ExecutionCreatedAt)
 		assert.Equal(t, 1, len(closureValue.Notifications))
@@ -463,7 +469,7 @@ func TestCreateExecutionVerifyDbModel(t *testing.T) {
 
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), storageClient, workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 
 	execManager.(*ExecutionManager)._clock = mockClock
@@ -791,9 +797,8 @@ func TestRelaunchExecution_CreateFailure(t *testing.T) {
 	startTime := time.Now()
 	startTimeProto, _ := ptypes.TimestampProto(startTime)
 	existingClosure := admin.ExecutionClosure{
-		Phase:          core.WorkflowExecution_RUNNING,
-		ComputedInputs: spec.Inputs,
-		StartedAt:      startTimeProto,
+		Phase:     core.WorkflowExecution_RUNNING,
+		StartedAt: startTimeProto,
 	}
 	existingClosureBytes, _ := proto.Marshal(&existingClosure)
 	executionGetFunc := makeExecutionGetFunc(t, existingClosureBytes, &startTime)
@@ -826,9 +831,8 @@ func TestCreateWorkflowEvent(t *testing.T) {
 	duration := time.Second
 	durationProto := ptypes.DurationProto(duration)
 	existingClosure := admin.ExecutionClosure{
-		Phase:          core.WorkflowExecution_RUNNING,
-		ComputedInputs: spec.Inputs,
-		StartedAt:      startTimeProto,
+		Phase:     core.WorkflowExecution_RUNNING,
+		StartedAt: startTimeProto,
 	}
 	existingClosureBytes, _ := proto.Marshal(&existingClosure)
 	executionGetFunc := makeExecutionGetFunc(t, existingClosureBytes, &startTime)
@@ -840,11 +844,10 @@ func TestCreateWorkflowEvent(t *testing.T) {
 	endTime := startTime.Add(duration)
 	occurredAt, _ := ptypes.TimestampProto(endTime)
 	closure := admin.ExecutionClosure{
-		Phase:          core.WorkflowExecution_FAILED,
-		ComputedInputs: spec.Inputs,
-		StartedAt:      startTimeProto,
-		UpdatedAt:      occurredAt,
-		Duration:       durationProto,
+		Phase:     core.WorkflowExecution_FAILED,
+		StartedAt: startTimeProto,
+		UpdatedAt: occurredAt,
+		Duration:  durationProto,
 		OutputResult: &admin.ExecutionClosure_Error{
 			Error: &executionError,
 		},
@@ -944,10 +947,9 @@ func TestCreateWorkflowEvent_StartedRunning(t *testing.T) {
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
 
 	closure := admin.ExecutionClosure{
-		Phase:          core.WorkflowExecution_RUNNING,
-		ComputedInputs: spec.Inputs,
-		StartedAt:      occurredAtProto,
-		UpdatedAt:      occurredAtProto,
+		Phase:     core.WorkflowExecution_RUNNING,
+		StartedAt: occurredAtProto,
+		UpdatedAt: occurredAtProto,
 	}
 	closureBytes, _ := proto.Marshal(&closure)
 	updateExecutionFunc := func(

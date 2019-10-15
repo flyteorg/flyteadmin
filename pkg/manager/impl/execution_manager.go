@@ -193,7 +193,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	)
 
 	if err != nil {
-		logger.Debugf(ctx, "Failed to CheckAndFetchInputsForExecution with request.Spec.Inputs: %+v"+
+		logger.Debugf(ctx, "Failed to CheckAndFetchInputsForExecution with request.Inputs: %+v"+
 			"fixed inputs: %+v and expected inputs: %+v with err %v",
 			request.Inputs, launchPlan.Spec.FixedInputs, launchPlan.Closure.ExpectedInputs, err)
 		return nil, err
@@ -235,7 +235,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	if err != nil {
 		return nil, err
 	}
-	userInputsUri, err := m.offloadInputs(ctx, executionInputs, &workflowExecutionID, shared.UserInputs)
+	userInputsUri, err := m.offloadInputs(ctx, request.Inputs, &workflowExecutionID, shared.UserInputs)
 	if err != nil {
 		return nil, err
 	}
@@ -396,7 +396,7 @@ func (m *ExecutionManager) RelaunchExecution(
 }
 
 func (m *ExecutionManager) emitScheduledWorkflowMetrics(
-	executionModel *models.Execution, runningEventTimeProto *timestamp.Timestamp) {
+	ctx context.Context, executionModel *models.Execution, runningEventTimeProto *timestamp.Timestamp) {
 	if executionModel == nil || runningEventTimeProto == nil {
 		logger.Warningf(context.Background(),
 			"tried to calculate scheduled workflow execution stats with a nil execution or event time")
@@ -427,7 +427,13 @@ func (m *ExecutionManager) emitScheduledWorkflowMetrics(
 		return
 	}
 
-	scheduledKickoffTimeProto := execution.Spec.Inputs.Literals[launchPlan.Spec.EntityMetadata.Schedule.KickoffTimeInputArg]
+	var inputs core.LiteralMap
+	err = m.storageClient.ReadProtobuf(ctx, storage.DataReference(executionModel.InputsUri), &inputs)
+	if err != nil {
+		logger.Errorf(ctx, "Failed to find inputs for emitting schedule delay event from uri: [%v]", executionModel.InputsUri)
+		return
+	}
+	scheduledKickoffTimeProto := inputs.Literals[launchPlan.Spec.EntityMetadata.Schedule.KickoffTimeInputArg]
 	if scheduledKickoffTimeProto == nil || scheduledKickoffTimeProto.GetScalar() == nil ||
 		scheduledKickoffTimeProto.GetScalar().GetPrimitive() == nil ||
 		scheduledKickoffTimeProto.GetScalar().GetPrimitive().GetDatetime() == nil {
@@ -571,7 +577,7 @@ func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admi
 		// Workflow executions are created in state "UNDEFINED". All the time up until a RUNNING event is received is
 		// considered system-induced delay.
 		if executionModel.Mode == int32(admin.ExecutionMetadata_SCHEDULED) {
-			go m.emitScheduledWorkflowMetrics(executionModel, request.Event.OccurredAt)
+			go m.emitScheduledWorkflowMetrics(ctx, executionModel, request.Event.OccurredAt)
 		}
 	} else if common.IsExecutionTerminal(request.Event.Phase) {
 		m.systemMetrics.ActiveExecutions.Dec()

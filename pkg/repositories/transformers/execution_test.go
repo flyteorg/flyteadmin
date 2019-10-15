@@ -80,12 +80,11 @@ func TestCreateExecutionModel(t *testing.T) {
 
 	expectedCreatedAt, _ := ptypes.TimestampProto(createdAt)
 	expectedClosure, _ := proto.Marshal(&admin.ExecutionClosure{
-		ComputedInputs: execRequest.Spec.Inputs,
-		Phase:          core.WorkflowExecution_RUNNING,
-		CreatedAt:      expectedCreatedAt,
-		StartedAt:      expectedCreatedAt,
-		UpdatedAt:      expectedCreatedAt,
-		WorkflowId:     workflowIdentifier,
+		Phase:      core.WorkflowExecution_RUNNING,
+		CreatedAt:  expectedCreatedAt,
+		StartedAt:  expectedCreatedAt,
+		UpdatedAt:  expectedCreatedAt,
+		WorkflowId: workflowIdentifier,
 	})
 	assert.Equal(t, expectedClosure, execution.Closure)
 }
