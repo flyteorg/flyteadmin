@@ -29,6 +29,7 @@ type CreateExecutionModelInput struct {
 	ParentNodeExecutionID uint
 	Cluster               string
 	InputsUri             storage.DataReference
+	UserInputsUri		  storage.DataReference
 }
 
 // Transforms a ExecutionCreateRequest to a Execution model
@@ -77,6 +78,7 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 		ParentNodeExecutionID: input.ParentNodeExecutionID,
 		Cluster:               input.Cluster,
 		InputsUri:             input.InputsUri,
+		UserInputsUri:         input.UserInputsUri,
 	}
 	if input.RequestSpec.Metadata != nil {
 		executionModel.Mode = int32(input.RequestSpec.Metadata.Mode)

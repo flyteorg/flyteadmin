@@ -21,6 +21,8 @@ type TestDataStore struct {
 	ReadProtobufCb  func(ctx context.Context, reference storage.DataReference, msg proto.Message) error
 	WriteProtobufCb func(
 		ctx context.Context, reference storage.DataReference, opts storage.Options, msg proto.Message) error
+
+	Store map[storage.DataReference][]byte
 }
 
 func (t *TestDataStore) Head(ctx context.Context, reference storage.DataReference) (storage.Metadata, error) {
@@ -63,7 +65,9 @@ func (t *TestDataStore) ConstructReference(
 }
 
 func GetMockStorageClient() *storage.DataStore {
-	mockStorageClient := TestDataStore{}
+	mockStorageClient := TestDataStore{
+		Store: make(map[storage.DataReference][]byte),
+	}
 	return &storage.DataStore{
 		ComposedProtobufStore: &mockStorageClient,
 		ReferenceConstructor:  &mockStorageClient,

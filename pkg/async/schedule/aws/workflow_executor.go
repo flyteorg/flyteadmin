@@ -78,7 +78,7 @@ func (e *workflowExecutor) resolveKickoffTimeArg(
 				return errors.NewFlyteAdminErrorf(
 					codes.Internal, "could not serialize kickoff time %+v to timestamp proto", request.KickoffTime)
 			}
-			executionRequest.Spec.Inputs.Literals[name] = &core.Literal{
+			executionRequest.Inputs.Literals[name] = &core.Literal{
 				Value: &core.Literal_Scalar{
 					Scalar: &core.Scalar{
 						Value: &core.Scalar_Primitive{

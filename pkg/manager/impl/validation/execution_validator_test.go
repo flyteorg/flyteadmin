@@ -70,7 +70,7 @@ func TestGetExecutionInputs(t *testing.T) {
 	lpRequest := testutils.GetLaunchPlanRequest()
 
 	actualInputs, err := CheckAndFetchInputsForExecution(
-		executionRequest.Spec.Inputs,
+		executionRequest.Inputs,
 		lpRequest.Spec.FixedInputs,
 		lpRequest.Spec.DefaultInputs,
 	)

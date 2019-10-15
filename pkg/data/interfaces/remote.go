@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flytestdlib/storage"
 )
 
 // Defines an interface for fetching pre-signed URLs.

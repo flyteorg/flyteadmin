@@ -61,7 +61,6 @@ func TestCreateExecutionModel(t *testing.T) {
 		LaunchPlanID:          lpID,
 		WorkflowID:            wfID,
 		Phase:                 core.WorkflowExecution_RUNNING,
-		ExecutionInputs:       execRequest.Spec.Inputs,
 		CreatedAt:             createdAt,
 		WorkflowIdentifier:    workflowIdentifier,
 		ParentNodeExecutionID: nodeID,

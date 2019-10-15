@@ -37,8 +37,6 @@ import (
 	"github.com/benbjohnson/clock"
 	"github.com/golang/protobuf/proto"
 	"github.com/lyft/flyteadmin/pkg/manager/impl/shared"
-	"github.com/lyft/flyteadmin/pkg/config"
-	"k8s.io/apiserver/pkg/admission/configuration"
 )
 
 const parentContainerQueueKey = "parent_queue"
@@ -157,13 +155,15 @@ func (m *ExecutionManager) addLabelsAndAnnotations(requestSpec *admin.ExecutionS
 	return nil
 }
 
-func (m *ExecutionManager) offloadInputs(ctx context.Context, literalMap *core.LiteralMap, identifier *core.WorkflowExecutionIdentifier) (storage.DataReference, error) {
-	// Offload inputs to blob storage.
-	inputsUri, err := m.storageClient.ConstructReference(ctx, m.storageClient.GetBaseContainerFQN(ctx), shared.Metadata, identifier.Project, identifier.Domain, identifier.Name, shared.Inputs)
+func (m *ExecutionManager) offloadInputs(ctx context.Context, literalMap *core.LiteralMap, identifier *core.WorkflowExecutionIdentifier, key string) (storage.DataReference, error) {
+	if literalMap == nil {
+		literalMap = new(core.LiteralMap)
+	}
+	inputsUri, err := m.storageClient.ConstructReference(ctx, m.storageClient.GetBaseContainerFQN(ctx), shared.Metadata, identifier.Project, identifier.Domain, identifier.Name, key)
 	if err != nil {
 		return "", err
 	}
-	if err := m.storageClient.WriteProtobuf(ctx, inputsUri, defaultStorageOptions, literalMap); err != nil {
+	if err := m.storageClient.WriteProtobuf(ctx, inputsUri, storage.Options{}, literalMap); err != nil {
 		return "", err
 	}
 	return inputsUri, nil
@@ -231,7 +231,11 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	// Dynamically assign execution queues.
 	m.populateExecutionQueue(ctx, *workflow.Id, workflow.Closure.CompiledWorkflow)
 
-	inputsUri, err := m.offloadInputs(ctx, executionInputs, &workflowExecutionID)
+	inputsUri, err := m.offloadInputs(ctx, executionInputs, &workflowExecutionID, shared.Inputs)
+	if err != nil {
+		return nil, err
+	}
+	userInputsUri, err := m.offloadInputs(ctx, executionInputs, &workflowExecutionID, shared.UserInputs)
 	if err != nil {
 		return nil, err
 	}
@@ -286,6 +290,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		ParentNodeExecutionID: parentNodeExecutionID,
 		Cluster:               execInfo.Cluster,
 		InputsUri:             inputsUri,
+		UserInputsUri:         userInputsUri,
 	})
 	if err != nil {
 		logger.Infof(ctx, "Failed to create execution model in transformer for id: [%+v] with err: %v",
@@ -353,9 +358,20 @@ func (m *ExecutionManager) RelaunchExecution(
 	if executionSpec.Metadata == nil {
 		executionSpec.Metadata = &admin.ExecutionMetadata{}
 	}
-	inputs := new(core.LiteralMap)
-	if err := m.storageClient.ReadProtobuf(ctx, existingExecutionModel.InputsUri, inputs); err != nil {
-		return nil, err
+	var inputs *core.LiteralMap
+	if len(existingExecutionModel.InputsUri) > 0 {
+		inputs = new(core.LiteralMap)
+		if err := m.storageClient.ReadProtobuf(ctx, existingExecutionModel.InputsUri, inputs); err != nil {
+			return nil, err
+		}
+	} else {
+		// For old data, inputs are held in the closure
+		var closure admin.ExecutionClosure
+		err = proto.Unmarshal(existingExecutionModel.Closure, &closure)
+		if err != nil {
+			return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal closure")
+		}
+		inputs = closure.ComputedInputs
 	}
 	executionSpec.Metadata.Mode = admin.ExecutionMetadata_RELAUNCH
 	executionModel, err := m.launchExecutionAndPrepareModel(ctx, admin.ExecutionCreateRequest{
@@ -609,12 +625,20 @@ func (m *ExecutionManager) GetExecution(
 	}
 
 	// TODO: Remove the publishing to deprecated fields (Inputs) after a smooth migration has been completed of our existing users
-	// For now, publish to deprecated fields thus ensuring old clients don't break
+	// For now, publish to deprecated fields thus ensuring old clients don't break when calling GetExecution
 	if len(executionModel.InputsUri) > 0 {
-		if err := m.storageClient.ReadProtobuf(ctx, executionModel.InputsUri, execution.Closure.ComputedInputs); err != nil {
+		inputs := new(core.LiteralMap)
+		if err := m.storageClient.ReadProtobuf(ctx, executionModel.InputsUri, inputs); err != nil {
 			return nil, err
 		}
-		execution.Spec.Inputs = execution.Closure.ComputedInputs
+		execution.Closure.ComputedInputs = inputs
+	}
+	if len(executionModel.UserInputsUri) > 0 {
+		userInputs := new(core.LiteralMap)
+		if err := m.storageClient.ReadProtobuf(ctx, executionModel.UserInputsUri, userInputs); err != nil {
+			return nil, err
+		}
+		execution.Spec.Inputs = userInputs
 	}
 
 	return execution, nil
@@ -639,16 +663,15 @@ func (m *ExecutionManager) GetExecutionData(
 			return nil, err
 		}
 	}
+	// Prior to flyteidl v0.15.0, Inputs were held in ExecutionClosure and were not offloaded. Ensure we can return the inputs as expected.
 	inputsUri := executionModel.InputsUri
-
-	// Prior to flyteidl v0.15.0, Inputs were held in ExecutionSpec and were not offloaded. Ensure we can return the inputs as expected.
 	if len(inputsUri) == 0 {
-		spec := new(admin.ExecutionSpec)
+		closure := new(admin.ExecutionClosure)
 		// We must not use the FromExecutionModel method because it empties deprecated fields.
-		if err := proto.Unmarshal(executionModel.Spec, spec); err != nil {
+		if err := proto.Unmarshal(executionModel.Closure, closure); err != nil {
 			return nil, err
 		}
-		inputsUri, err := m.offloadInputs(ctx, spec.Inputs, request.Id)
+		inputsUri, err := m.offloadInputs(ctx, closure.ComputedInputs, request.Id, shared.Inputs)
 		if err != nil {
 			return nil, err
 		}
@@ -658,8 +681,7 @@ func (m *ExecutionManager) GetExecutionData(
 			return nil, err
 		}
 	}
-
-	inputsUrlBlob, err := m.urlData.Get(ctx, executionModel.InputsUri.String())
+	inputsUrlBlob, err := m.urlData.Get(ctx, inputsUri.String())
 	if err != nil {
 		return nil, err
 	}

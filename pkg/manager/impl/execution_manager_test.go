@@ -37,6 +37,9 @@ import (
 	mockScope "github.com/lyft/flytestdlib/promutils"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
+	"fmt"
+    "strings"
+    "github.com/lyft/flyteadmin/pkg/manager/impl/shared"
 )
 
 var spec = testutils.GetExecutionRequest().Spec
@@ -44,7 +47,6 @@ var specBytes, _ = proto.Marshal(spec)
 var phase = core.WorkflowExecution_RUNNING.String()
 var closure = admin.ExecutionClosure{
 	Phase:          core.WorkflowExecution_RUNNING,
-	ComputedInputs: spec.Inputs,
 }
 var closureBytes, _ = proto.Marshal(&closure)
 
@@ -108,15 +110,28 @@ func setDefaultLpCallbackForExecTest(repository repositories.RepositoryInterface
 	repository.LaunchPlanRepo().(*repositoryMocks.MockLaunchPlanRepo).SetGetCallback(lpGetFunc)
 }
 
-func getMockStorageForExecTest() *storage.DataStore {
+func getMockStorageForExecTest(ctx context.Context) *storage.DataStore {
 	mockStorage := commonMocks.GetMockStorageClient()
 	mockStorage.ComposedProtobufStore.(*commonMocks.TestDataStore).ReadProtobufCb = func(
 		ctx context.Context, reference storage.DataReference, msg proto.Message) error {
-		workflowClosure := testutils.GetWorkflowClosure()
-		bytes, _ := proto.Marshal(workflowClosure)
-		_ = proto.Unmarshal(bytes, msg)
+		if val, ok := mockStorage.ComposedProtobufStore.(*commonMocks.TestDataStore).Store[reference]; ok {
+			_ = proto.Unmarshal(val, msg)
+			return nil
+		}
+		fmt.Printf("Could not find value in storage [%v]\n", reference)
+		return errors.New(fmt.Sprintf("Can't find the [%v]", reference.String()))
+	}
+	mockStorage.ComposedProtobufStore.(*commonMocks.TestDataStore).WriteProtobufCb = func(
+		ctx context.Context, reference storage.DataReference, opts storage.Options, msg proto.Message) error {
+		bytes, err := proto.Marshal(msg)
+		if err != nil {
+			return err
+		}
+		mockStorage.ComposedProtobufStore.(*commonMocks.TestDataStore).Store[reference] = bytes
 		return nil
 	}
+    workflowClosure := testutils.GetWorkflowClosure()
+    mockStorage.WriteProtobuf(ctx, storage.DataReference(remoteClosureIdentifier), defaultStorageOptions, workflowClosure)
 	return mockStorage
 }
 
@@ -160,7 +175,7 @@ func TestCreateExecution(t *testing.T) {
 			}, nil
 		})
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), mockExecutor,
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockExecutor,
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 	request := testutils.GetExecutionRequest()
 	response, err := execManager.CreateExecution(context.Background(), request, requestedAt)
@@ -206,7 +221,7 @@ func TestCreateExecutionFromWorkflowNode(t *testing.T) {
 	)
 
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 	request := testutils.GetExecutionRequest()
 	request.Spec.Metadata = &admin.ExecutionMetadata{
@@ -243,7 +258,7 @@ func TestCreateExecution_NoAssignedName(t *testing.T) {
 			}, nil
 		})
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), mockExecutor, mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockExecutor, mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 	request := testutils.GetExecutionRequest()
 	request.Name = ""
 	response, err := execManager.CreateExecution(context.Background(), request, requestedAt)
@@ -297,7 +312,7 @@ func TestCreateExecution_TaggedQueue(t *testing.T) {
 			}, nil
 		})
 	execManager := NewExecutionManager(
-		repository, configProvider, getMockStorageForExecTest(), mockExecutor, mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
+		repository, configProvider, getMockStorageForExecTest(context.Background()), mockExecutor, mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 
 	request := testutils.GetExecutionRequest()
 	response, err := execManager.CreateExecution(context.Background(), request, requestedAt)
@@ -314,7 +329,7 @@ func TestCreateExecutionValidationError(t *testing.T) {
 	repository := getMockRepositoryForExecTest()
 	setDefaultLpCallbackForExecTest(repository)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 
 	request := testutils.GetExecutionRequest()
@@ -328,7 +343,7 @@ func TestCreateExecution_InvalidLpIdentifier(t *testing.T) {
 	repository := getMockRepositoryForExecTest()
 	setDefaultLpCallbackForExecTest(repository)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 
 	request := testutils.GetExecutionRequest()
@@ -342,11 +357,11 @@ func TestCreateExecutionInCompatibleInputs(t *testing.T) {
 	repository := getMockRepositoryForExecTest()
 	setDefaultLpCallbackForExecTest(repository)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 
 	request := testutils.GetExecutionRequest()
-	request.Spec.Inputs = &core.LiteralMap{
+	request.Inputs = &core.LiteralMap{
 		Literals: map[string]*core.Literal{
 			"foo-1": utils.MustMakeLiteral("foo-value-1"),
 		},
@@ -368,7 +383,7 @@ func TestCreateExecutionPropellerFailure(t *testing.T) {
 	}
 	mockExecutor.(*workflowengineMocks.MockExecutor).SetExecuteWorkflowCallback(createFunc)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), mockExecutor, mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockExecutor, mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 
 	request := testutils.GetExecutionRequest()
 
@@ -388,7 +403,7 @@ func TestCreateExecutionDatabaseFailure(t *testing.T) {
 
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 	request := testutils.GetExecutionRequest()
 
@@ -410,25 +425,30 @@ func TestCreateExecutionVerifyDbModel(t *testing.T) {
 		assert.Equal(t, "project", input.Project)
 		assert.Equal(t, uint(100), input.LaunchPlanID)
 		assert.Equal(t, core.WorkflowExecution_UNDEFINED.String(), input.Phase)
-		fooValue := utils.MustMakeLiteral("foo-value-1")
 
 		var specValue admin.ExecutionSpec
 		err := proto.Unmarshal(input.Spec, &specValue)
 		if err != nil {
 			return err
 		}
-		assert.Equal(t, 1, len(specValue.Inputs.Literals))
-		assert.EqualValues(t, specValue.Inputs.Literals["foo"], fooValue)
+		assert.Nil(t, specValue.Inputs)
+
+		// TODO: Fetch inputs from InputURI and check this
+		// fooValue := utils.MustMakeLiteral("foo-value-1")
+		// assert.Equal(t, 1, len(specValue.Inputs.Literals))
+		// assert.EqualValues(t, specValue.Inputs.Literals["foo"], fooValue)
 
 		var closureValue admin.ExecutionClosure
 		err = proto.Unmarshal(input.Closure, &closureValue)
 		if err != nil {
 			return err
 		}
-		barValue := utils.MustMakeLiteral("bar-value")
-		assert.Equal(t, len(closureValue.ComputedInputs.Literals), 2)
-		assert.EqualValues(t, closureValue.ComputedInputs.Literals["foo"], fooValue)
-		assert.EqualValues(t, closureValue.ComputedInputs.Literals["bar"], barValue)
+		assert.Nil(t, closureValue.ComputedInputs)
+		// TODO: Fetch closure inputs and check this.  NOTE: THESE ARE DIFFERENT FROM ABOVE!
+		// barValue := utils.MustMakeLiteral("bar-value")
+		// assert.Equal(t, len(closureValue.ComputedInputs.Literals), 2)
+		// assert.EqualValues(t, closureValue.ComputedInputs.Literals["foo"], fooValue)
+		// assert.EqualValues(t, closureValue.ComputedInputs.Literals["bar"], barValue)
 		assert.Equal(t, core.WorkflowExecution_UNDEFINED, closureValue.Phase)
 		assert.Equal(t, createdAt, *input.ExecutionCreatedAt)
 		assert.Equal(t, 1, len(closureValue.Notifications))
@@ -442,7 +462,7 @@ func TestCreateExecutionVerifyDbModel(t *testing.T) {
 
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 
 	execManager.(*ExecutionManager)._clock = mockClock
@@ -482,7 +502,7 @@ func TestCreateExecutionDefaultNotifications(t *testing.T) {
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(), mockScope.NewTestScope(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(), mockScope.NewTestScope(),
 		mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 
 	response, err := execManager.CreateExecution(context.Background(), request, requestedAt)
@@ -518,7 +538,7 @@ func TestCreateExecutionDisableNotifications(t *testing.T) {
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(), mockScope.NewTestScope(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(), mockScope.NewTestScope(),
 		mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 
 	response, err := execManager.CreateExecution(context.Background(), request, requestedAt)
@@ -585,7 +605,7 @@ func TestCreateExecutionNoNotifications(t *testing.T) {
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 
 	response, err := execManager.CreateExecution(context.Background(), request, requestedAt)
@@ -616,7 +636,7 @@ func TestCreateExecutionDynamicLabelsAndAnnotations(t *testing.T) {
 			}, nil
 		})
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), mockExecutor,
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockExecutor,
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 	request := testutils.GetExecutionRequest()
 	request.Spec.Labels = &admin.Labels{
@@ -672,13 +692,12 @@ func TestRelaunchExecution(t *testing.T) {
 	repository := getMockRepositoryForExecTest()
 	setDefaultLpCallbackForExecTest(repository)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 	startTime := time.Now()
 	startTimeProto, _ := ptypes.TimestampProto(startTime)
 	existingClosure := admin.ExecutionClosure{
 		Phase:          core.WorkflowExecution_RUNNING,
-		ComputedInputs: spec.Inputs,
 		StartedAt:      startTimeProto,
 	}
 	existingClosureBytes, _ := proto.Marshal(&existingClosure)
@@ -730,7 +749,7 @@ func TestRelaunchExecution_GetExistingFailure(t *testing.T) {
 	repository := getMockRepositoryForExecTest()
 	setDefaultLpCallbackForExecTest(repository)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 
 	expectedErr := errors.New("expected error")
@@ -766,7 +785,7 @@ func TestRelaunchExecution_CreateFailure(t *testing.T) {
 	repository := getMockRepositoryForExecTest()
 	setDefaultLpCallbackForExecTest(repository)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 	startTime := time.Now()
 	startTimeProto, _ := ptypes.TimestampProto(startTime)
@@ -856,7 +875,7 @@ func TestCreateWorkflowEvent(t *testing.T) {
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateCallback(updateExecutionFunc)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 	resp, err := execManager.CreateWorkflowEvent(context.Background(), admin.WorkflowExecutionEventRequest{
 		RequestId: "1",
@@ -896,7 +915,7 @@ func TestCreateWorkflowEvent_TerminalState(t *testing.T) {
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateCallback(updateExecutionFunc)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 
 	resp, err := execManager.CreateWorkflowEvent(context.Background(), admin.WorkflowExecutionEventRequest{
@@ -954,7 +973,7 @@ func TestCreateWorkflowEvent_StartedRunning(t *testing.T) {
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateCallback(updateExecutionFunc)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 	occurredAtTimestamp, _ := ptypes.TimestampProto(occurredAt)
 	resp, err := execManager.CreateWorkflowEvent(context.Background(), admin.WorkflowExecutionEventRequest{
@@ -995,7 +1014,7 @@ func TestCreateWorkflowEvent_DuplicateRunning(t *testing.T) {
 	)
 
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 	occurredAtTimestamp, _ := ptypes.TimestampProto(occurredAt)
 	resp, err := execManager.CreateWorkflowEvent(context.Background(), admin.WorkflowExecutionEventRequest{
@@ -1038,7 +1057,7 @@ func TestCreateWorkflowEvent_InvalidPhaseChange(t *testing.T) {
 	)
 
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 	occurredAtTimestamp, _ := ptypes.TimestampProto(occurredAt)
 	resp, err := execManager.CreateWorkflowEvent(context.Background(), admin.WorkflowExecutionEventRequest{
@@ -1074,7 +1093,7 @@ func TestCreateWorkflowEvent_InvalidEvent(t *testing.T) {
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateCallback(updateExecutionFunc)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 	resp, err := execManager.CreateWorkflowEvent(context.Background(), admin.WorkflowExecutionEventRequest{
 		RequestId: "1",
@@ -1104,7 +1123,7 @@ func TestCreateWorkflowEvent_UpdateModelError(t *testing.T) {
 	}
 
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 	resp, err := execManager.CreateWorkflowEvent(context.Background(), admin.WorkflowExecutionEventRequest{
 		RequestId: "1",
@@ -1138,7 +1157,7 @@ func TestCreateWorkflowEvent_DatabaseGetError(t *testing.T) {
 		Message: "bar baz",
 	}
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 	resp, err := execManager.CreateWorkflowEvent(context.Background(), admin.WorkflowExecutionEventRequest{
 		RequestId: "1",
@@ -1174,7 +1193,7 @@ func TestCreateWorkflowEvent_DatabaseUpdateError(t *testing.T) {
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateCallback(updateExecutionFunc)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 	resp, err := execManager.CreateWorkflowEvent(context.Background(), admin.WorkflowExecutionEventRequest{
 		RequestId: "1",
@@ -1210,11 +1229,12 @@ func TestGetExecution(t *testing.T) {
 			LaunchPlanID: uint(1),
 			WorkflowID:   uint(2),
 			StartedAt:    &startedAt,
+			// TODO: Input uri
 		}, nil
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 	execution, err := execManager.GetExecution(context.Background(), admin.WorkflowExecutionGetRequest{
 		Id: &executionIdentifier,
@@ -1237,7 +1257,7 @@ func TestGetExecution_DatabaseError(t *testing.T) {
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 	execution, err := execManager.GetExecution(context.Background(), admin.WorkflowExecutionGetRequest{
 		Id: &executionIdentifier,
@@ -1269,7 +1289,7 @@ func TestGetExecution_TransformerError(t *testing.T) {
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 	execution, err := execManager.GetExecution(context.Background(), admin.WorkflowExecutionGetRequest{
 		Id: &executionIdentifier,
@@ -1328,7 +1348,7 @@ func TestListExecutions(t *testing.T) {
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetListCallback(executionListFunc)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 
 	executionList, err := execManager.ListExecutions(context.Background(), admin.ResourceListRequest{
@@ -1362,7 +1382,7 @@ func TestListExecutions(t *testing.T) {
 func TestListExecutions_MissingParameters(t *testing.T) {
 	execManager := NewExecutionManager(
 		repositoryMocks.NewMockRepository(),
-		getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 	_, err := execManager.ListExecutions(context.Background(), admin.ResourceListRequest{
 		Id: &admin.NamedEntityIdentifier{
@@ -1401,7 +1421,7 @@ func TestListExecutions_DatabaseError(t *testing.T) {
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetListCallback(executionListFunc)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 	_, err := execManager.ListExecutions(context.Background(), admin.ResourceListRequest{
 		Id: &admin.NamedEntityIdentifier{
@@ -1434,7 +1454,7 @@ func TestListExecutions_TransformerError(t *testing.T) {
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetListCallback(executionListFunc)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 
 	executionList, err := execManager.ListExecutions(context.Background(), admin.ResourceListRequest{
@@ -1467,7 +1487,7 @@ func TestExecutionManager_PublishNotifications(t *testing.T) {
 	var myExecManager = &ExecutionManager{
 		db:                 repository,
 		config:             mockRuntime,
-		storageClient:      getMockStorageForExecTest(),
+		storageClient:      getMockStorageForExecTest(context.Background()),
 		queueAllocator:     queue,
 		_clock:             clock.New(),
 		systemMetrics:      newExecutionSystemMetrics(mockScope.NewTestScope()),
@@ -1542,7 +1562,7 @@ func TestExecutionManager_PublishNotificationsTransformError(t *testing.T) {
 	var execManager = &ExecutionManager{
 		db:                 repository,
 		config:             getMockExecutionsConfigProvider(),
-		storageClient:      getMockStorageForExecTest(),
+		storageClient:      getMockStorageForExecTest(context.Background()),
 		queueAllocator:     queue,
 		_clock:             clock.New(),
 		systemMetrics:      newExecutionSystemMetrics(mockScope.NewTestScope()),
@@ -1600,7 +1620,7 @@ func TestExecutionManager_TestExecutionManager_PublishNotificationsTransformErro
 	var myExecManager = &ExecutionManager{
 		db:                 repository,
 		config:             mockRuntime,
-		storageClient:      getMockStorageForExecTest(),
+		storageClient:      getMockStorageForExecTest(context.Background()),
 		queueAllocator:     queue,
 		_clock:             clock.New(),
 		systemMetrics:      newExecutionSystemMetrics(mockScope.NewTestScope()),
@@ -1647,7 +1667,7 @@ func TestExecutionManager_PublishNotificationsNoPhaseMatch(t *testing.T) {
 	var myExecManager = &ExecutionManager{
 		db:                 repository,
 		config:             getMockExecutionsConfigProvider(),
-		storageClient:      getMockStorageForExecTest(),
+		storageClient:      getMockStorageForExecTest(context.Background()),
 		queueAllocator:     queue,
 		_clock:             clock.New(),
 		systemMetrics:      newExecutionSystemMetrics(mockScope.NewTestScope()),
@@ -1718,7 +1738,7 @@ func TestTerminateExecution(t *testing.T) {
 			return nil
 		})
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), mockExecutor,
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockExecutor,
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 
 	resp, err := execManager.TerminateExecution(context.Background(), admin.ExecutionTerminateRequest{
@@ -1749,7 +1769,7 @@ func TestTerminateExecution_PropellerError(t *testing.T) {
 		return nil
 	})
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), mockExecutor,
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockExecutor,
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 
 	resp, err := execManager.TerminateExecution(context.Background(), admin.ExecutionTerminateRequest{
@@ -1778,7 +1798,7 @@ func TestTerminateExecution_DatabaseError(t *testing.T) {
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateExecutionCallback(updateExecutionFunc)
 
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 	resp, err := execManager.TerminateExecution(context.Background(), admin.ExecutionTerminateRequest{
 		Id: &core.WorkflowExecutionIdentifier{
@@ -1798,7 +1818,6 @@ func TestGetExecutionData(t *testing.T) {
 	startedAt := time.Date(2018, 8, 30, 0, 0, 0, 0, time.UTC)
 	var closure = admin.ExecutionClosure{
 		Phase:          core.WorkflowExecution_RUNNING,
-		ComputedInputs: spec.Inputs,
 		OutputResult: &admin.ExecutionClosure_Outputs{
 			Outputs: &admin.LiteralMapBlob{
 				Data: &admin.LiteralMapBlob_Uri{
@@ -1822,24 +1841,30 @@ func TestGetExecutionData(t *testing.T) {
 			LaunchPlanID: uint(1),
 			WorkflowID:   uint(2),
 			StartedAt:    &startedAt,
+			InputsUri:    shared.Inputs,
 		}, nil
 	}
 	mockExecutionRemoteURL := dataMocks.NewMockRemoteURL()
 	mockExecutionRemoteURL.(*dataMocks.MockRemoteURL).GetCallback = func(
 		ctx context.Context, uri string) (admin.UrlBlob, error) {
 		if uri == "output uri" {
-			return admin.UrlBlob{
-				Url:   "outputs",
-				Bytes: 200,
-			}, nil
-		}
+            return admin.UrlBlob{
+                Url:   "outputs",
+                Bytes: 200,
+            }, nil
+        } else if strings.HasSuffix(uri, shared.Inputs) {
+            return admin.UrlBlob{
+                Url: "inputs",
+                Bytes: 200,
+            }, nil
+        }
 
 		return admin.UrlBlob{}, errors.New("unexpected input")
 	}
 
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 	dataResponse, err := execManager.GetExecutionData(context.Background(), admin.WorkflowExecutionGetDataRequest{
 		Id: &executionIdentifier,
@@ -1850,6 +1875,10 @@ func TestGetExecutionData(t *testing.T) {
 			Url:   "outputs",
 			Bytes: 200,
 		},
+        Inputs: &admin.UrlBlob{
+            Url:   "inputs",
+            Bytes: 200,
+        },
 	}, dataResponse))
 }
 
@@ -1864,7 +1893,7 @@ func TestAddLabelsAndAnnotationsRuntimeLimitsObserved(t *testing.T) {
 	configProvider.(*runtimeMocks.MockConfigurationProvider).AddRegistrationValidationConfiguration(
 		mockRegistrationValidationConfig)
 	execManager := NewExecutionManager(
-		repository, configProvider, getMockStorageForExecTest(), workflowengineMocks.NewMockExecutor(),
+		repository, configProvider, getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 	request := testutils.GetExecutionRequest()
 	request.Spec.Labels = &admin.Labels{
@@ -1896,3 +1925,12 @@ func TestAddLabelsAndAnnotationsRuntimeLimitsObserved(t *testing.T) {
 	})
 	assert.EqualError(t, err, "Labels has too many entries [2 > 1]")
 }
+
+// TODO: Test GetExecution w/ old model
+// TODO: Test GetExecution w/ new model (default)
+// TODO: Test GetExecution legacy data exists
+// TODO: Test CreateExecution (old client)
+// TODO: Test GetExecutionData w/ old model
+// TODO: Test Relaunch from Old Client Version
+// TODO: Test Relaunch from new client w/ inputs
+// TODO: Test relaunch from old client w/ inputs
