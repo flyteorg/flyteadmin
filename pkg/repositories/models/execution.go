@@ -2,6 +2,7 @@ package models
 
 import (
 	"time"
+
 	"github.com/lyft/flytestdlib/storage"
 )
 

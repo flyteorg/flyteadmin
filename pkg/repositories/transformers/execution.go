@@ -12,8 +12,8 @@ import (
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/logger"
-	"google.golang.org/grpc/codes"
 	"github.com/lyft/flytestdlib/storage"
+	"google.golang.org/grpc/codes"
 )
 
 // Request parameters for calls to CreateExecutionModel.
@@ -29,7 +29,7 @@ type CreateExecutionModelInput struct {
 	ParentNodeExecutionID uint
 	Cluster               string
 	InputsUri             storage.DataReference
-	UserInputsUri		  storage.DataReference
+	UserInputsUri         storage.DataReference
 }
 
 // Transforms a ExecutionCreateRequest to a Execution model
@@ -46,11 +46,11 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to serialize execution created at time")
 	}
 	closure := admin.ExecutionClosure{
-		Phase:          input.Phase,
-		CreatedAt:      createdAt,
-		UpdatedAt:      createdAt,
-		Notifications:  input.Notifications,
-		WorkflowId:     input.WorkflowIdentifier,
+		Phase:         input.Phase,
+		CreatedAt:     createdAt,
+		UpdatedAt:     createdAt,
+		Notifications: input.Notifications,
+		WorkflowId:    input.WorkflowIdentifier,
 	}
 	if input.Phase == core.WorkflowExecution_RUNNING {
 		closure.StartedAt = createdAt

@@ -687,7 +687,7 @@ func (m *ExecutionManager) GetExecutionData(
 	}
 	return &admin.WorkflowExecutionGetDataResponse{
 		Outputs: &signedOutputsURLBlob,
-		Inputs: &inputsUrlBlob,
+		Inputs:  &inputsUrlBlob,
 	}, nil
 }
 

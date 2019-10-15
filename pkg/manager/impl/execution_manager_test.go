@@ -16,11 +16,15 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 
+	"fmt"
+	"strings"
+
 	"github.com/golang/protobuf/proto"
 	notificationMocks "github.com/lyft/flyteadmin/pkg/async/notifications/mocks"
 	dataMocks "github.com/lyft/flyteadmin/pkg/data/mocks"
 	flyteAdminErrors "github.com/lyft/flyteadmin/pkg/errors"
 	"github.com/lyft/flyteadmin/pkg/manager/impl/executions"
+	"github.com/lyft/flyteadmin/pkg/manager/impl/shared"
 	"github.com/lyft/flyteadmin/pkg/manager/impl/testutils"
 	"github.com/lyft/flyteadmin/pkg/repositories"
 	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
@@ -37,16 +41,13 @@ import (
 	mockScope "github.com/lyft/flytestdlib/promutils"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
-	"fmt"
-    "strings"
-    "github.com/lyft/flyteadmin/pkg/manager/impl/shared"
 )
 
 var spec = testutils.GetExecutionRequest().Spec
 var specBytes, _ = proto.Marshal(spec)
 var phase = core.WorkflowExecution_RUNNING.String()
 var closure = admin.ExecutionClosure{
-	Phase:          core.WorkflowExecution_RUNNING,
+	Phase: core.WorkflowExecution_RUNNING,
 }
 var closureBytes, _ = proto.Marshal(&closure)
 
@@ -130,8 +131,8 @@ func getMockStorageForExecTest(ctx context.Context) *storage.DataStore {
 		mockStorage.ComposedProtobufStore.(*commonMocks.TestDataStore).Store[reference] = bytes
 		return nil
 	}
-    workflowClosure := testutils.GetWorkflowClosure()
-    mockStorage.WriteProtobuf(ctx, storage.DataReference(remoteClosureIdentifier), defaultStorageOptions, workflowClosure)
+	workflowClosure := testutils.GetWorkflowClosure()
+	mockStorage.WriteProtobuf(ctx, storage.DataReference(remoteClosureIdentifier), defaultStorageOptions, workflowClosure)
 	return mockStorage
 }
 
@@ -697,8 +698,8 @@ func TestRelaunchExecution(t *testing.T) {
 	startTime := time.Now()
 	startTimeProto, _ := ptypes.TimestampProto(startTime)
 	existingClosure := admin.ExecutionClosure{
-		Phase:          core.WorkflowExecution_RUNNING,
-		StartedAt:      startTimeProto,
+		Phase:     core.WorkflowExecution_RUNNING,
+		StartedAt: startTimeProto,
 	}
 	existingClosureBytes, _ := proto.Marshal(&existingClosure)
 	executionGetFunc := makeExecutionGetFunc(t, existingClosureBytes, &startTime)
@@ -1817,7 +1818,7 @@ func TestGetExecutionData(t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
 	startedAt := time.Date(2018, 8, 30, 0, 0, 0, 0, time.UTC)
 	var closure = admin.ExecutionClosure{
-		Phase:          core.WorkflowExecution_RUNNING,
+		Phase: core.WorkflowExecution_RUNNING,
 		OutputResult: &admin.ExecutionClosure_Outputs{
 			Outputs: &admin.LiteralMapBlob{
 				Data: &admin.LiteralMapBlob_Uri{
@@ -1848,16 +1849,16 @@ func TestGetExecutionData(t *testing.T) {
 	mockExecutionRemoteURL.(*dataMocks.MockRemoteURL).GetCallback = func(
 		ctx context.Context, uri string) (admin.UrlBlob, error) {
 		if uri == "output uri" {
-            return admin.UrlBlob{
-                Url:   "outputs",
-                Bytes: 200,
-            }, nil
-        } else if strings.HasSuffix(uri, shared.Inputs) {
-            return admin.UrlBlob{
-                Url: "inputs",
-                Bytes: 200,
-            }, nil
-        }
+			return admin.UrlBlob{
+				Url:   "outputs",
+				Bytes: 200,
+			}, nil
+		} else if strings.HasSuffix(uri, shared.Inputs) {
+			return admin.UrlBlob{
+				Url:   "inputs",
+				Bytes: 200,
+			}, nil
+		}
 
 		return admin.UrlBlob{}, errors.New("unexpected input")
 	}
@@ -1875,10 +1876,10 @@ func TestGetExecutionData(t *testing.T) {
 			Url:   "outputs",
 			Bytes: 200,
 		},
-        Inputs: &admin.UrlBlob{
-            Url:   "inputs",
-            Bytes: 200,
-        },
+		Inputs: &admin.UrlBlob{
+			Url:   "inputs",
+			Bytes: 200,
+		},
 	}, dataResponse))
 }
 
