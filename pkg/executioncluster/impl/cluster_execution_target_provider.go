@@ -10,10 +10,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type ClusterExecutionTargetProvider struct{}
+type clusterExecutionTargetProvider struct{}
 
 // Creates a new Execution target for a cluster based on config passed in.
-func (c *ClusterExecutionTargetProvider) GetExecutionTarget(scope promutils.Scope, k8sCluster runtime.ClusterConfig) (*executioncluster.ExecutionTarget, error) {
+func (c *clusterExecutionTargetProvider) GetExecutionTarget(scope promutils.Scope, k8sCluster runtime.ClusterConfig) (*executioncluster.ExecutionTarget, error) {
 	kubeConf, err := flytek8s.GetRestClientConfigForCluster(k8sCluster)
 	if err != nil {
 		return nil, err
