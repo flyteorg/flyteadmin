@@ -1,6 +1,11 @@
 // Shared constants for the manager implementation.
 package shared
 
+import (
+	"github.com/lyft/flyteadmin/pkg/common"
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+)
+
 // Field names for reference
 const (
 	Project               = "project"
@@ -8,6 +13,7 @@ const (
 	Name                  = "name"
 	ID                    = "id"
 	Version               = "version"
+	ResourceType          = "resource_type"
 	Spec                  = "spec"
 	Type                  = "type"
 	RuntimeVersion        = "runtime version"
@@ -33,3 +39,10 @@ const (
 	UserInputs            = "user_inputs"
 	ProjectDomain         = "project_domain"
 )
+
+// Maps a resource type to an entity suitable for use with Database filters
+var ResourceTypeToEntity = map[core.ResourceType]common.Entity{
+	core.ResourceType_LAUNCH_PLAN: common.LaunchPlan,
+	core.ResourceType_TASK:        common.Task,
+	core.ResourceType_WORKFLOW:    common.Workflow,
+}

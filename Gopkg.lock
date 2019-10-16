@@ -54,7 +54,7 @@
   version = "v1.0.7"
 
 [[projects]]
-  digest = "1:fdee1cdd56e214deb6ff5d003c73bf3d882f322edaccd2601de8d792263ba8ee"
+  digest = "1:20f2cee2dd3f9ed03977d09c381f631eeb63a83f2d4e390e7435e867800c77a4"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -107,16 +107,16 @@
     "service/sts/stsiface",
   ]
   pruneopts = "UT"
-  revision = "23e996a57757e6b586048809309e3945557c4edb"
-  version = "v1.25.22"
+  revision = "2f232d11486e77d344da0723340b566d3ff7865a"
+  version = "v1.25.24"
 
 [[projects]]
-  branch = "master"
-  digest = "1:0ad5484a25fbd88409bae8b8b19134135fe73d3cb00e45d3255280b2ab975fcc"
+  digest = "1:390dd851aedb37e9ef896e7e4e5c8553576798f8be769657e2f507090c96449d"
   name = "github.com/benbjohnson/clock"
   packages = ["."]
   pruneopts = "UT"
-  revision = "7dc76406b6d3c05b5f71a86293cbcf3c4ea03b19"
+  revision = "e7ca2eb904dce84a821b09d9285dc600d6174b8f"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
@@ -388,7 +388,7 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "03217c3e97663914aec3faafde50d081f197a0a2"
-  version = "1.1.8"
+  version = "v1.1.8"
 
 [[projects]]
   digest = "1:fd9bea48bbc5bba66d9891c72af7255fbebecdff845c37c679406174ece5ca1b"
@@ -823,21 +823,21 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:5874d3a4a53578470c16c65cc4312ba048d3d7673afcd5589e33e34f4b091931"
+  digest = "1:8ab3aa845f247c79a059fbc38cc9b27ad35df9e521fbe6d53c5b9b66e4839179"
   name = "google.golang.org/api"
   packages = [
     "googleapi",
-    "googleapi/internal/uritemplates",
     "googleapi/transport",
     "internal",
     "internal/gensupport",
+    "internal/third_party/uritemplates",
     "option",
     "storage/v1",
     "transport/http",
     "transport/http/internal/propagation",
   ]
   pruneopts = "UT"
-  revision = "4f42dad4690a01d7f6fa461106c63889ff1be027"
+  revision = "4b5ab5e994c422e7c6359a085062f721716b4c22"
 
 [[projects]]
   digest = "1:3c03b58f57452764a4499c55c582346c0ee78c8a5033affe5bdfd9efd3da5bd1"
@@ -1075,7 +1075,7 @@
   name = "k8s.io/utils"
   packages = ["integer"]
   pruneopts = "UT"
-  revision = "8d271d903fe4c290aa361acfb242cff7bcee96f1"
+  revision = "2b95a09bc58df43d4032504619706b6a38293a47"
 
 [[projects]]
   digest = "1:19c282f372fb82ff1e3599e1ecfa13d18a7d836a401abf38c11f5124d697a656"

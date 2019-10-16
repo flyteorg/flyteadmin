@@ -59,6 +59,30 @@ func ValidateIdentifier(id *core.Identifier, expectedType common.Entity) error {
 	return nil
 }
 
+// Validates that all required fields for an identifier are present.
+func ValidateNamedEntityIdentifier(id *admin.NamedEntityIdentifier) error {
+	if id == nil {
+		return shared.GetMissingArgumentError(shared.ID)
+	}
+	if err := ValidateEmptyStringField(id.Project, shared.Project); err != nil {
+		return err
+	}
+	if err := ValidateEmptyStringField(id.Domain, shared.Domain); err != nil {
+		return err
+	}
+	if err := ValidateEmptyStringField(id.Name, shared.Name); err != nil {
+		return err
+	}
+	return nil
+}
+
+func ValidateResourceType(resourceType core.ResourceType) error {
+	if resourceType == core.ResourceType_UNSPECIFIED || core.ResourceType.String(resourceType) == "" {
+		return shared.GetInvalidArgumentError(shared.ResourceType)
+	}
+	return nil
+}
+
 func ValidateVersion(version string) error {
 	if err := ValidateEmptyStringField(version, shared.Version); err != nil {
 		return err
@@ -117,6 +141,22 @@ func ValidateNamedEntityIdentifierListRequest(request admin.NamedEntityIdentifie
 	}
 	if err := ValidateLimit(request.Limit); err != nil {
 		return err
+	}
+	return nil
+}
+
+func ValidateNamedEntityListRequest(request admin.NamedEntityListRequest) error {
+	if err := ValidateEmptyStringField(request.Project, shared.Project); err != nil {
+		return err
+	}
+	if err := ValidateEmptyStringField(request.Domain, shared.Domain); err != nil {
+		return err
+	}
+	if err := ValidateResourceType(request.ResourceType); err != nil {
+		return err
+	}
+	if request.Limit <= 0 {
+		return shared.GetInvalidArgumentError(shared.Limit)
 	}
 	return nil
 }
