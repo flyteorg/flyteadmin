@@ -60,24 +60,36 @@ var mockPublisher notificationMocks.MockPublisher
 var mockExecutionRemoteURL = dataMocks.NewMockRemoteURL()
 var requestedAt = time.Now()
 var testCluster = "C1"
-var legacySpec admin.ExecutionSpec
-var legacyClosure admin.ExecutionClosure
-var legacySpecBytes, legacyClosureBytes []byte
-var legacyExecutionRequest admin.ExecutionCreateRequest
 
-func init() {
+func getLegacySpec() *admin.ExecutionSpec {
 	executionRequest := testutils.GetExecutionRequest()
-	legacySpec = *executionRequest.Spec
+	legacySpec := executionRequest.Spec
 	legacySpec.Inputs = executionRequest.Inputs
-	legacySpecBytes, _ = proto.Marshal(&legacySpec)
-	legacyClosure = admin.ExecutionClosure{
+	return legacySpec
+}
+
+func getLegacySpecBytes() []byte {
+	b, _ := proto.Marshal(getLegacySpec())
+	return b
+}
+
+func getLegacyClosure() *admin.ExecutionClosure {
+	return &admin.ExecutionClosure{
 		Phase:          core.WorkflowExecution_RUNNING,
-		ComputedInputs: legacySpec.Inputs,
+		ComputedInputs: getLegacySpec().Inputs,
 	}
-	legacyClosureBytes, _ = proto.Marshal(&legacyClosure)
-	legacyExecutionRequest = executionRequest
-	legacyExecutionRequest.Spec.Inputs = legacyExecutionRequest.Inputs
-	legacyExecutionRequest.Inputs = nil
+}
+
+func getLegacyClosureBytes() []byte {
+	b, _ := proto.Marshal(getLegacyClosure())
+	return b
+}
+
+func getLegacyExecutionRequest() *admin.ExecutionCreateRequest {
+	r := testutils.GetExecutionRequest()
+	r.Spec.Inputs = r.Inputs
+	r.Inputs = nil
+	return &r
 }
 
 func getMockExecutionsConfigProvider() runtimeInterfaces.Configuration {
@@ -729,7 +741,7 @@ func makeLegacyExecutionGetFunc(
 			BaseModel: models.BaseModel{
 				ID: uint(8),
 			},
-			Spec:         legacySpecBytes,
+			Spec:         getLegacySpecBytes(),
 			Phase:        core.WorkflowExecution_QUEUED.String(),
 			Closure:      closureBytes,
 			LaunchPlanID: uint(1),
@@ -1990,9 +2002,9 @@ func TestGetExecution_Legacy(t *testing.T) {
 				Domain:  "domain",
 				Name:    "name",
 			},
-			Spec:         legacySpecBytes,
+			Spec:         getLegacySpecBytes(),
 			Phase:        phase,
-			Closure:      legacyClosureBytes,
+			Closure:      getLegacyClosureBytes(),
 			LaunchPlanID: uint(1),
 			WorkflowID:   uint(2),
 			StartedAt:    &startedAt,
@@ -2007,8 +2019,8 @@ func TestGetExecution_Legacy(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.True(t, proto.Equal(&executionIdentifier, execution.Id))
-	assert.True(t, proto.Equal(&legacySpec, execution.Spec))
-	assert.True(t, proto.Equal(&legacyClosure, execution.Closure))
+	assert.True(t, proto.Equal(getLegacySpec(), execution.Spec))
+	assert.True(t, proto.Equal(getLegacyClosure(), execution.Closure))
 }
 
 func TestGetExecution_LegacyClient_OffloadedData(t *testing.T) {
@@ -2039,21 +2051,21 @@ func TestGetExecution_LegacyClient_OffloadedData(t *testing.T) {
 	execManager := NewExecutionManager(
 		repository, getMockExecutionsConfigProvider(), storageClient, workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
-	_ = storageClient.WriteProtobuf(context.Background(), storage.DataReference(shared.UserInputs), storage.Options{}, legacySpec.Inputs)
-	_ = storageClient.WriteProtobuf(context.Background(), storage.DataReference(shared.Inputs), storage.Options{}, legacyClosure.ComputedInputs)
+	_ = storageClient.WriteProtobuf(context.Background(), storage.DataReference(shared.UserInputs), storage.Options{}, getLegacySpec().Inputs)
+	_ = storageClient.WriteProtobuf(context.Background(), storage.DataReference(shared.Inputs), storage.Options{}, getLegacyClosure().ComputedInputs)
 	execution, err := execManager.GetExecution(context.Background(), admin.WorkflowExecutionGetRequest{
 		Id: &executionIdentifier,
 	})
 	assert.NoError(t, err)
 	assert.True(t, proto.Equal(&executionIdentifier, execution.Id))
-	assert.True(t, proto.Equal(&legacySpec, execution.Spec))
-	assert.True(t, proto.Equal(&legacyClosure, execution.Closure))
+	assert.True(t, proto.Equal(getLegacySpec(), execution.Spec))
+	assert.True(t, proto.Equal(getLegacyClosure(), execution.Closure))
 }
 
 func TestGetExecutionData_LegacyModel(t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
 	startedAt := time.Date(2018, 8, 30, 0, 0, 0, 0, time.UTC)
-	closure := legacyClosure
+	closure := getLegacyClosure()
 	closure.OutputResult = &admin.ExecutionClosure_Outputs{
 		Outputs: &admin.LiteralMapBlob{
 			Data: &admin.LiteralMapBlob_Uri{
@@ -2061,7 +2073,7 @@ func TestGetExecutionData_LegacyModel(t *testing.T) {
 			},
 		},
 	}
-	var closureBytes, _ = proto.Marshal(&closure)
+	var closureBytes, _ = proto.Marshal(closure)
 
 	executionGetFunc := func(ctx context.Context, input interfaces.GetResourceInput) (models.Execution, error) {
 		return models.Execution{
@@ -2070,7 +2082,7 @@ func TestGetExecutionData_LegacyModel(t *testing.T) {
 				Domain:  "domain",
 				Name:    "name",
 			},
-			Spec:         legacySpecBytes,
+			Spec:         getLegacySpecBytes(),
 			Phase:        phase,
 			Closure:      closureBytes,
 			LaunchPlanID: uint(1),
@@ -2142,7 +2154,7 @@ func TestCreateExecution_LegacyClient(t *testing.T) {
 	execManager := NewExecutionManager(
 		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockExecutor,
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
-	response, err := execManager.CreateExecution(context.Background(), legacyExecutionRequest, requestedAt)
+	response, err := execManager.CreateExecution(context.Background(), *getLegacyExecutionRequest(), requestedAt)
 	assert.Nil(t, err)
 
 	expectedResponse := &admin.ExecutionCreateResponse{
@@ -2150,8 +2162,6 @@ func TestCreateExecution_LegacyClient(t *testing.T) {
 	}
 	assert.Nil(t, err)
 	assert.Equal(t, expectedResponse, response)
-
-	// TODO: Check for offloaded inputs
 }
 
 func TestRelaunchExecution_LegacyModel(t *testing.T) {
@@ -2164,10 +2174,11 @@ func TestRelaunchExecution_LegacyModel(t *testing.T) {
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 	startTime := time.Now()
 	startTimeProto, _ := ptypes.TimestampProto(startTime)
-	existingClosure := legacyClosure
+	existingClosure := getLegacyClosure()
 	existingClosure.Phase = core.WorkflowExecution_RUNNING
 	existingClosure.StartedAt = startTimeProto
-	existingClosureBytes, _ := proto.Marshal(&existingClosure)
+	existingClosure.ComputedInputs.Literals["bar"] = utils.MustMakeLiteral("bar-value")
+	existingClosureBytes, _ := proto.Marshal(existingClosure)
 	executionGetFunc := makeLegacyExecutionGetFunc(t, existingClosureBytes, &startTime)
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
 
@@ -2183,6 +2194,7 @@ func TestRelaunchExecution_LegacyModel(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, admin.ExecutionMetadata_RELAUNCH, spec.Metadata.Mode)
 		assert.Equal(t, int32(admin.ExecutionMetadata_RELAUNCH), input.Mode)
+		assert.True(t, proto.Equal(spec.Inputs, getLegacySpec().Inputs))
 		return nil
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
@@ -2210,10 +2222,15 @@ func TestRelaunchExecution_LegacyModel(t *testing.T) {
 	assert.True(t, createCalled)
 	assert.True(t, proto.Equal(expectedResponse, response))
 
+	var userInputs core.LiteralMap
+	err = storageClient.ReadProtobuf(context.Background(), "s3://bucket/metadata/project/domain/relaunchy/user_inputs", &userInputs)
+	assert.Nil(t, err)
+	assert.True(t, proto.Equal(&userInputs, getLegacySpec().Inputs))
+
 	var inputs core.LiteralMap
 	err = storageClient.ReadProtobuf(context.Background(), "s3://bucket/metadata/project/domain/relaunchy/inputs", &inputs)
 	assert.Nil(t, err)
-	assert.True(t, proto.Equal(&inputs, legacySpec.Inputs))
+	assert.True(t, proto.Equal(&inputs, existingClosure.ComputedInputs))
 }
 
 func TestListExecutions_LegacyModel(t *testing.T) {
@@ -2248,8 +2265,8 @@ func TestListExecutions_LegacyModel(t *testing.T) {
 						Domain:  domainValue,
 						Name:    "my awesome execution",
 					},
-					Spec:    legacySpecBytes,
-					Closure: legacyClosureBytes,
+					Spec:    getLegacySpecBytes(),
+					Closure: getLegacyClosureBytes(),
 				},
 				{
 					ExecutionKey: models.ExecutionKey{

@@ -157,7 +157,7 @@ func (m *ExecutionManager) addLabelsAndAnnotations(requestSpec *admin.ExecutionS
 
 func (m *ExecutionManager) offloadInputs(ctx context.Context, literalMap *core.LiteralMap, identifier *core.WorkflowExecutionIdentifier, key string) (storage.DataReference, error) {
 	if literalMap == nil {
-		literalMap = new(core.LiteralMap)
+		literalMap = &core.LiteralMap{}
 	}
 	inputsUri, err := m.storageClient.ConstructReference(ctx, m.storageClient.GetBaseContainerFQN(ctx), shared.Metadata, identifier.Project, identifier.Domain, identifier.Name, key)
 	if err != nil {
@@ -360,14 +360,14 @@ func (m *ExecutionManager) RelaunchExecution(
 	}
 	var inputs *core.LiteralMap
 	if len(existingExecutionModel.UserInputsUri) > 0 {
-		inputs = new(core.LiteralMap)
-		if err := m.storageClient.ReadProtobuf(ctx, existingExecutionModel.InputsUri, inputs); err != nil {
+		inputs = &core.LiteralMap{}
+		if err := m.storageClient.ReadProtobuf(ctx, existingExecutionModel.UserInputsUri, inputs); err != nil {
 			return nil, err
 		}
 	} else {
 		// For old data, inputs are held in the spec
 		var spec admin.ExecutionSpec
-		err = proto.Unmarshal(existingExecutionModel.Closure, &spec)
+		err = proto.Unmarshal(existingExecutionModel.Spec, &spec)
 		if err != nil {
 			return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal spec")
 		}
@@ -673,7 +673,7 @@ func (m *ExecutionManager) GetExecutionData(
 	}
 	// Prior to flyteidl v0.15.0, Inputs were held in ExecutionClosure and were not offloaded. Ensure we can return the inputs as expected.
 	if len(executionModel.InputsUri) == 0 {
-		closure := new(admin.ExecutionClosure)
+		closure := &admin.ExecutionClosure{}
 		// We must not use the FromExecutionModel method because it empties deprecated fields.
 		if err := proto.Unmarshal(executionModel.Closure, closure); err != nil {
 			return nil, err
