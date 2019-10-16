@@ -715,6 +715,32 @@ func makeExecutionGetFunc(
 	}
 }
 
+func makeLegacyExecutionGetFunc(
+	t *testing.T, closureBytes []byte, startTime *time.Time) repositoryMocks.GetExecutionFunc {
+	return func(ctx context.Context, input interfaces.GetResourceInput) (models.Execution, error) {
+		assert.Equal(t, "project", input.Project)
+		assert.Equal(t, "domain", input.Domain)
+		assert.Equal(t, "name", input.Name)
+		return models.Execution{
+			ExecutionKey: models.ExecutionKey{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			},
+			BaseModel: models.BaseModel{
+				ID: uint(8),
+			},
+			Spec:         legacySpecBytes,
+			Phase:        core.WorkflowExecution_QUEUED.String(),
+			Closure:      closureBytes,
+			LaunchPlanID: uint(1),
+			WorkflowID:   uint(2),
+			StartedAt:    startTime,
+			Cluster:      testCluster,
+		}, nil
+	}
+}
+
 func TestRelaunchExecution(t *testing.T) {
 	// Set up mocks.
 	repository := getMockRepositoryForExecTest()
@@ -2143,10 +2169,8 @@ func TestRelaunchExecution_LegacyModel(t *testing.T) {
 	existingClosure := legacyClosure
 	existingClosure.Phase = core.WorkflowExecution_RUNNING
 	existingClosure.StartedAt = startTimeProto
-	existingClosure.ComputedInputs.Literals["bar"] = utils.MustMakeLiteral("bar-value")
-	existingClosure.ComputedInputs.Literals["foo"] = utils.MustMakeLiteral("foo-value")
 	existingClosureBytes, _ := proto.Marshal(&existingClosure)
-	executionGetFunc := makeExecutionGetFunc(t, existingClosureBytes, &startTime)
+	executionGetFunc := makeLegacyExecutionGetFunc(t, existingClosureBytes, &startTime)
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
 
 	var createCalled bool
