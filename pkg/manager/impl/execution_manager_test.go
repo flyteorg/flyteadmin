@@ -147,7 +147,6 @@ func getMockStorageForExecTest(ctx context.Context) *storage.DataStore {
 			return err
 		}
 		mockStorage.ComposedProtobufStore.(*commonMocks.TestDataStore).Store[reference] = bytes
-		fmt.Printf("Writing to: %v\n\n", reference.String())
 		return nil
 	}
 	workflowClosure := testutils.GetWorkflowClosure()
@@ -2009,7 +2008,6 @@ func TestGetExecution_Legacy(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, proto.Equal(&executionIdentifier, execution.Id))
 	assert.True(t, proto.Equal(&legacySpec, execution.Spec))
-	fmt.Printf("%v \n\n %v", &legacyClosure, execution.Closure)
 	assert.True(t, proto.Equal(&legacyClosure, execution.Closure))
 }
 
@@ -2215,7 +2213,6 @@ func TestRelaunchExecution_LegacyModel(t *testing.T) {
 	var inputs core.LiteralMap
 	err = storageClient.ReadProtobuf(context.Background(), "s3://bucket/metadata/project/domain/relaunchy/inputs", &inputs)
 	assert.Nil(t, err)
-	fmt.Printf("%v \n\n %v", &inputs, legacySpec.Inputs)
 	assert.True(t, proto.Equal(&inputs, legacySpec.Inputs))
 }
 
