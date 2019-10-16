@@ -61,7 +61,7 @@ func (t *TestDataStore) CopyRaw(ctx context.Context, source, destination storage
 func (t *TestDataStore) ConstructReference(
 	ctx context.Context, reference storage.DataReference, nestedKeys ...string) (storage.DataReference, error) {
 	nestedPath := strings.Join(nestedKeys, "/")
-	return storage.DataReference(fmt.Sprintf("%s/%v", "s3://bucket", nestedPath)), nil
+	return storage.DataReference(fmt.Sprintf("%s/%v", reference, nestedPath)), nil
 }
 
 func GetMockStorageClient() *storage.DataStore {

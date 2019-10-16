@@ -34,9 +34,6 @@ type CreateExecutionModelInput struct {
 
 // Transforms a ExecutionCreateRequest to a Execution model
 func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, error) {
-	// Clear deprecated fields from old clients to save space in database.
-	input.RequestSpec.Inputs = nil
-
 	spec, err := proto.Marshal(input.RequestSpec)
 	if err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "Failed to serialize execution spec: %v", err)
@@ -171,9 +168,9 @@ func FromExecutionModel(executionModel models.Execution) (*admin.Execution, erro
 		}
 	}
 
-	// Clear deprecated fields to reduce message size.
-	spec.Inputs = nil
-	closure.ComputedInputs = nil
+	// TODO: Clear deprecated fields to reduce message size.
+	// spec.Inputs = nil
+	// closure.ComputedInputs = nil
 	return &admin.Execution{
 		Id:      &id,
 		Spec:    &spec,

@@ -359,19 +359,19 @@ func (m *ExecutionManager) RelaunchExecution(
 		executionSpec.Metadata = &admin.ExecutionMetadata{}
 	}
 	var inputs *core.LiteralMap
-	if len(existingExecutionModel.InputsUri) > 0 {
+	if len(existingExecutionModel.UserInputsUri) > 0 {
 		inputs = new(core.LiteralMap)
 		if err := m.storageClient.ReadProtobuf(ctx, existingExecutionModel.InputsUri, inputs); err != nil {
 			return nil, err
 		}
 	} else {
-		// For old data, inputs are held in the closure
-		var closure admin.ExecutionClosure
-		err = proto.Unmarshal(existingExecutionModel.Closure, &closure)
+		// For old data, inputs are held in the spec
+		var spec admin.ExecutionSpec
+		err = proto.Unmarshal(existingExecutionModel.Closure, &spec)
 		if err != nil {
-			return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal closure")
+			return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal spec")
 		}
-		inputs = closure.ComputedInputs
+		inputs = spec.Inputs
 	}
 	executionSpec.Metadata.Mode = admin.ExecutionMetadata_RELAUNCH
 	executionModel, err := m.launchExecutionAndPrepareModel(ctx, admin.ExecutionCreateRequest{
@@ -630,22 +630,24 @@ func (m *ExecutionManager) GetExecution(
 		return nil, transformerErr
 	}
 
+	// TO BE DELETED
 	// TODO: Remove the publishing to deprecated fields (Inputs) after a smooth migration has been completed of our existing users
 	// For now, publish to deprecated fields thus ensuring old clients don't break when calling GetExecution
 	if len(executionModel.InputsUri) > 0 {
-		inputs := new(core.LiteralMap)
-		if err := m.storageClient.ReadProtobuf(ctx, executionModel.InputsUri, inputs); err != nil {
+		var inputs core.LiteralMap
+		if err := m.storageClient.ReadProtobuf(ctx, executionModel.InputsUri, &inputs); err != nil {
 			return nil, err
 		}
-		execution.Closure.ComputedInputs = inputs
+		execution.Closure.ComputedInputs = &inputs
 	}
 	if len(executionModel.UserInputsUri) > 0 {
-		userInputs := new(core.LiteralMap)
-		if err := m.storageClient.ReadProtobuf(ctx, executionModel.UserInputsUri, userInputs); err != nil {
+		var userInputs core.LiteralMap
+		if err := m.storageClient.ReadProtobuf(ctx, executionModel.UserInputsUri, &userInputs); err != nil {
 			return nil, err
 		}
-		execution.Spec.Inputs = userInputs
+		execution.Spec.Inputs = &userInputs
 	}
+	// END TO BE DELETED
 
 	return execution, nil
 }
@@ -670,24 +672,23 @@ func (m *ExecutionManager) GetExecutionData(
 		}
 	}
 	// Prior to flyteidl v0.15.0, Inputs were held in ExecutionClosure and were not offloaded. Ensure we can return the inputs as expected.
-	inputsUri := executionModel.InputsUri
-	if len(inputsUri) == 0 {
+	if len(executionModel.InputsUri) == 0 {
 		closure := new(admin.ExecutionClosure)
 		// We must not use the FromExecutionModel method because it empties deprecated fields.
 		if err := proto.Unmarshal(executionModel.Closure, closure); err != nil {
 			return nil, err
 		}
-		inputsUri, err := m.offloadInputs(ctx, closure.ComputedInputs, request.Id, shared.Inputs)
+		newInputsUri, err := m.offloadInputs(ctx, closure.ComputedInputs, request.Id, shared.Inputs)
 		if err != nil {
 			return nil, err
 		}
 		// Update model so as not to offload again.
-		executionModel.InputsUri = inputsUri
+		executionModel.InputsUri = newInputsUri
 		if err := m.db.ExecutionRepo().UpdateExecution(ctx, *executionModel); err != nil {
 			return nil, err
 		}
 	}
-	inputsUrlBlob, err := m.urlData.Get(ctx, inputsUri.String())
+	inputsUrlBlob, err := m.urlData.Get(ctx, executionModel.InputsUri.String())
 	if err != nil {
 		return nil, err
 	}
@@ -743,6 +744,14 @@ func (m *ExecutionManager) ListExecutions(
 			"Failed to transform execution models [%+v] with err: %v", output.Executions, err)
 		return nil, err
 	}
+	// TODO: TO BE DELETED
+	// Clear deprecated fields during migration phase. Once migration is complete, these will be cleared in the database.
+	// Thus this will be redundant
+	for _, execution := range executionList {
+		execution.Spec.Inputs = nil
+		execution.Closure.ComputedInputs = nil
+	}
+	// END TO BE DELETED
 	var token string
 	if len(executionList) == int(request.Limit) {
 		token = strconv.Itoa(offset + len(executionList))

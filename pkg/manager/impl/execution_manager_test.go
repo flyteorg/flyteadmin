@@ -60,6 +60,25 @@ var mockPublisher notificationMocks.MockPublisher
 var mockExecutionRemoteURL = dataMocks.NewMockRemoteURL()
 var requestedAt = time.Now()
 var testCluster = "C1"
+var legacySpec admin.ExecutionSpec
+var legacyClosure admin.ExecutionClosure
+var legacySpecBytes, legacyClosureBytes []byte
+var legacyExecutionRequest admin.ExecutionCreateRequest
+
+func init() {
+	executionRequest := testutils.GetExecutionRequest()
+	legacySpec = *executionRequest.Spec
+	legacySpec.Inputs = executionRequest.Inputs
+	legacySpecBytes, _ = proto.Marshal(&legacySpec)
+	legacyClosure = admin.ExecutionClosure{
+		Phase:          core.WorkflowExecution_RUNNING,
+		ComputedInputs: legacySpec.Inputs,
+	}
+	legacyClosureBytes, _ = proto.Marshal(&legacyClosure)
+	legacyExecutionRequest = executionRequest
+	legacyExecutionRequest.Spec.Inputs = legacyExecutionRequest.Inputs
+	legacyExecutionRequest.Inputs = nil
+}
 
 func getMockExecutionsConfigProvider() runtimeInterfaces.Configuration {
 	mockExecutionsConfigProvider := runtimeMocks.NewMockConfigurationProvider(
@@ -119,8 +138,7 @@ func getMockStorageForExecTest(ctx context.Context) *storage.DataStore {
 			_ = proto.Unmarshal(val, msg)
 			return nil
 		}
-		fmt.Printf("Could not find value in storage [%v]\n", reference)
-		return errors.New(fmt.Sprintf("Can't find the [%v]", reference.String()))
+		return errors.New(fmt.Sprintf("Could not find value in storage [%v]\n", reference.String()))
 	}
 	mockStorage.ComposedProtobufStore.(*commonMocks.TestDataStore).WriteProtobufCb = func(
 		ctx context.Context, reference storage.DataReference, opts storage.Options, msg proto.Message) error {
@@ -129,6 +147,7 @@ func getMockStorageForExecTest(ctx context.Context) *storage.DataStore {
 			return err
 		}
 		mockStorage.ComposedProtobufStore.(*commonMocks.TestDataStore).Store[reference] = bytes
+		fmt.Printf("Writing to: %v\n\n", reference.String())
 		return nil
 	}
 	workflowClosure := testutils.GetWorkflowClosure()
@@ -187,6 +206,8 @@ func TestCreateExecution(t *testing.T) {
 	}
 	assert.Nil(t, err)
 	assert.Equal(t, expectedResponse, response)
+
+	// TODO: Check for offloaded inputs
 }
 
 func TestCreateExecutionFromWorkflowNode(t *testing.T) {
@@ -749,6 +770,8 @@ func TestRelaunchExecution(t *testing.T) {
 	}
 	assert.True(t, createCalled)
 	assert.True(t, proto.Equal(expectedResponse, response))
+
+	// TODO: Test with inputs
 }
 
 func TestRelaunchExecution_GetExistingFailure(t *testing.T) {
@@ -1929,11 +1952,326 @@ func TestAddLabelsAndAnnotationsRuntimeLimitsObserved(t *testing.T) {
 	assert.EqualError(t, err, "Labels has too many entries [2 > 1]")
 }
 
-// TODO: Test GetExecution w/ old model
-// TODO: Test GetExecution w/ new model (default)
-// TODO: Test GetExecution legacy data exists
-// TODO: Test CreateExecution (old client)
-// TODO: Test GetExecutionData w/ old model
-// TODO: Test Relaunch from Old Client Version
-// TODO: Test Relaunch from new client w/ inputs
-// TODO: Test relaunch from old client w/ inputs
+func TestGetExecution_Legacy(t *testing.T) {
+	repository := repositoryMocks.NewMockRepository()
+	startedAt := time.Date(2018, 8, 30, 0, 0, 0, 0, time.UTC)
+	executionGetFunc := func(ctx context.Context, input interfaces.GetResourceInput) (models.Execution, error) {
+		assert.Equal(t, "project", input.Project)
+		assert.Equal(t, "domain", input.Domain)
+		assert.Equal(t, "name", input.Name)
+		return models.Execution{
+			ExecutionKey: models.ExecutionKey{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			},
+			Spec:         legacySpecBytes,
+			Phase:        phase,
+			Closure:      legacyClosureBytes,
+			LaunchPlanID: uint(1),
+			WorkflowID:   uint(2),
+			StartedAt:    &startedAt,
+		}, nil
+	}
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
+	execManager := NewExecutionManager(
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
+		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
+	execution, err := execManager.GetExecution(context.Background(), admin.WorkflowExecutionGetRequest{
+		Id: &executionIdentifier,
+	})
+	assert.NoError(t, err)
+	assert.True(t, proto.Equal(&executionIdentifier, execution.Id))
+	assert.True(t, proto.Equal(&legacySpec, execution.Spec))
+	fmt.Printf("%v \n\n %v", &legacyClosure, execution.Closure)
+	assert.True(t, proto.Equal(&legacyClosure, execution.Closure))
+}
+
+func TestGetExecution_LegacyClient_OffloadedData(t *testing.T) {
+	repository := repositoryMocks.NewMockRepository()
+	startedAt := time.Date(2018, 8, 30, 0, 0, 0, 0, time.UTC)
+	executionGetFunc := func(ctx context.Context, input interfaces.GetResourceInput) (models.Execution, error) {
+		assert.Equal(t, "project", input.Project)
+		assert.Equal(t, "domain", input.Domain)
+		assert.Equal(t, "name", input.Name)
+		return models.Execution{
+			ExecutionKey: models.ExecutionKey{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			},
+			Spec:          specBytes,
+			Phase:         phase,
+			Closure:       closureBytes,
+			LaunchPlanID:  uint(1),
+			WorkflowID:    uint(2),
+			StartedAt:     &startedAt,
+			UserInputsUri: shared.UserInputs,
+			InputsUri:     shared.Inputs,
+		}, nil
+	}
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
+	storageClient := getMockStorageForExecTest(context.Background())
+	execManager := NewExecutionManager(
+		repository, getMockExecutionsConfigProvider(), storageClient, workflowengineMocks.NewMockExecutor(),
+		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
+	_ = storageClient.WriteProtobuf(context.Background(), storage.DataReference(shared.UserInputs), storage.Options{}, legacySpec.Inputs)
+	_ = storageClient.WriteProtobuf(context.Background(), storage.DataReference(shared.Inputs), storage.Options{}, legacyClosure.ComputedInputs)
+	execution, err := execManager.GetExecution(context.Background(), admin.WorkflowExecutionGetRequest{
+		Id: &executionIdentifier,
+	})
+	assert.NoError(t, err)
+	assert.True(t, proto.Equal(&executionIdentifier, execution.Id))
+	assert.True(t, proto.Equal(&legacySpec, execution.Spec))
+	assert.True(t, proto.Equal(&legacyClosure, execution.Closure))
+}
+
+func TestGetExecutionData_LegacyModel(t *testing.T) {
+	repository := repositoryMocks.NewMockRepository()
+	startedAt := time.Date(2018, 8, 30, 0, 0, 0, 0, time.UTC)
+	closure := legacyClosure
+	closure.OutputResult = &admin.ExecutionClosure_Outputs{
+		Outputs: &admin.LiteralMapBlob{
+			Data: &admin.LiteralMapBlob_Uri{
+				Uri: "output uri",
+			},
+		},
+	}
+	var closureBytes, _ = proto.Marshal(&closure)
+
+	executionGetFunc := func(ctx context.Context, input interfaces.GetResourceInput) (models.Execution, error) {
+		return models.Execution{
+			ExecutionKey: models.ExecutionKey{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			},
+			Spec:         legacySpecBytes,
+			Phase:        phase,
+			Closure:      closureBytes,
+			LaunchPlanID: uint(1),
+			WorkflowID:   uint(2),
+			StartedAt:    &startedAt,
+		}, nil
+	}
+	mockExecutionRemoteURL := dataMocks.NewMockRemoteURL()
+	mockExecutionRemoteURL.(*dataMocks.MockRemoteURL).GetCallback = func(
+		ctx context.Context, uri string) (admin.UrlBlob, error) {
+		if uri == "output uri" {
+			return admin.UrlBlob{
+				Url:   "outputs",
+				Bytes: 200,
+			}, nil
+		} else if strings.HasSuffix(uri, shared.Inputs) {
+			return admin.UrlBlob{
+				Url:   "inputs",
+				Bytes: 200,
+			}, nil
+		}
+
+		return admin.UrlBlob{}, errors.New("unexpected input")
+	}
+
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
+	storageClient := getMockStorageForExecTest(context.Background())
+	execManager := NewExecutionManager(
+		repository, getMockExecutionsConfigProvider(), storageClient, workflowengineMocks.NewMockExecutor(),
+		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
+	dataResponse, err := execManager.GetExecutionData(context.Background(), admin.WorkflowExecutionGetDataRequest{
+		Id: &executionIdentifier,
+	})
+	assert.Nil(t, err)
+	assert.True(t, proto.Equal(&admin.WorkflowExecutionGetDataResponse{
+		Outputs: &admin.UrlBlob{
+			Url:   "outputs",
+			Bytes: 200,
+		},
+		Inputs: &admin.UrlBlob{
+			Url:   "inputs",
+			Bytes: 200,
+		},
+	}, dataResponse))
+	var inputs core.LiteralMap
+	err = storageClient.ReadProtobuf(context.Background(), storage.DataReference("s3://bucket/metadata/project/domain/name/inputs"), &inputs)
+	assert.Nil(t, err)
+	assert.True(t, proto.Equal(&inputs, closure.ComputedInputs))
+}
+
+func TestCreateExecution_LegacyClient(t *testing.T) {
+	repository := getMockRepositoryForExecTest()
+	setDefaultLpCallbackForExecTest(repository)
+	mockExecutor := workflowengineMocks.NewMockExecutor()
+	mockExecutor.(*workflowengineMocks.MockExecutor).SetExecuteWorkflowCallback(
+		func(inputs workflowengineInterfaces.ExecuteWorkflowInput) (*workflowengineInterfaces.ExecutionInfo, error) {
+			assert.EqualValues(t, map[string]string{
+				"label1": "1",
+				"label2": "2",
+			}, inputs.Labels)
+			assert.EqualValues(t, map[string]string{
+				"annotation3": "3",
+				"annotation4": "4",
+			}, inputs.Annotations)
+			return &workflowengineInterfaces.ExecutionInfo{
+				Cluster: testCluster,
+			}, nil
+		})
+	execManager := NewExecutionManager(
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockExecutor,
+		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
+	response, err := execManager.CreateExecution(context.Background(), legacyExecutionRequest, requestedAt)
+	assert.Nil(t, err)
+
+	expectedResponse := &admin.ExecutionCreateResponse{
+		Id: &executionIdentifier,
+	}
+	assert.Nil(t, err)
+	assert.Equal(t, expectedResponse, response)
+
+	// TODO: Check for offloaded inputs
+}
+
+func TestRelaunchExecution_LegacyModel(t *testing.T) {
+	// Set up mocks.
+	repository := getMockRepositoryForExecTest()
+	setDefaultLpCallbackForExecTest(repository)
+	storageClient := getMockStorageForExecTest(context.Background())
+	execManager := NewExecutionManager(
+		repository, getMockExecutionsConfigProvider(), storageClient, workflowengineMocks.NewMockExecutor(),
+		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
+	startTime := time.Now()
+	startTimeProto, _ := ptypes.TimestampProto(startTime)
+	existingClosure := legacyClosure
+	existingClosure.Phase = core.WorkflowExecution_RUNNING
+	existingClosure.StartedAt = startTimeProto
+	existingClosure.ComputedInputs.Literals["bar"] = utils.MustMakeLiteral("bar-value")
+	existingClosure.ComputedInputs.Literals["foo"] = utils.MustMakeLiteral("foo-value")
+	existingClosureBytes, _ := proto.Marshal(&existingClosure)
+	executionGetFunc := makeExecutionGetFunc(t, existingClosureBytes, &startTime)
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
+
+	var createCalled bool
+	exCreateFunc := func(ctx context.Context, input models.Execution) error {
+		createCalled = true
+		assert.Equal(t, "relaunchy", input.Name)
+		assert.Equal(t, "domain", input.Domain)
+		assert.Equal(t, "project", input.Project)
+		assert.Equal(t, uint(8), input.SourceExecutionID)
+		var spec admin.ExecutionSpec
+		err := proto.Unmarshal(input.Spec, &spec)
+		assert.Nil(t, err)
+		assert.Equal(t, admin.ExecutionMetadata_RELAUNCH, spec.Metadata.Mode)
+		assert.Equal(t, int32(admin.ExecutionMetadata_RELAUNCH), input.Mode)
+		return nil
+	}
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
+
+	// Issue request.
+	response, err := execManager.RelaunchExecution(context.Background(), admin.ExecutionRelaunchRequest{
+		Id: &core.WorkflowExecutionIdentifier{
+			Project: "project",
+			Domain:  "domain",
+			Name:    "name",
+		},
+		Name: "relaunchy",
+	}, requestedAt)
+
+	// And verify response.
+	assert.Nil(t, err)
+
+	expectedResponse := &admin.ExecutionCreateResponse{
+		Id: &core.WorkflowExecutionIdentifier{
+			Project: "project",
+			Domain:  "domain",
+			Name:    "relaunchy",
+		},
+	}
+	assert.True(t, createCalled)
+	assert.True(t, proto.Equal(expectedResponse, response))
+
+	var inputs core.LiteralMap
+	err = storageClient.ReadProtobuf(context.Background(), "s3://bucket/metadata/project/domain/relaunchy/inputs", &inputs)
+	assert.Nil(t, err)
+	fmt.Printf("%v \n\n %v", &inputs, legacySpec.Inputs)
+	assert.True(t, proto.Equal(&inputs, legacySpec.Inputs))
+}
+
+func TestListExecutions_LegacyModel(t *testing.T) {
+	repository := repositoryMocks.NewMockRepository()
+	executionListFunc := func(
+		ctx context.Context, input interfaces.ListResourceInput) (interfaces.ExecutionCollectionOutput, error) {
+		var projectFilter, domainFilter, nameFilter bool
+		for _, filter := range input.InlineFilters {
+			assert.Equal(t, common.Execution, filter.GetEntity())
+			queryExpr, _ := filter.GetGormQueryExpr()
+			if queryExpr.Args == projectValue && queryExpr.Query == "execution_project = ?" {
+				projectFilter = true
+			}
+			if queryExpr.Args == domainValue && queryExpr.Query == "execution_domain = ?" {
+				domainFilter = true
+			}
+			if queryExpr.Args == nameValue && queryExpr.Query == "execution_name = ?" {
+				nameFilter = true
+			}
+		}
+		assert.True(t, projectFilter, "Missing project equality filter")
+		assert.True(t, domainFilter, "Missing domain equality filter")
+		assert.False(t, nameFilter, "Included name equality filter")
+		assert.Equal(t, limit, input.Limit)
+		assert.Equal(t, "domain asc", input.SortParameter.GetGormOrderExpr())
+		assert.Equal(t, 2, input.Offset)
+		return interfaces.ExecutionCollectionOutput{
+			Executions: []models.Execution{
+				{
+					ExecutionKey: models.ExecutionKey{
+						Project: projectValue,
+						Domain:  domainValue,
+						Name:    "my awesome execution",
+					},
+					Spec:    legacySpecBytes,
+					Closure: legacyClosureBytes,
+				},
+				{
+					ExecutionKey: models.ExecutionKey{
+						Project: projectValue,
+						Domain:  domainValue,
+						Name:    "my other execution",
+					},
+					Phase:   core.WorkflowExecution_SUCCEEDED.String(),
+					Spec:    specBytes,
+					Closure: closureBytes,
+				},
+			},
+		}, nil
+	}
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetListCallback(executionListFunc)
+	execManager := NewExecutionManager(
+		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
+		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
+
+	executionList, err := execManager.ListExecutions(context.Background(), admin.ResourceListRequest{
+		Id: &admin.NamedEntityIdentifier{
+			Project: projectValue,
+			Domain:  domainValue,
+		},
+		Limit: limit,
+		SortBy: &admin.Sort{
+			Direction: admin.Sort_ASCENDING,
+			Key:       "domain",
+		},
+		Token: "2",
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, executionList)
+	assert.Len(t, executionList.Executions, 2)
+
+	for idx, execution := range executionList.Executions {
+		assert.Equal(t, projectValue, execution.Id.Project)
+		assert.Equal(t, domainValue, execution.Id.Domain)
+		if idx == 0 {
+			assert.Equal(t, "my awesome execution", execution.Id.Name)
+		}
+		assert.True(t, proto.Equal(spec, execution.Spec))
+		assert.True(t, proto.Equal(&closure, execution.Closure))
+	}
+	assert.Empty(t, executionList.Token)
+}
