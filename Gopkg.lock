@@ -53,7 +53,7 @@
   version = "v1.0.7"
 
 [[projects]]
-  digest = "1:8242149eca9920ef3ac114d07791f8d7cc05b347ffc0b40141b1627a5b378011"
+  digest = "1:b66700ab191b83817a69973ccb903924b5315b34feb7fd820cc6da6504b5dafb"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -106,8 +106,8 @@
     "service/sts/stsiface",
   ]
   pruneopts = "UT"
-  revision = "e40068abd62ea29db38cb7ca59bf6f58489343bf"
-  version = "v1.25.13"
+  revision = "15cbab53359072d0801eb32d16d0a406207e8716"
+  version = "v1.25.14"
 
 [[projects]]
   branch = "master"
@@ -374,12 +374,12 @@
   revision = "c2b33e84"
 
 [[projects]]
-  digest = "1:709cd2a2c29cc9b89732f6c24846bbb9d6270f28ef5ef2128cc73bd0d6d7bff9"
+  digest = "1:beb5b4f42a25056f0aa291b5eadd21e2f2903a05d15dfe7caf7eaee7e12fa972"
   name = "github.com/json-iterator/go"
   packages = ["."]
   pruneopts = "UT"
-  revision = "27518f6661eba504be5a7a9a9f6d9460d892ade3"
-  version = "v1.1.7"
+  revision = "03217c3e97663914aec3faafde50d081f197a0a2"
+  version = "1.1.8"
 
 [[projects]]
   digest = "1:fd9bea48bbc5bba66d9891c72af7255fbebecdff845c37c679406174ece5ca1b"
@@ -480,9 +480,9 @@
     "version",
   ]
   pruneopts = "UT"
-  revision = "2a121b0e3bc7fb85e36a5088e23ef59d401a78be"
+  revision = "9a5bce7eefea457c69f22c1d8a7397ec24a94e7e"
   source = "https://github.com/lyft/flytestdlib"
-  version = "v0.2.22"
+  version = "v0.2.23"
 
 [[projects]]
   digest = "1:2a0da3440db3f2892609d99cd0389c2776a3fef24435f7b7b58bfc9030aa86ca"
@@ -814,7 +814,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:4b234cf90d8b57ad0794e6c9f3d76ce806aaa851adb658d25d9f78db458b2800"
+  digest = "1:1aa769c17e34805021df86eb155937d700ab544f6978476976e92e076bed75d0"
   name = "google.golang.org/api"
   packages = [
     "googleapi",
@@ -828,7 +828,7 @@
     "transport/http/internal/propagation",
   ]
   pruneopts = "UT"
-  revision = "4f26c6409ffa7b94f89d06aac760b63875d9b42c"
+  revision = "e6ade80c6e2a122a6588f9f827207dcb99da433e"
 
 [[projects]]
   digest = "1:3c03b58f57452764a4499c55c582346c0ee78c8a5033affe5bdfd9efd3da5bd1"
