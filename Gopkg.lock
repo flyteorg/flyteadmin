@@ -18,12 +18,13 @@
   version = "v10.2.1-beta"
 
 [[projects]]
-  digest = "1:e3d8dd629da696c66c2275f911078ce51a420520346c73330a84b938401585b7"
+  digest = "1:0f857a863c24bb1c277a5f3f8cb8a30e65b841405f69590132ee23ed9e7e6fbe"
   name = "github.com/Azure/go-autorest"
   packages = [
     "autorest",
     "autorest/adal",
     "autorest/azure",
+    "autorest/date",
     "logger",
     "tracing",
   ]
@@ -164,6 +165,14 @@
   pruneopts = "UT"
   revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
   version = "v1.1.1"
+
+[[projects]]
+  digest = "1:76dc72490af7174349349838f2fe118996381b31ea83243812a97e5a0fd5ed55"
+  name = "github.com/dgrijalva/jwt-go"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "06ea1031745cb8b3dab3f6a236daf2b0aa468b7e"
+  version = "v3.2.0"
 
 [[projects]]
   digest = "1:ac425d784b13d49b37a5bbed3ce022677f8f3073b216f05d6adcb9303e27fa0f"
@@ -409,6 +418,65 @@
   pruneopts = "UT"
   revision = "3427c32cb71afc948325f299f040e53c1dd78979"
   version = "v1.2.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:6af0763b0bdfdd5cf33170fc241777cc280fddd34b6d78f427d787f3627bae49"
+  name = "github.com/lyft/flyteadmin"
+  packages = [
+    "cmd/entrypoints",
+    "pkg/async/notifications",
+    "pkg/async/notifications/implementations",
+    "pkg/async/notifications/interfaces",
+    "pkg/async/notifications/mocks",
+    "pkg/async/schedule",
+    "pkg/async/schedule/aws",
+    "pkg/async/schedule/aws/interfaces",
+    "pkg/async/schedule/aws/mocks",
+    "pkg/async/schedule/interfaces",
+    "pkg/async/schedule/mocks",
+    "pkg/async/schedule/noop",
+    "pkg/clusterresource",
+    "pkg/common",
+    "pkg/common/mocks",
+    "pkg/config",
+    "pkg/data",
+    "pkg/data/implementations",
+    "pkg/data/interfaces",
+    "pkg/data/mocks",
+    "pkg/errors",
+    "pkg/executioncluster",
+    "pkg/executioncluster/impl",
+    "pkg/executioncluster/interfaces",
+    "pkg/executioncluster/mocks",
+    "pkg/flytek8s",
+    "pkg/manager/impl",
+    "pkg/manager/impl/executions",
+    "pkg/manager/impl/shared",
+    "pkg/manager/impl/testutils",
+    "pkg/manager/impl/util",
+    "pkg/manager/impl/validation",
+    "pkg/manager/interfaces",
+    "pkg/manager/mocks",
+    "pkg/repositories",
+    "pkg/repositories/config",
+    "pkg/repositories/errors",
+    "pkg/repositories/gormimpl",
+    "pkg/repositories/interfaces",
+    "pkg/repositories/mocks",
+    "pkg/repositories/models",
+    "pkg/repositories/transformers",
+    "pkg/rpc/adminservice",
+    "pkg/rpc/adminservice/util",
+    "pkg/runtime",
+    "pkg/runtime/interfaces",
+    "pkg/runtime/mocks",
+    "pkg/workflowengine/impl",
+    "pkg/workflowengine/interfaces",
+    "pkg/workflowengine/mocks",
+  ]
+  pruneopts = "UT"
+  revision = "89fb13e9178e28fcbb4a848e3961021f27a774cd"
 
 [[projects]]
   digest = "1:6fdab8881f20d41b91983d5aa104401be6b7d28e9cfd0a1a93337ec094d877ba"
@@ -1117,6 +1185,56 @@
     "github.com/jinzhu/gorm",
     "github.com/jinzhu/gorm/dialects/postgres",
     "github.com/lib/pq",
+    "github.com/lyft/flyteadmin/cmd/entrypoints",
+    "github.com/lyft/flyteadmin/pkg/async/notifications",
+    "github.com/lyft/flyteadmin/pkg/async/notifications/implementations",
+    "github.com/lyft/flyteadmin/pkg/async/notifications/interfaces",
+    "github.com/lyft/flyteadmin/pkg/async/notifications/mocks",
+    "github.com/lyft/flyteadmin/pkg/async/schedule",
+    "github.com/lyft/flyteadmin/pkg/async/schedule/aws",
+    "github.com/lyft/flyteadmin/pkg/async/schedule/aws/interfaces",
+    "github.com/lyft/flyteadmin/pkg/async/schedule/aws/mocks",
+    "github.com/lyft/flyteadmin/pkg/async/schedule/interfaces",
+    "github.com/lyft/flyteadmin/pkg/async/schedule/mocks",
+    "github.com/lyft/flyteadmin/pkg/async/schedule/noop",
+    "github.com/lyft/flyteadmin/pkg/clusterresource",
+    "github.com/lyft/flyteadmin/pkg/common",
+    "github.com/lyft/flyteadmin/pkg/common/mocks",
+    "github.com/lyft/flyteadmin/pkg/config",
+    "github.com/lyft/flyteadmin/pkg/data",
+    "github.com/lyft/flyteadmin/pkg/data/implementations",
+    "github.com/lyft/flyteadmin/pkg/data/interfaces",
+    "github.com/lyft/flyteadmin/pkg/data/mocks",
+    "github.com/lyft/flyteadmin/pkg/errors",
+    "github.com/lyft/flyteadmin/pkg/executioncluster",
+    "github.com/lyft/flyteadmin/pkg/executioncluster/impl",
+    "github.com/lyft/flyteadmin/pkg/executioncluster/interfaces",
+    "github.com/lyft/flyteadmin/pkg/executioncluster/mocks",
+    "github.com/lyft/flyteadmin/pkg/flytek8s",
+    "github.com/lyft/flyteadmin/pkg/manager/impl",
+    "github.com/lyft/flyteadmin/pkg/manager/impl/executions",
+    "github.com/lyft/flyteadmin/pkg/manager/impl/shared",
+    "github.com/lyft/flyteadmin/pkg/manager/impl/testutils",
+    "github.com/lyft/flyteadmin/pkg/manager/impl/util",
+    "github.com/lyft/flyteadmin/pkg/manager/impl/validation",
+    "github.com/lyft/flyteadmin/pkg/manager/interfaces",
+    "github.com/lyft/flyteadmin/pkg/manager/mocks",
+    "github.com/lyft/flyteadmin/pkg/repositories",
+    "github.com/lyft/flyteadmin/pkg/repositories/config",
+    "github.com/lyft/flyteadmin/pkg/repositories/errors",
+    "github.com/lyft/flyteadmin/pkg/repositories/gormimpl",
+    "github.com/lyft/flyteadmin/pkg/repositories/interfaces",
+    "github.com/lyft/flyteadmin/pkg/repositories/mocks",
+    "github.com/lyft/flyteadmin/pkg/repositories/models",
+    "github.com/lyft/flyteadmin/pkg/repositories/transformers",
+    "github.com/lyft/flyteadmin/pkg/rpc/adminservice",
+    "github.com/lyft/flyteadmin/pkg/rpc/adminservice/util",
+    "github.com/lyft/flyteadmin/pkg/runtime",
+    "github.com/lyft/flyteadmin/pkg/runtime/interfaces",
+    "github.com/lyft/flyteadmin/pkg/runtime/mocks",
+    "github.com/lyft/flyteadmin/pkg/workflowengine/impl",
+    "github.com/lyft/flyteadmin/pkg/workflowengine/interfaces",
+    "github.com/lyft/flyteadmin/pkg/workflowengine/mocks",
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin",
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core",
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/event",
