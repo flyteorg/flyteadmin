@@ -64,7 +64,13 @@ func GetRemoteDataHandler(cfg RemoteDataHandlerConfig) RemoteDataHandler {
 		}
 		logger.Infof(context.TODO(), "setting up local signer - %s, %s, %s", accessKeyID, secret, endpoint)
 		creds := credentials.NewStaticCredentials(accessKeyID, secret, "")
-		awsConfig := aws.NewConfig().WithRegion(cfg.Region).WithMaxRetries(cfg.Retries).WithCredentials(creds).WithEndpoint(endpoint).WithDisableSSL(true)
+		awsConfig := aws.NewConfig().
+			WithRegion(cfg.Region).
+			WithMaxRetries(cfg.Retries).
+			WithCredentials(creds).
+			WithEndpoint(endpoint).
+			WithDisableSSL(true).
+			WithS3ForcePathStyle(true)
 		presignedURLDuration := time.Minute * time.Duration(cfg.SignedURLDurationMinutes)
 		return &remoteDataHandler{
 			remoteURL: implementations.NewAWSRemoteURL(awsConfig, presignedURLDuration),
