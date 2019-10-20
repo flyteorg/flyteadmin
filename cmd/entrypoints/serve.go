@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/coreos/go-oidc"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpcauth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/lyft/flyteadmin/pkg/auth"
@@ -60,13 +61,19 @@ func init() {
 
 // Creates a new gRPC Server with all the configuration
 func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, opts ...grpc.ServerOption) (*grpc.Server, error) {
-
 	// Not yet implemented for streaming
 	var chainedUnaryInterceptors grpc.UnaryServerInterceptor
 	if cfg.Security.UseAuth {
 		logger.Infof(ctx, "Creating gRPC server with authentication")
+		// TODO: See comment at other instantiation of Provider in this file. This is a duplicate for now until
+		//       we can clean up code and merge them.
+		oidcCtx := oidc.ClientContext(ctx, &http.Client{})
+		provider, err := oidc.NewProvider(oidcCtx, cfg.Security.Oauth.Claims.Issuer)
+		if err != nil {
+			return nil, err
+		}
 		chainedUnaryInterceptors = grpc_middleware.ChainUnaryServer(grpc_prometheus.UnaryServerInterceptor,
-			grpcauth.UnaryServerInterceptor(auth.GetAuthenticationInterceptor(cfg.Security.Oauth)),
+			grpcauth.UnaryServerInterceptor(auth.GetAuthenticationInterceptor(cfg.Security.Oauth, provider)),
 			auth.AuthenticationLoggingInterceptor,
 		)
 	} else {
@@ -127,14 +134,18 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, grpcAddress st
 	var gwmux *runtime.ServeMux
 	if cfg.Security.UseAuth {
 		// Configuration and setup
+		// TODO: Wrap OAuth2 config object, provider and anything else that might be needed into an AuthContext()
 		oauthConfig, err := auth.GetOauth2Config(cfg.Security.Oauth)
 		if err != nil {
 			logger.Errorf(ctx, "Could not load OAuth2 settings %s", err)
 			return nil, err
 		}
+		oidcCtx := oidc.ClientContext(ctx, &http.Client{})
+		provider, err := oidc.NewProvider(oidcCtx, cfg.Security.Oauth.Claims.Issuer)
+		if err != nil {
+			return nil, err
+		}
 
-		jwksUrl := cfg.Security.Oauth.JwksUrl
-		jwtVerifier := auth.JwtVerifier{Url: jwksUrl}
 		cookieManager, err := auth.NewCookieManager(ctx, cfg.Security.Oauth.CookieHashKeyFile, cfg.Security.Oauth.CookieBlockKeyFile)
 		if err != nil {
 			logger.Errorf(ctx, "Error creating cookie manager %s", err)
@@ -143,7 +154,7 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, grpcAddress st
 
 		// Add HTTP handlers for OAuth2 endpoints
 		mux.HandleFunc("/login_page", loginPage)
-		mux.HandleFunc("/login", auth.RefreshTokensIfExists(ctx, oauthConfig, cfg.Security.Oauth, jwtVerifier,
+		mux.HandleFunc("/login", auth.RefreshTokensIfExists(ctx, oauthConfig, cfg.Security.Oauth, provider,
 			cookieManager, auth.GetLoginHandler(ctx, oauthConfig)))
 		mux.HandleFunc("/callback", auth.GetCallbackHandler(ctx, oauthConfig, cfg.Security.Oauth, cookieManager))
 

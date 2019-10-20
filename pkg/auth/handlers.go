@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"github.com/coreos/go-oidc"
 	grpcauth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/lyft/flytestdlib/errors"
 	"github.com/lyft/flytestdlib/logger"
@@ -16,7 +17,7 @@ import (
 
 // Look for access token and refresh token, if both are present and the access token is expired, then attempt to
 // refresh. Otherwise do nothing and proceed to the next handler. If successfully refreshed, proceed to the landing page.
-func RefreshTokensIfExists(ctx context.Context, oauth oauth2.Config, options OAuthOptions, jwtVerifier JwtVerifier,
+func RefreshTokensIfExists(ctx context.Context, oauth oauth2.Config, options OAuthOptions, provider *oidc.Provider,
 	cookieManager CookieManager, handlerFunc http.HandlerFunc) http.HandlerFunc {
 
 	return func(writer http.ResponseWriter, request *http.Request) {
@@ -26,25 +27,21 @@ func RefreshTokensIfExists(ctx context.Context, oauth oauth2.Config, options OAu
 		accessToken, refreshToken, err := cookieManager.RetrieveTokenValues(ctx, request)
 
 		if err == nil && accessToken != "" && refreshToken != "" {
-			t, e := ParseAndValidate(ctx, options, accessToken, jwtVerifier.GetKey)
-			if t == nil {
-				err = errors.Errorf(ErrNilJwt, "No token object found after parsing")
-			} else {
+			_, e := ParseAndValidate(ctx, options, accessToken, provider)
+			err = e
+			if err != nil && errors.IsCausedBy(err, ErrTokenExpired) {
+				logger.Debugf(ctx, "Expired access token found, attempting to refresh")
+				newToken, e := GetRefreshedToken(ctx, oauth, accessToken, refreshToken)
 				err = e
-				if err != nil && errors.IsCausedBy(err, ErrTokenExpired) {
-					logger.Debugf(ctx, "Expired access token found, attempting to refresh")
-					newToken, e := GetRefreshedToken(ctx, oauth, *t, refreshToken)
-					err = e
-					if err == nil {
-						logger.Debugf(ctx, "Access token refreshed. Saving new tokens into cookies.")
-						err = cookieManager.SetTokenCookies(ctx, writer, newToken)
-					}
+				if err == nil {
+					logger.Debugf(ctx, "Access token refreshed. Saving new tokens into cookies.")
+					err = cookieManager.SetTokenCookies(ctx, writer, newToken)
 				}
 			}
 		}
 
 		if err != nil {
-			logger.Errorf(ctx, "Error in refresh token handler %s, redirecting to login handler", err)
+			logger.Errorf(ctx, "Non-expiration error in refresh token handler %s, redirecting to login handler", err)
 			handlerFunc(writer, request)
 			return
 		} else {
@@ -113,11 +110,7 @@ func AuthenticationLoggingInterceptor(ctx context.Context, req interface{}, info
 // This function will only look for a token from the request metadata, verify it, and extract the user email if valid.
 // Unless there is an error, it will not return an unauthorized status. That is up to subsequent functions to decide,
 // based on configuration.  We don't want to require authentication for all endpoints.
-func GetAuthenticationInterceptor(options OAuthOptions) func(context.Context) (context.Context, error) {
-	// TODO: Use library after library has been written
-	jwtVerifier := JwtVerifier{
-		Url: options.JwksUrl,
-	}
+func GetAuthenticationInterceptor(options OAuthOptions, provider *oidc.Provider) func(context.Context) (context.Context, error) {
 	return func(ctx context.Context) (context.Context, error) {
 		logger.Debugf(ctx, "Running authentication gRPC interceptor")
 		tokenStr, err := grpcauth.AuthFromMD(ctx, "bearer")
@@ -126,25 +119,24 @@ func GetAuthenticationInterceptor(options OAuthOptions) func(context.Context) (c
 			return ctx, nil
 		}
 
-		// Currently auth is optional
+		// Currently auth is optional...
 		if tokenStr == "" {
 			logger.Debugf(ctx, "Bearer token is empty, skipping parsing")
 			return ctx, nil
 		}
 
-		token, err := ParseAndValidate(ctx, options, tokenStr, jwtVerifier.GetKey)
-		if token == nil {
-			return ctx, status.Errorf(codes.Unauthenticated, "Token was nil after parsing %s", tokenStr)
-		}
+		// ...however, if there is a bearer token, but there are additional errors downstream, then we return an
+		// authentication error.
+		token, err := ParseAndValidate(ctx, options, tokenStr, provider)
 		if err != nil {
 			return ctx, status.Errorf(codes.Unauthenticated, "could not parse token string into object: %s %s", tokenStr, err)
 		}
-
-		userEmail, err := GetSubClaim(token)
-		if err != nil {
+		if token == nil {
+			return ctx, status.Errorf(codes.Unauthenticated, "Token was nil after parsing %s", tokenStr)
+		} else if token.Subject == "" {
 			return ctx, status.Errorf(codes.Unauthenticated, "no email or empty email found")
 		} else {
-			newCtx := WithUserEmail(context.WithValue(ctx, "tokenInfo", tokenStr), userEmail)
+			newCtx := WithUserEmail(context.WithValue(ctx, "bearer", tokenStr), token.Subject)
 			return newCtx, nil
 		}
 	}
