@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"fmt"
-	"github.com/coreos/go-oidc"
 	grpcauth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/lyft/flytestdlib/errors"
 	"github.com/lyft/flytestdlib/logger"
@@ -17,25 +16,24 @@ import (
 
 // Look for access token and refresh token, if both are present and the access token is expired, then attempt to
 // refresh. Otherwise do nothing and proceed to the next handler. If successfully refreshed, proceed to the landing page.
-func RefreshTokensIfExists(ctx context.Context, oauth oauth2.Config, options OAuthOptions, provider *oidc.Provider,
-	cookieManager CookieManager, handlerFunc http.HandlerFunc) http.HandlerFunc {
+func RefreshTokensIfExists(ctx context.Context, authContext AuthenticationContext, handlerFunc http.HandlerFunc) http.HandlerFunc {
 
 	return func(writer http.ResponseWriter, request *http.Request) {
 		// Since we only do one thing if there are no errors anywhere along the chain, we can save code by just
 		// using one variable and checking for errors at the end.
 		var err error
-		accessToken, refreshToken, err := cookieManager.RetrieveTokenValues(ctx, request)
+		accessToken, refreshToken, err := authContext.CookieManager().RetrieveTokenValues(ctx, request)
 
 		if err == nil && accessToken != "" && refreshToken != "" {
-			_, e := ParseAndValidate(ctx, options, accessToken, provider)
+			_, e := ParseAndValidate(ctx, authContext.Claims(), accessToken, authContext.OidcProvider())
 			err = e
 			if err != nil && errors.IsCausedBy(err, ErrTokenExpired) {
 				logger.Debugf(ctx, "Expired access token found, attempting to refresh")
-				newToken, e := GetRefreshedToken(ctx, oauth, accessToken, refreshToken)
+				newToken, e := GetRefreshedToken(ctx, authContext.OAuth2Config(), accessToken, refreshToken)
 				err = e
 				if err == nil {
 					logger.Debugf(ctx, "Access token refreshed. Saving new tokens into cookies.")
-					err = cookieManager.SetTokenCookies(ctx, writer, newToken)
+					err = authContext.CookieManager().SetTokenCookies(ctx, writer, newToken)
 				}
 			}
 		}
@@ -45,13 +43,13 @@ func RefreshTokensIfExists(ctx context.Context, oauth oauth2.Config, options OAu
 			handlerFunc(writer, request)
 			return
 		} else {
-			http.Redirect(writer, request, options.RedirectUrl, http.StatusTemporaryRedirect)
+			http.Redirect(writer, request, authContext.RedirectUrl(), http.StatusTemporaryRedirect)
 			return
 		}
 	}
 }
 
-func GetLoginHandler(ctx context.Context, oauth oauth2.Config) http.HandlerFunc {
+func GetLoginHandler(ctx context.Context, authContext AuthenticationContext) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		csrfCookie := NewCsrfCookie()
 		csrfToken := csrfCookie.Value
@@ -59,14 +57,14 @@ func GetLoginHandler(ctx context.Context, oauth oauth2.Config) http.HandlerFunc 
 
 		state := HashCsrfState(csrfToken)
 		logger.Debugf(ctx, "Setting CSRF state cookie to %s and state to %s\n", csrfToken, state)
-		url := oauth.AuthCodeURL(state)
+		url := authContext.OAuth2Config().AuthCodeURL(state)
 		fmt.Println(url)
 
 		http.Redirect(writer, request, url, http.StatusTemporaryRedirect)
 	}
 }
 
-func GetCallbackHandler(ctx context.Context, oauth oauth2.Config, options OAuthOptions, manager CookieManager) http.HandlerFunc {
+func GetCallbackHandler(ctx context.Context, authContext AuthenticationContext) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		logger.Debugf(ctx, "Running callback handler...")
 		authorizationCode := request.FormValue(AuthorizationResponseCodeType)
@@ -82,21 +80,21 @@ func GetCallbackHandler(ctx context.Context, oauth oauth2.Config, options OAuthO
 		// The second parameter is necessary to get the initial refresh token
 		offlineAccessParam := oauth2.SetAuthURLParam(RefreshToken, OfflineAccessType)
 
-		token, err := oauth.Exchange(ctx, authorizationCode, offlineAccessParam)
+		token, err := authContext.OAuth2Config().Exchange(ctx, authorizationCode, offlineAccessParam)
 		if err != nil {
 			logger.Errorf(ctx, "Error when exchanging code %s", err)
 			writer.WriteHeader(http.StatusForbidden)
 			return
 		}
 
-		err = manager.SetTokenCookies(ctx, writer, token)
+		err = authContext.CookieManager().SetTokenCookies(ctx, writer, token)
 		if err != nil {
 			logger.Errorf(ctx, "Error setting encrypted JWT cookie %s", err)
 			writer.WriteHeader(http.StatusForbidden)
 			return
 		}
 
-		http.Redirect(writer, request, options.RedirectUrl, http.StatusTemporaryRedirect)
+		http.Redirect(writer, request, authContext.RedirectUrl(), http.StatusTemporaryRedirect)
 	}
 }
 
@@ -110,7 +108,7 @@ func AuthenticationLoggingInterceptor(ctx context.Context, req interface{}, info
 // This function will only look for a token from the request metadata, verify it, and extract the user email if valid.
 // Unless there is an error, it will not return an unauthorized status. That is up to subsequent functions to decide,
 // based on configuration.  We don't want to require authentication for all endpoints.
-func GetAuthenticationInterceptor(options OAuthOptions, provider *oidc.Provider) func(context.Context) (context.Context, error) {
+func GetAuthenticationInterceptor(authContext AuthenticationContext) func(context.Context) (context.Context, error) {
 	return func(ctx context.Context) (context.Context, error) {
 		logger.Debugf(ctx, "Running authentication gRPC interceptor")
 		tokenStr, err := grpcauth.AuthFromMD(ctx, "bearer")
@@ -127,7 +125,7 @@ func GetAuthenticationInterceptor(options OAuthOptions, provider *oidc.Provider)
 
 		// ...however, if there is a bearer token, but there are additional errors downstream, then we return an
 		// authentication error.
-		token, err := ParseAndValidate(ctx, options, tokenStr, provider)
+		token, err := ParseAndValidate(ctx, authContext.Claims(), tokenStr, authContext.OidcProvider())
 		if err != nil {
 			return ctx, status.Errorf(codes.Unauthenticated, "could not parse token string into object: %s %s", tokenStr, err)
 		}
@@ -150,10 +148,11 @@ type HttpRequestToMetadataAnnotator func(ctx context.Context, request *http.Requ
 
 // This is effectively middleware for the grpc gateway, it allows us to modify the translation between HTTP request
 // and gRPC request.
-func GetHttpRequestCookieToMetadataHandler(cookieManager CookieManager) HttpRequestToMetadataAnnotator {
+func GetHttpRequestCookieToMetadataHandler(authContext AuthenticationContext) HttpRequestToMetadataAnnotator {
 	return func(ctx context.Context, request *http.Request) metadata.MD {
+		// TODO: Add read from Authorization header first
 		// TODO: Improve error handling
-		accessToken, _, _ := cookieManager.RetrieveTokenValues(ctx, request)
+		accessToken, _, _ := authContext.CookieManager().RetrieveTokenValues(ctx, request)
 		if accessToken == "" {
 			logger.Infof(ctx, "Could not find access token cookie while requesting %s", request.RequestURI)
 			return nil

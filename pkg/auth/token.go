@@ -17,7 +17,7 @@ const (
 )
 
 // Refresh a JWT
-func GetRefreshedToken(ctx context.Context, oauth oauth2.Config, accessToken, refreshToken string) (*oauth2.Token, error) {
+func GetRefreshedToken(ctx context.Context, oauth *oauth2.Config, accessToken, refreshToken string) (*oauth2.Token, error) {
 	logger.Debugf(ctx, "Attempting to refresh token")
 	originalToken := oauth2.Token{
 		AccessToken:  accessToken,
@@ -35,10 +35,10 @@ func GetRefreshedToken(ctx context.Context, oauth oauth2.Config, accessToken, re
 	return newToken, nil
 }
 
-func ParseAndValidate(ctx context.Context, options OAuthOptions, accessToken string,
+func ParseAndValidate(ctx context.Context, claims Claims, accessToken string,
 	provider *oidc.Provider) (*oidc.IDToken, error) {
 
-	var verifier = provider.Verifier(&oidc.Config{ClientID: options.Claims.Audience})
+	var verifier = provider.Verifier(&oidc.Config{ClientID: claims.Audience})
 
 	idToken, err := verifier.Verify(ctx, accessToken)
 	if err != nil {

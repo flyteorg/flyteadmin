@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/coreos/go-oidc"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpcauth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/lyft/flyteadmin/pkg/auth"
@@ -60,20 +59,14 @@ func init() {
 }
 
 // Creates a new gRPC Server with all the configuration
-func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, opts ...grpc.ServerOption) (*grpc.Server, error) {
+func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authContext auth.AuthenticationContext,
+	opts ...grpc.ServerOption) (*grpc.Server, error) {
 	// Not yet implemented for streaming
 	var chainedUnaryInterceptors grpc.UnaryServerInterceptor
 	if cfg.Security.UseAuth {
 		logger.Infof(ctx, "Creating gRPC server with authentication")
-		// TODO: See comment at other instantiation of Provider in this file. This is a duplicate for now until
-		//       we can clean up code and merge them.
-		oidcCtx := oidc.ClientContext(ctx, &http.Client{})
-		provider, err := oidc.NewProvider(oidcCtx, cfg.Security.Oauth.Claims.Issuer)
-		if err != nil {
-			return nil, err
-		}
 		chainedUnaryInterceptors = grpc_middleware.ChainUnaryServer(grpc_prometheus.UnaryServerInterceptor,
-			grpcauth.UnaryServerInterceptor(auth.GetAuthenticationInterceptor(cfg.Security.Oauth, provider)),
+			grpcauth.UnaryServerInterceptor(auth.GetAuthenticationInterceptor(authContext)),
 			auth.AuthenticationLoggingInterceptor,
 		)
 	} else {
@@ -117,7 +110,9 @@ func GetHandleOpenapiSpec(ctx context.Context) http.HandlerFunc {
 	}
 }
 
-func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, grpcAddress string, grpcConnectionOpts ...grpc.DialOption) (*http.ServeMux, error) {
+func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authContext auth.AuthenticationContext,
+	grpcAddress string, grpcConnectionOpts ...grpc.DialOption) (*http.ServeMux, error) {
+
 	// Register the server that will serve HTTP/REST Traffic
 	mux := http.NewServeMux()
 
@@ -133,34 +128,15 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, grpcAddress st
 	// Register the actual Server that will service gRPC traffic
 	var gwmux *runtime.ServeMux
 	if cfg.Security.UseAuth {
-		// Configuration and setup
-		// TODO: Wrap OAuth2 config object, provider and anything else that might be needed into an AuthContext()
-		oauthConfig, err := auth.GetOauth2Config(cfg.Security.Oauth)
-		if err != nil {
-			logger.Errorf(ctx, "Could not load OAuth2 settings %s", err)
-			return nil, err
-		}
-		oidcCtx := oidc.ClientContext(ctx, &http.Client{})
-		provider, err := oidc.NewProvider(oidcCtx, cfg.Security.Oauth.Claims.Issuer)
-		if err != nil {
-			return nil, err
-		}
-
-		cookieManager, err := auth.NewCookieManager(ctx, cfg.Security.Oauth.CookieHashKeyFile, cfg.Security.Oauth.CookieBlockKeyFile)
-		if err != nil {
-			logger.Errorf(ctx, "Error creating cookie manager %s", err)
-			return nil, err
-		}
-
 		// Add HTTP handlers for OAuth2 endpoints
 		mux.HandleFunc("/login_page", loginPage)
-		mux.HandleFunc("/login", auth.RefreshTokensIfExists(ctx, oauthConfig, cfg.Security.Oauth, provider,
-			cookieManager, auth.GetLoginHandler(ctx, oauthConfig)))
-		mux.HandleFunc("/callback", auth.GetCallbackHandler(ctx, oauthConfig, cfg.Security.Oauth, cookieManager))
+		mux.HandleFunc("/login", auth.RefreshTokensIfExists(ctx, authContext,
+			auth.GetLoginHandler(ctx, authContext)))
+		mux.HandleFunc("/callback", auth.GetCallbackHandler(ctx, authContext))
 
 		gwmux = runtime.NewServeMux(
 			runtime.WithMarshalerOption("application/octet-stream", &runtime.ProtoMarshaller{}),
-			runtime.WithMetadata(auth.GetHttpRequestCookieToMetadataHandler(cookieManager)))
+			runtime.WithMetadata(auth.GetHttpRequestCookieToMetadataHandler(authContext)))
 	} else {
 		gwmux = runtime.NewServeMux(
 			runtime.WithMarshalerOption("application/octet-stream", &runtime.ProtoMarshaller{}))
@@ -178,7 +154,7 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, grpcAddress st
 
 func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig) error {
 	logger.Infof(ctx, "Serving Flyte Admin Insecure")
-	grpcServer, err := newGRPCServer(ctx, cfg)
+	grpcServer, err := newGRPCServer(ctx, cfg, nil)
 	if err != nil {
 		return errors.Wrap(err, "failed to create GRPC server")
 	}
@@ -195,7 +171,7 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig) error {
 	}()
 
 	logger.Infof(ctx, "Starting HTTP/1 Gateway server on %s", cfg.GetHostAddress())
-	httpServer, err := newHTTPServer(ctx, cfg, cfg.GetGrpcHostAddress(), grpc.WithInsecure())
+	httpServer, err := newHTTPServer(ctx, cfg, nil, cfg.GetGrpcHostAddress(), grpc.WithInsecure())
 	if err != nil {
 		return err
 	}
@@ -226,8 +202,14 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig) error {
 	if err != nil {
 		return err
 	}
+	// This will parse configuration and create the necessary objects for dealing with auth
+	authContext, err := auth.NewAuthenticationContext(ctx, cfg.Security.Oauth)
+	if err != nil {
+		logger.Errorf(ctx, "Error creating auth context %s", err)
+		return err
+	}
 
-	grpcServer, err := newGRPCServer(ctx, cfg,
+	grpcServer, err := newGRPCServer(ctx, cfg, authContext,
 		grpc.Creds(credentials.NewServerTLSFromCert(cert)))
 	if err != nil {
 		return errors.Wrap(err, "failed to create GRPC server")
@@ -238,7 +220,7 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig) error {
 		ServerName: cfg.GetHostAddress(),
 		RootCAs:    certPool,
 	})
-	httpServer, err := newHTTPServer(ctx, cfg, cfg.GetHostAddress(), grpc.WithTransportCredentials(dialCreds))
+	httpServer, err := newHTTPServer(ctx, cfg, authContext, cfg.GetHostAddress(), grpc.WithTransportCredentials(dialCreds))
 	if err != nil {
 		return err
 	}
