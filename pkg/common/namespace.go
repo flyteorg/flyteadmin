@@ -5,7 +5,6 @@ import "fmt"
 type NamespaceMapping int
 
 const namespaceFormat = "%s-%s"
-const namespaceVariable = "namespace"
 
 const (
 	ProjectDomain NamespaceMapping = iota

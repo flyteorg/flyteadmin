@@ -35,7 +35,6 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
-const namespaceFormat = "%s-%s"
 const namespaceVariable = "namespace"
 const templateVariableFormat = "{{ %s }}"
 const replaceAllInstancesOfString = -1

@@ -34,8 +34,6 @@ func (p *NamespaceMappingConfigurationProvider) GetNamespaceMappingConfig() comm
 		logger.Warningf(context.Background(), "Unsupported value for namespace_mapping in config, defaulting to <project>-<domain>")
 		return common.ProjectDomain
 	}
-	logger.Warningf(context.Background(), "Failed to find namespace mapping in config, defaulting to <project>-<domain>")
-	return common.ProjectDomain
 }
 
 func NewNamespaceMappingConfigurationProvider() interfaces.NamespaceMappingConfiguration {
