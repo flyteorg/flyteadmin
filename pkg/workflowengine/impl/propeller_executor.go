@@ -186,7 +186,7 @@ func newPropellerMetrics(scope promutils.Scope) propellerMetrics {
 }
 
 func NewFlytePropeller(roleNameKey string, executionCluster interfaces2.ClusterInterface,
-	scope promutils.Scope, configuration interfaces.NamespaceMappingConfiguration) interfaces.Executor {
+	scope promutils.Scope, configuration runtimeInterfaces.NamespaceMappingConfiguration) interfaces.Executor {
 
 	return &FlytePropeller{
 		executionCluster: executionCluster,
