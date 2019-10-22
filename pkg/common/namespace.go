@@ -18,7 +18,7 @@ func GetNamespaceName(mapping NamespaceMapping, project, domain string) string {
 	case Domain:
 		return domain
 	case ProjectDomain:
-		return fmt.Sprintf(namespaceFormat, project, domain)
+		fallthrough
 	default:
 		return fmt.Sprintf(namespaceFormat, project, domain)
 	}
