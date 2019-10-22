@@ -3,12 +3,9 @@ package impl
 import (
 	"context"
 
-<<<<<<< HEAD
 	interfaces2 "github.com/lyft/flyteadmin/pkg/executioncluster/interfaces"
 
-=======
 	"github.com/lyft/flyteadmin/pkg/common"
->>>>>>> fix compile issues
 	"github.com/lyft/flyteadmin/pkg/executioncluster"
 	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
 	"github.com/lyft/flyteadmin/pkg/workflowengine/interfaces"
