@@ -142,7 +142,7 @@ func mergeLogs(existing, latest []*core.TaskLog) []*core.TaskLog {
 		existingSet[existingLog.Uri] = existingLog
 	}
 	// Copy over the existing logs from the input list so we preserve the original order.
-	logs := append([]*core.TaskLog(nil), existing...)
+	logs := existing
 	for _, latestLog := range latest {
 		if _, ok := existingSet[latestLog.Uri]; !ok {
 			// We haven't seen this log before: add it to the output result list.
