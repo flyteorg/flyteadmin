@@ -420,9 +420,6 @@
   version = "v1.2.0"
 
 [[projects]]
-<<<<<<< HEAD
-  digest = "1:6fdab8881f20d41b91983d5aa104401be6b7d28e9cfd0a1a93337ec094d877ba"
-=======
   digest = "1:32d9795a0ac21fa2ed7d92ff408bb6cc00b33ac0a29ab06bef81d3f285672b47"
   name = "github.com/lyft/flyteadmin"
   packages = [
@@ -479,7 +476,6 @@
 
 [[projects]]
   digest = "1:4c02e347457c97ee8cfafb413554854fe236d715879ac0a43743017cd179de2e"
->>>>>>> add namepace configuration
   name = "github.com/lyft/flyteidl"
   packages = [
     "clients/go/admin",

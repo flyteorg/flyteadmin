@@ -188,13 +188,8 @@ func newPropellerMetrics(scope promutils.Scope) propellerMetrics {
 	}
 }
 
-<<<<<<< HEAD
 func NewFlytePropeller(roleNameKey string, executionCluster interfaces2.ClusterInterface,
 	scope promutils.Scope, configuration interfaces.NamespaceMappingConfiguration) interfaces.Executor {
-=======
-func NewFlytePropeller(roleNameKey string, executionCluster executioncluster.ClusterInterface,
-	scope promutils.Scope, configuration runtimeInterfaces.NamespaceMappingConfiguration) interfaces.Executor {
->>>>>>> fix compile issues
 
 	return &FlytePropeller{
 		executionCluster: executionCluster,
