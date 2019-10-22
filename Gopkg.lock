@@ -54,7 +54,7 @@
   version = "v1.0.7"
 
 [[projects]]
-  digest = "1:e490a9e2f55d80388dce0be4cc64a17c720aecf8ca0a067a92ba83949457ba14"
+  digest = "1:c068593b2d873e3d100eb6fd1ea1715070ad588e8dcdb356b7c0d9530063e256"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -107,8 +107,8 @@
     "service/sts/stsiface",
   ]
   pruneopts = "UT"
-  revision = "e42fa244c725b2a423a8e9cf1c86828c0bf9400a"
-  version = "v1.25.12"
+  revision = "adf0d7dcf139d718ab18e46f6055735a27be867a"
+  version = "v1.25.15"
 
 [[projects]]
   branch = "master"
@@ -383,12 +383,12 @@
   revision = "c2b33e84"
 
 [[projects]]
-  digest = "1:709cd2a2c29cc9b89732f6c24846bbb9d6270f28ef5ef2128cc73bd0d6d7bff9"
+  digest = "1:beb5b4f42a25056f0aa291b5eadd21e2f2903a05d15dfe7caf7eaee7e12fa972"
   name = "github.com/json-iterator/go"
   packages = ["."]
   pruneopts = "UT"
-  revision = "27518f6661eba504be5a7a9a9f6d9460d892ade3"
-  version = "v1.1.7"
+  revision = "03217c3e97663914aec3faafde50d081f197a0a2"
+  version = "1.1.8"
 
 [[projects]]
   digest = "1:fd9bea48bbc5bba66d9891c72af7255fbebecdff845c37c679406174ece5ca1b"
@@ -489,9 +489,9 @@
     "version",
   ]
   pruneopts = "UT"
-  revision = "2a121b0e3bc7fb85e36a5088e23ef59d401a78be"
+  revision = "9d0448cd08805c3ae39938d8fcaec34d11db366c"
   source = "https://github.com/lyft/flytestdlib"
-  version = "v0.2.22"
+  version = "v0.2.24"
 
 [[projects]]
   digest = "1:2a0da3440db3f2892609d99cd0389c2776a3fef24435f7b7b58bfc9030aa86ca"
@@ -748,7 +748,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:bf89144f888e7e621c7eaba03e68c5426b22fb008bf70d2ebf417beea541bb58"
+  digest = "1:2ce67db9864088dee35dab5967f041d2b4ae1c7440dabb44542c1847933fd872"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -761,7 +761,7 @@
     "trace",
   ]
   pruneopts = "UT"
-  revision = "491137f692577e390404f177a0515c9f86f79754"
+  revision = "da9a3fd4c5820e74b24a6cb7fb438dc9b0dd377c"
 
 [[projects]]
   branch = "master"
@@ -823,7 +823,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:7f43c34476621e07944957f19514e61e3822acb1dd5cb8823e2717ccececf40a"
+  digest = "1:2b7fccff5bf6caff757f5e468d580c8d3b763cc7b9354f127adf14fe54451428"
   name = "google.golang.org/api"
   packages = [
     "googleapi",
@@ -837,7 +837,7 @@
     "transport/http/internal/propagation",
   ]
   pruneopts = "UT"
-  revision = "5e0e3f4a3bb8f1c7d2bf1465670c5c0b3c45c277"
+  revision = "1c098db1e8d0c17c2819910afd08052313af7a44"
 
 [[projects]]
   digest = "1:3c03b58f57452764a4499c55c582346c0ee78c8a5033affe5bdfd9efd3da5bd1"
@@ -1106,6 +1106,7 @@
     "github.com/Selvatico/go-mocket",
     "github.com/aws/aws-sdk-go/aws",
     "github.com/aws/aws-sdk-go/aws/awserr",
+    "github.com/aws/aws-sdk-go/aws/credentials",
     "github.com/aws/aws-sdk-go/aws/request",
     "github.com/aws/aws-sdk-go/aws/session",
     "github.com/aws/aws-sdk-go/service/cloudwatchevents",
@@ -1121,6 +1122,8 @@
     "github.com/golang/protobuf/ptypes/duration",
     "github.com/golang/protobuf/ptypes/struct",
     "github.com/golang/protobuf/ptypes/timestamp",
+    "github.com/graymeta/stow",
+    "github.com/graymeta/stow/s3",
     "github.com/grpc-ecosystem/go-grpc-prometheus",
     "github.com/grpc-ecosystem/grpc-gateway/runtime",
     "github.com/jinzhu/gorm",
