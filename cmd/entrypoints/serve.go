@@ -154,7 +154,19 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authContext au
 
 func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig) error {
 	logger.Infof(ctx, "Serving Flyte Admin Insecure")
-	grpcServer, err := newGRPCServer(ctx, cfg, nil)
+
+	// This will parse configuration and create the necessary objects for dealing with auth
+	var authContext auth.AuthenticationContext
+	var err error
+	if cfg.Security.UseAuth {
+		authContext, err = auth.NewAuthenticationContext(ctx, cfg.Security.Oauth)
+		if err != nil {
+			logger.Errorf(ctx, "Error creating auth context %s", err)
+			return err
+		}
+	}
+
+	grpcServer, err := newGRPCServer(ctx, cfg, authContext)
 	if err != nil {
 		return errors.Wrap(err, "failed to create GRPC server")
 	}
@@ -171,7 +183,7 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig) error {
 	}()
 
 	logger.Infof(ctx, "Starting HTTP/1 Gateway server on %s", cfg.GetHostAddress())
-	httpServer, err := newHTTPServer(ctx, cfg, nil, cfg.GetGrpcHostAddress(), grpc.WithInsecure())
+	httpServer, err := newHTTPServer(ctx, cfg, authContext, cfg.GetGrpcHostAddress(), grpc.WithInsecure())
 	if err != nil {
 		return err
 	}
@@ -203,10 +215,13 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig) error {
 		return err
 	}
 	// This will parse configuration and create the necessary objects for dealing with auth
-	authContext, err := auth.NewAuthenticationContext(ctx, cfg.Security.Oauth)
-	if err != nil {
-		logger.Errorf(ctx, "Error creating auth context %s", err)
-		return err
+	var authContext auth.AuthenticationContext
+	if cfg.Security.UseAuth {
+		authContext, err = auth.NewAuthenticationContext(ctx, cfg.Security.Oauth)
+		if err != nil {
+			logger.Errorf(ctx, "Error creating auth context %s", err)
+			return err
+		}
 	}
 
 	grpcServer, err := newGRPCServer(ctx, cfg, authContext,

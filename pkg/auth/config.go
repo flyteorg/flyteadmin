@@ -3,7 +3,6 @@ package auth
 type OAuthOptions struct {
 	ClientId         string `json:"clientId"`
 	ClientSecretFile string `json:"clientSecretFile"`
-	JwksUrl          string `json:"jwksUrl"`
 	AuthorizeUrl     string `json:"authorizeUrl"`
 	TokenUrl         string `json:"tokenUrl"`
 	CallbackUrl      string `json:"callbackUrl"`

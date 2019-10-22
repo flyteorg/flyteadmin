@@ -14,7 +14,6 @@ server:
     oauth:
       clientId: yourclientid
       clientSecretFile: "/path/to/oauth/secret"
-      jwksUrl: "https://idp.com/oauth/discovery"
       authorizeUrl: "https://idp.com/oauth2/authorize"
       tokenUrl: "https://idp.com/oauth2/token"
       callbackUrl: "https://localhost:8088/callback"
