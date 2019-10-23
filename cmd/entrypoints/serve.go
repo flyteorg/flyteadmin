@@ -3,7 +3,6 @@ package entrypoints
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpcauth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/lyft/flyteadmin/pkg/auth"
@@ -84,16 +83,6 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authContext au
 	return grpcServer, nil
 }
 
-// TODO: To be removed, landing page for easier testing
-func loginPage(w http.ResponseWriter, _ *http.Request) {
-	var htmlIndex = `<html>
-<body>
-	<a href="/login">Okta Log In</a>
-</body>
-</html>`
-	_, _ = fmt.Fprintf(w, htmlIndex)
-}
-
 func GetHandleOpenapiSpec(ctx context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		swaggerBytes, err := flyteService.Asset("admin.swagger.json")
@@ -129,7 +118,6 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authContext au
 	var gwmux *runtime.ServeMux
 	if cfg.Security.UseAuth {
 		// Add HTTP handlers for OAuth2 endpoints
-		mux.HandleFunc("/login_page", loginPage)
 		mux.HandleFunc("/login", auth.RefreshTokensIfExists(ctx, authContext,
 			auth.GetLoginHandler(ctx, authContext)))
 		mux.HandleFunc("/callback", auth.GetCallbackHandler(ctx, authContext))
@@ -158,6 +146,10 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig) error {
 	// This will parse configuration and create the necessary objects for dealing with auth
 	var authContext auth.AuthenticationContext
 	var err error
+	// This code is here to support authentication without SSL. This setup supports a network topology where
+	// Envoy does the SSL termination. The final hop is made over localhost only on a trusted machine.
+	// Warning: Running authentication without SSL in any other topology is a severe security flaw.
+	// See the auth.Config object for additional settings as well.
 	if cfg.Security.UseAuth {
 		authContext, err = auth.NewAuthenticationContext(ctx, cfg.Security.Oauth)
 		if err != nil {

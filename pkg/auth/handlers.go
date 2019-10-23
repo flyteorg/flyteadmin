@@ -111,7 +111,7 @@ func AuthenticationLoggingInterceptor(ctx context.Context, req interface{}, info
 func GetAuthenticationInterceptor(authContext AuthenticationContext) func(context.Context) (context.Context, error) {
 	return func(ctx context.Context) (context.Context, error) {
 		logger.Debugf(ctx, "Running authentication gRPC interceptor")
-		tokenStr, err := grpcauth.AuthFromMD(ctx, "bearer")
+		tokenStr, err := grpcauth.AuthFromMD(ctx, BearerScheme)
 		if err != nil {
 			logger.Debugf(ctx, "Could not retrieve bearer token from metadata %v", err)
 			return ctx, nil
@@ -158,8 +158,9 @@ func GetHttpRequestCookieToMetadataHandler(authContext AuthenticationContext) Ht
 			return nil
 		}
 		fmt.Printf("HTTP Annotation: Decoded access token %s\n", accessToken)
+		// TODO: change the word here to read from the context instead
 		return metadata.MD{
-			"authorization": []string{fmt.Sprintf("Bearer %s", accessToken)},
+			"authorization": []string{fmt.Sprintf("%s %s", BearerScheme, accessToken)},
 		}
 	}
 }

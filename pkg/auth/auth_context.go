@@ -17,14 +17,18 @@ type AuthenticationContext interface {
 	RedirectUrl() string
 	OidcProvider() *oidc.Provider
 	CookieManager() CookieManager
+	HttpAuthorizationHeader() string
+	GrpcAuthorizationHeader() string
 }
 
 type Context struct {
-	oauth2        *oauth2.Config
-	redirectUrl   string
-	claims        Claims
-	cookieManager CookieManager
-	oidcProvider  *oidc.Provider
+	oauth2                  *oauth2.Config
+	redirectUrl             string
+	claims                  Claims
+	cookieManager           CookieManager
+	oidcProvider            *oidc.Provider
+	httpAuthorizationHeader string
+	grpcAuthorizationHeader string
 }
 
 func (c Context) OAuth2Config() *oauth2.Config {
@@ -45,6 +49,14 @@ func (c Context) OidcProvider() *oidc.Provider {
 
 func (c Context) CookieManager() CookieManager {
 	return c.cookieManager
+}
+
+func (c Context) HttpAuthorizationHeader() string {
+	return c.httpAuthorizationHeader
+}
+
+func (c Context) GrpcAuthorizationHeader() string {
+	return c.grpcAuthorizationHeader
 }
 
 const (
@@ -69,12 +81,23 @@ func NewAuthenticationContext(ctx context.Context, options OAuthOptions) (Contex
 		return Context{}, errors.Wrapf(ErrAuthContext, err, "Error creating oidc provider")
 	}
 
+	var httpAuthorizationHeader = DefaultAuthorizationHeader
+	var grpcAuthorizationHeader = DefaultAuthorizationHeader
+	if options.HttpAuthorizationHeader != "" {
+		httpAuthorizationHeader = options.HttpAuthorizationHeader
+	}
+	if options.GrpcAuthorizationHeader != "" {
+		grpcAuthorizationHeader = options.GrpcAuthorizationHeader
+	}
+
 	return Context{
-		oauth2:        &oauth2Config,
-		redirectUrl:   options.RedirectUrl,
-		claims:        options.Claims,
-		cookieManager: cookieManager,
-		oidcProvider:  provider,
+		oauth2:                  &oauth2Config,
+		redirectUrl:             options.RedirectUrl,
+		claims:                  options.Claims,
+		cookieManager:           cookieManager,
+		oidcProvider:            provider,
+		httpAuthorizationHeader: httpAuthorizationHeader,
+		grpcAuthorizationHeader: grpcAuthorizationHeader,
 	}, nil
 }
 

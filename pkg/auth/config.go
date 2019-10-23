@@ -14,6 +14,11 @@ type OAuthOptions struct {
 	CookieBlockKeyFile string `json:"cookieBlockKeyFile"`
 
 	RedirectUrl string `json:"redirectUrl"`
+
+	// These settings are for non-SSL authentication modes, where
+	// TODO: Work out defaults handling better
+	HttpAuthorizationHeader string `json:"httpAuthorizationHeader"`
+	GrpcAuthorizationHeader string `json:"grpcAuthorizationHeader"`
 }
 
 type Claims struct {

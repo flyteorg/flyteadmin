@@ -5,10 +5,8 @@ const CsrfFormKey = "state"
 const AuthorizationResponseCodeType = "code"
 const OidcScope = "openid"
 const RefreshToken = "refresh_token"
+const DefaultAuthorizationHeader = "authorization"
+const BearerScheme = "Bearer"
 
 // IDP specific
 const OfflineAccessType = "offline_access"
-
-// JWT
-const Aud = "aud"
-const Iss = "iss"
