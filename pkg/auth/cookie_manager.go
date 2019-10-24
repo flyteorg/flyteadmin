@@ -19,6 +19,11 @@ type CookieManager struct {
 	blockKey []byte
 }
 
+const (
+	ErrConfigFileRead errors.ErrorCode = "CONFIG_OPTION_FILE_READ_FAILED"
+	ErrTokenNil errors.ErrorCode = "EMPTY_OAUTH_TOKEN"
+)
+
 func NewCookieManager(ctx context.Context, hashKeyFile, blockKeyFile string) (CookieManager, error) {
 	logger.Infof(ctx, "Instantiating cookie manager")
 	hashKeyBytes, err := ioutil.ReadFile(hashKeyFile)

@@ -150,7 +150,7 @@ func GetAuthenticationInterceptor(authContext AuthenticationContext) func(contex
 			return ctx, nil
 		}
 
-		// ...however, if there is a bearer token, but there are additional errors downstream, then we return an
+		// ...however, if there _is_ a bearer token, but there are additional errors downstream, then we return an
 		// authentication error.
 		token, err := ParseAndValidate(ctx, authContext.Claims(), tokenStr, authContext.OidcProvider())
 		if err != nil {
