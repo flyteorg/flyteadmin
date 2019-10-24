@@ -14,10 +14,11 @@ import (
 	"net/http"
 )
 
+type HttpRequestToMetadataAnnotator func(ctx context.Context, request *http.Request) metadata.MD
+
 // Look for access token and refresh token, if both are present and the access token is expired, then attempt to
 // refresh. Otherwise do nothing and proceed to the next handler. If successfully refreshed, proceed to the landing page.
 func RefreshTokensIfExists(ctx context.Context, authContext AuthenticationContext, handlerFunc http.HandlerFunc) http.HandlerFunc {
-
 	return func(writer http.ResponseWriter, request *http.Request) {
 		// Since we only do one thing if there are no errors anywhere along the chain, we can save code by just
 		// using one variable and checking for errors at the end.
@@ -43,7 +44,7 @@ func RefreshTokensIfExists(ctx context.Context, authContext AuthenticationContex
 			handlerFunc(writer, request)
 			return
 		} else {
-			http.Redirect(writer, request, authContext.RedirectUrl(), http.StatusTemporaryRedirect)
+			http.Redirect(writer, request, authContext.Options().RedirectUrl, http.StatusTemporaryRedirect)
 			return
 		}
 	}
@@ -94,7 +95,7 @@ func GetCallbackHandler(ctx context.Context, authContext AuthenticationContext) 
 			return
 		}
 
-		http.Redirect(writer, request, authContext.RedirectUrl(), http.StatusTemporaryRedirect)
+		http.Redirect(writer, request, authContext.Options().RedirectUrl, http.StatusTemporaryRedirect)
 	}
 }
 
@@ -103,6 +104,32 @@ func AuthenticationLoggingInterceptor(ctx context.Context, req interface{}, info
 	// the response.
 	fmt.Printf("gRPC server info in logging interceptor email %s method %s\n", ctx.Value("email"), info.FullMethod)
 	return handler(ctx, req)
+}
+
+// This function produces a gRPC middleware interceptor intended to be used when running authentication with non-default
+// gRPC headers (metadata). Because the default `authorization` header is reserved for use by Envoy, clients wishing
+// to pass tokens to Admin will need to use a different string, specified in this package's Config object. This interceptor
+// will scan for that arbitrary string, and then rename it to the default string, which the downstream auth/auditing
+// interceptors will detect and validate.
+func GetAuthenticationCustomMetadataInterceptor(authCtx AuthenticationContext) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		if authCtx.Options().GrpcAuthorizationHeader != DefaultAuthorizationHeader {
+			md, ok := metadata.FromIncomingContext(ctx)
+			if ok {
+				existingHeader := md.Get(authCtx.Options().GrpcAuthorizationHeader)
+				if len(existingHeader) > 0 {
+					logger.Debugf(ctx, "Found existing metadata %s", existingHeader[0])
+					newAuthorizationMetadata := metadata.Pairs(DefaultAuthorizationHeader, existingHeader[0])
+					joinedMetadata := metadata.Join(md, newAuthorizationMetadata)
+					newCtx := metadata.NewIncomingContext(ctx, joinedMetadata)
+					return handler(newCtx, req)
+				}
+			} else {
+				logger.Debugf(ctx, "Could not extract incoming metadata from context, continuing with original ctx...")
+			}
+		}
+		return handler(ctx, req)
+	}
 }
 
 // This function will only look for a token from the request metadata, verify it, and extract the user email if valid.
@@ -144,13 +171,11 @@ func WithUserEmail(ctx context.Context, email string) context.Context {
 	return context.WithValue(ctx, "email", email)
 }
 
-type HttpRequestToMetadataAnnotator func(ctx context.Context, request *http.Request) metadata.MD
-
 // This is effectively middleware for the grpc gateway, it allows us to modify the translation between HTTP request
-// and gRPC request.
+// and gRPC request. There are two potential sources for bearer tokens, it can come from the
 func GetHttpRequestCookieToMetadataHandler(authContext AuthenticationContext) HttpRequestToMetadataAnnotator {
 	return func(ctx context.Context, request *http.Request) metadata.MD {
-		// TODO: Add read from Authorization header first
+		// TODO: Add read from Authorization header first, using the custom header if necessary.
 		// TODO: Improve error handling
 		accessToken, _, _ := authContext.CookieManager().RetrieveTokenValues(ctx, request)
 		if accessToken == "" {
@@ -158,9 +183,8 @@ func GetHttpRequestCookieToMetadataHandler(authContext AuthenticationContext) Ht
 			return nil
 		}
 		fmt.Printf("HTTP Annotation: Decoded access token %s\n", accessToken)
-		// TODO: change the word here to read from the context instead
 		return metadata.MD{
-			"authorization": []string{fmt.Sprintf("%s %s", BearerScheme, accessToken)},
+			DefaultAuthorizationHeader: []string{fmt.Sprintf("%s %s", BearerScheme, accessToken)},
 		}
 	}
 }

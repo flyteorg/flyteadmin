@@ -65,6 +65,7 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authContext au
 	if cfg.Security.UseAuth {
 		logger.Infof(ctx, "Creating gRPC server with authentication")
 		chainedUnaryInterceptors = grpc_middleware.ChainUnaryServer(grpc_prometheus.UnaryServerInterceptor,
+			auth.GetAuthenticationCustomMetadataInterceptor(authContext),
 			grpcauth.UnaryServerInterceptor(auth.GetAuthenticationInterceptor(authContext)),
 			auth.AuthenticationLoggingInterceptor,
 		)

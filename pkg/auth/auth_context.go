@@ -14,21 +14,17 @@ import (
 type AuthenticationContext interface {
 	OAuth2Config() *oauth2.Config
 	Claims() Claims
-	RedirectUrl() string
 	OidcProvider() *oidc.Provider
 	CookieManager() CookieManager
-	HttpAuthorizationHeader() string
-	GrpcAuthorizationHeader() string
+	Options() OAuthOptions
 }
 
 type Context struct {
-	oauth2                  *oauth2.Config
-	redirectUrl             string
-	claims                  Claims
-	cookieManager           CookieManager
-	oidcProvider            *oidc.Provider
-	httpAuthorizationHeader string
-	grpcAuthorizationHeader string
+	oauth2        *oauth2.Config
+	claims        Claims
+	cookieManager CookieManager
+	oidcProvider  *oidc.Provider
+	options       OAuthOptions
 }
 
 func (c Context) OAuth2Config() *oauth2.Config {
@@ -39,10 +35,6 @@ func (c Context) Claims() Claims {
 	return c.claims
 }
 
-func (c Context) RedirectUrl() string {
-	return c.redirectUrl
-}
-
 func (c Context) OidcProvider() *oidc.Provider {
 	return c.oidcProvider
 }
@@ -51,12 +43,8 @@ func (c Context) CookieManager() CookieManager {
 	return c.cookieManager
 }
 
-func (c Context) HttpAuthorizationHeader() string {
-	return c.httpAuthorizationHeader
-}
-
-func (c Context) GrpcAuthorizationHeader() string {
-	return c.grpcAuthorizationHeader
+func (c Context) Options() OAuthOptions {
+	return c.options
 }
 
 const (
@@ -81,23 +69,12 @@ func NewAuthenticationContext(ctx context.Context, options OAuthOptions) (Contex
 		return Context{}, errors.Wrapf(ErrAuthContext, err, "Error creating oidc provider")
 	}
 
-	var httpAuthorizationHeader = DefaultAuthorizationHeader
-	var grpcAuthorizationHeader = DefaultAuthorizationHeader
-	if options.HttpAuthorizationHeader != "" {
-		httpAuthorizationHeader = options.HttpAuthorizationHeader
-	}
-	if options.GrpcAuthorizationHeader != "" {
-		grpcAuthorizationHeader = options.GrpcAuthorizationHeader
-	}
-
 	return Context{
-		oauth2:                  &oauth2Config,
-		redirectUrl:             options.RedirectUrl,
-		claims:                  options.Claims,
-		cookieManager:           cookieManager,
-		oidcProvider:            provider,
-		httpAuthorizationHeader: httpAuthorizationHeader,
-		grpcAuthorizationHeader: grpcAuthorizationHeader,
+		oauth2:        &oauth2Config,
+		claims:        options.Claims,
+		cookieManager: cookieManager,
+		oidcProvider:  provider,
+		options:       options,
 	}, nil
 }
 
