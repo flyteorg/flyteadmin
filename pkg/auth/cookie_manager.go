@@ -6,7 +6,6 @@ import (
 	"github.com/lyft/flytestdlib/errors"
 	"github.com/lyft/flytestdlib/logger"
 	"golang.org/x/oauth2"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -17,24 +16,21 @@ type CookieManager struct {
 }
 
 const (
-	ErrConfigFileRead errors.ErrorCode = "CONFIG_OPTION_FILE_READ_FAILED"
+	ErrB64Decoding errors.ErrorCode = "BINARY_DECODING_FAILED"
 	ErrTokenNil errors.ErrorCode = "EMPTY_OAUTH_TOKEN"
 )
 
-func NewCookieManager(ctx context.Context, hashKeyFile, blockKeyFile string) (CookieManager, error) {
+func NewCookieManager(ctx context.Context, hashKeyEncoded, blockKeyEncoded string) (CookieManager, error) {
 	logger.Infof(ctx, "Instantiating cookie manager")
-	hashKeyBytes, err := ioutil.ReadFile(hashKeyFile)
-	if err != nil {
-		return CookieManager{}, errors.Wrapf(ErrConfigFileRead, err, "Could not read hash key file")
-	}
-	blockKeyBytes, err := ioutil.ReadFile(blockKeyFile)
-	if err != nil {
-		return CookieManager{}, errors.Wrapf(ErrConfigFileRead, err, "Could not read block key file")
-	}
 
-	// Add error handling
-	var hashKey, _ = base64.RawStdEncoding.DecodeString(string(hashKeyBytes))
-	var blockKey, _ = base64.RawStdEncoding.DecodeString(string(blockKeyBytes))
+	hashKey, err := base64.RawStdEncoding.DecodeString(hashKeyEncoded)
+	if err != nil {
+		return CookieManager{}, errors.Wrapf(ErrB64Decoding, err, "Error decoding hash key bytes")
+	}
+	blockKey, err := base64.RawStdEncoding.DecodeString(blockKeyEncoded)
+	if err != nil {
+		return CookieManager{}, errors.Wrapf(ErrB64Decoding, err, "Error decoding block key bytes")
+	}
 
 	return CookieManager{
 		hashKey:  hashKey,

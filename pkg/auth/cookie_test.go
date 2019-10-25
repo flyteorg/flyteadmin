@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"fmt"
 	"github.com/gorilla/securecookie"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -18,6 +19,8 @@ func TestSecureCookieLifecycle(t *testing.T) {
 
 	blockKey := securecookie.GenerateRandomKey(32)
 	assert.True(t, base64.RawStdEncoding.EncodeToString(blockKey) != "")
+	fmt.Printf("Hash key: |%s| Block key: |%s|\n",
+		base64.RawStdEncoding.EncodeToString(hashKey), base64.RawStdEncoding.EncodeToString(blockKey))
 
 	cookie, err := NewSecureCookie("choc", "chip", hashKey, blockKey)
 	assert.NoError(t, err)

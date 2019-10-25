@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"fmt"
 	"github.com/lyft/flyteadmin/pkg/auth/interfaces/mocks"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/oauth2"
@@ -44,13 +43,17 @@ func TestGetLoginHandler(t *testing.T) {
 
 func TestGetHttpRequestCookieToMetadataHandler(t *testing.T) {
 	ctx := context.Background()
-	dummyOAuth2Config := oauth2.Config{
-		ClientID: "abc",
-		Scopes: []string{"openid", "other"},
-	}
+	// These were generated for unit testing only.
+	hashKeyEncoded := "wG4pE1ccdw/pHZ2ml8wrD5VJkOtLPmBpWbKHmezWXktGaFbRoAhXidWs8OpbA3y7N8vyZhz1B1E37+tShWC7gA"
+	blockKeyEncoded := "afyABVgGOvWJFxVyOvCWCupoTn6BkNl4SOHmahho16Q"
+	cookieManager, err := NewCookieManager(ctx, hashKeyEncoded, blockKeyEncoded)
+	assert.NoError(t, err)
 	mockAuthCtx := mocks.AuthenticationContext{}
-	mockAuthCtx.On("OAuth2Config").Return(&dummyOAuth2Config)
-
+	mockAuthCtx.On("CookieManager").Return(&cookieManager)
 	handler := GetHttpRequestCookieToMetadataHandler(&mockAuthCtx)
-	fmt.Println(handler(ctx, nil))
+	req, err := http.NewRequest("GET", "/api/v1/projects", nil)
+	jwtCookie, err := NewSecureCookie(accessTokenCookie, "a.b.c", cookieManager.hashKey, cookieManager.blockKey)
+	assert.NoError(t, err)
+	req.AddCookie(&jwtCookie)
+	assert.Equal(t, "Bearer a.b.c", handler(ctx, req)["authorization"][0])
 }

@@ -43,6 +43,7 @@ func (c Context) Options() config.OAuthOptions {
 
 const (
 	ErrAuthContext errors.ErrorCode = "AUTH_CONTEXT_SETUP_FAILED"
+	ErrConfigFileRead errors.ErrorCode = "CONFIG_OPTION_FILE_READ_FAILED"
 )
 
 func NewAuthenticationContext(ctx context.Context, options config.OAuthOptions) (Context, error) {
@@ -51,7 +52,16 @@ func NewAuthenticationContext(ctx context.Context, options config.OAuthOptions) 
 		return Context{}, errors.Wrapf(ErrAuthContext, err, "Error creating OAuth2 library configuration")
 	}
 
-	cookieManager, err := NewCookieManager(ctx, options.CookieHashKeyFile, options.CookieBlockKeyFile)
+	hashKeyBytes, err := ioutil.ReadFile(options.CookieHashKeyFile)
+	if err != nil {
+		return Context{}, errors.Wrapf(ErrConfigFileRead, err, "Could not read hash key file")
+	}
+	blockKeyBytes, err := ioutil.ReadFile(options.CookieBlockKeyFile)
+	if err != nil {
+		return Context{}, errors.Wrapf(ErrConfigFileRead, err, "Could not read block key file")
+	}
+
+	cookieManager, err := NewCookieManager(ctx, string(hashKeyBytes), string(blockKeyBytes))
 	if err != nil {
 		logger.Errorf(ctx, "Error creating cookie manager %s", err)
 		return Context{}, errors.Wrapf(ErrAuthContext, err, "Error creating cookie manager")
