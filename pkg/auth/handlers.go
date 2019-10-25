@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	grpcauth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
+	"github.com/lyft/flyteadmin/pkg/auth/interfaces"
 	"github.com/lyft/flytestdlib/errors"
 	"github.com/lyft/flytestdlib/logger"
 	"golang.org/x/oauth2"
@@ -18,7 +19,7 @@ type HttpRequestToMetadataAnnotator func(ctx context.Context, request *http.Requ
 
 // Look for access token and refresh token, if both are present and the access token is expired, then attempt to
 // refresh. Otherwise do nothing and proceed to the next handler. If successfully refreshed, proceed to the landing page.
-func RefreshTokensIfExists(ctx context.Context, authContext AuthenticationContext, handlerFunc http.HandlerFunc) http.HandlerFunc {
+func RefreshTokensIfExists(ctx context.Context, authContext interfaces.AuthenticationContext, handlerFunc http.HandlerFunc) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		// Since we only do one thing if there are no errors anywhere along the chain, we can save code by just
 		// using one variable and checking for errors at the end.
@@ -50,7 +51,7 @@ func RefreshTokensIfExists(ctx context.Context, authContext AuthenticationContex
 	}
 }
 
-func GetLoginHandler(ctx context.Context, authContext AuthenticationContext) http.HandlerFunc {
+func GetLoginHandler(ctx context.Context, authContext interfaces.AuthenticationContext) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		csrfCookie := NewCsrfCookie()
 		csrfToken := csrfCookie.Value
@@ -65,7 +66,7 @@ func GetLoginHandler(ctx context.Context, authContext AuthenticationContext) htt
 	}
 }
 
-func GetCallbackHandler(ctx context.Context, authContext AuthenticationContext) http.HandlerFunc {
+func GetCallbackHandler(ctx context.Context, authContext interfaces.AuthenticationContext) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		logger.Debugf(ctx, "Running callback handler...")
 		authorizationCode := request.FormValue(AuthorizationResponseCodeType)
@@ -111,7 +112,7 @@ func AuthenticationLoggingInterceptor(ctx context.Context, req interface{}, info
 // to pass tokens to Admin will need to use a different string, specified in this package's Config object. This interceptor
 // will scan for that arbitrary string, and then rename it to the default string, which the downstream auth/auditing
 // interceptors will detect and validate.
-func GetAuthenticationCustomMetadataInterceptor(authCtx AuthenticationContext) grpc.UnaryServerInterceptor {
+func GetAuthenticationCustomMetadataInterceptor(authCtx interfaces.AuthenticationContext) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		if authCtx.Options().GrpcAuthorizationHeader != DefaultAuthorizationHeader {
 			md, ok := metadata.FromIncomingContext(ctx)
@@ -135,7 +136,7 @@ func GetAuthenticationCustomMetadataInterceptor(authCtx AuthenticationContext) g
 // This function will only look for a token from the request metadata, verify it, and extract the user email if valid.
 // Unless there is an error, it will not return an unauthorized status. That is up to subsequent functions to decide,
 // based on configuration.  We don't want to require authentication for all endpoints.
-func GetAuthenticationInterceptor(authContext AuthenticationContext) func(context.Context) (context.Context, error) {
+func GetAuthenticationInterceptor(authContext interfaces.AuthenticationContext) func(context.Context) (context.Context, error) {
 	return func(ctx context.Context) (context.Context, error) {
 		logger.Debugf(ctx, "Running authentication gRPC interceptor")
 		tokenStr, err := grpcauth.AuthFromMD(ctx, BearerScheme)
@@ -173,7 +174,7 @@ func WithUserEmail(ctx context.Context, email string) context.Context {
 
 // This is effectively middleware for the grpc gateway, it allows us to modify the translation between HTTP request
 // and gRPC request. There are two potential sources for bearer tokens, it can come from the
-func GetHttpRequestCookieToMetadataHandler(authContext AuthenticationContext) HttpRequestToMetadataAnnotator {
+func GetHttpRequestCookieToMetadataHandler(authContext interfaces.AuthenticationContext) HttpRequestToMetadataAnnotator {
 	return func(ctx context.Context, request *http.Request) metadata.MD {
 		// TODO: Add read from Authorization header first, using the custom header if necessary.
 		// TODO: Improve error handling

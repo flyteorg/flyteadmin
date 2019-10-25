@@ -10,9 +10,6 @@ import (
 	"net/http"
 )
 
-type CookieHandler interface {
-	RetrieveTokenValues(ctx context.Context, request *http.Request) (accessToken string, refreshToken string, err error)
-}
 
 type CookieManager struct {
 	hashKey  []byte

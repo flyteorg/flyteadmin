@@ -1217,6 +1217,7 @@
     "github.com/spf13/cobra",
     "github.com/spf13/pflag",
     "github.com/stretchr/testify/assert",
+    "github.com/stretchr/testify/mock",
     "golang.org/x/oauth2",
     "google.golang.org/grpc",
     "google.golang.org/grpc/codes",

@@ -51,10 +51,15 @@ func (cfg ServerConfig) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.Bool(fmt.Sprintf("%v%v", prefix, "security.useAuth"), *new(bool), "")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "security.oauth.clientId"), *new(string), "")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "security.oauth.clientSecretFile"), *new(string), "")
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "security.oauth.jwksUrl"), *new(string), "")
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "security.oauth.issuer"), *new(string), "")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "security.oauth.authorizeUrl"), *new(string), "")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "security.oauth.tokenUrl"), *new(string), "")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "security.oauth.callbackUrl"), *new(string), "")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "security.oauth.claims.aud"), *new(string), "")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "security.oauth.claims.iss"), *new(string), "")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "security.oauth.cookieHashKeyFile"), *new(string), "")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "security.oauth.cookieBlockKeyFile"), *new(string), "")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "security.oauth.redirectUrl"), *new(string), "")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "security.oauth.httpAuthorizationHeader"), *new(string), "")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "security.oauth.grpcAuthorizationHeader"), *new(string), "")
 	return cmdFlags
 }

@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"github.com/coreos/go-oidc"
+	"github.com/lyft/flyteadmin/pkg/auth/config"
 	"github.com/lyft/flytestdlib/errors"
 	"github.com/lyft/flytestdlib/logger"
 	"golang.org/x/oauth2"
@@ -35,7 +36,7 @@ func GetRefreshedToken(ctx context.Context, oauth *oauth2.Config, accessToken, r
 	return newToken, nil
 }
 
-func ParseAndValidate(ctx context.Context, claims Claims, accessToken string,
+func ParseAndValidate(ctx context.Context, claims config.Claims, accessToken string,
 	provider *oidc.Provider) (*oidc.IDToken, error) {
 
 	var verifier = provider.Verifier(&oidc.Config{ClientID: claims.Audience})

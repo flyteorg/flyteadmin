@@ -6,6 +6,7 @@ import (
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpcauth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/lyft/flyteadmin/pkg/auth"
+	"github.com/lyft/flyteadmin/pkg/auth/interfaces"
 	"github.com/lyft/flyteadmin/pkg/server"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/credentials"
@@ -58,7 +59,7 @@ func init() {
 }
 
 // Creates a new gRPC Server with all the configuration
-func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authContext auth.AuthenticationContext,
+func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authContext interfaces.AuthenticationContext,
 	opts ...grpc.ServerOption) (*grpc.Server, error) {
 	// Not yet implemented for streaming
 	var chainedUnaryInterceptors grpc.UnaryServerInterceptor
@@ -100,7 +101,7 @@ func GetHandleOpenapiSpec(ctx context.Context) http.HandlerFunc {
 	}
 }
 
-func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authContext auth.AuthenticationContext,
+func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authContext interfaces.AuthenticationContext,
 	grpcAddress string, grpcConnectionOpts ...grpc.DialOption) (*http.ServeMux, error) {
 
 	// Register the server that will serve HTTP/REST Traffic
@@ -145,7 +146,7 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig) error {
 	logger.Infof(ctx, "Serving Flyte Admin Insecure")
 
 	// This will parse configuration and create the necessary objects for dealing with auth
-	var authContext auth.AuthenticationContext
+	var authContext interfaces.AuthenticationContext
 	var err error
 	// This code is here to support authentication without SSL. This setup supports a network topology where
 	// Envoy does the SSL termination. The final hop is made over localhost only on a trusted machine.
@@ -208,7 +209,7 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig) error {
 		return err
 	}
 	// This will parse configuration and create the necessary objects for dealing with auth
-	var authContext auth.AuthenticationContext
+	var authContext interfaces.AuthenticationContext
 	if cfg.Security.UseAuth {
 		authContext, err = auth.NewAuthenticationContext(ctx, cfg.Security.Oauth)
 		if err != nil {

@@ -1,4 +1,4 @@
-package auth
+package config
 
 type OAuthOptions struct {
 	ClientId         string `json:"clientId"`

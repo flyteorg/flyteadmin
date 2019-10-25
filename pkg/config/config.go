@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-	"github.com/lyft/flyteadmin/pkg/auth"
+	config2 "github.com/lyft/flyteadmin/pkg/auth/config"
 	"github.com/lyft/flytestdlib/config"
 )
 
@@ -19,10 +19,10 @@ type ServerConfig struct {
 }
 
 type ServerSecurityOptions struct {
-	Secure  bool              `json:"secure"`
-	Ssl     SslOptions        `json:"ssl"`
-	UseAuth bool              `json:"useAuth"`
-	Oauth   auth.OAuthOptions `json:"oauth"`
+	Secure  bool                 `json:"secure"`
+	Ssl     SslOptions           `json:"ssl"`
+	UseAuth bool                 `json:"useAuth"`
+	Oauth   config2.OAuthOptions `json:"oauth"`
 }
 
 type SslOptions struct {

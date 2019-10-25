@@ -35,3 +35,9 @@ seed_projects:
 	go run cmd/main.go --logtostderr --server.kube-config ~/.kube/config  --config flyteadmin_config.yaml migrate seed-projects project admintests flytekit
 
 all: compile
+
+generate:
+	which pflags || (go get github.com/lyft/flytestdlib/cli/pflags)
+	which mockery || (go get github.com/enghabu/mockery/cmd/mockery)
+	which enumer || (go get github.com/alvaroloes/enumer)
+	@go generate ./...
