@@ -13,6 +13,10 @@ type OAuthOptions struct {
 	CookieHashKeyFile  string `json:"cookieHashKeyFile"`
 	CookieBlockKeyFile string `json:"cookieBlockKeyFile"`
 
+	// This is where the user will be redirected to at the end of the flow, but you should not use it. Instead,
+	// the initial /login handler should be called with a redirect_url parameter, which will get saved to a cookie.
+	// This setting will only be used when that cookie is missing.
+	// See the login handler code for more comments.
 	RedirectUrl string `json:"redirectUrl"`
 
 	// These settings are for non-SSL authentication modes, where Envoy is handling SSL termination

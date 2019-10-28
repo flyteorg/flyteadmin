@@ -15,6 +15,10 @@ import (
 	"net/http"
 )
 
+const (
+	LoginRedirectUrlParameter = "redirect_url"
+)
+
 type HttpRequestToMetadataAnnotator func(ctx context.Context, request *http.Request) metadata.MD
 
 // Look for access token and refresh token, if both are present and the access token is expired, then attempt to
@@ -45,7 +49,8 @@ func RefreshTokensIfExists(ctx context.Context, authContext interfaces.Authentic
 			handlerFunc(writer, request)
 			return
 		} else {
-			http.Redirect(writer, request, authContext.Options().RedirectUrl, http.StatusTemporaryRedirect)
+			redirectUrl := getAuthFlowEndRedirect(ctx, authContext, request)
+			http.Redirect(writer, request, redirectUrl, http.StatusTemporaryRedirect)
 			return
 		}
 	}
@@ -61,7 +66,13 @@ func GetLoginHandler(ctx context.Context, authContext interfaces.AuthenticationC
 		logger.Debugf(ctx, "Setting CSRF state cookie to %s and state to %s\n", csrfToken, state)
 		url := authContext.OAuth2Config().AuthCodeURL(state)
 		fmt.Println(url)
-
+		queryParams := request.URL.Query()
+		if flowEndRedirectUrl := queryParams.Get(LoginRedirectUrlParameter); flowEndRedirectUrl != "" {
+			redirectCookie := NewRedirectCookie(ctx, flowEndRedirectUrl)
+			if redirectCookie != nil {
+				http.SetCookie(writer, redirectCookie)
+			}
+		}
 		http.Redirect(writer, request, url, http.StatusTemporaryRedirect)
 	}
 }
@@ -96,7 +107,8 @@ func GetCallbackHandler(ctx context.Context, authContext interfaces.Authenticati
 			return
 		}
 
-		http.Redirect(writer, request, authContext.Options().RedirectUrl, http.StatusTemporaryRedirect)
+		redirectUrl := getAuthFlowEndRedirect(ctx, authContext, request)
+		http.Redirect(writer, request, redirectUrl, http.StatusTemporaryRedirect)
 	}
 }
 

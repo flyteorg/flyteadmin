@@ -6,6 +6,8 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/gorilla/securecookie"
+	"github.com/lyft/flyteadmin/pkg/auth/config"
+	"github.com/lyft/flyteadmin/pkg/auth/interfaces/mocks"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/url"
@@ -83,5 +85,38 @@ func TestVerifyCsrfCookie(t *testing.T) {
 		request.AddCookie(&cookie)
 		valid := VerifyCsrfCookie(context.Background(), request)
 		assert.True(t, valid)
+	})
+}
+
+func TestNewRedirectCookie(t *testing.T) {
+	ctx := context.Background()
+	cookie := NewRedirectCookie(ctx, "/console")
+	assert.NotNil(t, cookie)
+	assert.Equal(t, "/console", cookie.Value)
+}
+
+func TestGetAuthFlowEndRedirect(t *testing.T) {
+	t.Run("in request", func(t *testing.T) {
+		ctx := context.Background()
+		request, err := http.NewRequest(http.MethodGet, "/test", nil)
+		assert.NoError(t, err)
+		cookie := NewRedirectCookie(ctx, "/console")
+		assert.NotNil(t, cookie)
+		request.AddCookie(cookie)
+		mockAuthCtx := &mocks.AuthenticationContext{}
+		redirect := getAuthFlowEndRedirect(ctx, mockAuthCtx, request)
+		assert.Equal(t, "/console", redirect)
+	})
+
+	t.Run("not in request", func(t *testing.T) {
+		ctx := context.Background()
+		request, err := http.NewRequest(http.MethodGet, "/test", nil)
+		assert.NoError(t, err)
+		mockAuthCtx := &mocks.AuthenticationContext{}
+		mockAuthCtx.On("Options").Return(config.OAuthOptions{
+			RedirectUrl: "/api/v1/projects",
+		})
+		redirect := getAuthFlowEndRedirect(ctx, mockAuthCtx, request)
+		assert.Equal(t, "/api/v1/projects", redirect)
 	})
 }

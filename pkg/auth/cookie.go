@@ -5,16 +5,21 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"github.com/gorilla/securecookie"
+	"github.com/lyft/flyteadmin/pkg/auth/interfaces"
 	"github.com/lyft/flytestdlib/errors"
 	"github.com/lyft/flytestdlib/logger"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"time"
 )
 
-const accessTokenCookie = "flyte_jwt"
-const refreshTokenCookie = "flyte_refresh"
-const csrfStateCookie = "flyte_csrf_state"
+const (
+	accessTokenCookie  = "flyte_jwt"
+	refreshTokenCookie = "flyte_refresh"
+	csrfStateCookie    = "flyte_csrf_state"
+	redirectUrlCookie  = "flyte_redirect_location"
+)
 
 const (
 	ErrSecureCookie errors.ErrorCode = "SECURE_COOKIE_ERROR"
@@ -86,4 +91,38 @@ func VerifyCsrfCookie(ctx context.Context, request *http.Request) bool {
 		return false
 	}
 	return true
+}
+
+// This function takes in a string and returns a cookie that's used to keep track of where to send the user after
+// the OAuth2 login flow is complete.
+func NewRedirectCookie(ctx context.Context, redirectUrl string) *http.Cookie {
+	urlObj, err := url.Parse(redirectUrl)
+	if err != nil || urlObj == nil {
+		logger.Errorf(ctx, "Error creating redirect cookie %s %s", urlObj, err)
+		return nil
+	}
+
+	if urlObj.EscapedPath() == "" {
+		logger.Errorf(ctx, "Error parsing URL, redirect %s resolved to empty string", redirectUrl)
+		return nil
+	}
+
+	return &http.Cookie{
+		Name:     redirectUrlCookie,
+		Value:    urlObj.EscapedPath(),
+		SameSite: http.SameSiteStrictMode,
+		HttpOnly: true,
+	}
+}
+
+// At the end of the OAuth flow, the server needs to send the user somewhere. This should have been stored as a cookie
+// during the initial /login call. If that cookie is missing from the request, it will default to the one configured
+// in this package's Config object.
+func getAuthFlowEndRedirect(ctx context.Context, authContext interfaces.AuthenticationContext, request *http.Request) string {
+	cookie, err := request.Cookie(redirectUrlCookie)
+	if err != nil {
+		logger.Debugf(ctx, "Could not detect end-of-flow redirect url cookie")
+		return authContext.Options().RedirectUrl
+	}
+	return cookie.Value
 }
