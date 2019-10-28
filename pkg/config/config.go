@@ -8,7 +8,7 @@ import (
 
 const SectionKey = "server"
 
-//go:generate pflags ServerConfig
+//go:generate pflags ServerConfig --default-var=defaultServerConfig
 
 type ServerConfig struct {
 	HTTPPort   int                   `json:"httpPort" pflag:",On which http port to serve admin"`
@@ -30,7 +30,16 @@ type SslOptions struct {
 	KeyFile         string `json:"keyFile"`
 }
 
-var serverConfig = config.MustRegisterSection(SectionKey, &ServerConfig{})
+var defaultServerConfig = &ServerConfig{
+	Security: ServerSecurityOptions{
+		Oauth: config2.OAuthOptions{
+			// Please see the comments in this struct's definition for more information
+			HttpAuthorizationHeader: "placeholder",
+			GrpcAuthorizationHeader: "flyte-authorization",
+		},
+	},
+}
+var serverConfig = config.MustRegisterSection(SectionKey, defaultServerConfig)
 
 func GetConfig() *ServerConfig {
 	return serverConfig.GetConfig().(*ServerConfig)

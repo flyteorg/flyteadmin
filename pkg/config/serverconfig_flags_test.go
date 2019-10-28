@@ -103,7 +103,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vInt, err := cmdFlags.GetInt("httpPort"); err == nil {
-				assert.Equal(t, int(*new(int)), vInt)
+				assert.Equal(t, int(defaultServerConfig.HTTPPort), vInt)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -125,7 +125,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vInt, err := cmdFlags.GetInt("grpcPort"); err == nil {
-				assert.Equal(t, int(*new(int)), vInt)
+				assert.Equal(t, int(defaultServerConfig.GrpcPort), vInt)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -147,7 +147,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("kube-config"); err == nil {
-				assert.Equal(t, string(*new(string)), vString)
+				assert.Equal(t, string(defaultServerConfig.KubeConfig), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -169,7 +169,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("master"); err == nil {
-				assert.Equal(t, string(*new(string)), vString)
+				assert.Equal(t, string(defaultServerConfig.Master), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -191,7 +191,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vBool, err := cmdFlags.GetBool("security.secure"); err == nil {
-				assert.Equal(t, bool(*new(bool)), vBool)
+				assert.Equal(t, bool(defaultServerConfig.Security.Secure), vBool)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -213,7 +213,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("security.ssl.certificateFile"); err == nil {
-				assert.Equal(t, string(*new(string)), vString)
+				assert.Equal(t, string(defaultServerConfig.Security.Ssl.CertificateFile), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -235,7 +235,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("security.ssl.keyFile"); err == nil {
-				assert.Equal(t, string(*new(string)), vString)
+				assert.Equal(t, string(defaultServerConfig.Security.Ssl.KeyFile), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -257,7 +257,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vBool, err := cmdFlags.GetBool("security.useAuth"); err == nil {
-				assert.Equal(t, bool(*new(bool)), vBool)
+				assert.Equal(t, bool(defaultServerConfig.Security.UseAuth), vBool)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -279,7 +279,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("security.oauth.clientId"); err == nil {
-				assert.Equal(t, string(*new(string)), vString)
+				assert.Equal(t, string(defaultServerConfig.Security.Oauth.ClientId), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -301,7 +301,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("security.oauth.clientSecretFile"); err == nil {
-				assert.Equal(t, string(*new(string)), vString)
+				assert.Equal(t, string(defaultServerConfig.Security.Oauth.ClientSecretFile), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -323,7 +323,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("security.oauth.authorizeUrl"); err == nil {
-				assert.Equal(t, string(*new(string)), vString)
+				assert.Equal(t, string(defaultServerConfig.Security.Oauth.AuthorizeUrl), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -345,7 +345,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("security.oauth.tokenUrl"); err == nil {
-				assert.Equal(t, string(*new(string)), vString)
+				assert.Equal(t, string(defaultServerConfig.Security.Oauth.TokenUrl), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -367,7 +367,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("security.oauth.callbackUrl"); err == nil {
-				assert.Equal(t, string(*new(string)), vString)
+				assert.Equal(t, string(defaultServerConfig.Security.Oauth.CallbackUrl), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -389,7 +389,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("security.oauth.claims.aud"); err == nil {
-				assert.Equal(t, string(*new(string)), vString)
+				assert.Equal(t, string(defaultServerConfig.Security.Oauth.Claims.Audience), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -411,7 +411,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("security.oauth.claims.iss"); err == nil {
-				assert.Equal(t, string(*new(string)), vString)
+				assert.Equal(t, string(defaultServerConfig.Security.Oauth.Claims.Issuer), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -433,7 +433,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("security.oauth.cookieHashKeyFile"); err == nil {
-				assert.Equal(t, string(*new(string)), vString)
+				assert.Equal(t, string(defaultServerConfig.Security.Oauth.CookieHashKeyFile), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -455,7 +455,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("security.oauth.cookieBlockKeyFile"); err == nil {
-				assert.Equal(t, string(*new(string)), vString)
+				assert.Equal(t, string(defaultServerConfig.Security.Oauth.CookieBlockKeyFile), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -477,7 +477,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("security.oauth.redirectUrl"); err == nil {
-				assert.Equal(t, string(*new(string)), vString)
+				assert.Equal(t, string(defaultServerConfig.Security.Oauth.RedirectUrl), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -499,7 +499,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("security.oauth.httpAuthorizationHeader"); err == nil {
-				assert.Equal(t, string(*new(string)), vString)
+				assert.Equal(t, string(defaultServerConfig.Security.Oauth.HttpAuthorizationHeader), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -521,7 +521,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("security.oauth.grpcAuthorizationHeader"); err == nil {
-				assert.Equal(t, string(*new(string)), vString)
+				assert.Equal(t, string(defaultServerConfig.Security.Oauth.GrpcAuthorizationHeader), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}

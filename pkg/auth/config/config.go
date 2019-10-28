@@ -15,9 +15,14 @@ type OAuthOptions struct {
 
 	RedirectUrl string `json:"redirectUrl"`
 
-	// These settings are for non-SSL authentication modes, where
-	// TODO: Work out defaults handling better
+	// These settings are for non-SSL authentication modes, where Envoy is handling SSL termination
+	// This is not yet used, but this is the HTTP variant of the setting below.
 	HttpAuthorizationHeader string `json:"httpAuthorizationHeader"`
+
+	// In order to support deployments of this Admin service where Envoy is terminating SSL connections, the metadata
+	// header name cannot be "authorization", which is the standard metadata name. Envoy has special handling for that
+	// name. Instead, there is a gRPC interceptor, GetAuthenticationCustomMetadataInterceptor, that will translate
+	// incoming metadata headers with this config setting's name, into that standard header
 	GrpcAuthorizationHeader string `json:"grpcAuthorizationHeader"`
 }
 
