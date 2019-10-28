@@ -12,12 +12,6 @@ import (
 	"testing"
 )
 
-//func TestGetCallbackHandler(t *testing.T) {
-//	ctx := context.Background()
-//	options
-//	authCtx := NewAuthenticationContext(ctx, )
-//}
-
 func TestWithUserEmail(t *testing.T) {
 	ctx := WithUserEmail(context.Background(), "abc")
 	assert.Equal(t, "abc", ctx.Value("email"))
@@ -38,7 +32,7 @@ func TestGetLoginHandler(t *testing.T) {
 	handler(w, req)
 	assert.Equal(t, 307, w.Code)
 	assert.True(t, strings.Contains(w.Header().Get("Location"), "response_type=code&scope=openid+other"))
-	assert.True(t, strings.Contains(w.Header().Get("Set-Cookie"), "my-csrf-state="))
+	assert.True(t, strings.Contains(w.Header().Get("Set-Cookie"), "flyte_csrf_state="))
 }
 
 func TestGetHttpRequestCookieToMetadataHandler(t *testing.T) {

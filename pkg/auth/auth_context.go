@@ -95,7 +95,7 @@ func GetOauth2Config(options config.OAuthOptions) (oauth2.Config, error) {
 		ClientSecret: secret,
 		// Offline access needs to be specified in order to return a refresh token in the exchange.
 		// TODO: Second parameter is IDP specific - move to config. Also handle case where a refresh token is not allowed
-		Scopes: []string{OidcScope, OfflineAccessType},
+		Scopes: []string{OidcScope, OfflineAccessType, ProfileScope},
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  options.AuthorizeUrl,
 			TokenURL: options.TokenUrl,

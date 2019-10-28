@@ -12,9 +12,9 @@ import (
 	"time"
 )
 
-const accessTokenCookie = "my-jwt-cookie"
-const refreshTokenCookie = "my-refresh-cookie"
-const csrfStateCookie = "my-csrf-state"
+const accessTokenCookie = "flyte_jwt"
+const refreshTokenCookie = "flyte_refresh"
+const csrfStateCookie = "flyte_csrf_state"
 
 const (
 	ErrSecureCookie errors.ErrorCode = "SECURE_COOKIE_ERROR"

@@ -37,7 +37,7 @@ func TestNewCsrfToken(t *testing.T) {
 
 func TestNewCsrfCookie(t *testing.T) {
 	cookie := NewCsrfCookie()
-	assert.Equal(t, "my-csrf-state", cookie.Name)
+	assert.Equal(t, "flyte_csrf_state", cookie.Name)
 	assert.True(t, cookie.HttpOnly)
 }
 
