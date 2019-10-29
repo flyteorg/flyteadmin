@@ -3,8 +3,6 @@
 # 
 # TO OPT OUT OF UPDATES, SEE https://github.com/lyft/boilerplate/blob/master/Readme.rst
 
-DEP_SHA=1f7c19e5f52f49ffb9f956f64c010be14683468b
-
 .PHONY: lint
 lint: #lints the package for common code smells
 	which golangci-lint || GO111MODULE=on go install github.com/golangci/golangci-lint/cmd/golangci-lint
@@ -18,7 +16,7 @@ goimports:
 
 .PHONY: install
 install: #download dependencies (including test deps) for the package
-	which dep || (curl "https://raw.githubusercontent.com/golang/dep/${DEP_SHA}/install.sh" | sh)
+	which dep || (curl "https://raw.githubusercontent.com/golang/dep/master/install.sh" | sh)
 	dep ensure
 
 .PHONY: test_unit
