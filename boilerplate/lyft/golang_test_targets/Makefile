@@ -5,8 +5,8 @@
 
 .PHONY: lint
 lint: #lints the package for common code smells
-	which golangci-lint || GO111MODULE=on go install github.com/golangci/golangci-lint/cmd/golangci-lint
-	go env
+	which golangci-lint || curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | bash -s -- -b $$GOPATH/bin v1.21.0
+
 	GO111MODULE=off GL_DEBUG=linters_output golangci-lint run --exclude deprecated -v
 
 # If code is failing goimports linter, this will fix.
