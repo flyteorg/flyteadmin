@@ -22,8 +22,8 @@ database:
   port: 5432
   username: postgres
   host: localhost
-  dbname: flyte
-  password: postgres
+  dbname: postgres
+  options: "sslmode=disable"
 scheduler:
   eventScheduler:
     scheme: local
