@@ -70,7 +70,7 @@ func NewCsrfCookie() http.Cookie {
 	return http.Cookie{
 		Name:     csrfStateCookie,
 		Value:    csrfStateToken,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteLaxMode,
 		HttpOnly: true,
 	}
 }
@@ -83,7 +83,7 @@ func VerifyCsrfCookie(ctx context.Context, request *http.Request) bool {
 	}
 	csrfCookie, err := request.Cookie(csrfStateCookie)
 	if csrfCookie == nil || err != nil {
-		logger.Errorf(ctx, "Could not find csrf cookie")
+		logger.Errorf(ctx, "Could not find csrf cookie %s", err)
 		return false
 	}
 	if HashCsrfState(csrfCookie.Value) != csrfState {
