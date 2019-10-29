@@ -1,14 +1,21 @@
 package clusterresource
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/lyft/flyteadmin/pkg/repositories/transformers"
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
+
 	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
 	mockScope "github.com/lyft/flytestdlib/promutils"
 	"github.com/stretchr/testify/assert"
+
+	repositoryMocks "github.com/lyft/flyteadmin/pkg/repositories/mocks"
+	"github.com/lyft/flyteadmin/pkg/repositories/models"
 )
 
 var testScope = mockScope.NewTestScope()
@@ -97,12 +104,77 @@ func TestPopulateTemplateValues(t *testing.T) {
 	defer os.Setenv(testEnvVarName, origEnvVar)
 	os.Setenv(testEnvVarName, "2")
 
-	templateValues, err := populateTemplateValues("namespacey", data)
+	templateValues, err := populateTemplateValues(data)
 	assert.NoError(t, err)
 	assert.EqualValues(t, map[string]string{
-		"{{ namespace }}":   "namespacey",
 		"{{ directValue }}": "1",
 		"{{ envValue }}":    "2",
 		"{{ filePath }}":    "3",
 	}, templateValues)
+}
+
+func TestPopulateDefaultTemplateValues(t *testing.T) {
+	testDefaultData := map[runtimeInterfaces.DomainName]runtimeInterfaces.TemplateData{
+		"production": {
+			"var1": {
+				Value: "prod1",
+			},
+			"var2": {
+				Value: "prod2",
+			},
+		},
+		"development": {
+			"var1": {
+				Value: "dev1",
+			},
+			"var2": {
+				Value: "dev2",
+			},
+		},
+	}
+	templateValues, err := populateDefaultTemplateValues(testDefaultData)
+	assert.Nil(t, err)
+	assert.EqualValues(t, map[string]templateValuesType{
+		"production": {
+			"{{ var1 }}": "prod1",
+			"{{ var2 }}": "prod2",
+		},
+		"development": {
+			"{{ var1 }}": "dev1",
+			"{{ var2 }}": "dev2",
+		},
+	}, templateValues)
+}
+
+func TestGetCustomTemplateValues(t *testing.T) {
+	mockRepository := repositoryMocks.NewMockRepository()
+	projectDomainAttributes := admin.ProjectDomainAttributes{
+		Project: "project-foo",
+		Domain:  "domain-bar",
+		Attributes: map[string]string{
+			"var1": "val1",
+			"var2": "val2",
+		},
+	}
+	projectDomainModel, err := transformers.ToProjectDomainModel(projectDomainAttributes)
+	assert.Nil(t, err)
+	mockRepository.ProjectDomainRepo().(*repositoryMocks.MockProjectDomainRepo).GetFunction = func(
+		ctx context.Context, project, domain string) (models.ProjectDomain, error) {
+		assert.Equal(t, "project-foo", project)
+		assert.Equal(t, "domain-bar", domain)
+		return projectDomainModel, nil
+	}
+	testController := controller{
+		db: mockRepository,
+	}
+	customTemplateValues, err := testController.getCustomTemplateValues(context.Background(), "project-foo", "domain-bar", templateValuesType{
+		"{{ var1 }}": "i'm getting overwritten",
+		"{{ var3 }}": "persist",
+	})
+	assert.Nil(t, err)
+	assert.EqualValues(t, templateValuesType{
+		"{{ var1 }}": "val1",
+		"{{ var2 }}": "val2",
+		"{{ var3 }}": "persist",
+	}, customTemplateValues)
 }
