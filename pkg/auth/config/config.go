@@ -9,7 +9,7 @@ type OAuthOptions struct {
 	BaseUrl          string `json:"baseUrl"`
 
 	// These two config elements currently need the entire path, including the already specified baseUrl
-	// TODO: Refactor to allow use of discovery (see https://tools.ietf.org/id/draft-ietf-oauth-discovery-08.html)
+	// TODO: Refactor to allow use of discovery (see https://tools.ietf.org/html/rfc8414)
 	//       Also refactor to use relative paths when discovery is not available
 	AuthorizeUrl     string `json:"authorizeUrl"`
 	TokenUrl         string `json:"tokenUrl"`

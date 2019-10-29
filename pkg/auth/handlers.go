@@ -206,6 +206,7 @@ func GetHttpRequestCookieToMetadataHandler(authContext interfaces.Authentication
 	}
 }
 
+// TODO: Add this to the Admin service IDL in Flyte IDL so that this can be exposed from gRPC as well.
 func GetMeEndpointHandler(ctx context.Context, authCtx interfaces.AuthenticationContext) http.HandlerFunc {
 	idpUserInfoEndpoint := authCtx.GetUserInfoUrl().String()
 	return func(writer http.ResponseWriter, request *http.Request) {
