@@ -1,13 +1,13 @@
 # WARNING: THIS FILE IS MANAGED IN THE 'BOILERPLATE' REPO AND COPIED TO OTHER REPOSITORIES.
 # ONLY EDIT THIS FILE FROM WITHIN THE 'LYFT/BOILERPLATE' REPOSITORY:
-# 
+#
 # TO OPT OUT OF UPDATES, SEE https://github.com/lyft/boilerplate/blob/master/Readme.rst
 
 .PHONY: lint
 lint: #lints the package for common code smells
 	which golangci-lint || GO111MODULE=on go install github.com/golangci/golangci-lint/cmd/golangci-lint
 	go env
-	GO111MODULE=off GL_DEBUG=linters_output golangci-lint run --exclude deprecated -v
+	GO111MODULE=off GL_DEBUG=linters_output,loader,env golangci-lint run --exclude deprecated -v
 
 # If code is failing goimports linter, this will fix.
 # skips 'vendor'
@@ -34,4 +34,4 @@ test_unit_cover:
 
 .PHONY: test_unit_visual
 test_unit_visual:
-	go test ./... -coverprofile /tmp/cover.out -covermode=count; go tool cover -html=/tmp/cover.out 
+	go test ./... -coverprofile /tmp/cover.out -covermode=count; go tool cover -html=/tmp/cover.out
