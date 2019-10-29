@@ -123,7 +123,11 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authContext in
 		mux.HandleFunc("/login", auth.RefreshTokensIfExists(ctx, authContext,
 			auth.GetLoginHandler(ctx, authContext)))
 		mux.HandleFunc("/callback", auth.GetCallbackHandler(ctx, authContext))
-		mux.HandleFunc("/me", auth.GetMeEndpointHandler(ctx, authContext))
+		// Install the user info endpoint if there is a user info url configured.
+		if authContext.GetUserInfoUrl() != nil && authContext.GetUserInfoUrl().String() != "" {
+			mux.HandleFunc("/me", auth.GetMeEndpointHandler(ctx, authContext))
+		}
+		mux.HandleFunc(auth.MetadataEndpoint, auth.GetMetadataEndpointRedirectHandler(ctx, authContext))
 
 		gwmux = runtime.NewServeMux(
 			runtime.WithMarshalerOption("application/octet-stream", &runtime.ProtoMarshaller{}),

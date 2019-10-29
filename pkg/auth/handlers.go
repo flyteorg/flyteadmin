@@ -14,6 +14,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"net/http"
+	"path"
 )
 
 const (
@@ -207,6 +208,8 @@ func GetHttpRequestCookieToMetadataHandler(authContext interfaces.Authentication
 }
 
 // TODO: Add this to the Admin service IDL in Flyte IDL so that this can be exposed from gRPC as well.
+// This returns a handler that will retrieve user info, from the OAuth2 authorization server.
+// See the OpenID Connect spec at https://openid.net/specs/openid-connect-core-1_0.html#UserInfoResponse for more information.
 func GetMeEndpointHandler(ctx context.Context, authCtx interfaces.AuthenticationContext) http.HandlerFunc {
 	idpUserInfoEndpoint := authCtx.GetUserInfoUrl().String()
 	return func(writer http.ResponseWriter, request *http.Request) {
@@ -215,6 +218,8 @@ func GetMeEndpointHandler(ctx context.Context, authCtx interfaces.Authentication
 			http.Error(writer, "Error decoding identify token, try /login in again", http.StatusUnauthorized)
 			return
 		}
+		// TODO: Investigate improving transparency of errors. The errors from this call may be just a local error, or may
+		//       be an error from the HTTP request to the IDP. In the latter case, consider passing along the error code/msg.
 		userInfo, err := postToIdp(ctx, authCtx.GetHttpClient(), idpUserInfoEndpoint, access)
 		if err != nil {
 			logger.Errorf(ctx, "Error getting user info from IDP %s", err)
@@ -230,7 +235,18 @@ func GetMeEndpointHandler(ctx context.Context, authCtx interfaces.Authentication
 		}
 		writer.Header().Set("Content-Type", "application/json")
 		size, err := writer.Write(bytes)
-		logger.Debugf(ctx, "Wrote user info response size %d, err %s", size, err)
+		if err != nil {
+			logger.Errorf(ctx, "Wrote user info response size %d, err %s", size, err)
+		}
 		return
+	}
+}
+
+// This returns a handler that will redirect (303) to the well-known metadata endpoint for the OAuth2 authorization server
+// See https://tools.ietf.org/html/rfc8414 for more information.
+func GetMetadataEndpointRedirectHandler(ctx context.Context, authCtx interfaces.AuthenticationContext) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		uri := path.Join(authCtx.Options().BaseUrl, MetadataEndpoint)
+		http.Redirect(writer, request, uri, http.StatusSeeOther)
 	}
 }
