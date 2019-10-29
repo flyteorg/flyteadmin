@@ -23,6 +23,7 @@ server:
       claims:
         iss: "https://idp.com"
         aud: "api://default"
+      idpUserInfoEndpoint: "/v1/userinfo"
 flyteadmin:
   runScheduler: false
   roleNameKey: "iam.amazonaws.com/role"

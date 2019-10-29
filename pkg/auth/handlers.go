@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	grpcauth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/lyft/flyteadmin/pkg/auth/interfaces"
@@ -185,7 +186,10 @@ func WithUserEmail(ctx context.Context, email string) context.Context {
 }
 
 // This is effectively middleware for the grpc gateway, it allows us to modify the translation between HTTP request
-// and gRPC request. There are two potential sources for bearer tokens, it can come from the
+// and gRPC request. There are two potential sources for bearer tokens, it can come from an authorization header (not
+// yet implemented), or encrypted cookies. Note that when deploying behind Envoy, you have the option to look for a
+// configurable, non-standard header name. The token is extracted and turned into a metadata object which is then
+// attached to the request, from which the token is extracted later for verification.
 func GetHttpRequestCookieToMetadataHandler(authContext interfaces.AuthenticationContext) HttpRequestToMetadataAnnotator {
 	return func(ctx context.Context, request *http.Request) metadata.MD {
 		// TODO: Add read from Authorization header first, using the custom header if necessary.
@@ -199,5 +203,33 @@ func GetHttpRequestCookieToMetadataHandler(authContext interfaces.Authentication
 		return metadata.MD{
 			DefaultAuthorizationHeader: []string{fmt.Sprintf("%s %s", BearerScheme, accessToken)},
 		}
+	}
+}
+
+func GetMeEndpointHandler(ctx context.Context, authCtx interfaces.AuthenticationContext) http.HandlerFunc {
+	idpUserInfoEndpoint := authCtx.GetUserInfoUrl().String()
+	return func(writer http.ResponseWriter, request *http.Request) {
+		access, _, err := authCtx.CookieManager().RetrieveTokenValues(ctx, request)
+		if err != nil {
+			http.Error(writer, "Error decoding identify token, try /login in again", http.StatusUnauthorized)
+			return
+		}
+		userInfo, err := postToIdp(ctx, authCtx.GetHttpClient(), idpUserInfoEndpoint, access)
+		if err != nil {
+			logger.Errorf(ctx, "Error getting user info from IDP %s", err)
+			http.Error(writer, "Error getting user info from IDP", http.StatusFailedDependency)
+			return
+		}
+
+		bytes, err := json.Marshal(userInfo)
+		if err != nil {
+			logger.Errorf(ctx, "Error marshaling response into JSON %s", err)
+			http.Error(writer, "Error marshaling response into JSON", http.StatusInternalServerError)
+			return
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		size, err := writer.Write(bytes)
+		logger.Debugf(ctx, "Wrote user info response size %d, err %s", size, err)
+		return
 	}
 }

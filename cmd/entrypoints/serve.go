@@ -123,6 +123,7 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authContext in
 		mux.HandleFunc("/login", auth.RefreshTokensIfExists(ctx, authContext,
 			auth.GetLoginHandler(ctx, authContext)))
 		mux.HandleFunc("/callback", auth.GetCallbackHandler(ctx, authContext))
+		mux.HandleFunc("/me", auth.GetMeEndpointHandler(ctx, authContext))
 
 		gwmux = runtime.NewServeMux(
 			runtime.WithMarshalerOption("application/octet-stream", &runtime.ProtoMarshaller{}),

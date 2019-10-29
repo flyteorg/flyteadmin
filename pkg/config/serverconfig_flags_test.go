@@ -319,6 +319,28 @@ func TestServerConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_security.oauth.baseUrl", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vString, err := cmdFlags.GetString("security.oauth.baseUrl"); err == nil {
+				assert.Equal(t, string(defaultServerConfig.Security.Oauth.BaseUrl), vString)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("security.oauth.baseUrl", testValue)
+			if vString, err := cmdFlags.GetString("security.oauth.baseUrl"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.BaseUrl)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 	t.Run("Test_security.oauth.authorizeUrl", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
@@ -423,6 +445,28 @@ func TestServerConfig_SetFlags(t *testing.T) {
 			cmdFlags.Set("security.oauth.claims.iss", testValue)
 			if vString, err := cmdFlags.GetString("security.oauth.claims.iss"); err == nil {
 				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.Claims.Issuer)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_security.oauth.idpUserInfoEndpoint", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vString, err := cmdFlags.GetString("security.oauth.idpUserInfoEndpoint"); err == nil {
+				assert.Equal(t, string(defaultServerConfig.Security.Oauth.IdpUserInfoEndpoint), vString)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("security.oauth.idpUserInfoEndpoint", testValue)
+			if vString, err := cmdFlags.GetString("security.oauth.idpUserInfoEndpoint"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.IdpUserInfoEndpoint)
 
 			} else {
 				assert.FailNow(t, err.Error())

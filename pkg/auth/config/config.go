@@ -3,10 +3,26 @@ package config
 type OAuthOptions struct {
 	ClientId         string `json:"clientId"`
 	ClientSecretFile string `json:"clientSecretFile"`
+
+	// This should be the base url of the authorization server that you are trying to hit. With Okta for instance, it
+	// will look something like https://company.okta.com/oauth2/abcdef123456789/
+	BaseUrl          string `json:"baseUrl"`
+
+	// These two config elements currently need the entire path, including the already specified baseUrl
+	// TODO: Refactor to allow use of discovery (see https://tools.ietf.org/id/draft-ietf-oauth-discovery-08.html)
+	//       Also refactor to use relative paths when discovery is not available
 	AuthorizeUrl     string `json:"authorizeUrl"`
 	TokenUrl         string `json:"tokenUrl"`
+
+	// This is the callback URL that will be sent to the IDP authorize endpoint. It is likely that your IDP application
+	// needs to have this URL whitelisted before using.
 	CallbackUrl      string `json:"callbackUrl"`
 	Claims           Claims `json:"claims"`
+
+	// This is the relative path of the user info endpoint, if there is one, for the given IDP. This will be appended to
+	// the base URL of the IDP. This is used to support the /me endpoint that Admin will serve when running with authentication
+	// See https://developer.okta.com/docs/reference/api/oidc/#userinfo as an example.
+	IdpUserInfoEndpoint string `json:"idpUserInfoEndpoint"`
 
 	// These should point to files that contain base64 encoded secrets. See the TestSecureCookieLifecycle() unit test.
 	// See https://github.com/gorilla/securecookie#examples for more information
