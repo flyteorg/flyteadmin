@@ -7,7 +7,7 @@
 lint: #lints the package for common code smells
 	which golangci-lint || GO111MODULE=on go install github.com/golangci/golangci-lint/cmd/golangci-lint
 	go env
-	GO111MODULE=off GL_DEBUG=linters_output golangci-lint run --exclude deprecated
+	GO111MODULE=off GL_DEBUG=linters_output golangci-lint run --exclude deprecated -v
 
 # If code is failing goimports linter, this will fix.
 # skips 'vendor'
@@ -18,7 +18,7 @@ goimports:
 .PHONY: install
 install: #download dependencies (including test deps) for the package
 	which dep || (curl "https://raw.githubusercontent.com/golang/dep/master/install.sh" | sh)
-	dep ensure
+	dep ensure --vendor-only
 
 .PHONY: test_unit
 test_unit:
