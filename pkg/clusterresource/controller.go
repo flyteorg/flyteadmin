@@ -99,6 +99,8 @@ func (c *controller) templateAlreadyApplied(namespace NamespaceName, templateFil
 	return timestamp.Equal(templateFile.ModTime())
 }
 
+// Given a map of templatized variable names -> data source, this function produces an output that maps the same
+// variable names to their fully resolved values (from the specified data source).
 func populateTemplateValues(data map[string]runtimeInterfaces.DataSource) (templateValuesType, error) {
 	templateValues := make(templateValuesType, len(data))
 	collectedErrs := make([]error, 0)
@@ -141,6 +143,8 @@ func populateTemplateValues(data map[string]runtimeInterfaces.DataSource) (templ
 	return templateValues, nil
 }
 
+// Produces a map of template variable names and their fully resolved values based on configured defaults for each
+// system-domain in the application config file.
 func populateDefaultTemplateValues(defaultData map[runtimeInterfaces.DomainName]runtimeInterfaces.TemplateData) (
 	map[string]templateValuesType, error) {
 	defaultTemplateValues := make(map[string]templateValuesType)
@@ -159,6 +163,9 @@ func populateDefaultTemplateValues(defaultData map[runtimeInterfaces.DomainName]
 	return defaultTemplateValues, nil
 }
 
+// Fetches user-specified overrides from the admin database for template variables and their desired value
+// substitutions based on the input project and domain. These database values are overlaid on top of the configured
+// variable defaults for the specific domain as defined in the admin application config file.
 func (c *controller) getCustomTemplateValues(
 	ctx context.Context, project, domain string, domainTemplateValues templateValuesType) (templateValuesType, error) {
 	if len(domainTemplateValues) == 0 {
