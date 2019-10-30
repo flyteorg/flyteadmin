@@ -141,12 +141,16 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authContext in
 	}
 
 	// Enable CORS if necessary on the gateway mux
-	noopPattern := runtime.MustPattern(runtime.NewPattern(1, []int{3, 0}, []string{}, ""))
-	decorator := auth.GetCorsDecorator(ctx)
-	gwmux.Handle(http.MethodOptions, noopPattern, func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
-		logger.Debugf(ctx, "Serving OPTIONS")
-		decorator(http.HandlerFunc(healthCheckFunc)).ServeHTTP(w, r)
-	})
+	if cfg.Security.AllowCors {
+		globPattern := server.GetGlobPattern()
+		decorator := auth.GetCorsDecorator(ctx, cfg.Security.AllowedOrigins)
+		// This uses the glob/noop pattern, and installs a co-opted version of the healthcheck function that knows how
+		// to serve options requests. Note that this is installed on the grpc-gateway ServeMux object. This means
+		// other endpoints like the auth endpoints (if-enabled) are not affected.
+		gwmux.Handle(http.MethodOptions, globPattern, func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+			decorator(http.HandlerFunc(healthCheckFunc)).ServeHTTP(w, r)
+		})
+	}
 
 	err := flyteService.RegisterAdminServiceHandlerFromEndpoint(ctx, gwmux, grpcAddress, grpcConnectionOpts)
 	if err != nil {

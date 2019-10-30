@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"net/http"
@@ -53,13 +51,4 @@ func TestPostToIdp(t *testing.T) {
 	assert.Equal(t, responseObj.PreferredUsername, obj.PreferredUsername)
 	assert.Equal(t, responseObj.GivenName, obj.GivenName)
 	assert.Equal(t, responseObj.FamilyName, obj.FamilyName)
-}
-
-func TestPatterns(t *testing.T) {
-	pattern, err := runtime.NewPattern(1, []int{3, 0}, []string{}, "")
-	assert.NoError(t, err)
-	fmt.Println(pattern)
-	x, err := pattern.Match([]string{"api", "v1", "executions", "flytekit", "production"}, "")
-	assert.NoError(t, err)
-	fmt.Println(x)
 }

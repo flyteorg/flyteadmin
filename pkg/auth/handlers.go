@@ -252,11 +252,14 @@ func GetMetadataEndpointRedirectHandler(ctx context.Context, authCtx interfaces.
 	}
 }
 
-// These two functions
+// These are here for CORS handling. Actual serving of the OPTIONS request will be done by the gorilla/handlers package
 type CorsHandlerDecorator func(http.Handler) http.Handler
 
-func GetCorsDecorator(ctx context.Context) CorsHandlerDecorator {
+// This produces a decorator that, when applied to an existing Handler, will first test if the request is an appropriate
+// options request, and if so, serve it. If not, the underlying handler will be called.
+func GetCorsDecorator(ctx context.Context, allowedOrigins []string) CorsHandlerDecorator {
+	logger.Debugf(ctx, "Creating CORS decorator with allowed origins %v", allowedOrigins)
 	return handlers.CORS(handlers.AllowedHeaders([]string{"*"}),
 		handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodHead, http.MethodOptions}),
-		handlers.AllowedOrigins([]string{"*"}))
+		handlers.AllowedOrigins(allowedOrigins))
 }
