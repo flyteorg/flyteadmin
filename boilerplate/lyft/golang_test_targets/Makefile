@@ -8,6 +8,7 @@ lint: #lints the package for common code smells
 	which golangci-lint || GO111MODULE=on go install github.com/golangci/golangci-lint/cmd/golangci-lint
 	go env
 	GO111MODULE=off GL_DEBUG=linters_output,loader,env golangci-lint run --exclude deprecated -v
+	GO111MODULE=off GL_DEBUG=linters_output,loader,env golangci-lint run --exclude deprecated -v
 
 # If code is failing goimports linter, this will fix.
 # skips 'vendor'
