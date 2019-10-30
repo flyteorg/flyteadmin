@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/handlers"
 	grpcauth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/lyft/flyteadmin/pkg/auth/interfaces"
 	"github.com/lyft/flytestdlib/errors"
@@ -249,4 +250,13 @@ func GetMetadataEndpointRedirectHandler(ctx context.Context, authCtx interfaces.
 		uri := path.Join(authCtx.Options().BaseUrl, MetadataEndpoint)
 		http.Redirect(writer, request, uri, http.StatusSeeOther)
 	}
+}
+
+// These two functions
+type CorsHandlerDecorator func(http.Handler) http.Handler
+
+func GetCorsDecorator(ctx context.Context) CorsHandlerDecorator {
+	return handlers.CORS(handlers.AllowedHeaders([]string{"*"}),
+		handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodHead, http.MethodOptions}),
+		handlers.AllowedOrigins([]string{"*"}))
 }
