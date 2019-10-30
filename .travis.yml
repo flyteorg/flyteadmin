@@ -15,9 +15,9 @@ jobs:
       script: BUILD_PHASE=builder make docker_build
     - if: fork = false
       stage: test
-      name: build, and push
+      name: build
       install: true
-      script: BUILD_PHASE=builder make docker_build && make dockerhub_push
+      script: BUILD_PHASE=builder make docker_build
     - stage: test
       name: unit tests
       install: make install
