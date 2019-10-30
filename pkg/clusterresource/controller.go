@@ -171,6 +171,10 @@ func (c *controller) getCustomTemplateValues(
 	if len(domainTemplateValues) == 0 {
 		domainTemplateValues = make(templateValuesType)
 	}
+	customTemplateValues := make(templateValuesType)
+	for key, value := range domainTemplateValues {
+		customTemplateValues[key] = value
+	}
 	collectedErrs := make([]error, 0)
 	// All project-domain defaults saved in the database take precedence over the domain-specific defaults.
 	projectDomainModel, err := c.db.ProjectDomainRepo().Get(ctx, project, domain)
@@ -187,13 +191,13 @@ func (c *controller) getCustomTemplateValues(
 	}
 	if len(projectDomain.Attributes) > 0 {
 		for templateKey, templateValue := range projectDomain.Attributes {
-			domainTemplateValues[fmt.Sprintf(templateVariableFormat, templateKey)] = templateValue
+			customTemplateValues[fmt.Sprintf(templateVariableFormat, templateKey)] = templateValue
 		}
 	}
 	if len(collectedErrs) > 0 {
 		return nil, errors.NewCollectedFlyteAdminError(codes.InvalidArgument, collectedErrs)
 	}
-	return domainTemplateValues, nil
+	return customTemplateValues, nil
 }
 
 // This function loops through the kubernetes resource template files in the configured template directory.
@@ -202,7 +206,8 @@ func (c *controller) getCustomTemplateValues(
 //   2) substitute templatized variables with their resolved values
 //   3) decode the output of the above into a kubernetes resource
 //   4) create the resource on the kubernetes cluster and cache successful outcomes
-func (c *controller) syncNamespace(ctx context.Context, namespace NamespaceName, templateValues, customTemplateValues templateValuesType) error {
+func (c *controller) syncNamespace(ctx context.Context, namespace NamespaceName,
+	templateValues, customTemplateValues templateValuesType) error {
 	templateDir := c.config.ClusterResourceConfiguration().GetTemplatePath()
 	if c.lastAppliedTemplateDir != templateDir {
 		// Invalidate all caches

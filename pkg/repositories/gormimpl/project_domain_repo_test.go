@@ -14,7 +14,6 @@ import (
 func TestCreateProjectDomain(t *testing.T) {
 	projectRepo := NewProjectDomainRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
 	GlobalMock := mocket.Catcher.Reset()
-	GlobalMock.Logging = true
 
 	query := GlobalMock.NewMock()
 	query.WithQuery(

@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lyft/flyteadmin/pkg/errors"
+	"google.golang.org/grpc/codes"
+
 	"github.com/lyft/flyteadmin/pkg/repositories/transformers"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 
@@ -167,14 +170,58 @@ func TestGetCustomTemplateValues(t *testing.T) {
 	testController := controller{
 		db: mockRepository,
 	}
-	customTemplateValues, err := testController.getCustomTemplateValues(context.Background(), "project-foo", "domain-bar", templateValuesType{
+	domainTemplateValues := templateValuesType{
 		"{{ var1 }}": "i'm getting overwritten",
 		"{{ var3 }}": "persist",
-	})
+	}
+	customTemplateValues, err := testController.getCustomTemplateValues(context.Background(), "project-foo",
+		"domain-bar", domainTemplateValues)
 	assert.Nil(t, err)
 	assert.EqualValues(t, templateValuesType{
 		"{{ var1 }}": "val1",
 		"{{ var2 }}": "val2",
 		"{{ var3 }}": "persist",
 	}, customTemplateValues)
+
+	assert.NotEqual(t, domainTemplateValues, customTemplateValues)
+}
+
+func TestGetCustomTemplateValues_NothingToOverride(t *testing.T) {
+	mockRepository := repositoryMocks.NewMockRepository()
+	mockRepository.ProjectDomainRepo().(*repositoryMocks.MockProjectDomainRepo).GetFunction = func(
+		ctx context.Context, project, domain string) (models.ProjectDomain, error) {
+		return models.ProjectDomain{}, errors.NewFlyteAdminError(codes.NotFound, "not found")
+	}
+	testController := controller{
+		db: mockRepository,
+	}
+	customTemplateValues, err := testController.getCustomTemplateValues(context.Background(), "project-foo", "domain-bar", templateValuesType{
+		"{{ var1 }}": "val1",
+		"{{ var2 }}": "val2",
+	})
+	assert.Nil(t, err)
+	assert.EqualValues(t, templateValuesType{
+		"{{ var1 }}": "val1",
+		"{{ var2 }}": "val2",
+	}, customTemplateValues,
+		"missing project-domain combinations in the db should result in the config defaults being applied")
+}
+
+func TestGetCustomTemplateValues_InvalidDBModel(t *testing.T) {
+	mockRepository := repositoryMocks.NewMockRepository()
+	mockRepository.ProjectDomainRepo().(*repositoryMocks.MockProjectDomainRepo).GetFunction = func(
+		ctx context.Context, project, domain string) (models.ProjectDomain, error) {
+		return models.ProjectDomain{
+			Attributes: []byte("i'm invalid"),
+		}, nil
+	}
+	testController := controller{
+		db: mockRepository,
+	}
+	_, err := testController.getCustomTemplateValues(context.Background(), "project-foo", "domain-bar", templateValuesType{
+		"{{ var1 }}": "val1",
+		"{{ var2 }}": "val2",
+	})
+	assert.NotNil(t, err,
+		"invalid project-domain combinations in the db should result in the config defaults being applied")
 }
