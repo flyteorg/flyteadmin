@@ -12,12 +12,12 @@ jobs:
       stage: test
       name: build test
       install: true
-      script: BUILD_PHASE=builder make docker_build && make k8s_integration
+      script: BUILD_PHASE=builder make docker_build
     - if: fork = false
       stage: test
       name: build, and push
       install: true
-      script: BUILD_PHASE=builder make docker_build && make k8s_integration && make dockerhub_push
+      script: BUILD_PHASE=builder make docker_build && make dockerhub_push
     - stage: test
       name: unit tests
       install: make install
