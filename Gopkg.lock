@@ -823,7 +823,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:22202b20fc10619bd5489b398a7b70ce5ab9277d2c321eece29a63fdac23a200"
+  digest = "1:5874d3a4a53578470c16c65cc4312ba048d3d7673afcd5589e33e34f4b091931"
   name = "google.golang.org/api"
   packages = [
     "googleapi",
@@ -837,7 +837,7 @@
     "transport/http/internal/propagation",
   ]
   pruneopts = "UT"
-  revision = "b0814d5f478824968854776efda283bd28f7e719"
+  revision = "4f42dad4690a01d7f6fa461106c63889ff1be027"
 
 [[projects]]
   digest = "1:3c03b58f57452764a4499c55c582346c0ee78c8a5033affe5bdfd9efd3da5bd1"
