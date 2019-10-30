@@ -10,11 +10,7 @@ lint: #lints the package for common code smells
 	# However, that call seem to have some effects (e.g. https://github.com/golang/go/issues/29452) which, for some
 	# reason, allows the subsequent calls to succeed.
 	# TODO: Evaluate whether this is still a problem after moving admin dependency system to go modules.
-	go env
-	env
 	GO111MODULE=off GL_DEBUG=linters_output,loader,env golangci-lint run --exclude deprecated -v || true
-	go env
-	env
 	GO111MODULE=off GL_DEBUG=linters_output,loader,env golangci-lint run --exclude deprecated -v
 
 # If code is failing goimports linter, this will fix.
