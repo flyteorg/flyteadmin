@@ -60,7 +60,7 @@ func (m *NamedEntityManager) GetNamedEntity(ctx context.Context, request admin.N
 	return util.GetNamedEntity(ctx, m.db, request.ResourceType, *request.Id)
 }
 
-func (w *NamedEntityManager) ListNamedEntities(ctx context.Context, request admin.NamedEntityListRequest) (
+func (m *NamedEntityManager) ListNamedEntities(ctx context.Context, request admin.NamedEntityListRequest) (
 	*admin.NamedEntityList, error) {
 	if err := validation.ValidateNamedEntityListRequest(request); err != nil {
 		logger.Debugf(ctx, "invalid request [%+v]: %v", request, err)
@@ -93,7 +93,7 @@ func (w *NamedEntityManager) ListNamedEntities(ctx context.Context, request admi
 		SortParameter: sortParameter,
 	}
 
-	output, err := w.db.NamedEntityRepo().List(ctx, request.ResourceType, listInput)
+	output, err := m.db.NamedEntityRepo().List(ctx, request.ResourceType, listInput)
 	if err != nil {
 		logger.Debugf(ctx, "Failed to list named entities of type: %s with project: %s, domain: %s. Returned error was: %v",
 			request.ResourceType, request.Project, request.Domain, err)

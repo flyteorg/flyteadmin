@@ -2,9 +2,10 @@
 package gormimpl
 
 import (
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"fmt"
 	"testing"
+
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 
 	mocket "github.com/Selvatico/go-mocket"
 	"github.com/jinzhu/gorm"

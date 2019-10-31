@@ -40,7 +40,7 @@ const (
 	ProjectDomain         = "project_domain"
 )
 
-// Maps a resource type to an entity suitable for use with Database filters
+// ResourceTypeToEntity maps a resource type to an entity suitable for use with Database filters
 var ResourceTypeToEntity = map[core.ResourceType]common.Entity{
 	core.ResourceType_LAUNCH_PLAN: common.LaunchPlan,
 	core.ResourceType_TASK:        common.Task,

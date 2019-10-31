@@ -155,7 +155,7 @@ func ValidateNamedEntityListRequest(request admin.NamedEntityListRequest) error 
 	if err := ValidateResourceType(request.ResourceType); err != nil {
 		return err
 	}
-	if request.Limit <= 0 {
+	if request.Limit == 0 {
 		return shared.GetInvalidArgumentError(shared.Limit)
 	}
 	return nil
