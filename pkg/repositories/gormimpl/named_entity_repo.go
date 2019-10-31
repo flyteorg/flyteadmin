@@ -47,6 +47,9 @@ func (r *NamedEntityRepo) Get(ctx context.Context, input interfaces.GetNamedEnti
 	// entry in the target table, we return NotFound instead of a fake record
 	// with empty metadata.
 	filters, err := getNamedEntityFilters(input.ResourceType, input.Project, input.Domain, input.Name)
+	if err != nil {
+		return models.NamedEntity{}, err
+	}
 
 	tableName, tableFound := resourceTypeToTableName[resourceType]
 	joinString, joinFound := resourceTypeToMetadataJoin[resourceType]
