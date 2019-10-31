@@ -74,6 +74,8 @@ func GetLoginHandler(ctx context.Context, authContext interfaces.AuthenticationC
 			redirectCookie := NewRedirectCookie(ctx, flowEndRedirectUrl)
 			if redirectCookie != nil {
 				http.SetCookie(writer, redirectCookie)
+			} else {
+				logger.Errorf(ctx, "Was not able to create a redirect cookie")
 			}
 		}
 		http.Redirect(writer, request, url, http.StatusTemporaryRedirect)

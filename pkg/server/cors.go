@@ -11,6 +11,7 @@ import (
 
 const (
 	// At time of writing, the version argument is required to be 1.
+	// See https://github.com/grpc-ecosystem/grpc-gateway/blob/69669120b0e010b88291cd9d24761297c2a17582/runtime/pattern.go#L53
 	GrpcGatewayPatternVersion = 1
 )
 
