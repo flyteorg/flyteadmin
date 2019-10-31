@@ -23,6 +23,11 @@ type ServerSecurityOptions struct {
 	Ssl     SslOptions           `json:"ssl"`
 	UseAuth bool                 `json:"useAuth"`
 	Oauth   config2.OAuthOptions `json:"oauth"`
+
+	// These options are here to allow deployments where the Flyte UI (Console) is served from a different domain/port.
+	// Note that CORS only applies to Admin's API endpoints. The health check endpoint for instance is unaffected.
+	AllowCors      bool     `json:"allowCors"`
+	AllowedOrigins []string `json:"allowedOrigins"`
 }
 
 type SslOptions struct {
