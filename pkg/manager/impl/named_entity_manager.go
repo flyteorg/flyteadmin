@@ -6,7 +6,6 @@ import (
 
 	"github.com/lyft/flyteadmin/pkg/common"
 	"github.com/lyft/flyteadmin/pkg/errors"
-	"github.com/lyft/flyteadmin/pkg/manager/impl/shared"
 	"google.golang.org/grpc/codes"
 
 	"github.com/lyft/flyteadmin/pkg/manager/impl/util"
@@ -40,6 +39,9 @@ func (m *NamedEntityManager) UpdateNamedEntity(ctx context.Context, request admi
 		return nil, err
 	}
 
+	// TODO: Validate that the provided project/domain/name exists in the table
+	// for the specified type before storing metadata associated with it?
+
 	metadataModel := transformers.CreateNamedEntityModel(&request)
 	err := m.db.NamedEntityRepo().Update(ctx, metadataModel)
 	if err != nil {
@@ -70,7 +72,7 @@ func (m *NamedEntityManager) ListNamedEntities(ctx context.Context, request admi
 	filters, err := util.GetDbFilters(util.FilterSpec{
 		Project: request.Project,
 		Domain:  request.Domain,
-	}, shared.ResourceTypeToEntity[request.ResourceType])
+	}, common.ResourceTypeToEntity[request.ResourceType])
 	if err != nil {
 		return nil, err
 	}

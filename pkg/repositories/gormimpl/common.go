@@ -142,3 +142,39 @@ func applyScopedFilters(tx *gorm.DB, inlineFilters []common.InlineFilter, mapFil
 	}
 	return tx, nil
 }
+
+func getGroupByForNamedEntity(tableName string) string {
+	return fmt.Sprintf("%s.%s, %s.%s, %s.%s, %s.%s", tableName, Project, tableName, Domain, tableName, Name, namedEntityMetadataTableName, Description)
+}
+
+func getSelectForNamedEntity(tableName string) []string {
+	return []string{
+		fmt.Sprintf("%s.%s", tableName, Project),
+		fmt.Sprintf("%s.%s", tableName, Domain),
+		fmt.Sprintf("%s.%s", tableName, Name),
+		fmt.Sprintf("%s.%s", namedEntityMetadataTableName, Description),
+	}
+}
+
+func getNamedEntityFilters(resourceType core.ResourceType, project string, domain string, name string) ([]common.InlineFilter, error) {
+	entity := common.ResourceTypeToEntity[resourceType]
+
+	filters := make([]common.InlineFilter, 0)
+	projectFilter, err := common.NewSingleValueFilter(entity, common.Equal, Project, project)
+	if err != nil {
+		return nil, err
+	}
+	filters = append(filters, projectFilter)
+	domainFilter, err := common.NewSingleValueFilter(entity, common.Equal, Domain, domain)
+	if err != nil {
+		return nil, err
+	}
+	filters = append(filters, domainFilter)
+	nameFilter, err := common.NewSingleValueFilter(entity, common.Equal, Name, name)
+	if err != nil {
+		return nil, err
+	}
+	filters = append(filters, nameFilter)
+
+	return filters, nil
+}

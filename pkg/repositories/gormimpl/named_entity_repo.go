@@ -2,7 +2,6 @@ package gormimpl
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"google.golang.org/grpc/codes"
@@ -41,36 +40,37 @@ func (r *NamedEntityRepo) Update(ctx context.Context, input models.NamedEntity) 
 }
 
 func (r *NamedEntityRepo) Get(ctx context.Context, input interfaces.GetNamedEntityInput) (models.NamedEntity, error) {
-	var metadata models.NamedEntityMetadata
-	timer := r.metrics.GetDuration.Start()
+	var namedEntity models.NamedEntity
 
-	// TODO (randy): Verify that a record with the named entity key exists.
-	// Return empty if it doesn't
-	tx := r.db.Where(&models.NamedEntityMetadata{
-		NamedEntityMetadataKey: models.NamedEntityMetadataKey{
-			ResourceType: input.ResourceType,
-			Project:      input.Project,
-			Domain:       input.Domain,
-			Name:         input.Name,
-		},
-	}).First(&metadata)
+	// This is implemented as a filter+join to ensure that when the provided
+	// resource_type/project/domain/name combination don't map to a valid
+	// entry in the target table, we return NotFound instead of a fake record
+	// with empty metadata.
+	filters, err := getNamedEntityFilters(input.ResourceType, input.Project, input.Domain, input.Name)
+
+	tableName, tableFound := resourceTypeToTableName[resourceType]
+	joinString, joinFound := resourceTypeToMetadataJoin[resourceType]
+	if !tableFound || !joinFound {
+		return models.NamedEntity{}, adminErrors.NewFlyteAdminErrorf(codes.InvalidArgument, "Cannot get NamedEntity for resource type: %v", resourceType)
+	}
+
+	tx := r.db.Table(tableName).Joins(joinString)
+
+	// Apply filters
+	tx, err = applyScopedFilters(tx, filters, nil)
+	if err != nil {
+		return models.NamedEntity{}, err
+	}
+
+	timer := r.metrics.GetDuration.Start()
+	tx = tx.Select(getSelectForNamedEntity(tableName)).First(&namedEntity)
 	timer.Stop()
 
-	// If a record is not found, we will return empty metadata. Otherwise
-	// return the error.
-	if tx.Error != nil && !tx.RecordNotFound() {
+	if tx.Error != nil {
 		return models.NamedEntity{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
 	}
 
-	return models.NamedEntity{
-		NamedEntityKey: models.NamedEntityKey{
-			ResourceType: input.ResourceType,
-			Project:      input.Project,
-			Domain:       input.Domain,
-			Name:         input.Name,
-		},
-		NamedEntityMetadataFields: metadata.NamedEntityMetadataFields,
-	}, nil
+	return namedEntity, nil
 }
 
 func (r *NamedEntityRepo) List(ctx context.Context, resourceType core.ResourceType, input interfaces.ListResourceInput) (
@@ -101,17 +101,10 @@ func (r *NamedEntityRepo) List(ctx context.Context, resourceType core.ResourceTy
 		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
 	}
 
-	groupBy := fmt.Sprintf("%s.%s, %s.%s, %s.%s, %s.%s", tableName, Project, tableName, Domain, tableName, Name, namedEntityMetadataTableName, Description)
-
 	// Scan the results into a list of named entities
 	var entities []models.NamedEntity
 	timer := r.metrics.ListDuration.Start()
-	tx.Select([]string{
-		fmt.Sprintf("%s.%s", tableName, Project),
-		fmt.Sprintf("%s.%s", tableName, Domain),
-		fmt.Sprintf("%s.%s", tableName, Name),
-		fmt.Sprintf("%s.%s", namedEntityMetadataTableName, Description),
-	}).Group(groupBy).Scan(&entities)
+	tx.Select(getSelectForNamedEntity(tableName)).Group(getGroupByForNamedEntity(tableName)).Scan(&entities)
 	timer.Stop()
 	if tx.Error != nil {
 		return interfaces.NamedEntityCollectionOutput{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
