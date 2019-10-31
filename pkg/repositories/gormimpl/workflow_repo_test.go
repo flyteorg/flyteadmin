@@ -41,8 +41,6 @@ func getMockWorkflowResponseFromDb(version string, typedInterface []byte) map[st
 	workflow["version"] = version
 	workflow["typed_interface"] = typedInterface
 	workflow["remote_closure_identifier"] = remoteSpecIdentifier
-	// Metadata would actually come from a JOIN in the real implementation
-	workflow["description"] = description
 	return workflow
 }
 
