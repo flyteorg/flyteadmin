@@ -259,9 +259,9 @@ type CorsHandlerDecorator func(http.Handler) http.Handler
 
 // This produces a decorator that, when applied to an existing Handler, will first test if the request is an appropriate
 // options request, and if so, serve it. If not, the underlying handler will be called.
-func GetCorsDecorator(ctx context.Context, allowedOrigins []string) CorsHandlerDecorator {
+func GetCorsDecorator(ctx context.Context, allowedOrigins, allowedHeaders []string) CorsHandlerDecorator {
 	logger.Debugf(ctx, "Creating CORS decorator with allowed origins %v", allowedOrigins)
-	return handlers.CORS(handlers.AllowedHeaders([]string{"*"}),
+	return handlers.CORS(handlers.AllowedHeaders(allowedHeaders),
 		handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch,
 			http.MethodHead, http.MethodOptions, http.MethodDelete}),
 		handlers.AllowedOrigins(allowedOrigins))
