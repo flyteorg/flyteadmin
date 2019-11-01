@@ -28,7 +28,7 @@ type ServerSecurityOptions struct {
 	// Note that CORS only applies to Admin's API endpoints. The health check endpoint for instance is unaffected.
 	// Please obviously evaluate security concerns before turning this on.
 	AllowCors      bool     `json:"allowCors"`
-	// TODO: Go through the library and resolve singular vs plural.  It should be singular, but what else is the library doing?
+	// TODO: Go through the gorilla library and resolve singular vs plural. It should be singular, but what else is the library doing?
 	AllowedOrigins []string `json:"allowedOrigins"`
 	// These are the Access-Control-Request-Headers that the server will respond to
 	AllowedHeaders []string `json:"allowedHeaders"`

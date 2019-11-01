@@ -53,8 +53,8 @@ func TestVerifyCsrfCookie(t *testing.T) {
 		var buf bytes.Buffer
 		request, err := http.NewRequest(http.MethodPost, "/test", &buf)
 		assert.NoError(t, err)
-		valid := VerifyCsrfCookie(context.Background(), request)
-		assert.False(t, valid)
+		err = VerifyCsrfCookie(context.Background(), request)
+		assert.Error(t, err)
 	})
 
 	t.Run("test incorrect token", func(t *testing.T) {
@@ -68,8 +68,8 @@ func TestVerifyCsrfCookie(t *testing.T) {
 		cookie.Value = "helloworld"
 		request.Form = v
 		request.AddCookie(&cookie)
-		valid := VerifyCsrfCookie(context.Background(), request)
-		assert.False(t, valid)
+		err = VerifyCsrfCookie(context.Background(), request)
+		assert.Error(t, err)
 	})
 
 	t.Run("test correct token", func(t *testing.T) {
@@ -83,8 +83,8 @@ func TestVerifyCsrfCookie(t *testing.T) {
 		cookie.Value = "hello world"
 		request.Form = v
 		request.AddCookie(&cookie)
-		valid := VerifyCsrfCookie(context.Background(), request)
-		assert.True(t, valid)
+		err = VerifyCsrfCookie(context.Background(), request)
+		assert.NoError(t, err)
 	})
 }
 

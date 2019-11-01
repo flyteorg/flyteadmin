@@ -87,9 +87,9 @@ func GetCallbackHandler(ctx context.Context, authContext interfaces.Authenticati
 		logger.Debugf(ctx, "Running callback handler...")
 		authorizationCode := request.FormValue(AuthorizationResponseCodeType)
 
-		validCsrf := VerifyCsrfCookie(ctx, request)
-		if !validCsrf {
-			logger.Infof(ctx, "Invalid CSRF token cookie")
+		err := VerifyCsrfCookie(ctx, request)
+		if err != nil {
+			logger.Errorf(ctx, "Invalid CSRF token cookie %s", err)
 			writer.WriteHeader(http.StatusUnauthorized)
 			return
 		}

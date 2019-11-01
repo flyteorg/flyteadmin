@@ -23,6 +23,7 @@ const (
 
 const (
 	ErrSecureCookie errors.ErrorCode = "SECURE_COOKIE_ERROR"
+	ErrInvalidCsrfToken = "CSRF_TOKEN_VALIDATION_FAILED"
 )
 
 var AllowedChars = []rune("abcdefghijklmnopqrstuvwxyz1234567890")
@@ -75,22 +76,20 @@ func NewCsrfCookie() http.Cookie {
 	}
 }
 
-func VerifyCsrfCookie(ctx context.Context, request *http.Request) bool {
+func VerifyCsrfCookie(ctx context.Context, request *http.Request) error {
 	csrfState := request.FormValue(CsrfFormKey)
 	if csrfState == "" {
-		logger.Errorf(ctx, "Empty state in callback, %s", request.Form)
-		return false
+		return errors.Errorf(ErrInvalidCsrfToken, "Empty state in callback, %s", request.Form)
 	}
 	csrfCookie, err := request.Cookie(csrfStateCookie)
 	if csrfCookie == nil || err != nil {
-		logger.Errorf(ctx, "Could not find csrf cookie %s", err)
-		return false
+		return errors.Errorf(ErrInvalidCsrfToken, "Could not find csrf cookie %s", err)
 	}
 	if HashCsrfState(csrfCookie.Value) != csrfState {
-		logger.Errorf(ctx, "CSRF token does not match state %s, %s vs %s", csrfCookie.Value, HashCsrfState(csrfCookie.Value), csrfState)
-		return false
+		return errors.Errorf(ErrInvalidCsrfToken, "CSRF token does not match state %s, %s vs %s", csrfCookie.Value,
+			HashCsrfState(csrfCookie.Value), csrfState)
 	}
-	return true
+	return nil
 }
 
 // This function takes in a string and returns a cookie that's used to keep track of where to send the user after

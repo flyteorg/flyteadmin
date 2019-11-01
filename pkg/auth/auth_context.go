@@ -111,15 +111,14 @@ func NewAuthenticationContext(ctx context.Context, options config.OAuthOptions) 
 		}
 		joinedPath := path.Join(base.EscapedPath(), options.IdpUserInfoEndpoint)
 
-		u, err := url.Parse(joinedPath)
+		parsedUrl, err := url.Parse(joinedPath)
 		if err != nil {
 			logger.Errorf(ctx, "Error parsing total IDP user info path %s as URL %s", joinedPath, err)
 			return Context{}, errors.Wrapf(ErrAuthContext, err,
 				"Error parsing IDP user info path as URL while constructing IDP user info endpoint")
 		}
-		finalUrl := base.ResolveReference(u)
-		logger.Debugf(ctx, "Issuer: %s user info: %s joined path %s final url %s",
-			options.Claims.Issuer, options.IdpUserInfoEndpoint, joinedPath, finalUrl.String())
+		finalUrl := base.ResolveReference(parsedUrl)
+		logger.Infof(ctx, "The /userinfo URL for the IDP is %s", finalUrl.String())
 		result.userInfoUrl = finalUrl
 	}
 
