@@ -433,9 +433,9 @@
     "gen/pb-go/flyteidl/service",
   ]
   pruneopts = "UT"
-  revision = "26ed5de0194c0e4b604ae4d8b8d190f8c16d49ab"
+  revision = "03aa3a0b237eea7e1aeda1f7e407e9ab95efd4a9"
   source = "https://github.com/lyft/flyteidl"
-  version = "v0.17.0"
+  version = "v0.16.1"
 
 [[projects]]
   digest = "1:938998e14bd5e42c54f3b640a41d869eb79029ad7c623fa47c604b8480c781fc"
