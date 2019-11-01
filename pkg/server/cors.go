@@ -23,7 +23,7 @@ func GetGlobPattern() runtime.Pattern {
 		[]string{}, ""))
 }
 
-// This is just a type alias because the underlying library did not define one.
+// This is just a type alias because the grpc-gateway library did not define one.
 type ForwardResponseOptionHandler func(i context.Context, writer http.ResponseWriter, message proto.Message) error
 
 // This returns a handler to be used with the runtime.WithForwardResponseOption() function. This is middleware that will add
@@ -32,6 +32,7 @@ type ForwardResponseOptionHandler func(i context.Context, writer http.ResponseWr
 func GetForwardResponseOptionHandler(allowedOrigins []string) ForwardResponseOptionHandler {
 	return func(i context.Context, writer http.ResponseWriter, message proto.Message) error {
 		writer.Header().Set("Access-Control-Allow-Origin", strings.Join(allowedOrigins, ", "))
+		writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		return nil
 	}
 }

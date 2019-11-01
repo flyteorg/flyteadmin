@@ -262,6 +262,7 @@ type CorsHandlerDecorator func(http.Handler) http.Handler
 func GetCorsDecorator(ctx context.Context, allowedOrigins []string) CorsHandlerDecorator {
 	logger.Debugf(ctx, "Creating CORS decorator with allowed origins %v", allowedOrigins)
 	return handlers.CORS(handlers.AllowedHeaders([]string{"*"}),
-		handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodHead, http.MethodOptions}),
+		handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch,
+			http.MethodHead, http.MethodOptions, http.MethodDelete}),
 		handlers.AllowedOrigins(allowedOrigins))
 }
