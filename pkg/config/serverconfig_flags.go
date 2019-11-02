@@ -63,5 +63,8 @@ func (cfg ServerConfig) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "security.oauth.redirectUrl"), defaultServerConfig.Security.Oauth.RedirectUrl, "")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "security.oauth.httpAuthorizationHeader"), defaultServerConfig.Security.Oauth.HttpAuthorizationHeader, "")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "security.oauth.grpcAuthorizationHeader"), defaultServerConfig.Security.Oauth.GrpcAuthorizationHeader, "")
+	cmdFlags.Bool(fmt.Sprintf("%v%v", prefix, "security.allowCors"), defaultServerConfig.Security.AllowCors, "")
+	cmdFlags.StringSlice(fmt.Sprintf("%v%v", prefix, "security.allowedOrigins"), []string{}, "")
+	cmdFlags.StringSlice(fmt.Sprintf("%v%v", prefix, "security.allowedHeaders"), []string{}, "")
 	return cmdFlags
 }

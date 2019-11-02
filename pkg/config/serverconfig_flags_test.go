@@ -583,4 +583,70 @@ func TestServerConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_security.allowCors", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vBool, err := cmdFlags.GetBool("security.allowCors"); err == nil {
+				assert.Equal(t, bool(defaultServerConfig.Security.AllowCors), vBool)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("security.allowCors", testValue)
+			if vBool, err := cmdFlags.GetBool("security.allowCors"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vBool), &actual.Security.AllowCors)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_security.allowedOrigins", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vStringSlice, err := cmdFlags.GetStringSlice("security.allowedOrigins"); err == nil {
+				assert.Equal(t, []string([]string{}), vStringSlice)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := join_ServerConfig("1,1", ",")
+
+			cmdFlags.Set("security.allowedOrigins", testValue)
+			if vStringSlice, err := cmdFlags.GetStringSlice("security.allowedOrigins"); err == nil {
+				testDecodeSlice_ServerConfig(t, join_ServerConfig(vStringSlice, ","), &actual.Security.AllowedOrigins)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_security.allowedHeaders", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vStringSlice, err := cmdFlags.GetStringSlice("security.allowedHeaders"); err == nil {
+				assert.Equal(t, []string([]string{}), vStringSlice)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := join_ServerConfig("1,1", ",")
+
+			cmdFlags.Set("security.allowedHeaders", testValue)
+			if vStringSlice, err := cmdFlags.GetStringSlice("security.allowedHeaders"); err == nil {
+				testDecodeSlice_ServerConfig(t, join_ServerConfig(vStringSlice, ","), &actual.Security.AllowedHeaders)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 }
