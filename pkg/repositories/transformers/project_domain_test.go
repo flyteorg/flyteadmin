@@ -17,7 +17,7 @@ var attributes = admin.ProjectDomainAttributes{
 	Project: "project",
 	Domain:  "domain",
 	Attributes: map[string]string{
-		"cpu":    "100",
+		"cpu": "100",
 	},
 }
 
