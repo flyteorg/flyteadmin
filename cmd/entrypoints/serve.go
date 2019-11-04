@@ -154,6 +154,7 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authContext in
 		// to serve options requests. Note that this is installed on the grpc-gateway ServeMux object. This means
 		// other endpoints like the auth endpoints (if-enabled) are not affected.
 		gwmux.Handle(http.MethodOptions, globPattern, func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			decorator(http.HandlerFunc(healthCheckFunc)).ServeHTTP(w, r)
 		})
 	}
