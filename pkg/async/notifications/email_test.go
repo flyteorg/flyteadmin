@@ -98,6 +98,35 @@ func TestSubstituteAllTemplates(t *testing.T) {
 		substituteEmailParameters(strings.Join(messageTemplate, ","), request, workflowExecution))
 }
 
+func TestSubstituteAllTemplatesNoSpaces(t *testing.T) {
+	templateVars := map[string]string{
+		fmt.Sprintf(substitutionParamNoSpaces, project):           executionProjectValue,
+		fmt.Sprintf(substitutionParamNoSpaces, domain):            executionDomainValue,
+		fmt.Sprintf(substitutionParamNoSpaces, name):              executionNameValue,
+		fmt.Sprintf(substitutionParamNoSpaces, launchPlanProject): launchPlanProjectValue,
+		fmt.Sprintf(substitutionParamNoSpaces, launchPlanDomain):  launchPlanDomainValue,
+		fmt.Sprintf(substitutionParamNoSpaces, launchPlanName):    launchPlanNameValue,
+		fmt.Sprintf(substitutionParamNoSpaces, launchPlanVersion): launchPlanVersionValue,
+		fmt.Sprintf(substitutionParamNoSpaces, workflowProject):   workflowProjectValue,
+		fmt.Sprintf(substitutionParamNoSpaces, workflowDomain):    workflowDomainValue,
+		fmt.Sprintf(substitutionParamNoSpaces, workflowName):      workflowNameValue,
+		fmt.Sprintf(substitutionParamNoSpaces, workflowVersion):   workflowVersionValue,
+		fmt.Sprintf(substitutionParamNoSpaces, phase):             strings.ToLower(core.WorkflowExecution_SUCCEEDED.String()),
+	}
+	var messageTemplate, desiredResult []string
+	for template, result := range templateVars {
+		messageTemplate = append(messageTemplate, template)
+		desiredResult = append(desiredResult, result)
+	}
+	request := admin.WorkflowExecutionEventRequest{
+		Event: &event.WorkflowExecutionEvent{
+			Phase: core.WorkflowExecution_SUCCEEDED,
+		},
+	}
+	assert.Equal(t, strings.Join(desiredResult, ","),
+		substituteEmailParameters(strings.Join(messageTemplate, ","), request, workflowExecution))
+}
+
 func TestToEmailMessageFromWorkflowExecutionEvent(t *testing.T) {
 	notificationsConfig := runtimeInterfaces.NotificationsConfig{
 		NotificationsEmailerConfig: runtimeInterfaces.NotificationsEmailerConfig{
