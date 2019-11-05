@@ -42,10 +42,6 @@ func (r *NamedEntityRepo) Update(ctx context.Context, input models.NamedEntity) 
 func (r *NamedEntityRepo) Get(ctx context.Context, input interfaces.GetNamedEntityInput) (models.NamedEntity, error) {
 	var namedEntity models.NamedEntity
 
-	// This is implemented as a filter+join to ensure that when the provided
-	// resource_type/project/domain/name combination don't map to a valid
-	// entry in the target table, we return NotFound instead of a fake record
-	// with empty metadata.
 	filters, err := getNamedEntityFilters(input.ResourceType, input.Project, input.Domain, input.Name)
 	if err != nil {
 		return models.NamedEntity{}, err
