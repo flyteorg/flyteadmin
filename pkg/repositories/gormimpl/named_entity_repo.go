@@ -24,7 +24,7 @@ type NamedEntityRepo struct {
 func (r *NamedEntityRepo) Update(ctx context.Context, input models.NamedEntity) error {
 	timer := r.metrics.UpdateDuration.Start()
 	var metadata models.NamedEntityMetadata
-	tx := r.db.Debug().Where(&models.NamedEntityMetadata{
+	tx := r.db.Where(&models.NamedEntityMetadata{
 		NamedEntityMetadataKey: models.NamedEntityMetadataKey{
 			ResourceType: input.ResourceType,
 			Project:      input.Project,

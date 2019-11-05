@@ -145,6 +145,26 @@ func ValidateNamedEntityIdentifierListRequest(request admin.NamedEntityIdentifie
 	return nil
 }
 
+func ValidateNamedEntityGetRequest(request admin.NamedEntityGetRequest) error {
+	if err := ValidateResourceType(request.ResourceType); err != nil {
+		return err
+	}
+	if err := ValidateNamedEntityIdentifier(request.Id); err != nil {
+		return err
+	}
+	return nil
+}
+
+func ValidateNamedEntityUpdateRequest(request admin.NamedEntityUpdateRequest) error {
+	if err := ValidateResourceType(request.ResourceType); err != nil {
+		return err
+	}
+	if err := ValidateNamedEntityIdentifier(request.Id); err != nil {
+		return err
+	}
+	return nil
+}
+
 func ValidateNamedEntityListRequest(request admin.NamedEntityListRequest) error {
 	if err := ValidateEmptyStringField(request.Project, shared.Project); err != nil {
 		return err
@@ -155,8 +175,8 @@ func ValidateNamedEntityListRequest(request admin.NamedEntityListRequest) error 
 	if err := ValidateResourceType(request.ResourceType); err != nil {
 		return err
 	}
-	if request.Limit == 0 {
-		return shared.GetInvalidArgumentError(shared.Limit)
+	if err := ValidateLimit(request.Limit); err != nil {
+		return err
 	}
 	return nil
 }

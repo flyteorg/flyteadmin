@@ -5,7 +5,6 @@ import (
 
 	"github.com/lyft/flyteadmin/pkg/rpc/adminservice/util"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -14,11 +13,6 @@ func (m *AdminService) GetNamedEntity(ctx context.Context, request *admin.NamedE
 	defer m.interceptPanic(ctx, request)
 	if request == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Incorrect request, nil requests not allowed")
-	}
-
-	// We require a valid resource type to retrieve metadata
-	if request.ResourceType == core.ResourceType_UNSPECIFIED {
-		return nil, status.Errorf(codes.InvalidArgument, "resource_type cannot be undefined")
 	}
 
 	var response *admin.NamedEntity
@@ -39,11 +33,6 @@ func (m *AdminService) UpdateNamedEntity(ctx context.Context, request *admin.Nam
 	defer m.interceptPanic(ctx, request)
 	if request == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Incorrect request, nil requests not allowed")
-	}
-
-	// We require a valid resource type to look up / set metadata
-	if request.ResourceType == core.ResourceType_UNSPECIFIED {
-		return nil, status.Errorf(codes.InvalidArgument, "resource_type cannot be undefined")
 	}
 
 	var response *admin.NamedEntityUpdateResponse

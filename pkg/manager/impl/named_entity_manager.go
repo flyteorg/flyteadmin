@@ -32,18 +32,19 @@ type NamedEntityManager struct {
 
 func (m *NamedEntityManager) UpdateNamedEntity(ctx context.Context, request admin.NamedEntityUpdateRequest) (
 	*admin.NamedEntityUpdateResponse, error) {
-	if err := validation.ValidateResourceType(request.ResourceType); err != nil {
-		return nil, err
-	}
-	if err := validation.ValidateNamedEntityIdentifier(request.Id); err != nil {
+	if err := validation.ValidateNamedEntityUpdateRequest(request); err != nil {
+		logger.Debugf(ctx, "invalid request [%+v]: %v", request, err)
 		return nil, err
 	}
 
-	// TODO: Validate that the provided project/domain/name exists in the table
-	// for the specified type before storing metadata associated with it?
+	// Ensure enityt exists before trying to update it
+	_, err := util.GetNamedEntity(ctx, m.db, request.ResourceType, *request.Id)
+	if err != nil {
+		return nil, err
+	}
 
 	metadataModel := transformers.CreateNamedEntityModel(&request)
-	err := m.db.NamedEntityRepo().Update(ctx, metadataModel)
+	err = m.db.NamedEntityRepo().Update(ctx, metadataModel)
 	if err != nil {
 		logger.Debugf(ctx, "Failed to update named_entity for [%+v] with err %v", request.Id, err)
 		return nil, err
@@ -53,10 +54,8 @@ func (m *NamedEntityManager) UpdateNamedEntity(ctx context.Context, request admi
 
 func (m *NamedEntityManager) GetNamedEntity(ctx context.Context, request admin.NamedEntityGetRequest) (
 	*admin.NamedEntity, error) {
-	if err := validation.ValidateResourceType(request.ResourceType); err != nil {
-		return nil, err
-	}
-	if err := validation.ValidateNamedEntityIdentifier(request.Id); err != nil {
+	if err := validation.ValidateNamedEntityGetRequest(request); err != nil {
+		logger.Debugf(ctx, "invalid request [%+v]: %v", request, err)
 		return nil, err
 	}
 	return util.GetNamedEntity(ctx, m.db, request.ResourceType, *request.Id)
