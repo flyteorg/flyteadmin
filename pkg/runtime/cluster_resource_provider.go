@@ -25,13 +25,13 @@ func (p *ClusterResourceConfigurationProvider) GetTemplatePath() string {
 	return ""
 }
 
-func (p *ClusterResourceConfigurationProvider) GetTemplateData() map[string]interfaces.DataSource {
+func (p *ClusterResourceConfigurationProvider) GetTemplateData() interfaces.TemplateData {
 	if clusterResourceConfig != nil && clusterResourceConfig.GetConfig() != nil {
 		return clusterResourceConfig.GetConfig().(*interfaces.ClusterResourceConfig).TemplateData
 	}
 	logger.Warningf(context.Background(),
-		"Failed to find cluster resource values in config. Returning an empty string for template path")
-	return make(map[string]interfaces.DataSource)
+		"Failed to find cluster resource values in config. Returning an empty map for template data")
+	return make(interfaces.TemplateData)
 }
 
 func (p *ClusterResourceConfigurationProvider) GetRefreshInterval() time.Duration {
@@ -43,6 +43,15 @@ func (p *ClusterResourceConfigurationProvider) GetRefreshInterval() time.Duratio
 	return time.Minute
 }
 
-func NewNamespaceConfigurationProvider() interfaces.ClusterResourceConfiguration {
+func (p *ClusterResourceConfigurationProvider) GetCustomTemplateData() map[interfaces.DomainName]interfaces.TemplateData {
+	if clusterResourceConfig != nil && clusterResourceConfig.GetConfig() != nil {
+		return clusterResourceConfig.GetConfig().(*interfaces.ClusterResourceConfig).CustomData
+	}
+	logger.Warningf(context.Background(),
+		"Failed to find cucluster resource values in config. Returning an empty map for custom template data")
+	return make(map[interfaces.DomainName]interfaces.TemplateData)
+}
+
+func NewClusterResourceConfigurationProvider() interfaces.ClusterResourceConfiguration {
 	return &ClusterResourceConfigurationProvider{}
 }

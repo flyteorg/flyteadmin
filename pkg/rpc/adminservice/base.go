@@ -35,6 +35,7 @@ type AdminService struct {
 	NodeExecutionManager interfaces.NodeExecutionInterface
 	TaskExecutionManager interfaces.TaskExecutionInterface
 	ProjectManager       interfaces.ProjectInterface
+	ProjectDomainManager interfaces.ProjectDomainInterface
 	Metrics              AdminMetrics
 }
 
@@ -85,7 +86,8 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 	workflowExecutor := workflowengine.NewFlytePropeller(
 		applicationConfiguration.RoleNameKey,
 		executionCluster,
-		adminScope.NewSubScope("executor").NewSubScope("flytepropeller"))
+		adminScope.NewSubScope("executor").NewSubScope("flytepropeller"),
+		configuration.NamespaceMappingConfiguration())
 	logger.Info(context.Background(), "Successfully created a workflow executor engine")
 	dataStorageClient, err := storage.NewDataStore(storeConfig, adminScope.NewSubScope("storage"))
 	if err != nil {
@@ -160,7 +162,8 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 			db, adminScope.NewSubScope("node_execution_manager"), urlData),
 		TaskExecutionManager: manager.NewTaskExecutionManager(
 			db, adminScope.NewSubScope("task_execution_manager"), urlData),
-		ProjectManager: manager.NewProjectManager(db, configuration),
-		Metrics:        InitMetrics(adminScope),
+		ProjectManager:       manager.NewProjectManager(db, configuration),
+		ProjectDomainManager: manager.NewProjectDomainManager(db, configuration),
+		Metrics:              InitMetrics(adminScope),
 	}
 }
