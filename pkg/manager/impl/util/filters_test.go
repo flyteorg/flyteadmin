@@ -82,10 +82,10 @@ func TestParseFilters(t *testing.T) {
 	assert.Equal(t, "bar in (?)", actualFilterExpression.Query)
 	assert.Equal(t, []interface{}{"4", "5", "6"}, actualFilterExpression.Args)
 
-	filterExpression = "invalid_operator(foo,bar)"
+	filterExpression = "invalid_function(foo,bar)"
 	taskFilters, err = ParseFilters(filterExpression, common.Task)
 	assert.Error(t, err)
-	assert.EqualError(t, err, "unrecognized filter function: invalid_operator")
+	assert.EqualError(t, err, "unrecognized filter function: invalid_function")
 }
 
 func TestGetEqualityFilter(t *testing.T) {
