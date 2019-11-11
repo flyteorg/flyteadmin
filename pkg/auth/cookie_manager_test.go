@@ -14,8 +14,8 @@ import (
 func TestCookieManager_SetTokenCookies(t *testing.T) {
 	ctx := context.Background()
 	// These were generated for unit testing only.
-	hashKeyEncoded := "wG4pE1ccdw/pHZ2ml8wrD5VJkOtLPmBpWbKHmezWXktGaFbRoAhXidWs8OpbA3y7N8vyZhz1B1E37+tShWC7gA"
-	blockKeyEncoded := "afyABVgGOvWJFxVyOvCWCupoTn6BkNl4SOHmahho16Q"
+	hashKeyEncoded := "wG4pE1ccdw/pHZ2ml8wrD5VJkOtLPmBpWbKHmezWXktGaFbRoAhXidWs8OpbA3y7N8vyZhz1B1E37+tShWC7gA" //nolint:goconst
+	blockKeyEncoded := "afyABVgGOvWJFxVyOvCWCupoTn6BkNl4SOHmahho16Q"                                           //nolint:goconst
 
 	manager, err := NewCookieManager(ctx, hashKeyEncoded, blockKeyEncoded)
 	assert.NoError(t, err)
@@ -37,8 +37,8 @@ func TestCookieManager_SetTokenCookies(t *testing.T) {
 func TestCookieManager_RetrieveTokenValues(t *testing.T) {
 	ctx := context.Background()
 	// These were generated for unit testing only.
-	hashKeyEncoded := "wG4pE1ccdw/pHZ2ml8wrD5VJkOtLPmBpWbKHmezWXktGaFbRoAhXidWs8OpbA3y7N8vyZhz1B1E37+tShWC7gA"
-	blockKeyEncoded := "afyABVgGOvWJFxVyOvCWCupoTn6BkNl4SOHmahho16Q"
+	hashKeyEncoded := "wG4pE1ccdw/pHZ2ml8wrD5VJkOtLPmBpWbKHmezWXktGaFbRoAhXidWs8OpbA3y7N8vyZhz1B1E37+tShWC7gA" //nolint:goconst
+	blockKeyEncoded := "afyABVgGOvWJFxVyOvCWCupoTn6BkNl4SOHmahho16Q"                                           //nolint:goconst
 
 	manager, err := NewCookieManager(ctx, hashKeyEncoded, blockKeyEncoded)
 	assert.NoError(t, err)
