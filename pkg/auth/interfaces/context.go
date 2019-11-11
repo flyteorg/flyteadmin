@@ -1,11 +1,12 @@
 package interfaces
 
 import (
+	"net/http"
+	"net/url"
+
 	"github.com/coreos/go-oidc"
 	"github.com/lyft/flyteadmin/pkg/auth/config"
 	"golang.org/x/oauth2"
-	"net/http"
-	"net/url"
 )
 
 //go:generate mockery -name=AuthenticationContext -case=underscore

@@ -2,18 +2,19 @@ package auth
 
 import (
 	"context"
-	"github.com/coreos/go-oidc"
-	"github.com/lyft/flyteadmin/pkg/auth/config"
-	"github.com/lyft/flyteadmin/pkg/auth/interfaces"
-	"github.com/lyft/flytestdlib/errors"
-	"github.com/lyft/flytestdlib/logger"
-	"golang.org/x/oauth2"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
 	"strings"
 	"time"
+
+	"github.com/coreos/go-oidc"
+	"github.com/lyft/flyteadmin/pkg/auth/config"
+	"github.com/lyft/flyteadmin/pkg/auth/interfaces"
+	"github.com/lyft/flytestdlib/errors"
+	"github.com/lyft/flytestdlib/logger"
+	"golang.org/x/oauth2"
 )
 
 const (
@@ -111,15 +112,15 @@ func NewAuthenticationContext(ctx context.Context, options config.OAuthOptions) 
 		}
 		joinedPath := path.Join(base.EscapedPath(), options.IdpUserInfoEndpoint)
 
-		parsedUrl, err := url.Parse(joinedPath)
+		parsedURL, err := url.Parse(joinedPath)
 		if err != nil {
 			logger.Errorf(ctx, "Error parsing total IDP user info path %s as URL %s", joinedPath, err)
 			return Context{}, errors.Wrapf(ErrAuthContext, err,
 				"Error parsing IDP user info path as URL while constructing IDP user info endpoint")
 		}
-		finalUrl := base.ResolveReference(parsedUrl)
-		logger.Infof(ctx, "The /userinfo URL for the IDP is %s", finalUrl.String())
-		result.userInfoURL = finalUrl
+		finalURL := base.ResolveReference(parsedURL)
+		logger.Infof(ctx, "The /userinfo URL for the IDP is %s", finalURL.String())
+		result.userInfoURL = finalURL
 	}
 
 	// Construct an http client for interacting with the IDP if necessary.
@@ -139,13 +140,13 @@ func GetOauth2Config(options config.OAuthOptions) (oauth2.Config, error) {
 	secret := strings.TrimSuffix(string(secretBytes), "\n")
 	return oauth2.Config{
 		RedirectURL:  options.CallbackURL,
-		ClientID:     options.ClientId,
+		ClientID:     options.ClientID,
 		ClientSecret: secret,
 		// Offline access needs to be specified in order to return a refresh token in the exchange.
 		// TODO: Second parameter is IDP specific - move to config. Also handle case where a refresh token is not allowed
 		Scopes: []string{OidcScope, OfflineAccessType, ProfileScope},
 		Endpoint: oauth2.Endpoint{
-			AuthURL:  options.AuthorizeUrl,
+			AuthURL:  options.AuthorizeURL,
 			TokenURL: options.TokenURL,
 		},
 	}, nil

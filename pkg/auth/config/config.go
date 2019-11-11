@@ -3,7 +3,7 @@ package config
 type OAuthOptions struct {
 	// The client ID for Admin in your IDP
 	// See https://tools.ietf.org/html/rfc6749#section-2.2 for more information
-	ClientId string `json:"clientId"`
+	ClientID string `json:"clientId"`
 
 	// The client secret used in the exchange of the authorization code for the token.
 	// https://tools.ietf.org/html/rfc6749#section-2.3
@@ -16,7 +16,7 @@ type OAuthOptions struct {
 	// These two config elements currently need the entire path, including the already specified baseUrl
 	// TODO: Refactor to ascertain the paths using discovery (see https://tools.ietf.org/html/rfc8414)
 	//       Also refactor to use relative paths when discovery is not available
-	AuthorizeUrl string `json:"authorizeUrl"`
+	AuthorizeURL string `json:"authorizeUrl"`
 	TokenURL     string `json:"tokenUrl"`
 
 	// This is the callback URL that will be sent to the IDP authorize endpoint. It is likely that your IDP application

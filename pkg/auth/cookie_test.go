@@ -5,13 +5,14 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"net/http"
+	"net/url"
+	"testing"
+
 	"github.com/gorilla/securecookie"
 	"github.com/lyft/flyteadmin/pkg/auth/config"
 	"github.com/lyft/flyteadmin/pkg/auth/interfaces/mocks"
 	"github.com/stretchr/testify/assert"
-	"net/http"
-	"net/url"
-	"testing"
 )
 
 // This function can also be called locally to generate new keys

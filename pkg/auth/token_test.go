@@ -2,11 +2,12 @@ package auth
 
 import (
 	"context"
-	"github.com/coreos/go-oidc"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/coreos/go-oidc"
+	"github.com/stretchr/testify/assert"
 )
 
 // Until the go-oidc library uses typed errors, we are left to check expiration with a string match.

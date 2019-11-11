@@ -2,19 +2,20 @@ package auth
 
 import (
 	"context"
+	"strings"
+	"time"
+
 	"github.com/coreos/go-oidc"
 	"github.com/lyft/flyteadmin/pkg/auth/config"
 	"github.com/lyft/flytestdlib/errors"
 	"github.com/lyft/flytestdlib/logger"
 	"golang.org/x/oauth2"
-	"strings"
-	"time"
 )
 
 const (
 	ErrRefreshingToken errors.ErrorCode = "TOKEN_REFRESH_FAILURE"
-	ErrTokenExpired                     = "JWT_EXPIRED"
-	ErrJwtValidation                    = "JWT_VERIFICATION_FAILED"
+	ErrTokenExpired    errors.ErrorCode = "JWT_EXPIRED"
+	ErrJwtValidation   errors.ErrorCode = "JWT_VERIFICATION_FAILED"
 )
 
 // Refresh a JWT

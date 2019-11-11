@@ -3,10 +3,11 @@ package auth
 import (
 	"context"
 	"encoding/base64"
+	"net/http"
+
 	"github.com/lyft/flytestdlib/errors"
 	"github.com/lyft/flytestdlib/logger"
 	"golang.org/x/oauth2"
-	"net/http"
 )
 
 type CookieManager struct {
@@ -16,7 +17,8 @@ type CookieManager struct {
 
 const (
 	ErrB64Decoding errors.ErrorCode = "BINARY_DECODING_FAILED"
-	ErrTokenNil    errors.ErrorCode = "EMPTY_OAUTH_TOKEN"
+	// #nosec
+	ErrTokenNil errors.ErrorCode = "EMPTY_OAUTH_TOKEN"
 )
 
 func NewCookieManager(ctx context.Context, hashKeyEncoded, blockKeyEncoded string) (CookieManager, error) {
@@ -41,7 +43,7 @@ func NewCookieManager(ctx context.Context, hashKeyEncoded, blockKeyEncoded strin
 func (c CookieManager) RetrieveTokenValues(ctx context.Context, request *http.Request) (accessToken string,
 	refreshToken string, err error) {
 
-	jwtCookie, err := request.Cookie(accessTokenCookie)
+	jwtCookie, err := request.Cookie(accessTokenCookieName)
 	if err != nil || jwtCookie == nil {
 		logger.Errorf(ctx, "Could not detect existing access token cookie")
 		return
@@ -53,7 +55,7 @@ func (c CookieManager) RetrieveTokenValues(ctx context.Context, request *http.Re
 		return
 	}
 
-	refreshCookie, err := request.Cookie(refreshTokenCookie)
+	refreshCookie, err := request.Cookie(refreshTokenCookieName)
 	if err != nil || refreshCookie == nil {
 		logger.Debugf(ctx, "Could not detect existing access token cookie")
 		return
@@ -73,7 +75,7 @@ func (c CookieManager) SetTokenCookies(ctx context.Context, writer http.Response
 		return errors.Errorf(ErrTokenNil, "Attempting to set cookies with nil token")
 	}
 
-	jwtCookie, err := NewSecureCookie(accessTokenCookie, token.AccessToken, c.hashKey, c.blockKey)
+	jwtCookie, err := NewSecureCookie(accessTokenCookieName, token.AccessToken, c.hashKey, c.blockKey)
 	if err != nil {
 		logger.Errorf(ctx, "Error generating encrypted JWT cookie %s", err)
 		return err
@@ -82,7 +84,7 @@ func (c CookieManager) SetTokenCookies(ctx context.Context, writer http.Response
 
 	// Set the refresh cookie if there is a refresh token
 	if token.RefreshToken != "" {
-		refreshCookie, err := NewSecureCookie(refreshTokenCookie, token.RefreshToken, c.hashKey, c.blockKey)
+		refreshCookie, err := NewSecureCookie(refreshTokenCookieName, token.RefreshToken, c.hashKey, c.blockKey)
 		if err != nil {
 			logger.Errorf(ctx, "Error generating encrypted refresh cookie %s", err)
 			return err

@@ -3,11 +3,12 @@ package auth
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"golang.org/x/oauth2"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"golang.org/x/oauth2"
 )
 
 func TestCookieManager_SetTokenCookies(t *testing.T) {

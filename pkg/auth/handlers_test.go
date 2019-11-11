@@ -2,12 +2,13 @@ package auth
 
 import (
 	"context"
-	"github.com/lyft/flyteadmin/pkg/auth/interfaces/mocks"
-	"github.com/stretchr/testify/assert"
-	"golang.org/x/oauth2"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+
+	"github.com/lyft/flyteadmin/pkg/auth/interfaces/mocks"
+	"github.com/stretchr/testify/assert"
+	"golang.org/x/oauth2"
 
 	"testing"
 )
@@ -44,9 +45,9 @@ func TestGetHttpRequestCookieToMetadataHandler(t *testing.T) {
 	assert.NoError(t, err)
 	mockAuthCtx := mocks.AuthenticationContext{}
 	mockAuthCtx.On("CookieManager").Return(&cookieManager)
-	handler := GetHttpRequestCookieToMetadataHandler(&mockAuthCtx)
+	handler := GetHTTPRequestCookieToMetadataHandler(&mockAuthCtx)
 	req, err := http.NewRequest("GET", "/api/v1/projects", nil)
-	jwtCookie, err := NewSecureCookie(accessTokenCookie, "a.b.c", cookieManager.hashKey, cookieManager.blockKey)
+	jwtCookie, err := NewSecureCookie(accessTokenCookieName, "a.b.c", cookieManager.hashKey, cookieManager.blockKey)
 	assert.NoError(t, err)
 	req.AddCookie(&jwtCookie)
 	assert.Equal(t, "Bearer a.b.c", handler(ctx, req)["authorization"][0])

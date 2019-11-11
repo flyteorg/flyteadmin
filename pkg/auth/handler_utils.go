@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/lyft/flytestdlib/errors"
-	"github.com/lyft/flytestdlib/logger"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/lyft/flytestdlib/errors"
+	"github.com/lyft/flytestdlib/logger"
 )
 
 const (
@@ -41,8 +42,8 @@ type UserInfoResponse struct {
 	Picture           string `json:"picture"`
 }
 
-func postToIdp(ctx context.Context, client *http.Client, userInfoUrl, accessToken string) (UserInfoResponse, error) {
-	request, err := http.NewRequest(http.MethodPost, userInfoUrl, nil)
+func postToIdp(ctx context.Context, client *http.Client, userInfoURL, accessToken string) (UserInfoResponse, error) {
+	request, err := http.NewRequest(http.MethodPost, userInfoURL, nil)
 	if err != nil {
 		logger.Errorf(ctx, "Error creating user info request to IDP %s", err)
 		return UserInfoResponse{}, errors.Wrapf(ErrIdpClient, err, "Error creating user info request to IDP")

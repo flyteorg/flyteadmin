@@ -279,7 +279,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("security.oauth.clientId"); err == nil {
-				assert.Equal(t, string(defaultServerConfig.Security.Oauth.ClientId), vString)
+				assert.Equal(t, string(defaultServerConfig.Security.Oauth.ClientID), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -290,7 +290,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("security.oauth.clientId", testValue)
 			if vString, err := cmdFlags.GetString("security.oauth.clientId"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.ClientId)
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.ClientID)
 
 			} else {
 				assert.FailNow(t, err.Error())
@@ -345,7 +345,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("security.oauth.authorizeUrl"); err == nil {
-				assert.Equal(t, string(defaultServerConfig.Security.Oauth.AuthorizeUrl), vString)
+				assert.Equal(t, string(defaultServerConfig.Security.Oauth.AuthorizeURL), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -356,7 +356,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("security.oauth.authorizeUrl", testValue)
 			if vString, err := cmdFlags.GetString("security.oauth.authorizeUrl"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.AuthorizeUrl)
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.AuthorizeURL)
 
 			} else {
 				assert.FailNow(t, err.Error())

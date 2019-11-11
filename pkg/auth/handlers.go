@@ -4,9 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"path"
+
 	"github.com/gorilla/handlers"
 	grpcauth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/lyft/flyteadmin/pkg/auth/interfaces"
+	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/errors"
 	"github.com/lyft/flytestdlib/logger"
 	"golang.org/x/oauth2"
@@ -14,15 +18,15 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-	"net/http"
-	"path"
 )
 
 const (
-	LoginRedirectUrlParameter = "redirect_url"
+	LoginRedirectURLParameter                  = "redirect_url"
+	bearerTokenContextKey     contextutils.Key = "bearer"
+	emailContextKey           contextutils.Key = "email"
 )
 
-type HttpRequestToMetadataAnnotator func(ctx context.Context, request *http.Request) metadata.MD
+type HTTPRequestToMetadataAnnotator func(ctx context.Context, request *http.Request) metadata.MD
 
 // Look for access token and refresh token, if both are present and the access token is expired, then attempt to
 // refresh. Otherwise do nothing and proceed to the next handler. If successfully refreshed, proceed to the landing page.
@@ -51,11 +55,9 @@ func RefreshTokensIfExists(ctx context.Context, authContext interfaces.Authentic
 			logger.Errorf(ctx, "Non-expiration error in refresh token handler %s, redirecting to login handler", err)
 			handlerFunc(writer, request)
 			return
-		} else {
-			redirectUrl := getAuthFlowEndRedirect(ctx, authContext, request)
-			http.Redirect(writer, request, redirectUrl, http.StatusTemporaryRedirect)
-			return
 		}
+		redirectURL := getAuthFlowEndRedirect(ctx, authContext, request)
+		http.Redirect(writer, request, redirectURL, http.StatusTemporaryRedirect)
 	}
 }
 
@@ -70,8 +72,8 @@ func GetLoginHandler(ctx context.Context, authContext interfaces.AuthenticationC
 		url := authContext.OAuth2Config().AuthCodeURL(state)
 		fmt.Println(url)
 		queryParams := request.URL.Query()
-		if flowEndRedirectUrl := queryParams.Get(LoginRedirectUrlParameter); flowEndRedirectUrl != "" {
-			redirectCookie := NewRedirectCookie(ctx, flowEndRedirectUrl)
+		if flowEndRedirectURL := queryParams.Get(LoginRedirectURLParameter); flowEndRedirectURL != "" {
+			redirectCookie := NewRedirectCookie(ctx, flowEndRedirectURL)
 			if redirectCookie != nil {
 				http.SetCookie(writer, redirectCookie)
 			} else {
@@ -112,8 +114,8 @@ func GetCallbackHandler(ctx context.Context, authContext interfaces.Authenticati
 			return
 		}
 
-		redirectUrl := getAuthFlowEndRedirect(ctx, authContext, request)
-		http.Redirect(writer, request, redirectUrl, http.StatusTemporaryRedirect)
+		redirectURL := getAuthFlowEndRedirect(ctx, authContext, request)
+		http.Redirect(writer, request, redirectURL, http.StatusTemporaryRedirect)
 	}
 }
 
@@ -179,14 +181,14 @@ func GetAuthenticationInterceptor(authContext interfaces.AuthenticationContext) 
 		} else if token.Subject == "" {
 			return ctx, status.Errorf(codes.Unauthenticated, "no email or empty email found")
 		} else {
-			newCtx := WithUserEmail(context.WithValue(ctx, "bearer", tokenStr), token.Subject)
+			newCtx := WithUserEmail(context.WithValue(ctx, bearerTokenContextKey, tokenStr), token.Subject)
 			return newCtx, nil
 		}
 	}
 }
 
 func WithUserEmail(ctx context.Context, email string) context.Context {
-	return context.WithValue(ctx, "email", email)
+	return context.WithValue(ctx, emailContextKey, email)
 }
 
 // This is effectively middleware for the grpc gateway, it allows us to modify the translation between HTTP request
@@ -194,7 +196,7 @@ func WithUserEmail(ctx context.Context, email string) context.Context {
 // yet implemented), or encrypted cookies. Note that when deploying behind Envoy, you have the option to look for a
 // configurable, non-standard header name. The token is extracted and turned into a metadata object which is then
 // attached to the request, from which the token is extracted later for verification.
-func GetHttpRequestCookieToMetadataHandler(authContext interfaces.AuthenticationContext) HttpRequestToMetadataAnnotator {
+func GetHTTPRequestCookieToMetadataHandler(authContext interfaces.AuthenticationContext) HTTPRequestToMetadataAnnotator {
 	return func(ctx context.Context, request *http.Request) metadata.MD {
 		// TODO: Add read from Authorization header first, using the custom header if necessary.
 		// TODO: Improve error handling
@@ -241,7 +243,6 @@ func GetMeEndpointHandler(ctx context.Context, authCtx interfaces.Authentication
 		if err != nil {
 			logger.Errorf(ctx, "Wrote user info response size %d, err %s", size, err)
 		}
-		return
 	}
 }
 

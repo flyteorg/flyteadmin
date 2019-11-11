@@ -2,8 +2,9 @@ package interfaces
 
 import (
 	"context"
-	"golang.org/x/oauth2"
 	"net/http"
+
+	"golang.org/x/oauth2"
 )
 
 type CookieHandler interface {

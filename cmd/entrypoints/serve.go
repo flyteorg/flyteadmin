@@ -3,18 +3,20 @@ package entrypoints
 import (
 	"context"
 	"crypto/tls"
+
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpcauth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/lyft/flyteadmin/pkg/auth"
 	"github.com/lyft/flyteadmin/pkg/auth/interfaces"
 
-	"github.com/lyft/flyteadmin/pkg/server"
-	"github.com/pkg/errors"
-	"google.golang.org/grpc/credentials"
 	"net"
 	"net/http"
 	_ "net/http/pprof" // Required to serve application.
 	"strings"
+
+	"github.com/lyft/flyteadmin/pkg/server"
+	"github.com/pkg/errors"
+	"google.golang.org/grpc/credentials"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/lyft/flyteadmin/pkg/common"
@@ -133,7 +135,7 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authContext in
 		mux.HandleFunc(auth.MetadataEndpoint, auth.GetMetadataEndpointRedirectHandler(ctx, authContext))
 
 		// This option translates HTTP authorization data (cookies) into a gRPC metadata field
-		gwmuxOptions = append(gwmuxOptions, runtime.WithMetadata(auth.GetHttpRequestCookieToMetadataHandler(authContext)))
+		gwmuxOptions = append(gwmuxOptions, runtime.WithMetadata(auth.GetHTTPRequestCookieToMetadataHandler(authContext)))
 
 		if cfg.Security.AllowCors {
 			// In addition to serving preflight requests below, the server also needs to send a CORS header for all requests,
