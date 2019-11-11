@@ -20,7 +20,7 @@ func TestCookieManager_SetTokenCookies(t *testing.T) {
 	assert.NoError(t, err)
 
 	token := oauth2.Token{
-		AccessToken: "access",
+		AccessToken:  "access",
 		RefreshToken: "refresh",
 	}
 
@@ -43,7 +43,7 @@ func TestCookieManager_RetrieveTokenValues(t *testing.T) {
 	assert.NoError(t, err)
 
 	token := oauth2.Token{
-		AccessToken: "access",
+		AccessToken:  "access",
 		RefreshToken: "refresh",
 	}
 

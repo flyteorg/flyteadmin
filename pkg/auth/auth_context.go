@@ -27,7 +27,7 @@ type Context struct {
 	cookieManager interfaces.CookieHandler
 	oidcProvider  *oidc.Provider
 	options       config.OAuthOptions
-	userInfoUrl   *url.URL
+	userInfoURL   *url.URL
 	httpClient    *http.Client
 }
 
@@ -51,11 +51,11 @@ func (c Context) Options() config.OAuthOptions {
 	return c.options
 }
 
-func (c Context) GetUserInfoUrl() *url.URL {
-	return c.userInfoUrl
+func (c Context) GetUserInfoURL() *url.URL {
+	return c.userInfoURL
 }
 
-func (c Context) GetHttpClient() *http.Client {
+func (c Context) GetHTTPClient() *http.Client {
 	return c.httpClient
 }
 
@@ -66,8 +66,8 @@ const (
 
 func NewAuthenticationContext(ctx context.Context, options config.OAuthOptions) (Context, error) {
 	result := Context{
-		claims:        options.Claims,
-		options:       options,
+		claims:  options.Claims,
+		options: options,
 	}
 
 	// Construct the golang OAuth2 library's own internal configuration object from this package's config
@@ -119,7 +119,7 @@ func NewAuthenticationContext(ctx context.Context, options config.OAuthOptions) 
 		}
 		finalUrl := base.ResolveReference(parsedUrl)
 		logger.Infof(ctx, "The /userinfo URL for the IDP is %s", finalUrl.String())
-		result.userInfoUrl = finalUrl
+		result.userInfoURL = finalUrl
 	}
 
 	// Construct an http client for interacting with the IDP if necessary.

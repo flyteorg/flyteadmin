@@ -9,7 +9,6 @@ import (
 	"net/http"
 )
 
-
 type CookieManager struct {
 	hashKey  []byte
 	blockKey []byte
@@ -17,7 +16,7 @@ type CookieManager struct {
 
 const (
 	ErrB64Decoding errors.ErrorCode = "BINARY_DECODING_FAILED"
-	ErrTokenNil errors.ErrorCode = "EMPTY_OAUTH_TOKEN"
+	ErrTokenNil    errors.ErrorCode = "EMPTY_OAUTH_TOKEN"
 )
 
 func NewCookieManager(ctx context.Context, hashKeyEncoded, blockKeyEncoded string) (CookieManager, error) {

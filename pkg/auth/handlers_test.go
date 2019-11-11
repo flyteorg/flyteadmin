@@ -21,7 +21,7 @@ func TestGetLoginHandler(t *testing.T) {
 	ctx := context.Background()
 	dummyOAuth2Config := oauth2.Config{
 		ClientID: "abc",
-		Scopes: []string{"openid", "other"},
+		Scopes:   []string{"openid", "other"},
 	}
 	mockAuthCtx := mocks.AuthenticationContext{}
 	mockAuthCtx.On("OAuth2Config").Return(&dummyOAuth2Config)

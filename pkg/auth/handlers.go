@@ -214,7 +214,7 @@ func GetHttpRequestCookieToMetadataHandler(authContext interfaces.Authentication
 // This returns a handler that will retrieve user info, from the OAuth2 authorization server.
 // See the OpenID Connect spec at https://openid.net/specs/openid-connect-core-1_0.html#UserInfoResponse for more information.
 func GetMeEndpointHandler(ctx context.Context, authCtx interfaces.AuthenticationContext) http.HandlerFunc {
-	idpUserInfoEndpoint := authCtx.GetUserInfoUrl().String()
+	idpUserInfoEndpoint := authCtx.GetUserInfoURL().String()
 	return func(writer http.ResponseWriter, request *http.Request) {
 		access, _, err := authCtx.CookieManager().RetrieveTokenValues(ctx, request)
 		if err != nil {
@@ -223,7 +223,7 @@ func GetMeEndpointHandler(ctx context.Context, authCtx interfaces.Authentication
 		}
 		// TODO: Investigate improving transparency of errors. The errors from this call may be just a local error, or may
 		//       be an error from the HTTP request to the IDP. In the latter case, consider passing along the error code/msg.
-		userInfo, err := postToIdp(ctx, authCtx.GetHttpClient(), idpUserInfoEndpoint, access)
+		userInfo, err := postToIdp(ctx, authCtx.GetHTTPClient(), idpUserInfoEndpoint, access)
 		if err != nil {
 			logger.Errorf(ctx, "Error getting user info from IDP %s", err)
 			http.Error(writer, "Error getting user info from IDP", http.StatusFailedDependency)

@@ -16,6 +16,9 @@ const (
 
 func GetSslCredentials(ctx context.Context, certFile, keyFile string) (*x509.CertPool, *tls.Certificate, error) {
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		return nil, nil, errors.Wrapf(ErrCertificate, err, "failed to load X509 key pair: %s", certFile)
+	}
 	logger.Infof(ctx, "Constructing SSL credentials")
 
 	certPool := x509.NewCertPool()

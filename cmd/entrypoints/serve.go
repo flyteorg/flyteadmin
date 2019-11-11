@@ -127,7 +127,7 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authContext in
 			auth.GetLoginHandler(ctx, authContext)))
 		mux.HandleFunc("/callback", auth.GetCallbackHandler(ctx, authContext))
 		// Install the user info endpoint if there is a user info url configured.
-		if authContext.GetUserInfoUrl() != nil && authContext.GetUserInfoUrl().String() != "" {
+		if authContext.GetUserInfoURL() != nil && authContext.GetUserInfoURL().String() != "" {
 			mux.HandleFunc("/me", auth.GetMeEndpointHandler(ctx, authContext))
 		}
 		mux.HandleFunc(auth.MetadataEndpoint, auth.GetMetadataEndpointRedirectHandler(ctx, authContext))

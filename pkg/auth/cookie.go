@@ -22,8 +22,8 @@ const (
 )
 
 const (
-	ErrSecureCookie errors.ErrorCode = "SECURE_COOKIE_ERROR"
-	ErrInvalidCsrfToken = "CSRF_TOKEN_VALIDATION_FAILED"
+	ErrSecureCookie     errors.ErrorCode = "SECURE_COOKIE_ERROR"
+	ErrInvalidCsrfToken                  = "CSRF_TOKEN_VALIDATION_FAILED"
 )
 
 var AllowedChars = []rune("abcdefghijklmnopqrstuvwxyz1234567890")

@@ -45,8 +45,8 @@ func (_m *AuthenticationContext) CookieManager() interfaces.CookieHandler {
 	return r0
 }
 
-// GetHttpClient provides a mock function with given fields:
-func (_m *AuthenticationContext) GetHttpClient() *http.Client {
+// GetHTTPClient provides a mock function with given fields:
+func (_m *AuthenticationContext) GetHTTPClient() *http.Client {
 	ret := _m.Called()
 
 	var r0 *http.Client
@@ -61,8 +61,8 @@ func (_m *AuthenticationContext) GetHttpClient() *http.Client {
 	return r0
 }
 
-// GetUserInfoUrl provides a mock function with given fields:
-func (_m *AuthenticationContext) GetUserInfoUrl() *url.URL {
+// GetUserInfoURL provides a mock function with given fields:
+func (_m *AuthenticationContext) GetUserInfoURL() *url.URL {
 	ret := _m.Called()
 
 	var r0 *url.URL

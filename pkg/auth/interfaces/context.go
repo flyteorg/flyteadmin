@@ -18,6 +18,6 @@ type AuthenticationContext interface {
 	OidcProvider() *oidc.Provider
 	CookieManager() CookieHandler
 	Options() config.OAuthOptions
-	GetUserInfoUrl() *url.URL
-	GetHttpClient() *http.Client
+	GetUserInfoURL() *url.URL
+	GetHTTPClient() *http.Client
 }
