@@ -39,7 +39,9 @@ func TestGetLoginHandler(t *testing.T) {
 func TestGetHttpRequestCookieToMetadataHandler(t *testing.T) {
 	ctx := context.Background()
 	// These were generated for unit testing only.
+	// #nosec
 	hashKeyEncoded := "wG4pE1ccdw/pHZ2ml8wrD5VJkOtLPmBpWbKHmezWXktGaFbRoAhXidWs8OpbA3y7N8vyZhz1B1E37+tShWC7gA"
+	// #nosec
 	blockKeyEncoded := "afyABVgGOvWJFxVyOvCWCupoTn6BkNl4SOHmahho16Q"
 	cookieManager, err := NewCookieManager(ctx, hashKeyEncoded, blockKeyEncoded)
 	assert.NoError(t, err)
@@ -47,6 +49,7 @@ func TestGetHttpRequestCookieToMetadataHandler(t *testing.T) {
 	mockAuthCtx.On("CookieManager").Return(&cookieManager)
 	handler := GetHTTPRequestCookieToMetadataHandler(&mockAuthCtx)
 	req, err := http.NewRequest("GET", "/api/v1/projects", nil)
+	assert.NoError(t, err)
 	jwtCookie, err := NewSecureCookie(accessTokenCookieName, "a.b.c", cookieManager.hashKey, cookieManager.blockKey)
 	assert.NoError(t, err)
 	req.AddCookie(&jwtCookie)

@@ -72,9 +72,9 @@ func (c *FlytePropeller) addPermissions(launchPlan admin.LaunchPlan, flyteWf *v1
 	var role string
 	if launchPlan.GetSpec().GetAuth() != nil && len(launchPlan.GetSpec().GetAuth().GetAssumableIamRole()) > 0 {
 		role = launchPlan.GetSpec().GetAuth().GetAssumableIamRole()
-	} else if len(launchPlan.GetSpec().GetRole()) > 0 {
+	} else if len(launchPlan.GetSpec().GetRole()) > 0 { //lint:ignore SA1019 this is intentionally here for backwards compatibility
 		// Although deprecated, older launch plans may reference the role field instead of the Auth AssumableIamRole.
-		role = launchPlan.GetSpec().GetRole()
+		role = launchPlan.GetSpec().GetRole() //lint:ignore SA1019 this is intentionally here for backwards compatibility
 	} else if launchPlan.GetSpec().GetAuth() != nil && len(launchPlan.GetSpec().GetAuth().GetKubernetesServiceAccount()) > 0 {
 		flyteWf.ServiceAccountName = launchPlan.GetSpec().GetAuth().GetKubernetesServiceAccount()
 	}

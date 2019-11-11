@@ -326,8 +326,7 @@ func (m *ExecutionManager) CreateExecution(
 	*admin.ExecutionCreateResponse, error) {
 	// Prior to  flyteidl v0.15.0, Inputs was held in ExecutionSpec. Ensure older clients continue to work.
 	if request.Inputs == nil || len(request.Inputs.Literals) == 0 {
-		//lint:ignore SA1019 this is intentionally here for backwards compatibility
-		request.Inputs = request.GetSpec().GetInputs()
+		request.Inputs = request.GetSpec().GetInputs() //lint:ignore SA1019 this is intentionally here for backwards compatibility
 	}
 	executionModel, err := m.launchExecutionAndPrepareModel(ctx, request, requestedAt)
 	if err != nil {

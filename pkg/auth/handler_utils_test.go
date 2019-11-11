@@ -17,7 +17,7 @@ func (f RoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req), nil
 }
 
-func NewTestHttpClient(fn RoundTripFunc) *http.Client {
+func NewTestHTTPClient(fn RoundTripFunc) *http.Client {
 	return &http.Client{
 		Transport: fn,
 	}
@@ -37,7 +37,7 @@ func TestPostToIdp(t *testing.T) {
 	}
 	responseBytes, err := json.Marshal(responseObj)
 	assert.NoError(t, err)
-	client := NewTestHttpClient(func(request *http.Request) *http.Response {
+	client := NewTestHTTPClient(func(request *http.Request) *http.Response {
 		return &http.Response{
 			StatusCode: 200,
 			Body:       ioutil.NopCloser(bytes.NewReader(responseBytes)),
