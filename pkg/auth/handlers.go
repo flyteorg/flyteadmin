@@ -121,7 +121,7 @@ func GetCallbackHandler(ctx context.Context, authContext interfaces.Authenticati
 func AuthenticationLoggingInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	// Invoke 'handler' to use your gRPC server implementation and get
 	// the response.
-	logger.Debugf(ctx,"gRPC server info in logging interceptor email %s method %s\n", ctx.Value(emailContextKey), info.FullMethod)
+	logger.Debugf(ctx, "gRPC server info in logging interceptor email %s method %s\n", ctx.Value(emailContextKey), info.FullMethod)
 	return handler(ctx, req)
 }
 
