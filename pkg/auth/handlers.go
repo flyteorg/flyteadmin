@@ -249,7 +249,7 @@ func GetMeEndpointHandler(ctx context.Context, authCtx interfaces.Authentication
 // See https://tools.ietf.org/html/rfc8414 for more information.
 func GetMetadataEndpointRedirectHandler(ctx context.Context, authCtx interfaces.AuthenticationContext) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		uri := path.Join(authCtx.Options().BaseUrl, MetadataEndpoint)
+		uri := path.Join(authCtx.Options().BaseURL, MetadataEndpoint)
 		http.Redirect(writer, request, uri, http.StatusSeeOther)
 	}
 }

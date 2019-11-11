@@ -114,7 +114,7 @@ func TestGetAuthFlowEndRedirect(t *testing.T) {
 		assert.NoError(t, err)
 		mockAuthCtx := &mocks.AuthenticationContext{}
 		mockAuthCtx.On("Options").Return(config.OAuthOptions{
-			RedirectUrl: "/api/v1/projects",
+			RedirectURL: "/api/v1/projects",
 		})
 		redirect := getAuthFlowEndRedirect(ctx, mockAuthCtx, request)
 		assert.Equal(t, "/api/v1/projects", redirect)

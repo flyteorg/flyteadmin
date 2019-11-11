@@ -23,7 +23,7 @@ func GetSslCredentials(ctx context.Context, certFile, keyFile string) (*x509.Cer
 	if err != nil {
 		return nil, nil, errors.Wrapf(ErrCertificate, err, "failed to read server cert file: %s", certFile)
 	}
-	if ok := certPool.AppendCertsFromPEM([]byte(data)); !ok {
+	if ok := certPool.AppendCertsFromPEM(data); !ok {
 		return nil, nil, errors.Errorf(ErrCertificate, "failed to load certificate into the pool")
 	}
 

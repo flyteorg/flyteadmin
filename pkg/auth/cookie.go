@@ -121,7 +121,7 @@ func getAuthFlowEndRedirect(ctx context.Context, authContext interfaces.Authenti
 	cookie, err := request.Cookie(redirectUrlCookie)
 	if err != nil {
 		logger.Debugf(ctx, "Could not detect end-of-flow redirect url cookie")
-		return authContext.Options().RedirectUrl
+		return authContext.Options().RedirectURL
 	}
 	return cookie.Value
 }

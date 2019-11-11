@@ -103,7 +103,7 @@ func NewAuthenticationContext(ctx context.Context, options config.OAuthOptions) 
 
 	// Construct the URL object for the user info endpoint if applicable
 	if options.IdpUserInfoEndpoint != "" {
-		base, err := url.Parse(options.BaseUrl)
+		base, err := url.Parse(options.BaseURL)
 		if err != nil {
 			logger.Errorf(ctx, "Error parsing base URL %s", err)
 			return Context{}, errors.Wrapf(ErrAuthContext, err,
@@ -138,7 +138,7 @@ func GetOauth2Config(options config.OAuthOptions) (oauth2.Config, error) {
 	}
 	secret := strings.TrimSuffix(string(secretBytes), "\n")
 	return oauth2.Config{
-		RedirectURL:  options.CallbackUrl,
+		RedirectURL:  options.CallbackURL,
 		ClientID:     options.ClientId,
 		ClientSecret: secret,
 		// Offline access needs to be specified in order to return a refresh token in the exchange.
@@ -146,7 +146,7 @@ func GetOauth2Config(options config.OAuthOptions) (oauth2.Config, error) {
 		Scopes: []string{OidcScope, OfflineAccessType, ProfileScope},
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  options.AuthorizeUrl,
-			TokenURL: options.TokenUrl,
+			TokenURL: options.TokenURL,
 		},
 	}, nil
 }

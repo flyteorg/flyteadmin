@@ -323,7 +323,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("security.oauth.baseUrl"); err == nil {
-				assert.Equal(t, string(defaultServerConfig.Security.Oauth.BaseUrl), vString)
+				assert.Equal(t, string(defaultServerConfig.Security.Oauth.BaseURL), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -334,7 +334,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("security.oauth.baseUrl", testValue)
 			if vString, err := cmdFlags.GetString("security.oauth.baseUrl"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.BaseUrl)
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.BaseURL)
 
 			} else {
 				assert.FailNow(t, err.Error())
@@ -367,7 +367,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("security.oauth.tokenUrl"); err == nil {
-				assert.Equal(t, string(defaultServerConfig.Security.Oauth.TokenUrl), vString)
+				assert.Equal(t, string(defaultServerConfig.Security.Oauth.TokenURL), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -378,7 +378,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("security.oauth.tokenUrl", testValue)
 			if vString, err := cmdFlags.GetString("security.oauth.tokenUrl"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.TokenUrl)
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.TokenURL)
 
 			} else {
 				assert.FailNow(t, err.Error())
@@ -389,7 +389,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("security.oauth.callbackUrl"); err == nil {
-				assert.Equal(t, string(defaultServerConfig.Security.Oauth.CallbackUrl), vString)
+				assert.Equal(t, string(defaultServerConfig.Security.Oauth.CallbackURL), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -400,7 +400,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("security.oauth.callbackUrl", testValue)
 			if vString, err := cmdFlags.GetString("security.oauth.callbackUrl"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.CallbackUrl)
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.CallbackURL)
 
 			} else {
 				assert.FailNow(t, err.Error())
@@ -521,7 +521,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("security.oauth.redirectUrl"); err == nil {
-				assert.Equal(t, string(defaultServerConfig.Security.Oauth.RedirectUrl), vString)
+				assert.Equal(t, string(defaultServerConfig.Security.Oauth.RedirectURL), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -532,7 +532,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("security.oauth.redirectUrl", testValue)
 			if vString, err := cmdFlags.GetString("security.oauth.redirectUrl"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.RedirectUrl)
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.RedirectURL)
 
 			} else {
 				assert.FailNow(t, err.Error())
@@ -543,7 +543,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("security.oauth.httpAuthorizationHeader"); err == nil {
-				assert.Equal(t, string(defaultServerConfig.Security.Oauth.HttpAuthorizationHeader), vString)
+				assert.Equal(t, string(defaultServerConfig.Security.Oauth.HTTPAuthorizationHeader), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -554,7 +554,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("security.oauth.httpAuthorizationHeader", testValue)
 			if vString, err := cmdFlags.GetString("security.oauth.httpAuthorizationHeader"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.HttpAuthorizationHeader)
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.HTTPAuthorizationHeader)
 
 			} else {
 				assert.FailNow(t, err.Error())
