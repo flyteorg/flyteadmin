@@ -50,6 +50,7 @@ func TestCookieManager_RetrieveTokenValues(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	err = manager.SetTokenCookies(ctx, w, &token)
+	assert.NoError(t, err)
 
 	cookies := w.Result().Cookies()
 	req, err := http.NewRequest("GET", "/api/v1/projects", nil)
