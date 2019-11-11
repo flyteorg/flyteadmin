@@ -70,7 +70,6 @@ func GetLoginHandler(ctx context.Context, authContext interfaces.AuthenticationC
 		state := HashCsrfState(csrfToken)
 		logger.Debugf(ctx, "Setting CSRF state cookie to %s and state to %s\n", csrfToken, state)
 		url := authContext.OAuth2Config().AuthCodeURL(state)
-		fmt.Println(url)
 		queryParams := request.URL.Query()
 		if flowEndRedirectURL := queryParams.Get(LoginRedirectURLParameter); flowEndRedirectURL != "" {
 			redirectCookie := NewRedirectCookie(ctx, flowEndRedirectURL)
@@ -122,7 +121,7 @@ func GetCallbackHandler(ctx context.Context, authContext interfaces.Authenticati
 func AuthenticationLoggingInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	// Invoke 'handler' to use your gRPC server implementation and get
 	// the response.
-	fmt.Printf("gRPC server info in logging interceptor email %s method %s\n", ctx.Value("email"), info.FullMethod)
+	logger.Debugf(ctx,"gRPC server info in logging interceptor email %s method %s\n", ctx.Value(emailContextKey), info.FullMethod)
 	return handler(ctx, req)
 }
 
@@ -205,7 +204,6 @@ func GetHTTPRequestCookieToMetadataHandler(authContext interfaces.Authentication
 			logger.Infof(ctx, "Could not find access token cookie while requesting %s", request.RequestURI)
 			return nil
 		}
-		fmt.Printf("HTTP Annotation: Decoded access token %s\n", accessToken)
 		return metadata.MD{
 			DefaultAuthorizationHeader: []string{fmt.Sprintf("%s %s", BearerScheme, accessToken)},
 		}
