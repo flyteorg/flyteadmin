@@ -69,6 +69,6 @@ func TestGetMetadataEndpointRedirectHandler(t *testing.T) {
 	assert.NoError(t, err)
 	w := httptest.NewRecorder()
 	handler(w, req)
-	assert.Equal(t, 303, w.Code)
+	assert.Equal(t, http.StatusSeeOther, w.Code)
 	assert.Equal(t, "http://www.google.com/.well-known/oauth-authorization-server", w.Header()["Location"][0])
 }
