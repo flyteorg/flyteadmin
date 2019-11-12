@@ -37,7 +37,7 @@ func (m *NamedEntityManager) UpdateNamedEntity(ctx context.Context, request admi
 		return nil, err
 	}
 
-	// Ensure enityt exists before trying to update it
+	// Ensure entity exists before trying to update it
 	_, err := util.GetNamedEntity(ctx, m.db, request.ResourceType, *request.Id)
 	if err != nil {
 		return nil, err

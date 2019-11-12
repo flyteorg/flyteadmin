@@ -145,42 +145,6 @@ func ValidateNamedEntityIdentifierListRequest(request admin.NamedEntityIdentifie
 	return nil
 }
 
-func ValidateNamedEntityGetRequest(request admin.NamedEntityGetRequest) error {
-	if err := ValidateResourceType(request.ResourceType); err != nil {
-		return err
-	}
-	if err := ValidateNamedEntityIdentifier(request.Id); err != nil {
-		return err
-	}
-	return nil
-}
-
-func ValidateNamedEntityUpdateRequest(request admin.NamedEntityUpdateRequest) error {
-	if err := ValidateResourceType(request.ResourceType); err != nil {
-		return err
-	}
-	if err := ValidateNamedEntityIdentifier(request.Id); err != nil {
-		return err
-	}
-	return nil
-}
-
-func ValidateNamedEntityListRequest(request admin.NamedEntityListRequest) error {
-	if err := ValidateEmptyStringField(request.Project, shared.Project); err != nil {
-		return err
-	}
-	if err := ValidateEmptyStringField(request.Domain, shared.Domain); err != nil {
-		return err
-	}
-	if err := ValidateResourceType(request.ResourceType); err != nil {
-		return err
-	}
-	if err := ValidateLimit(request.Limit); err != nil {
-		return err
-	}
-	return nil
-}
-
 func validateLiteralMap(inputMap *core.LiteralMap, fieldName string) error {
 	if inputMap != nil && len(inputMap.Literals) > 0 {
 		for name, fixedInput := range inputMap.Literals {

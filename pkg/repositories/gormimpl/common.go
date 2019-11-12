@@ -8,8 +8,6 @@ import (
 	adminErrors "github.com/lyft/flyteadmin/pkg/errors"
 	"github.com/lyft/flyteadmin/pkg/repositories/errors"
 	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"google.golang.org/grpc/codes"
 )
 
@@ -62,42 +60,6 @@ var leftJoinTaskToTaskExec = fmt.Sprintf(
 	taskTableName, taskExecutionTableName, taskTableName, taskExecutionTableName, taskTableName,
 	taskExecutionTableName, taskTableName, taskExecutionTableName, taskTableName)
 
-// Creates a JOIN clause between a table which can hold NamedEntityIdentifiers
-// and the metadata associated between them. Metadata is optional, so a left
-// join is used.
-func CreateEntityMetadataJoin(entityTableName string, resourceType core.ResourceType) string {
-	return fmt.Sprintf(
-		"LEFT JOIN %s ON %s.resource_type = %d AND %s.project = %s.project AND %s.domain = %s.domain AND %s.name = %s.name", namedEntityMetadataTableName, namedEntityMetadataTableName, resourceType, namedEntityMetadataTableName, entityTableName,
-		namedEntityMetadataTableName, entityTableName,
-		namedEntityMetadataTableName, entityTableName)
-}
-
-var leftJoinWorkflowNameToMetadata = CreateEntityMetadataJoin(workflowTableName, core.ResourceType_WORKFLOW)
-var leftJoinLaunchPlanNameToMetadata = CreateEntityMetadataJoin(launchPlanTableName, core.ResourceType_LAUNCH_PLAN)
-var leftJoinTaskNameToMetadata = CreateEntityMetadataJoin(taskTableName, core.ResourceType_TASK)
-
-var resourceTypeToTableName = map[core.ResourceType]string{
-	core.ResourceType_LAUNCH_PLAN: launchPlanTableName,
-	core.ResourceType_WORKFLOW:    workflowTableName,
-	core.ResourceType_TASK:        taskTableName,
-}
-
-var resourceTypeToMetadataJoin = map[core.ResourceType]string{
-	core.ResourceType_LAUNCH_PLAN: leftJoinLaunchPlanNameToMetadata,
-	core.ResourceType_WORKFLOW:    leftJoinWorkflowNameToMetadata,
-	core.ResourceType_TASK:        leftJoinTaskNameToMetadata,
-}
-
-var entityToModel = map[common.Entity]interface{}{
-	common.Execution:          models.Execution{},
-	common.LaunchPlan:         models.LaunchPlan{},
-	common.NodeExecution:      models.NodeExecution{},
-	common.NodeExecutionEvent: models.NodeExecutionEvent{},
-	common.Task:               models.Task{},
-	common.TaskExecution:      models.TaskExecution{},
-	common.Workflow:           models.Workflow{},
-}
-
 // Validates there are no missing but required parameters in ListResourceInput
 func ValidateListInput(input interfaces.ListResourceInput) adminErrors.FlyteAdminError {
 	if input.Limit == 0 {
@@ -141,40 +103,4 @@ func applyScopedFilters(tx *gorm.DB, inlineFilters []common.InlineFilter, mapFil
 		tx = tx.Where(mapFilter.GetFilter())
 	}
 	return tx, nil
-}
-
-func getGroupByForNamedEntity(tableName string) string {
-	return fmt.Sprintf("%s.%s, %s.%s, %s.%s, %s.%s", tableName, Project, tableName, Domain, tableName, Name, namedEntityMetadataTableName, Description)
-}
-
-func getSelectForNamedEntity(tableName string) []string {
-	return []string{
-		fmt.Sprintf("%s.%s", tableName, Project),
-		fmt.Sprintf("%s.%s", tableName, Domain),
-		fmt.Sprintf("%s.%s", tableName, Name),
-		fmt.Sprintf("%s.%s", namedEntityMetadataTableName, Description),
-	}
-}
-
-func getNamedEntityFilters(resourceType core.ResourceType, project string, domain string, name string) ([]common.InlineFilter, error) {
-	entity := common.ResourceTypeToEntity[resourceType]
-
-	filters := make([]common.InlineFilter, 0)
-	projectFilter, err := common.NewSingleValueFilter(entity, common.Equal, Project, project)
-	if err != nil {
-		return nil, err
-	}
-	filters = append(filters, projectFilter)
-	domainFilter, err := common.NewSingleValueFilter(entity, common.Equal, Domain, domain)
-	if err != nil {
-		return nil, err
-	}
-	filters = append(filters, domainFilter)
-	nameFilter, err := common.NewSingleValueFilter(entity, common.Equal, Name, name)
-	if err != nil {
-		return nil, err
-	}
-	filters = append(filters, nameFilter)
-
-	return filters, nil
 }
