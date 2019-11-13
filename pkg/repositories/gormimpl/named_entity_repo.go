@@ -26,9 +26,20 @@ func CreateEntityMetadataJoin(entityTableName string, resourceType core.Resource
 		namedEntityMetadataTableName, entityTableName)
 }
 
-var leftJoinWorkflowNameToMetadata = CreateEntityMetadataJoin(workflowTableName, core.ResourceType_WORKFLOW)
-var leftJoinLaunchPlanNameToMetadata = CreateEntityMetadataJoin(launchPlanTableName, core.ResourceType_LAUNCH_PLAN)
-var leftJoinTaskNameToMetadata = CreateEntityMetadataJoin(taskTableName, core.ResourceType_TASK)
+var leftJoinWorkflowNameToMetadata = fmt.Sprintf(
+	"LEFT JOIN %s ON %s.resource_type = %d AND %s.project = %s.project AND %s.domain = %s.domain AND %s.name = %s.name", namedEntityMetadataTableName, namedEntityMetadataTableName, core.ResourceType_WORKFLOW, namedEntityMetadataTableName, workflowTableName,
+	namedEntityMetadataTableName, workflowTableName,
+	namedEntityMetadataTableName, workflowTableName)
+
+var leftJoinLaunchPlanNameToMetadata = fmt.Sprintf(
+	"LEFT JOIN %s ON %s.resource_type = %d AND %s.project = %s.project AND %s.domain = %s.domain AND %s.name = %s.name", namedEntityMetadataTableName, namedEntityMetadataTableName, core.ResourceType_LAUNCH_PLAN, namedEntityMetadataTableName, launchPlanTableName,
+	namedEntityMetadataTableName, launchPlanTableName,
+	namedEntityMetadataTableName, launchPlanTableName)
+
+var leftJoinTaskNameToMetadata = fmt.Sprintf(
+	"LEFT JOIN %s ON %s.resource_type = %d AND %s.project = %s.project AND %s.domain = %s.domain AND %s.name = %s.name", namedEntityMetadataTableName, namedEntityMetadataTableName, core.ResourceType_TASK, namedEntityMetadataTableName, taskTableName,
+	namedEntityMetadataTableName, taskTableName,
+	namedEntityMetadataTableName, taskTableName)
 
 var resourceTypeToTableName = map[core.ResourceType]string{
 	core.ResourceType_LAUNCH_PLAN: launchPlanTableName,
@@ -42,25 +53,16 @@ var resourceTypeToMetadataJoin = map[core.ResourceType]string{
 	core.ResourceType_TASK:        leftJoinTaskNameToMetadata,
 }
 
-var entityToModel = map[common.Entity]interface{}{
-	common.Execution:          models.Execution{},
-	common.LaunchPlan:         models.LaunchPlan{},
-	common.NodeExecution:      models.NodeExecution{},
-	common.NodeExecutionEvent: models.NodeExecutionEvent{},
-	common.Task:               models.Task{},
-	common.TaskExecution:      models.TaskExecution{},
-	common.Workflow:           models.Workflow{},
-}
-
 func getGroupByForNamedEntity(tableName string) string {
 	return fmt.Sprintf("%s.%s, %s.%s, %s.%s, %s.%s", tableName, Project, tableName, Domain, tableName, Name, namedEntityMetadataTableName, Description)
 }
 
-func getSelectForNamedEntity(tableName string) []string {
+func getSelectForNamedEntity(tableName string, resourceType core.ResourceType) []string {
 	return []string{
 		fmt.Sprintf("%s.%s", tableName, Project),
 		fmt.Sprintf("%s.%s", tableName, Domain),
 		fmt.Sprintf("%s.%s", tableName, Name),
+		fmt.Sprintf("'%d' AS %s", resourceType, ResourceType),
 		fmt.Sprintf("%s.%s", namedEntityMetadataTableName, Description),
 	}
 }
@@ -121,10 +123,10 @@ func (r *NamedEntityRepo) Get(ctx context.Context, input interfaces.GetNamedEnti
 		return models.NamedEntity{}, err
 	}
 
-	tableName, tableFound := resourceTypeToTableName[resourceType]
-	joinString, joinFound := resourceTypeToMetadataJoin[resourceType]
+	tableName, tableFound := resourceTypeToTableName[input.ResourceType]
+	joinString, joinFound := resourceTypeToMetadataJoin[input.ResourceType]
 	if !tableFound || !joinFound {
-		return models.NamedEntity{}, adminErrors.NewFlyteAdminErrorf(codes.InvalidArgument, "Cannot get NamedEntity for resource type: %v", resourceType)
+		return models.NamedEntity{}, adminErrors.NewFlyteAdminErrorf(codes.InvalidArgument, "Cannot get NamedEntity for resource type: %v", input.ResourceType)
 	}
 
 	tx := r.db.Table(tableName).Joins(joinString)
@@ -136,7 +138,7 @@ func (r *NamedEntityRepo) Get(ctx context.Context, input interfaces.GetNamedEnti
 	}
 
 	timer := r.metrics.GetDuration.Start()
-	tx = tx.Select(getSelectForNamedEntity(tableName)).First(&namedEntity)
+	tx = tx.Select(getSelectForNamedEntity(tableName, input.ResourceType)).First(&namedEntity)
 	timer.Stop()
 
 	if tx.Error != nil {
@@ -177,7 +179,7 @@ func (r *NamedEntityRepo) List(ctx context.Context, resourceType core.ResourceTy
 	// Scan the results into a list of named entities
 	var entities []models.NamedEntity
 	timer := r.metrics.ListDuration.Start()
-	tx.Select(getSelectForNamedEntity(tableName)).Group(getGroupByForNamedEntity(tableName)).Scan(&entities)
+	tx.Select(getSelectForNamedEntity(tableName, resourceType)).Group(getGroupByForNamedEntity(tableName)).Scan(&entities)
 	timer.Stop()
 	if tx.Error != nil {
 		return interfaces.NamedEntityCollectionOutput{}, r.errorTransformer.ToFlyteAdminError(tx.Error)

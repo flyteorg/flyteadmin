@@ -8,6 +8,7 @@ import (
 	adminErrors "github.com/lyft/flyteadmin/pkg/errors"
 	"github.com/lyft/flyteadmin/pkg/repositories/errors"
 	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
+	"github.com/lyft/flyteadmin/pkg/repositories/models"
 	"google.golang.org/grpc/codes"
 )
 
@@ -17,6 +18,7 @@ const Name = "name"
 const Version = "version"
 const Closure = "closure"
 const Description = "description"
+const ResourceType = "resource_type"
 
 const ProjectID = "project_id"
 const ProjectName = "project_name"
@@ -34,6 +36,16 @@ const limit = "limit"
 const filters = "filters"
 
 var identifierGroupBy = fmt.Sprintf("%s, %s, %s", Project, Domain, Name)
+
+var entityToModel = map[common.Entity]interface{}{
+	common.Execution:          models.Execution{},
+	common.LaunchPlan:         models.LaunchPlan{},
+	common.NodeExecution:      models.NodeExecution{},
+	common.NodeExecutionEvent: models.NodeExecutionEvent{},
+	common.Task:               models.Task{},
+	common.TaskExecution:      models.TaskExecution{},
+	common.Workflow:           models.Workflow{},
+}
 
 var innerJoinNodeExecToNodeEvents = fmt.Sprintf(
 	"INNER JOIN %s ON %s.node_execution_id = %s.id",

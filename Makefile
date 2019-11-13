@@ -9,7 +9,7 @@ update_boilerplate:
 
 .PHONY: integration
 integration:
-	GOCACHE=off go test -v -tags=integration ./tests/...
+	GOFLAGS="-count=1" go test -v -tags=integration ./tests/...
 
 .PHONY: k8s_integration
 k8s_integration:
