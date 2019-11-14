@@ -24,7 +24,7 @@ type NamedEntityRepoInterface interface {
 	// Returns NamedEntity objects matching the provided query. A limit is
 	// required
 	List(ctx context.Context, resourceType core.ResourceType, input ListResourceInput) (NamedEntityCollectionOutput, error)
-	// Updates metadata associated with a NamedEntity
+	// Updates NamedEntity record, will create metadata if it does not exist
 	Update(ctx context.Context, input models.NamedEntity) error
 	// Gets metadata (if available) associated with a NamedEntity
 	Get(ctx context.Context, input GetNamedEntityInput) (models.NamedEntity, error)

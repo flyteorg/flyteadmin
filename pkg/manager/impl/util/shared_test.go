@@ -357,7 +357,6 @@ func TestGetLaunchPlan_TransformerError(t *testing.T) {
 	assert.Empty(t, launchPlan)
 }
 
-//////
 func TestGetNamedEntityModel(t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
 	getNamedEntityFunc := func(input interfaces.GetNamedEntityInput) (models.NamedEntity, error) {

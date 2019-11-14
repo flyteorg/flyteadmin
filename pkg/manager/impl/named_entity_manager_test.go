@@ -88,8 +88,10 @@ func TestNamedEntityManager_Update(t *testing.T) {
 	repository := getMockRepositoryForNETest()
 	manager := NewNamedEntityManager(repository, getMockConfigForNETest(), mockScope.NewTestScope())
 	updatedDescription := "updated description"
+	var updateCalled bool
 
 	updateFunction := func(input models.NamedEntity) error {
+		updateCalled = true
 		assert.Equal(t, input.Description, updatedDescription)
 		assert.Equal(t, input.ResourceType, resourceType)
 		assert.Equal(t, input.Project, project)
@@ -106,6 +108,7 @@ func TestNamedEntityManager_Update(t *testing.T) {
 		ResourceType: resourceType,
 		Id:           &namedEntityIdentifier,
 	})
+	assert.True(t, updateCalled)
 	assert.NoError(t, err)
 	assert.NotNil(t, response)
 }

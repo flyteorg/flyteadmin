@@ -16,16 +16,6 @@ import (
 	"github.com/lyft/flytestdlib/promutils"
 )
 
-// Creates a JOIN clause between a table which can hold NamedEntityIdentifiers
-// and the metadata associated between them. Metadata is optional, so a left
-// join is used.
-func CreateEntityMetadataJoin(entityTableName string, resourceType core.ResourceType) string {
-	return fmt.Sprintf(
-		"LEFT JOIN %s ON %s.resource_type = %d AND %s.project = %s.project AND %s.domain = %s.domain AND %s.name = %s.name", namedEntityMetadataTableName, namedEntityMetadataTableName, resourceType, namedEntityMetadataTableName, entityTableName,
-		namedEntityMetadataTableName, entityTableName,
-		namedEntityMetadataTableName, entityTableName)
-}
-
 var leftJoinWorkflowNameToMetadata = fmt.Sprintf(
 	"LEFT JOIN %s ON %s.resource_type = %d AND %s.project = %s.project AND %s.domain = %s.domain AND %s.name = %s.name", namedEntityMetadataTableName, namedEntityMetadataTableName, core.ResourceType_WORKFLOW, namedEntityMetadataTableName, workflowTableName,
 	namedEntityMetadataTableName, workflowTableName,
