@@ -6,8 +6,8 @@
   name = "cloud.google.com/go"
   packages = ["compute/metadata"]
   pruneopts = "UT"
-  revision = "cfe8f6d1fe6976d03af790d7a8b9bf6aa73287bd"
-  version = "v0.47.0"
+  revision = "5d03b9fdabc3f75630183d940a54b0047106bf8a"
+  version = "v0.48.0"
 
 [[projects]]
   digest = "1:94d4ae958b3d2ab476bef4bed53c1dcc3cb0fb2639bd45dd08b40e57139192e5"
@@ -18,12 +18,13 @@
   version = "v10.2.1-beta"
 
 [[projects]]
-  digest = "1:4ac24e8dcb07b3c32e5fc88ed8830453d2cf73f6c146ac60aaeb549b32659b45"
+  digest = "1:dcf25ae752511462b05f08dc4be431e0c3231941071669c9230939a3600aa2b9"
   name = "github.com/Azure/go-autorest"
   packages = [
     "autorest",
     "autorest/adal",
     "autorest/azure",
+    "autorest/date",
     "logger",
     "tracing",
   ]
@@ -53,7 +54,7 @@
   version = "v1.0.7"
 
 [[projects]]
-  digest = "1:8752ec9f33d89c4c00111e3a669462834204ed9c88afbd64cf139fac5de2a71d"
+  digest = "1:17f245424c48fc865e85b0f21240fccf66bc1185b409096892ed2a3926d2dff2"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -106,8 +107,8 @@
     "service/sts/stsiface",
   ]
   pruneopts = "UT"
-  revision = "0cdb9f5617b12782c925df2fc10c00765ae0f4a4"
-  version = "v1.25.26"
+  revision = "eb75dc68e5eba8519331d5de0c070883d5e75941"
+  version = "v1.25.34"
 
 [[projects]]
   digest = "1:390dd851aedb37e9ef896e7e4e5c8553576798f8be769657e2f507090c96449d"
@@ -172,6 +173,14 @@
   pruneopts = "UT"
   revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
   version = "v1.1.1"
+
+[[projects]]
+  digest = "1:76dc72490af7174349349838f2fe118996381b31ea83243812a97e5a0fd5ed55"
+  name = "github.com/dgrijalva/jwt-go"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "06ea1031745cb8b3dab3f6a236daf2b0aa468b7e"
+  version = "v3.2.0"
 
 [[projects]]
   digest = "1:ac425d784b13d49b37a5bbed3ce022677f8f3073b216f05d6adcb9303e27fa0f"
@@ -334,8 +343,8 @@
     "utilities",
   ]
   pruneopts = "UT"
-  revision = "e4d09fd2f7fdd7a6f8493ff63e23c7612a69b2de"
-  version = "v1.12.0"
+  revision = "f7120437bb4f6c71f7f5076ad65a45310de2c009"
+  version = "v1.12.1"
 
 [[projects]]
   digest = "1:9a0de3882cd5fa16871caff91af7265a254931181d1212322f5c6e18a9be7df4"
@@ -462,16 +471,7 @@
   version = "v0.16.1"
 
 [[projects]]
-  digest = "1:938998e14bd5e42c54f3b640a41d869eb79029ad7c623fa47c604b8480c781fc"
-  name = "github.com/lyft/flyteplugins"
-  packages = ["go/tasks/v1/types"]
-  pruneopts = "UT"
-  revision = "301315810dbc9361567645c6961b97d5c968f2a3"
-  source = "https://github.com/lyft/flyteplugins"
-  version = "v0.1.10"
-
-[[projects]]
-  digest = "1:af952e5d7b139f49e58826a68455b9b3b38f54e29f51563c890272a70777e5f0"
+  digest = "1:238b1aa693f66b156fe3078fc9744c2fd02c8de797e6f1f6eff46ceb6415e507"
   name = "github.com/lyft/flytepropeller"
   packages = [
     "pkg/apis/flyteworkflow",
@@ -488,9 +488,9 @@
     "pkg/utils",
   ]
   pruneopts = "UT"
-  revision = "b02d8973fd60c318aecd6a9b440c982a77f72205"
+  revision = "b1595306d38404c41eb3e6bf7dbabd8c8978544b"
   source = "https://github.com/lyft/flytepropeller"
-  version = "v0.1.11"
+  version = "v0.1.13"
 
 [[projects]]
   digest = "1:d567ed1504f24205e9e480553d2bcfc2657d8e85f592bec3fc3a94b8c9814d4c"
@@ -582,7 +582,7 @@
   name = "github.com/ncw/swift"
   packages = ["."]
   pruneopts = "UT"
-  revision = "a24ef33bc9b7e59ae4bed9e87a51d7bc76122731"
+  revision = "27a552ee74bcec40cfd6072b40c536fdf52509f6"
 
 [[projects]]
   digest = "1:6eea828983c70075ca297bb915ffbcfd3e34c5a50affd94428a65df955c0ff9c"
@@ -652,7 +652,7 @@
   version = "v0.7.0"
 
 [[projects]]
-  digest = "1:a210815b437763623ecca8eb91e6a0bf4f2d6773c5a6c9aec0e28f19e5fd6deb"
+  digest = "1:3e363393b80d8f142984a811464eb7e34064700626cc111887373ea76f8ea0bf"
   name = "github.com/prometheus/procfs"
   packages = [
     ".",
@@ -660,8 +660,8 @@
     "internal/util",
   ]
   pruneopts = "UT"
-  revision = "499c85531f756d1129edd26485a5f73871eeb308"
-  version = "v0.0.5"
+  revision = "8a055596020d692cf491851e47ba3e302d9f90ce"
+  version = "v0.0.6"
 
 [[projects]]
   digest = "1:274f67cb6fed9588ea2521ecdac05a6d62a8c51c074c1fccc6a49a40ba80e925"
@@ -749,7 +749,7 @@
   version = "v1.4.0"
 
 [[projects]]
-  digest = "1:b984f402fbabb0e9eb0476f0ecfa51d0b2ff11cd0ac03538d6284091033b39ae"
+  digest = "1:7b6ca9454e8d16e34b251f181a4ae430a25805acca64ea46b0448583b44fcfe6"
   name = "go.opencensus.io"
   packages = [
     ".",
@@ -770,8 +770,8 @@
     "trace/tracestate",
   ]
   pruneopts = "UT"
-  revision = "59d1ce35d30f3c25ba762169da2a37eab6ffa041"
-  version = "v0.22.1"
+  revision = "aad2c527c5defcf89b5afab7f37274304195a6b2"
+  version = "v0.22.2"
 
 [[projects]]
   branch = "master"
@@ -784,11 +784,11 @@
     "ssh/terminal",
   ]
   pruneopts = "UT"
-  revision = "c7e5f84aec591254278750bee18f39e5dd19cdb5"
+  revision = "e1110fd1c708ef015366ea01799a23c459593c47"
 
 [[projects]]
   branch = "master"
-  digest = "1:e68bb8e38abc12b2b31771144e1f647b5a61ef02c0f6002d7d6b2e5cb9a67d66"
+  digest = "1:ecff0c65c627299ff316258a094c11f8e0582e3484563d6fe8eadfbf72abc137"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -801,7 +801,7 @@
     "trace",
   ]
   pruneopts = "UT"
-  revision = "a882066a44e04a21d46e51451c71e131344e830e"
+  revision = "2180aed2234323691e9fd264fb1d32d20ff04b27"
 
 [[projects]]
   branch = "master"
@@ -819,14 +819,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:1017834f19e0d987e8b1b928f016b0a1186a202ec1867fee7112efd4b4475bd1"
+  digest = "1:a8d09768b9b35851f498a4ba24ef08b7a72aa29bdb1673324394443e076bb440"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = "UT"
-  revision = "ac3223d8017937d8cd94de35a801ea2459f6d5a0"
+  revision = "4c7a9d0fe056d9d1de37e1409ca8a5c17accb46a"
 
 [[projects]]
   digest = "1:8d8faad6b12a3a4c819a3f9618cb6ee1fa1cfc33253abeeea8b55336721e3405"
@@ -863,7 +863,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:345b0cf1c9a11f84779a0c8a0cc68c57cf99e56b3e56ea0efde93a0209b1b2cf"
+  digest = "1:d84cdc753249d05a1e419ae3d3dd85b5a456a23ab11f3714782d9546a32e9904"
   name = "google.golang.org/api"
   packages = [
     "googleapi",
@@ -877,7 +877,7 @@
     "transport/http/internal/propagation",
   ]
   pruneopts = "UT"
-  revision = "473217c7f590f56568f04c71c91866d794beb596"
+  revision = "481681947140f58e3d329330ca6e4440c591e47b"
 
 [[projects]]
   digest = "1:3c03b58f57452764a4499c55c582346c0ee78c8a5033affe5bdfd9efd3da5bd1"
@@ -909,13 +909,14 @@
     "protobuf/field_mask",
   ]
   pruneopts = "UT"
-  revision = "919d9bdd9fe6f1a5dd95ce5d5e4cdb8fd3c516d0"
+  revision = "6bbd007550de91f00332b51032ea2cd88b87e799"
 
 [[projects]]
-  digest = "1:6cd77d0b616d2dcebd363dfecba593f27b0151fc82cdb5fbfb96c5a7cfbc95b5"
+  digest = "1:0c0ea0f0ccec8a112245dd3ca0c3b304224ede9afd4b7a2b482a7b48471ef894"
   name = "google.golang.org/grpc"
   packages = [
     ".",
+    "backoff",
     "balancer",
     "balancer/base",
     "balancer/roundrobin",
@@ -931,10 +932,13 @@
     "internal/backoff",
     "internal/balancerload",
     "internal/binarylog",
+    "internal/buffer",
     "internal/channelz",
     "internal/envconfig",
     "internal/grpcrand",
     "internal/grpcsync",
+    "internal/resolver/dns",
+    "internal/resolver/passthrough",
     "internal/syscall",
     "internal/transport",
     "keepalive",
@@ -942,16 +946,14 @@
     "naming",
     "peer",
     "resolver",
-    "resolver/dns",
-    "resolver/passthrough",
     "serviceconfig",
     "stats",
     "status",
     "tap",
   ]
   pruneopts = "UT"
-  revision = "f6d0f9ee430895e87ef1ceb5ac8f39725bafceef"
-  version = "v1.24.0"
+  revision = "9d331e2b02dd47daeecae02790f61cc88dc75a64"
+  version = "v1.25.0"
 
 [[projects]]
   digest = "1:1048ae210f190cd7b6aea19a92a055bd6112b025dd49f560579dfdfd76c8c42e"
