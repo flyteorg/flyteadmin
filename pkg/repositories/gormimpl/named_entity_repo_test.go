@@ -42,7 +42,7 @@ func TestGetNamedEntity(t *testing.T) {
 	GlobalMock := mocket.Catcher.Reset()
 	GlobalMock.Logging = true
 	GlobalMock.NewMock().WithQuery(
-		`SELECT workflows.project, workflows.domain, workflows.name, named_entity_metadata.description FROM "workflows" LEFT JOIN named_entity_metadata ON named_entity_metadata.resource_type = 2 AND named_entity_metadata.project = workflows.project AND named_entity_metadata.domain = workflows.domain AND named_entity_metadata.name = workflows.name WHERE (workflows.project = project) AND (workflows.domain = domain) AND (workflows.name = name) LIMIT 1`).WithReply(results)
+		`SELECT workflows.project, workflows.domain, workflows.name, '2' AS resource_type, named_entity_metadata.description FROM "workflows" LEFT JOIN named_entity_metadata ON named_entity_metadata.resource_type = 2 AND named_entity_metadata.project = workflows.project AND named_entity_metadata.domain = workflows.domain AND named_entity_metadata.name = workflows.name WHERE (workflows.project = project) AND (workflows.domain = domain) AND (workflows.name = name) LIMIT 1`).WithReply(results)
 	output, err := metadataRepo.Get(context.Background(), interfaces.GetNamedEntityInput{
 		ResourceType: resourceType,
 		Project:      project,
