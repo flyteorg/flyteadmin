@@ -33,6 +33,7 @@ import (
 	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/promutils/labeled"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 // serveCmd represents the serve command
@@ -84,6 +85,7 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authContext in
 	grpcServer := grpc.NewServer(serverOpts...)
 	grpc_prometheus.Register(grpcServer)
 	flyteService.RegisterAdminServiceServer(grpcServer, adminservice.NewAdminServer(cfg.KubeConfig, cfg.Master))
+	reflection.Register(grpcServer)
 	return grpcServer, nil
 }
 
