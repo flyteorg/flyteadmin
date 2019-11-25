@@ -85,7 +85,9 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authContext in
 	grpcServer := grpc.NewServer(serverOpts...)
 	grpc_prometheus.Register(grpcServer)
 	flyteService.RegisterAdminServiceServer(grpcServer, adminservice.NewAdminServer(cfg.KubeConfig, cfg.Master))
-	reflection.Register(grpcServer)
+	if cfg.GrpcServerReflection {
+		reflection.Register(grpcServer)
+	}
 	return grpcServer, nil
 }
 
