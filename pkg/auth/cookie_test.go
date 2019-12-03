@@ -103,6 +103,13 @@ func TestNewRedirectCookie(t *testing.T) {
 		assert.NotNil(t, cookie)
 		assert.Equal(t, "http://www.example.com/postLogin", cookie.Value)
 	})
+
+	t.Run("uses same-site lax policy", func(t *testing.T) {
+		ctx := context.Background()
+		cookie := NewRedirectCookie(ctx, "http://www.example.com/postLogin")
+		assert.NotNil(t, cookie)
+		assert.Equal(t, http.SameSiteLaxMode, cookie.SameSite)
+	})
 }
 
 func TestGetAuthFlowEndRedirect(t *testing.T) {
