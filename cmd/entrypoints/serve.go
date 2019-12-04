@@ -38,6 +38,8 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
+var defaultCorsHeaders = []string{"Content-Type"}
+
 // serveCmd represents the serve command
 var serveCmd = &cobra.Command{
 	Use:   "serve",
@@ -204,7 +206,7 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig) error {
 		handler = handlers.CORS(
 			handlers.AllowCredentials(),
 			handlers.AllowedHeaders(cfg.Security.AllowedHeaders),
-			handlers.AllowedOrigins(cfg.Security.AllowedOrigins),
+			handlers.AllowedOrigins(append(defaultCorsHeaders, cfg.Security.AllowedOrigins...)),
 			handlers.AllowedMethods([]string{"GET", "POST", "DELETE", "HEAD", "PUT", "PATCH"}),
 		)(httpServer)
 	} else {
