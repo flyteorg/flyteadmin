@@ -1,6 +1,7 @@
 package transformers
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/golang/protobuf/ptypes"
@@ -51,6 +52,7 @@ func TestCreateExecutionModel(t *testing.T) {
 		Version: "version",
 	}
 
+	principal := "principal"
 	execution, err := CreateExecutionModel(CreateExecutionModelInput{
 		WorkflowExecutionID: core.WorkflowExecutionIdentifier{
 			Project: "project",
@@ -64,6 +66,7 @@ func TestCreateExecutionModel(t *testing.T) {
 		CreatedAt:             createdAt,
 		WorkflowIdentifier:    workflowIdentifier,
 		ParentNodeExecutionID: nodeID,
+		Principal:             principal,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, "project", execution.Project)
@@ -75,8 +78,10 @@ func TestCreateExecutionModel(t *testing.T) {
 	assert.EqualValues(t, createdAt, *execution.ExecutionUpdatedAt)
 	assert.Equal(t, int32(admin.ExecutionMetadata_SYSTEM), execution.Mode)
 	assert.Equal(t, nodeID, execution.ParentNodeExecutionID)
-	expectedSpec, _ := proto.Marshal(execRequest.Spec)
-	assert.Equal(t, expectedSpec, execution.Spec)
+	expectedSpec := execRequest.Spec
+	expectedSpec.Metadata.Principal = principal
+	expectedSpecBytes, _ := proto.Marshal(expectedSpec)
+	assert.Equal(t, expectedSpecBytes, execution.Spec)
 
 	expectedCreatedAt, _ := ptypes.TimestampProto(createdAt)
 	expectedClosure, _ := proto.Marshal(&admin.ExecutionClosure{
@@ -115,7 +120,7 @@ func TestUpdateModelState_UnknownToRunning(t *testing.T) {
 			Phase:      core.WorkflowExecution_RUNNING,
 			OccurredAt: occurredAtProto,
 		},
-	}, nil)
+	})
 	assert.Nil(t, err)
 
 	expectedClosure := admin.ExecutionClosure{
@@ -171,16 +176,15 @@ func TestUpdateModelState_RunningToFailed(t *testing.T) {
 		Code:    "foo",
 		Message: "bar baz",
 	}
-	abortCause := "terminated execution"
 	err := UpdateExecutionModelState(&executionModel, admin.WorkflowExecutionEventRequest{
 		Event: &event.WorkflowExecutionEvent{
-			Phase:      core.WorkflowExecution_ABORTED,
+			Phase:      core.WorkflowExecution_FAILED,
 			OccurredAt: occurredAtProto,
 			OutputResult: &event.WorkflowExecutionEvent_Error{
 				Error: &executionError,
 			},
 		},
-	}, &abortCause)
+	})
 	assert.Nil(t, err)
 
 	durationProto := ptypes.DurationProto(duration)
@@ -190,7 +194,7 @@ func TestUpdateModelState_RunningToFailed(t *testing.T) {
 				"foo": {},
 			},
 		},
-		Phase:     core.WorkflowExecution_ABORTED,
+		Phase:     core.WorkflowExecution_FAILED,
 		StartedAt: startedAtProto,
 		UpdatedAt: occurredAtProto,
 		Duration:  durationProto,
@@ -206,7 +210,7 @@ func TestUpdateModelState_RunningToFailed(t *testing.T) {
 			Name:    "name",
 		},
 		Spec:               specBytes,
-		Phase:              core.WorkflowExecution_ABORTED.String(),
+		Phase:              core.WorkflowExecution_FAILED.String(),
 		Closure:            expectedClosureBytes,
 		LaunchPlanID:       uint(1),
 		WorkflowID:         uint(2),
@@ -214,7 +218,6 @@ func TestUpdateModelState_RunningToFailed(t *testing.T) {
 		Duration:           duration,
 		ExecutionCreatedAt: executionModel.ExecutionCreatedAt,
 		ExecutionUpdatedAt: &occurredAt,
-		AbortCause:         abortCause,
 	}
 	assert.EqualValues(t, expectedModel, executionModel)
 }
@@ -247,7 +250,7 @@ func TestUpdateModelState_RunningToSuccess(t *testing.T) {
 				OutputUri: "output.pb",
 			},
 		},
-	}, nil)
+	})
 	assert.Nil(t, err)
 
 	durationProto := ptypes.DurationProto(duration)
@@ -287,6 +290,36 @@ func TestUpdateModelState_RunningToSuccess(t *testing.T) {
 		ExecutionUpdatedAt: &occurredAt,
 	}
 	assert.EqualValues(t, expectedModel, executionModel)
+}
+
+func TestSetExecutionAborted(t *testing.T) {
+	existingClosure := admin.ExecutionClosure{
+		Phase: core.WorkflowExecution_RUNNING,
+	}
+	existingClosureBytes, _ := proto.Marshal(&existingClosure)
+	existingModel := models.Execution{
+		Phase:   core.WorkflowExecution_RUNNING.String(),
+		Closure: existingClosureBytes,
+	}
+	cause := "a snafoo occurred"
+	principal := "principal"
+	err := SetExecutionAborted(&existingModel, cause, principal)
+	assert.NoError(t, err)
+	var actualClosure admin.ExecutionClosure
+	err = proto.Unmarshal(existingModel.Closure, &actualClosure)
+	if err != nil {
+		t.Fatal(fmt.Sprintf("Failed to marshal execution closure: %v", err))
+	}
+	assert.True(t, proto.Equal(&admin.ExecutionClosure{
+		OutputResult: &admin.ExecutionClosure_AbortMetadata{
+			AbortMetadata: &admin.AbortMetadata{
+				Cause:     cause,
+				Principal: principal,
+			}},
+		// The execution abort metadata is recorded but the phase is not actually updated *until* the abort event is
+		// propagated by flytepropeller.
+		Phase: core.WorkflowExecution_RUNNING,
+	}, &actualClosure))
 }
 
 func TestGetExecutionIdentifier(t *testing.T) {
