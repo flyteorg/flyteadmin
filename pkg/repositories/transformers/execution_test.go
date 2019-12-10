@@ -178,7 +178,7 @@ func TestUpdateModelState_RunningToFailed(t *testing.T) {
 	}
 	err := UpdateExecutionModelState(&executionModel, admin.WorkflowExecutionEventRequest{
 		Event: &event.WorkflowExecutionEvent{
-			Phase:      core.WorkflowExecution_FAILED,
+			Phase:      core.WorkflowExecution_ABORTED,
 			OccurredAt: occurredAtProto,
 			OutputResult: &event.WorkflowExecutionEvent_Error{
 				Error: &executionError,
@@ -194,7 +194,7 @@ func TestUpdateModelState_RunningToFailed(t *testing.T) {
 				"foo": {},
 			},
 		},
-		Phase:     core.WorkflowExecution_FAILED,
+		Phase:     core.WorkflowExecution_ABORTED,
 		StartedAt: startedAtProto,
 		UpdatedAt: occurredAtProto,
 		Duration:  durationProto,
@@ -210,7 +210,7 @@ func TestUpdateModelState_RunningToFailed(t *testing.T) {
 			Name:    "name",
 		},
 		Spec:               specBytes,
-		Phase:              core.WorkflowExecution_FAILED.String(),
+		Phase:              core.WorkflowExecution_ABORTED.String(),
 		Closure:            expectedClosureBytes,
 		LaunchPlanID:       uint(1),
 		WorkflowID:         uint(2),
@@ -395,7 +395,9 @@ func TestFromExecutionModel_Aborted(t *testing.T) {
 	execution, err := FromExecutionModel(executionModel)
 	assert.Nil(t, err)
 	assert.Equal(t, core.WorkflowExecution_ABORTED, execution.Closure.Phase)
-	assert.Equal(t, abortCause, execution.Closure.GetAbortCause())
+	assert.True(t, proto.Equal(&admin.AbortMetadata{
+		Cause: abortCause,
+	}, execution.Closure.GetAbortMetadata()))
 
 	executionModel.Phase = core.WorkflowExecution_RUNNING.String()
 	execution, err = FromExecutionModel(executionModel)
