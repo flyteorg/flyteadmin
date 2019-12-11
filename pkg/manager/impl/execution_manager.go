@@ -45,7 +45,7 @@ const parentContainerQueueKey = "parent_queue"
 const childContainerQueueKey = "child_queue"
 const noSourceExecutionID = 0
 const emailContextKey contextutils.Key = "email" // TODO: import from flytestdlib after auth refactor.
-const emailContextKeyFormat = "%v"
+const principalContextKeyFormat = "%v"
 
 // Map of [project] -> map of [domain] -> stop watch
 type projectDomainScopedStopWatchMap = map[string]map[string]*promutils.StopWatch
