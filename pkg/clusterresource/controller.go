@@ -35,6 +35,7 @@ import (
 	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
 	"github.com/lyft/flytestdlib/promutils"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 )
 
 const namespaceVariable = "namespace"
@@ -293,12 +294,23 @@ func (c *controller) syncNamespace(ctx context.Context, namespace NamespaceName,
 					logger.Debugf(ctx, "Resource [%+v] in namespace [%s] already exists - attempting update instead",
 						k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace)
 					c.metrics.AppliedTemplateExists.Inc()
-					err = target.Client.Patch(ctx, k8sObjCopy, client.MergeFrom(k8sObj))
+					err = target.Client.Patch(ctx, k8sObjCopy, client.MergeFrom(k8sObjCopy))
 					if err != nil {
 						c.metrics.TemplateUpdateErrors.Inc()
 						logger.Infof(ctx, "Failed to update resource [%+v] in namespace [%s] with err :%v",
 							k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace, err)
 						collectedErrs = append(collectedErrs, err)
+					} else {
+						var mutatedResource k8sruntime.Object
+						objKey, err := client.ObjectKeyFromObject(k8sObj)
+						if err != nil {
+							logger.Debugf(ctx, "failed to get object key from object with err: %v", err)
+						}
+						err = target.Client.Get(ctx, objKey, mutatedResource)
+						if err != nil {
+							logger.Debugf(ctx, "failed to get object for key [%+v] with err: %+v", objKey, err)
+						}
+						logger.Debugf(ctx, "Didn't fail to update resource! Mutated obj is [%+v]", mutatedResource)
 					}
 					c.appliedTemplates[namespace][templateFile.Name()] = templateFile.ModTime()
 				} else {
