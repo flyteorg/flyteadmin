@@ -32,7 +32,7 @@ func (s *strategicMergeFromPatch) Data(obj runtime.Object) ([]byte, error) {
 	return jsonpatch.CreateMergePatch(originalJSON, modifiedJSON)
 }
 
-// StrategicMergeFrom creates a Patch that patches using the merge-patch strategy with the given object as base.
+// StrategicMergeFrom creates a Patch using the strategic-merge-patch strategy with the given object as base.
 func StrategicMergeFrom(obj runtime.Object) client.Patch {
 	return &strategicMergeFromPatch{obj}
 }
