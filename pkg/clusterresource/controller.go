@@ -291,6 +291,7 @@ func (c *controller) syncNamespace(ctx context.Context, namespace NamespaceName,
 					logger.Debugf(ctx, "Resource [%+v] in namespace [%s] already exists - attempting update instead",
 						k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace)
 					c.metrics.AppliedTemplateExists.Inc()
+					// Use a strategic-merge-patch to mimic `kubectl apply` behavior.
 					err = target.Client.Patch(ctx, k8sObjCopy, StrategicMergeFrom(k8sObjCopy))
 					if err != nil {
 						c.metrics.TemplateUpdateErrors.Inc()
