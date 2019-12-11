@@ -284,16 +284,12 @@ func (c *controller) syncNamespace(ctx context.Context, namespace NamespaceName,
 		if _, ok := c.appliedTemplates[namespace]; !ok {
 			c.appliedTemplates[namespace] = make(LastModTimeCache)
 		}
-		logger.Debugf(ctx, "Iterating on resource [%+v]", k8sObj)
 		for _, target := range c.executionCluster.GetAllValidTargets() {
 			k8sObjCopy := k8sObj.DeepCopyObject()
 			logger.Debugf(ctx, "Attempting to create resource [%+v](%+v) in cluster [%v] for namespace [%s]",
-				k8sObj.GetObjectKind().GroupVersionKind().Kind, k8sObjCopy, target.ID, namespace)
+				k8sObj.GetObjectKind().GroupVersionKind().Kind, k8sObj, target.ID, namespace)
 			err = target.Client.Create(ctx, k8sObjCopy)
 			if err != nil {
-				logger.Debugf(ctx, "")
-				logger.Debugf(ctx, "")
-				logger.Debugf(ctx, "")
 				if k8serrors.IsAlreadyExists(err) {
 					logger.Debugf(ctx, "Resource [%+v] in namespace [%s] already exists - attempting update instead",
 						k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace)
