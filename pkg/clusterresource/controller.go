@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"os"
 	"path"
 	"path/filepath"
@@ -294,7 +295,7 @@ func (c *controller) syncNamespace(ctx context.Context, namespace NamespaceName,
 					logger.Debugf(ctx, "Resource [%+v] in namespace [%s] already exists - attempting update instead",
 						k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace)
 					c.metrics.AppliedTemplateExists.Inc()
-					err = target.Client.Patch(ctx, k8sObjCopy, client.Apply)
+					err = target.Client.Patch(ctx, k8sObjCopy, StrategicMergeFrom(k8sObjCopy))
 					if err != nil {
 						c.metrics.TemplateUpdateErrors.Inc()
 						logger.Infof(ctx, "Failed to update resource [%+v] in namespace [%s] with err :%v",
