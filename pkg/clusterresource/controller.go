@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	v1 "k8s.io/api/core/v1"
 	"os"
 	"path"
 	"path/filepath"
@@ -15,8 +14,6 @@ import (
 	"github.com/lyft/flyteadmin/pkg/repositories/transformers"
 
 	"github.com/lyft/flyteadmin/pkg/executioncluster/interfaces"
-
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/lyft/flyteadmin/pkg/common"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
@@ -301,16 +298,8 @@ func (c *controller) syncNamespace(ctx context.Context, namespace NamespaceName,
 							k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace, err)
 						collectedErrs = append(collectedErrs, err)
 					} else {
-						var mutatedResource v1.ServiceAccount
-						objKey, err := client.ObjectKeyFromObject(k8sObj)
-						if err != nil {
-							logger.Debugf(ctx, "failed to get object key from object with err: %v", err)
-						}
-						err = target.Client.Get(ctx, objKey, &mutatedResource)
-						if err != nil {
-							logger.Debugf(ctx, "failed to get object for key [%+v] with err: %+v", objKey, err)
-						}
-						logger.Debugf(ctx, "Didn't fail to update resource! Mutated obj is [%+v]", mutatedResource)
+						logger.Debugf(ctx, "Successfully updated resource [%+v] in namespace [%s]",
+							k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace)
 					}
 					c.appliedTemplates[namespace][templateFile.Name()] = templateFile.ModTime()
 				} else {
