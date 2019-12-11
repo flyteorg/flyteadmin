@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gorilla/handlers"
 	grpcauth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/lyft/flyteadmin/pkg/auth/interfaces"
 	"github.com/lyft/flytestdlib/contextutils"
@@ -252,15 +251,12 @@ func GetMetadataEndpointRedirectHandler(ctx context.Context, authCtx interfaces.
 	}
 }
 
+func GetLogoutEndpointHandler(ctx context.Context, authCtx interfaces.AuthenticationContext) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		logger.Debugf(ctx, "Deleting auth cookies")
+		authCtx.CookieManager().DeleteCookies(ctx, writer)
+	}
+}
+
 // These are here for CORS handling. Actual serving of the OPTIONS request will be done by the gorilla/handlers package
 type CorsHandlerDecorator func(http.Handler) http.Handler
-
-// This produces a decorator that, when applied to an existing Handler, will first test if the request is an appropriate
-// options request, and if so, serve it. If not, the underlying handler will be called.
-func GetCorsDecorator(ctx context.Context, allowedOrigins, allowedHeaders []string) CorsHandlerDecorator {
-	logger.Debugf(ctx, "Creating CORS decorator with allowed origins %v", allowedOrigins)
-	return handlers.CORS(handlers.AllowedHeaders(allowedHeaders),
-		handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch,
-			http.MethodHead, http.MethodOptions, http.MethodDelete}),
-		handlers.AllowedOrigins(allowedOrigins))
-}

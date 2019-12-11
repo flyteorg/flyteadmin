@@ -74,14 +74,14 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 	db := repositories.GetRepository(
 		repositories.POSTGRES, dbConfig, adminScope.NewSubScope("database"))
 	storeConfig := storage.GetConfig()
-	executionCluster := executionCluster.GetExecutionCluster(
+	execCluster := executionCluster.GetExecutionCluster(
 		adminScope.NewSubScope("executor").NewSubScope("cluster"),
 		kubeConfig,
 		master,
 		configuration)
 	workflowExecutor := workflowengine.NewFlytePropeller(
 		applicationConfiguration.RoleNameKey,
-		executionCluster,
+		execCluster,
 		adminScope.NewSubScope("executor").NewSubScope("flytepropeller"),
 		configuration.NamespaceMappingConfiguration())
 	logger.Info(context.Background(), "Successfully created a workflow executor engine")
