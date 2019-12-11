@@ -57,7 +57,7 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 	defer func() {
 		if err := recover(); err != nil {
 			adminScope.MustNewCounter("initialization_panic",
-				"panics encountered initializating the admin service").Inc()
+				"panics encountered initializing the admin service").Inc()
 			logger.Fatalf(context.Background(), fmt.Sprintf("caught panic: %v [%+v]", err, string(debug.Stack())))
 		}
 	}()
