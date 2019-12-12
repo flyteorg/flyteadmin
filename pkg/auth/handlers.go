@@ -19,9 +19,9 @@ import (
 )
 
 const (
-	LoginRedirectURLParameter                  = "redirect_url"
-	bearerTokenContextKey     contextutils.Key = "bearer"
-	emailContextKey           contextutils.Key = "email"
+	RedirectURLParameter                   = "redirect_url"
+	bearerTokenContextKey contextutils.Key = "bearer"
+	emailContextKey       contextutils.Key = "email"
 )
 
 type HTTPRequestToMetadataAnnotator func(ctx context.Context, request *http.Request) metadata.MD
@@ -69,7 +69,7 @@ func GetLoginHandler(ctx context.Context, authContext interfaces.AuthenticationC
 		logger.Debugf(ctx, "Setting CSRF state cookie to %s and state to %s\n", csrfToken, state)
 		url := authContext.OAuth2Config().AuthCodeURL(state)
 		queryParams := request.URL.Query()
-		if flowEndRedirectURL := queryParams.Get(LoginRedirectURLParameter); flowEndRedirectURL != "" {
+		if flowEndRedirectURL := queryParams.Get(RedirectURLParameter); flowEndRedirectURL != "" {
 			redirectCookie := NewRedirectCookie(ctx, flowEndRedirectURL)
 			if redirectCookie != nil {
 				http.SetCookie(writer, redirectCookie)
@@ -255,6 +255,12 @@ func GetLogoutEndpointHandler(ctx context.Context, authCtx interfaces.Authentica
 	return func(writer http.ResponseWriter, request *http.Request) {
 		logger.Debugf(ctx, "Deleting auth cookies")
 		authCtx.CookieManager().DeleteCookies(ctx, writer)
+
+		// Redirect if one was given
+		queryParams := request.URL.Query()
+		if redirectURL := queryParams.Get(RedirectURLParameter); redirectURL != "" {
+			http.Redirect(writer, request, redirectURL, http.StatusTemporaryRedirect)
+		}
 	}
 }
 
