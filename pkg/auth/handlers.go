@@ -21,7 +21,7 @@ import (
 const (
 	RedirectURLParameter                   = "redirect_url"
 	bearerTokenContextKey contextutils.Key = "bearer"
-	emailContextKey       contextutils.Key = "email"
+	PrincipalContextKey   contextutils.Key = "principal"
 )
 
 type HTTPRequestToMetadataAnnotator func(ctx context.Context, request *http.Request) metadata.MD
@@ -119,7 +119,7 @@ func GetCallbackHandler(ctx context.Context, authContext interfaces.Authenticati
 func AuthenticationLoggingInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	// Invoke 'handler' to use your gRPC server implementation and get
 	// the response.
-	logger.Debugf(ctx, "gRPC server info in logging interceptor email %s method %s\n", ctx.Value(emailContextKey), info.FullMethod)
+	logger.Debugf(ctx, "gRPC server info in logging interceptor email %s method %s\n", ctx.Value(PrincipalContextKey), info.FullMethod)
 	return handler(ctx, req)
 }
 
@@ -185,7 +185,7 @@ func GetAuthenticationInterceptor(authContext interfaces.AuthenticationContext) 
 }
 
 func WithUserEmail(ctx context.Context, email string) context.Context {
-	return context.WithValue(ctx, emailContextKey, email)
+	return context.WithValue(ctx, PrincipalContextKey, email)
 }
 
 // This is effectively middleware for the grpc gateway, it allows us to modify the translation between HTTP request
