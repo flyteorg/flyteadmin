@@ -3,10 +3,9 @@ package impl
 import (
 	"context"
 	"fmt"
+	"github.com/lyft/flyteadmin/pkg/auth"
 	"strconv"
 	"time"
-
-	"github.com/lyft/flytestdlib/contextutils"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -44,7 +43,6 @@ import (
 const parentContainerQueueKey = "parent_queue"
 const childContainerQueueKey = "child_queue"
 const noSourceExecutionID = 0
-const emailContextKey contextutils.Key = "email" // TODO: import from flytestdlib after auth refactor.
 const principalContextKeyFormat = "%v"
 
 // Map of [project] -> map of [domain] -> stop watch
@@ -86,9 +84,9 @@ type ExecutionManager struct {
 
 // Returns the unique string which identifies the authenticated end user (if any).
 func getUser(ctx context.Context) string {
-	emailContextUser := ctx.Value(emailContextKey)
+	emailContextUser := ctx.Value(auth.PrincipalContextKey)
 	if emailContextUser != nil {
-		return fmt.Sprintf(emailContextKeyFormat, emailContextUser)
+		return fmt.Sprintf(principalContextKeyFormat, emailContextUser)
 	}
 	return ""
 }
