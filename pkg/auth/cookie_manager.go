@@ -101,7 +101,7 @@ func getLogoutAccessCookie() *http.Cookie {
 		Value:    "",
 		MaxAge:   0,
 		HttpOnly: true,
-		Expires: time.Now().Add(-1 * time.Hour),
+		Expires:  time.Now().Add(-1 * time.Hour),
 	}
 }
 
@@ -111,7 +111,7 @@ func getLogoutRefreshCookie() *http.Cookie {
 		Value:    "",
 		MaxAge:   0,
 		HttpOnly: true,
-		Expires: time.Now().Add(-1 * time.Hour),
+		Expires:  time.Now().Add(-1 * time.Hour),
 	}
 }
 
