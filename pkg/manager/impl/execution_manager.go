@@ -84,9 +84,9 @@ type ExecutionManager struct {
 
 // Returns the unique string which identifies the authenticated end user (if any).
 func getUser(ctx context.Context) string {
-	emailContextUser := ctx.Value(auth.PrincipalContextKey)
-	if emailContextUser != nil {
-		return fmt.Sprintf(principalContextKeyFormat, emailContextUser)
+	principalContextUser := ctx.Value(auth.PrincipalContextKey)
+	if principalContextUser != nil {
+		return fmt.Sprintf(principalContextKeyFormat, principalContextUser)
 	}
 	return ""
 }
