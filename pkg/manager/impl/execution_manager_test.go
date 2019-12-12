@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/lyft/flyteadmin/pkg/auth"
+
 	"github.com/lyft/flyteadmin/pkg/common"
 	commonMocks "github.com/lyft/flyteadmin/pkg/common/mocks"
 
@@ -224,7 +226,7 @@ func TestCreateExecution(t *testing.T) {
 	request.Spec.Metadata = &admin.ExecutionMetadata{
 		Principal: "unused - populated from authenticated context",
 	}
-	ctx := context.WithValue(context.Background(), emailContextKey, principal)
+	ctx := context.WithValue(context.Background(), auth.PrincipalContextKey, principal)
 	response, err := execManager.CreateExecution(ctx, request, requestedAt)
 	assert.Nil(t, err)
 
@@ -1845,7 +1847,7 @@ func TestTerminateExecution(t *testing.T) {
 		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockExecutor,
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL)
 
-	ctx := context.WithValue(context.Background(), emailContextKey, principal)
+	ctx := context.WithValue(context.Background(), auth.PrincipalContextKey, principal)
 	resp, err := execManager.TerminateExecution(ctx, admin.ExecutionTerminateRequest{
 		Id: &core.WorkflowExecutionIdentifier{
 			Project: "project",
