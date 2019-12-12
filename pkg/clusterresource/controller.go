@@ -292,6 +292,9 @@ func (c *controller) syncNamespace(ctx context.Context, namespace NamespaceName,
 						k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace)
 					c.metrics.AppliedTemplateExists.Inc()
 					// Use a strategic-merge-patch to mimic `kubectl apply` behavior.
+					// Kubectl defaults to using the StrategicMergePatch strategy.
+					// However the controller-runtime only has an implementation for MergePatch which we were formerly
+					// using but failed to actually always merge resources in the Patch call.
 					err = target.Client.Patch(ctx, k8sObjCopy, StrategicMergeFrom(k8sObjCopy))
 					if err != nil {
 						c.metrics.TemplateUpdateErrors.Inc()
