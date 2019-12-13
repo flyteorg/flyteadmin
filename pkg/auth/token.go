@@ -2,14 +2,15 @@ package auth
 
 import (
 	"context"
+	"strings"
+	"time"
+
 	"github.com/coreos/go-oidc"
 	grpcauth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/lyft/flyteadmin/pkg/auth/config"
 	"github.com/lyft/flytestdlib/errors"
 	"github.com/lyft/flytestdlib/logger"
 	"golang.org/x/oauth2"
-	"strings"
-	"time"
 )
 
 const (

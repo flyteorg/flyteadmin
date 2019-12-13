@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 	"net/http"
+
+	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 
 	"github.com/gorilla/handlers"
 	"github.com/lyft/flyteadmin/pkg/auth/interfaces"
@@ -22,7 +23,7 @@ import (
 const (
 	LoginRedirectURLParameter                  = "redirect_url"
 	FromHTTPKey                                = "from_http"
-	FromHTTPVal = "true"
+	FromHTTPVal                                = "true"
 	bearerTokenContextKey     contextutils.Key = "bearer"
 	PrincipalContextKey       contextutils.Key = "principal"
 )
