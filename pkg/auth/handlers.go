@@ -164,8 +164,8 @@ func GetAuthenticationInterceptor(authContext interfaces.AuthenticationContext) 
 		token, err := GetAndValidateTokenObjectFromContext(ctx, authContext.Claims(), authContext.OidcProvider())
 
 		// Only enforcement logic is present. The default case is to let things through.
-		if (isFromHTTP && authContext.Options().EnforceHttp) ||
-			(!isFromHTTP && authContext.Options().EnforceGrpc) {
+		if (isFromHTTP && !authContext.Options().DisableForHTTP) ||
+			(!isFromHTTP && !authContext.Options().DisableForGrpc) {
 			if err != nil {
 				return ctx, status.Errorf(codes.Unauthenticated, "token parse error %s", err)
 			}
@@ -195,10 +195,22 @@ func WithUserEmail(ctx context.Context, email string) context.Context {
 // attached to the request, from which the token is extracted later for verification.
 func GetHTTPRequestCookieToMetadataHandler(authContext interfaces.AuthenticationContext) HTTPRequestToMetadataAnnotator {
 	return func(ctx context.Context, request *http.Request) metadata.MD {
-		// TODO: Add read from Authorization header first, using the custom header if necessary.
 		// TODO: Improve error handling
 		accessToken, _, _ := authContext.CookieManager().RetrieveTokenValues(ctx, request)
 		if accessToken == "" {
+
+			// If no token was found in the cookies, look for an authorization header, starting with a potentially
+			// custom header set in the Config object
+			if authContext.Options().HTTPAuthorizationHeader != "" {
+				header := authContext.Options().HTTPAuthorizationHeader
+				// TODO: There may be a potential issue here when running behind a service mesh that uses the default Authorization
+				//       header. The grpc-gateway code will automatically translate the 'Authorization' header into the appropriate
+				//       metadata object so if two different tokens are presented, one with the default name and one with the
+				//       custom name, AuthFromMD will find the wrong one.
+				return metadata.MD{
+					DefaultAuthorizationHeader: []string{request.Header.Get(header)},
+				}
+			}
 			logger.Infof(ctx, "Could not find access token cookie while requesting %s", request.RequestURI)
 			return nil
 		}

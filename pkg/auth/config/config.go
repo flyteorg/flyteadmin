@@ -56,8 +56,8 @@ type OAuthOptions struct {
 	// dimension that made the most sense to cut by at time of writing is HTTP vs gRPC as the web UI mainly used HTTP
 	// and the backend used mostly gRPC.  Cutting by individual endpoints is another option but it possibly falls more
 	// into the realm of authorization rather than authentication.
-	EnforceHttp bool `json:"enforceHttp"`
-	EnforceGrpc bool `json:"enforceGrpc"`
+	DisableForHTTP bool `json:"disableForHttp"`
+	DisableForGrpc bool `json:"disableForGrpc"`
 }
 
 type Claims struct {
