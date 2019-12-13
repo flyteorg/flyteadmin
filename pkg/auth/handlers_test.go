@@ -2,11 +2,12 @@ package auth
 
 import (
 	"context"
-	"github.com/lyft/flyteadmin/pkg/auth/config"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
+
+	"github.com/lyft/flyteadmin/pkg/auth/config"
 
 	"github.com/lyft/flyteadmin/pkg/auth/interfaces/mocks"
 	"github.com/stretchr/testify/assert"
