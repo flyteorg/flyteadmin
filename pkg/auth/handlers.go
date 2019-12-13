@@ -21,6 +21,8 @@ import (
 
 const (
 	LoginRedirectURLParameter                  = "redirect_url"
+	FromHTTPKey                                = "from_http"
+	FromHTTPVal = "true"
 	bearerTokenContextKey     contextutils.Key = "bearer"
 	PrincipalContextKey       contextutils.Key = "principal"
 )
@@ -156,8 +158,8 @@ func GetAuthenticationInterceptor(authContext interfaces.AuthenticationContext) 
 	return func(ctx context.Context) (context.Context, error) {
 		logger.Debugf(ctx, "Running authentication gRPC interceptor")
 
-		fromHTTP := metautils.ExtractIncoming(ctx).Get("from_http")
-		isFromHTTP := fromHTTP == "true"
+		fromHTTP := metautils.ExtractIncoming(ctx).Get(FromHTTPKey)
+		isFromHTTP := fromHTTP == FromHTTPVal
 
 		token, err := GetAndValidateTokenObjectFromContext(ctx, authContext.Claims(), authContext.OidcProvider())
 
@@ -211,7 +213,7 @@ func GetHTTPRequestCookieToMetadataHandler(authContext interfaces.Authentication
 func GetHTTPMetadataTaggingHandler(authContext interfaces.AuthenticationContext) HTTPRequestToMetadataAnnotator {
 	return func(ctx context.Context, request *http.Request) metadata.MD {
 		return metadata.MD{
-			"from_http": []string{"true"},
+			FromHTTPKey: []string{FromHTTPVal},
 		}
 	}
 }
