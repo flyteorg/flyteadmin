@@ -87,7 +87,7 @@ type ExecutionManager struct {
 
 func getExecutionContext(ctx context.Context, id *core.WorkflowExecutionIdentifier) context.Context {
 	ctx = contextutils.WithExecutionID(ctx, id.Name)
-	return contextutils.WithProjectDomain(ctx, id.Project, id.Name)
+	return contextutils.WithProjectDomain(ctx, id.Project, id.Domain)
 }
 
 // Returns the unique string which identifies the authenticated end user (if any).
