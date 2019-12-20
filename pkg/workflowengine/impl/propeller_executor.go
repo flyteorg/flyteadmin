@@ -120,6 +120,10 @@ func (c *FlytePropeller) ExecuteWorkflow(ctx context.Context, input interfaces.E
 	executionTargetSpec := executioncluster.ExecutionTargetSpec{
 		ExecutionID: input.ExecutionID,
 	}
+	if input.ExecutionID.Project == "sparksession" {
+		// sparksessions go to Flyte2 only.
+		executionTargetSpec.TargetID = "flyte2"
+	}
 	targetCluster, err := c.executionCluster.GetTarget(&executionTargetSpec)
 	if err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to create workflow in propeller %v", err)
