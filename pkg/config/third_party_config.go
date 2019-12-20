@@ -2,7 +2,7 @@ package config
 
 // This struct encapsulates config options for bootstrapping various Flyte applications with config values
 // For example, FlyteClientConfig contains application-specific values to initialize the config required by flyte client
-type ApplicationConfigOptions struct {
+type ThirdPartyConfigOptions struct {
 	FlyteClientConfig FlyteClientConfig `json:"flyteClient"`
 }
 

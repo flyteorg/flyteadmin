@@ -23,7 +23,7 @@ func TestHandleFlyteCliConfigFunc(t *testing.T) {
 				GrpcAuthorizationHeader: testAuthMetadataKey,
 			},
 		},
-		ApplicationConfig: config.ApplicationConfigOptions{
+		ThirdPartyConfig: config.ThirdPartyConfigOptions{
 			FlyteClientConfig: config.FlyteClientConfig{
 				ClientID:    testClientID,
 				RedirectURI: testRedirectURI,

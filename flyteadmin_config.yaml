@@ -25,7 +25,7 @@ server:
         iss: "https://idp.com"
         aud: "api://default"
       idpUserInfoEndpoint: "/v1/userinfo"
-  applicationConfig:
+  thirdPartyConfig:
     flyteClient:
       clientId: yourPublicAppClientId
       redirectUri: yourRegisteredLoginRedirectUri
