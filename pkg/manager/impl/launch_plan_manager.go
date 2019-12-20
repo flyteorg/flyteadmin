@@ -63,7 +63,6 @@ func (m *LaunchPlanManager) CreateLaunchPlan(
 		logger.Debugf(ctx, "Failed to validate provided workflow ID for CreateLaunchPlan with err: %v", err)
 		return nil, err
 	}
-	ctx = getLaunchPlanContext(ctx, request.Id)
 	workflowModel, err := util.GetWorkflowModel(ctx, m.db, *request.Spec.WorkflowId)
 	if err != nil {
 		logger.Debugf(ctx, "Failed to get workflow with id [%+v] for CreateLaunchPlan with id [%+v] with err %v",
@@ -84,6 +83,7 @@ func (m *LaunchPlanManager) CreateLaunchPlan(
 		logger.Debugf(ctx, "could not create launch plan: %+v, request failed validation with err: %v", request.Id, err)
 		return nil, err
 	}
+	ctx = getLaunchPlanContext(ctx, request.Id)
 	launchPlan := transformers.CreateLaunchPlan(request, workflowInterface.Outputs)
 	launchPlanDigest, err := util.GetLaunchPlanDigest(ctx, &launchPlan)
 	if err != nil {
