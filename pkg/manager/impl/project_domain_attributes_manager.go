@@ -14,24 +14,26 @@ import (
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 )
 
-type ProjectDomainManager struct {
+type ProjectDomainAttributesManager struct {
 	db     repositories.RepositoryInterface
 	config runtimeInterfaces.Configuration
 }
 
-func (m *ProjectDomainManager) UpdateProjectDomain(
+func (m *ProjectDomainAttributesManager) UpdateProjectDomainAttributes(
 	ctx context.Context, request admin.ProjectDomainAttributesUpdateRequest) (
 	*admin.ProjectDomainAttributesUpdateResponse, error) {
-	if err := validation.ValidateProjectDomainAttributesUpdateRequest(request); err != nil {
+	var resource admin.MatchableResource
+	var err error
+	if resource, err = validation.ValidateProjectDomainAttributesUpdateRequest(request); err != nil {
 		return nil, err
 	}
 	ctx = contextutils.WithProjectDomain(ctx, request.Attributes.Project, request.Attributes.Domain)
 
-	model, err := transformers.ToProjectDomainModel(*request.Attributes)
+	model, err := transformers.ToProjectDomainAttributesModel(*request.Attributes, resource)
 	if err != nil {
 		return nil, err
 	}
-	err = m.db.ProjectDomainRepo().CreateOrUpdate(ctx, model)
+	err = m.db.ProjectDomainAttributesRepo().CreateOrUpdate(ctx, model)
 	if err != nil {
 		return nil, err
 	}
@@ -39,9 +41,9 @@ func (m *ProjectDomainManager) UpdateProjectDomain(
 	return &admin.ProjectDomainAttributesUpdateResponse{}, nil
 }
 
-func NewProjectDomainManager(
-	db repositories.RepositoryInterface, config runtimeInterfaces.Configuration) interfaces.ProjectDomainInterface {
-	return &ProjectDomainManager{
+func NewProjectDomainAttributesManager(
+	db repositories.RepositoryInterface, config runtimeInterfaces.Configuration) interfaces.ProjectDomainAttributesInterface {
+	return &ProjectDomainAttributesManager{
 		db:     db,
 		config: config,
 	}

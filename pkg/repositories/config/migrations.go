@@ -143,7 +143,7 @@ var Migrations = []*gormigrate.Migration{
 	{
 		ID: "2019-10-28-project-domains",
 		Migrate: func(tx *gorm.DB) error {
-			return tx.AutoMigrate(&models.ProjectDomain{}).Error
+			return tx.AutoMigrate(&models.ProjectDomainAttributes{}).Error
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return tx.DropTable("project_domains").Error

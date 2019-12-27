@@ -25,6 +25,7 @@ func TestUpdateProjectDomain(t *testing.T) {
 		Attributes: &admin.ProjectDomainAttributes{
 			Project: "admintests",
 			Domain:  "development",
+			// TODO(katrogan): Update me
 			Attributes: map[string]string{
 				"foo": "bar",
 			},
@@ -39,12 +40,12 @@ func TestUpdateProjectDomain(t *testing.T) {
 	defer db.Close()
 
 	errorsTransformer := errors.NewPostgresErrorTransformer(adminScope.NewSubScope("errors"))
-	projectDomainRepo := gormimpl.NewProjectDomainRepo(db, errorsTransformer, adminScope.NewSubScope("project_domain"))
+	projectDomainRepo := gormimpl.NewProjectDomainAttributesRepo(db, errorsTransformer, adminScope.NewSubScope("project_domain"))
 
 	attributes, err := projectDomainRepo.Get(ctx, "admintests", "development")
 	assert.Nil(t, err)
 
-	projectDomain, err := transformers.FromProjectDomainModel(attributes)
+	projectDomain, err := transformers.FromProjectDomainAttributesModel(attributes)
 
 	assert.EqualValues(t, map[string]string{
 		"foo": "bar",
