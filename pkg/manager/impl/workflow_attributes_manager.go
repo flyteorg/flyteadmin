@@ -8,13 +8,11 @@ import (
 
 	"github.com/lyft/flyteadmin/pkg/manager/interfaces"
 	"github.com/lyft/flyteadmin/pkg/repositories"
-	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 )
 
 type WorkflowAttributesManager struct {
-	db     repositories.RepositoryInterface
-	config runtimeInterfaces.Configuration
+	db repositories.RepositoryInterface
 }
 
 func (m *WorkflowAttributesManager) UpdateWorkflowAttributes(
@@ -38,10 +36,8 @@ func (m *WorkflowAttributesManager) UpdateWorkflowAttributes(
 	return &admin.WorkflowAttributesUpdateResponse{}, nil
 }
 
-func NewWorkflowAttributesManager(
-	db repositories.RepositoryInterface, config runtimeInterfaces.Configuration) interfaces.WorkflowAttributesInterface {
+func NewWorkflowAttributesManager(db repositories.RepositoryInterface) interfaces.WorkflowAttributesInterface {
 	return &WorkflowAttributesManager{
-		db:     db,
-		config: config,
+		db: db,
 	}
 }

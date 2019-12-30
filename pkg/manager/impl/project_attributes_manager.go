@@ -8,13 +8,11 @@ import (
 
 	"github.com/lyft/flyteadmin/pkg/manager/interfaces"
 	"github.com/lyft/flyteadmin/pkg/repositories"
-	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 )
 
 type ProjectAttributesManager struct {
-	db     repositories.RepositoryInterface
-	config runtimeInterfaces.Configuration
+	db repositories.RepositoryInterface
 }
 
 func (m *ProjectAttributesManager) UpdateProjectAttributes(
@@ -38,10 +36,8 @@ func (m *ProjectAttributesManager) UpdateProjectAttributes(
 	return &admin.ProjectAttributesUpdateResponse{}, nil
 }
 
-func NewProjectAttributesManager(
-	db repositories.RepositoryInterface, config runtimeInterfaces.Configuration) interfaces.ProjectAttributesInterface {
+func NewProjectAttributesManager(db repositories.RepositoryInterface) interfaces.ProjectAttributesInterface {
 	return &ProjectAttributesManager{
-		db:     db,
-		config: config,
+		db: db,
 	}
 }

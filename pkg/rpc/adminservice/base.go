@@ -162,9 +162,9 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 		TaskExecutionManager: manager.NewTaskExecutionManager(
 			db, adminScope.NewSubScope("task_execution_manager"), urlData),
 		ProjectManager:                 manager.NewProjectManager(db, configuration),
-		ProjectAttributesManager:       manager.NewProjectAttributesManager(db, configuration),
-		ProjectDomainAttributesManager: manager.NewProjectDomainAttributesManager(db, configuration),
-		WorkflowAttributesManager:      manager.NewWorkflowAttributesManager(db, configuration),
+		ProjectAttributesManager:       manager.NewProjectAttributesManager(db),
+		ProjectDomainAttributesManager: manager.NewProjectDomainAttributesManager(db),
+		WorkflowAttributesManager:      manager.NewWorkflowAttributesManager(db),
 		Metrics:                        InitMetrics(adminScope),
 	}
 }
