@@ -14,11 +14,12 @@ import (
 func TestCreateWorkflowAttributes(t *testing.T) {
 	workflowRepo := NewWorkflowAttributesRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
 	GlobalMock := mocket.Catcher.Reset()
+	GlobalMock.Logging = true
 
 	query := GlobalMock.NewMock()
 	query.WithQuery(
 		`INSERT  INTO "workflow_attributes" ("id","created_at","updated_at","deleted_at","project","domain",` +
-			`"resource","attributes") VALUES (?,?,?,?,?,?,?,?)`)
+			`"workflow","resource","attributes") VALUES (?,?,?,?,?,?,?,?,?)`)
 
 	err := workflowRepo.CreateOrUpdate(context.Background(), models.WorkflowAttributes{
 		Project:    "project",

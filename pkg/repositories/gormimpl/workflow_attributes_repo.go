@@ -25,6 +25,7 @@ func (r *WorkflowAttributesRepo) CreateOrUpdate(ctx context.Context, input model
 	tx := r.db.FirstOrCreate(&record, models.WorkflowAttributes{
 		Project:  input.Project,
 		Domain:   input.Domain,
+		Workflow: input.Workflow,
 		Resource: input.Resource,
 	})
 	timer.Stop()

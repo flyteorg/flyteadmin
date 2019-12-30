@@ -125,7 +125,7 @@ func TestGetQueueDefaults(t *testing.T) {
 	db.WorkflowAttributesRepo().(*mocks.MockWorkflowAttributesRepo).GetFunction = func(
 		ctx context.Context, project, domain, workflow, resource string) (
 		models.WorkflowAttributes, error) {
-		if project == testProject && domain == testDomain && workflow == testWorkflow &&
+		if project == testProject && domain == testDomain && workflow == "workflow" &&
 			resource == admin.MatchableResource_EXECUTION_QUEUE.String() {
 			matchingAttributes := &admin.MatchingAttributes{
 				Target: &admin.MatchingAttributes_ExecutionQueueAttributes{
