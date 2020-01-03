@@ -52,7 +52,7 @@ func (b *logBuilder) WithAuthenticatedCtx(ctx context.Context) LogBuilder {
 	return b
 }
 
-// TODO: HTTP verb?
+// TODO: Also look into passing down HTTP verb
 func (b *logBuilder) WithRequest(method string, parameters map[string]string, mode admin.Request_Mode,
 	requestedAt time.Time) LogBuilder {
 	receivedAt, err := ptypes.TimestampProto(requestedAt)
@@ -74,7 +74,7 @@ func (b *logBuilder) WithResponse(sentAt time.Time, err error) LogBuilder {
 		logger.Warningf(context.TODO(), "Failed to convert authenticated SentAt to timestamp proto: %v", err)
 	}
 
-	responseCode := "OK"
+	responseCode := codes.OK.String()
 	if err != nil {
 		switch err := err.(type) {
 		case errors.FlyteAdminError:
