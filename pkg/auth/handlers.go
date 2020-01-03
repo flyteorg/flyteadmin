@@ -11,8 +11,8 @@ import (
 	"github.com/lyft/flyteadmin/pkg/common"
 	"google.golang.org/grpc/peer"
 
-	"github.com/gorilla/handlers"
-	grpcauth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
+	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
+
 	"github.com/lyft/flyteadmin/pkg/auth/interfaces"
 	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/errors"
@@ -25,8 +25,11 @@ import (
 )
 
 const (
-	LoginRedirectURLParameter                  = "redirect_url"
-	bearerTokenContextKey     contextutils.Key = "bearer"
+	RedirectURLParameter                   = "redirect_url"
+	FromHTTPKey                            = "from_http"
+	FromHTTPVal                            = "true"
+	bearerTokenContextKey contextutils.Key = "bearer"
+	PrincipalContextKey   contextutils.Key = "principal"
 )
 
 type HTTPRequestToMetadataAnnotator func(ctx context.Context, request *http.Request) metadata.MD
@@ -74,7 +77,7 @@ func GetLoginHandler(ctx context.Context, authContext interfaces.AuthenticationC
 		logger.Debugf(ctx, "Setting CSRF state cookie to %s and state to %s\n", csrfToken, state)
 		url := authContext.OAuth2Config().AuthCodeURL(state)
 		queryParams := request.URL.Query()
-		if flowEndRedirectURL := queryParams.Get(LoginRedirectURLParameter); flowEndRedirectURL != "" {
+		if flowEndRedirectURL := queryParams.Get(RedirectURLParameter); flowEndRedirectURL != "" {
 			redirectCookie := NewRedirectCookie(ctx, flowEndRedirectURL)
 			if redirectCookie != nil {
 				http.SetCookie(writer, redirectCookie)
@@ -154,39 +157,35 @@ func GetAuthenticationCustomMetadataInterceptor(authCtx interfaces.Authenticatio
 	}
 }
 
-// This function will only look for a token from the request metadata, verify it, and extract the user email if valid.
-// Unless there is an error, it will not return an unauthorized status. That is up to subsequent functions to decide,
-// based on configuration.  We don't want to require authentication for all endpoints.
+// This is the function that chooses to enforce or not enforce authentication. It will attempt to get the token
+// from the incoming context, validate it, and decide whether or not to let the request through.
 func GetAuthenticationInterceptor(authContext interfaces.AuthenticationContext) func(context.Context) (context.Context, error) {
 	return func(ctx context.Context) (context.Context, error) {
 		logger.Debugf(ctx, "Running authentication gRPC interceptor")
-		tokenStr, err := grpcauth.AuthFromMD(ctx, BearerScheme)
-		if err != nil {
-			logger.Debugf(ctx, "Could not retrieve bearer token from metadata %v", err)
-			return ctx, nil
-		}
 
-		// Currently auth is optional...
-		if tokenStr == "" {
-			logger.Debugf(ctx, "Bearer token is empty, skipping parsing")
-			return ctx, nil
-		}
+		fromHTTP := metautils.ExtractIncoming(ctx).Get(FromHTTPKey)
+		isFromHTTP := fromHTTP == FromHTTPVal
 
-		// ...however, if there _is_ a bearer token, but there are additional errors downstream, then we return an
-		// authentication error.
-		token, err := ParseAndValidate(ctx, authContext.Claims(), tokenStr, authContext.OidcProvider())
-		if err != nil {
-			return ctx, status.Errorf(codes.Unauthenticated, "could not parse token string into object: %s %s", tokenStr, err)
+		token, err := GetAndValidateTokenObjectFromContext(ctx, authContext.Claims(), authContext.OidcProvider())
+
+		// Only enforcement logic is present. The default case is to let things through.
+		if (isFromHTTP && !authContext.Options().DisableForHTTP) ||
+			(!isFromHTTP && !authContext.Options().DisableForGrpc) {
+			if err != nil {
+				return ctx, status.Errorf(codes.Unauthenticated, "token parse error %s", err)
+			}
+			if token == nil {
+				return ctx, status.Errorf(codes.Unauthenticated, "Token was nil after parsing")
+			} else if token.Subject == "" {
+				return ctx, status.Errorf(codes.Unauthenticated, "no email or empty email found")
+			}
 		}
-		if token == nil {
-			return ctx, status.Errorf(codes.Unauthenticated, "Token was nil after parsing %s", tokenStr)
-		} else if token.Subject == "" {
-			return ctx, status.Errorf(codes.Unauthenticated, "no email or empty email found")
-		} else {
-			newCtx := WithUserEmail(context.WithValue(ctx, bearerTokenContextKey, tokenStr), token.Subject)
+		if token != nil {
+			newCtx := WithUserEmail(context.WithValue(ctx, bearerTokenContextKey, token), token.Subject)
 			newCtx = WithAuditFields(ctx, token.Audience, token.IssuedAt)
 			return newCtx, nil
 		}
+		return ctx, nil
 	}
 }
 
@@ -214,15 +213,37 @@ func WithAuditFields(ctx context.Context, clientIds []string, tokenIssuedAt time
 // attached to the request, from which the token is extracted later for verification.
 func GetHTTPRequestCookieToMetadataHandler(authContext interfaces.AuthenticationContext) HTTPRequestToMetadataAnnotator {
 	return func(ctx context.Context, request *http.Request) metadata.MD {
-		// TODO: Add read from Authorization header first, using the custom header if necessary.
 		// TODO: Improve error handling
 		accessToken, _, _ := authContext.CookieManager().RetrieveTokenValues(ctx, request)
 		if accessToken == "" {
+
+			// If no token was found in the cookies, look for an authorization header, starting with a potentially
+			// custom header set in the Config object
+			if authContext.Options().HTTPAuthorizationHeader != "" {
+				header := authContext.Options().HTTPAuthorizationHeader
+				// TODO: There may be a potential issue here when running behind a service mesh that uses the default Authorization
+				//       header. The grpc-gateway code will automatically translate the 'Authorization' header into the appropriate
+				//       metadata object so if two different tokens are presented, one with the default name and one with the
+				//       custom name, AuthFromMD will find the wrong one.
+				return metadata.MD{
+					DefaultAuthorizationHeader: []string{request.Header.Get(header)},
+				}
+			}
 			logger.Infof(ctx, "Could not find access token cookie while requesting %s", request.RequestURI)
 			return nil
 		}
 		return metadata.MD{
 			DefaultAuthorizationHeader: []string{fmt.Sprintf("%s %s", BearerScheme, accessToken)},
+		}
+	}
+}
+
+// Intercepts the incoming HTTP requests and marks it as such so that the downstream code can use it to enforce auth.
+// See the enforceHTTP/Grpc options for more information.
+func GetHTTPMetadataTaggingHandler(authContext interfaces.AuthenticationContext) HTTPRequestToMetadataAnnotator {
+	return func(ctx context.Context, request *http.Request) metadata.MD {
+		return metadata.MD{
+			FromHTTPKey: []string{FromHTTPVal},
 		}
 	}
 }
@@ -270,15 +291,15 @@ func GetMetadataEndpointRedirectHandler(ctx context.Context, authCtx interfaces.
 	}
 }
 
-// These are here for CORS handling. Actual serving of the OPTIONS request will be done by the gorilla/handlers package
-type CorsHandlerDecorator func(http.Handler) http.Handler
+func GetLogoutEndpointHandler(ctx context.Context, authCtx interfaces.AuthenticationContext) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		logger.Debugf(ctx, "Deleting auth cookies")
+		authCtx.CookieManager().DeleteCookies(ctx, writer)
 
-// This produces a decorator that, when applied to an existing Handler, will first test if the request is an appropriate
-// options request, and if so, serve it. If not, the underlying handler will be called.
-func GetCorsDecorator(ctx context.Context, allowedOrigins, allowedHeaders []string) CorsHandlerDecorator {
-	logger.Debugf(ctx, "Creating CORS decorator with allowed origins %v", allowedOrigins)
-	return handlers.CORS(handlers.AllowedHeaders(allowedHeaders),
-		handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch,
-			http.MethodHead, http.MethodOptions, http.MethodDelete}),
-		handlers.AllowedOrigins(allowedOrigins))
+		// Redirect if one was given
+		queryParams := request.URL.Query()
+		if redirectURL := queryParams.Get(RedirectURLParameter); redirectURL != "" {
+			http.Redirect(writer, request, redirectURL, http.StatusTemporaryRedirect)
+		}
+	}
 }
