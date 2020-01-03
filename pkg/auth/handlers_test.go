@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/lyft/flyteadmin/pkg/common"
+
 	"github.com/lyft/flyteadmin/pkg/auth/interfaces/mocks"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/oauth2"
@@ -16,7 +18,7 @@ import (
 
 func TestWithUserEmail(t *testing.T) {
 	ctx := WithUserEmail(context.Background(), "abc")
-	assert.Equal(t, "abc", ctx.Value(PrincipalContextKey))
+	assert.Equal(t, "abc", ctx.Value(common.PrincipalContextKey))
 }
 
 func TestGetLoginHandler(t *testing.T) {

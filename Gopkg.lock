@@ -453,7 +453,7 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:3f2df712ce758d201538c19525149ee04b966e3853bd31a499520376668eb2c5"
+  digest = "1:e0612c76b3e7310a69091712378e4846f1718125f002f290292bb21fe695fd57"
   name = "github.com/lyft/flyteidl"
   packages = [
     "clients/go/admin",
@@ -466,7 +466,7 @@
     "gen/pb-go/flyteidl/service",
   ]
   pruneopts = "UT"
-  revision = "c3d5e96b40dd272fb3b9acbeba3dcfffae03f3fb"
+  revision = "10d6b7f0f74195fc41f59678a302cd0aeeb0a5a2"
   source = "https://github.com/lyft/flyteidl"
 
 [[projects]]
@@ -813,10 +813,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:31e33f76456ccf54819ab4a646cf01271d1a99d7712ab84bf1a9e7b61cd2031b"
+  digest = "1:dbd0f5d2c3d68686f4b80fcc71c632d4f9b5cf622f17c64affecfc90f7650639"
   name = "golang.org/x/oauth2"
   packages = [
     ".",
+    "clientcredentials",
     "google",
     "internal",
     "jws",
@@ -1240,6 +1241,7 @@
     "google.golang.org/grpc/credentials",
     "google.golang.org/grpc/grpclog",
     "google.golang.org/grpc/metadata",
+    "google.golang.org/grpc/peer",
     "google.golang.org/grpc/reflection",
     "google.golang.org/grpc/status",
     "gopkg.in/gormigrate.v1",

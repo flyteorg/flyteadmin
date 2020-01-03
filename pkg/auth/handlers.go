@@ -5,6 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
+
+	"github.com/lyft/flyteadmin/pkg/audit"
+	"github.com/lyft/flyteadmin/pkg/common"
+	"google.golang.org/grpc/peer"
 
 	"github.com/gorilla/handlers"
 	grpcauth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
@@ -22,7 +27,6 @@ import (
 const (
 	LoginRedirectURLParameter                  = "redirect_url"
 	bearerTokenContextKey     contextutils.Key = "bearer"
-	PrincipalContextKey       contextutils.Key = "principal"
 )
 
 type HTTPRequestToMetadataAnnotator func(ctx context.Context, request *http.Request) metadata.MD
@@ -120,7 +124,7 @@ func GetCallbackHandler(ctx context.Context, authContext interfaces.Authenticati
 func AuthenticationLoggingInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	// Invoke 'handler' to use your gRPC server implementation and get
 	// the response.
-	logger.Debugf(ctx, "gRPC server info in logging interceptor email %s method %s\n", ctx.Value(PrincipalContextKey), info.FullMethod)
+	logger.Debugf(ctx, "gRPC server info in logging interceptor email %s method %s\n", ctx.Value(common.PrincipalContextKey), info.FullMethod)
 	return handler(ctx, req)
 }
 
@@ -180,13 +184,27 @@ func GetAuthenticationInterceptor(authContext interfaces.AuthenticationContext) 
 			return ctx, status.Errorf(codes.Unauthenticated, "no email or empty email found")
 		} else {
 			newCtx := WithUserEmail(context.WithValue(ctx, bearerTokenContextKey, tokenStr), token.Subject)
+			newCtx = WithAuditFields(ctx, token.Audience, token.IssuedAt)
 			return newCtx, nil
 		}
 	}
 }
 
 func WithUserEmail(ctx context.Context, email string) context.Context {
-	return context.WithValue(ctx, PrincipalContextKey, email)
+	return context.WithValue(ctx, common.PrincipalContextKey, email)
+}
+
+func WithAuditFields(ctx context.Context, clientIds []string, tokenIssuedAt time.Time) context.Context {
+	var clientIP string
+	peer, ok := peer.FromContext(ctx)
+	if ok {
+		clientIP = peer.Addr.String()
+	}
+	return context.WithValue(ctx, common.AuditFieldsContextKey, audit.AuthenticatedClientMeta{
+		ClientIds:     clientIds,
+		TokenIssuedAt: tokenIssuedAt,
+		ClientIP:      clientIP,
+	})
 }
 
 // This is effectively middleware for the grpc gateway, it allows us to modify the translation between HTTP request
