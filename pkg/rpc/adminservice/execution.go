@@ -31,7 +31,7 @@ func (m *AdminService) CreateExecution(
 			audit.Domain:  request.Domain,
 			audit.Name:    request.Name,
 		},
-		admin.Request_READ_WRITE,
+		audit.ReadWrite,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -56,7 +56,7 @@ func (m *AdminService) RelaunchExecution(
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"ExecutionCreateRequest",
 		audit.ParametersFromExecutionIdentifier(request.Id),
-		admin.Request_READ_WRITE,
+		audit.ReadWrite,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -81,7 +81,7 @@ func (m *AdminService) CreateWorkflowEvent(
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"CreateWorkflowEvent",
 		audit.ParametersFromExecutionIdentifier(request.Event.ExecutionId),
-		admin.Request_READ_WRITE,
+		audit.ReadWrite,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -107,7 +107,7 @@ func (m *AdminService) GetExecution(
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"GetExecution",
 		audit.ParametersFromExecutionIdentifier(request.Id),
-		admin.Request_READ_ONLY,
+		audit.ReadOnly,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -132,7 +132,7 @@ func (m *AdminService) GetExecutionData(
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"GetExecutionData",
 		audit.ParametersFromExecutionIdentifier(request.Id),
-		admin.Request_READ_ONLY,
+		audit.ReadOnly,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -157,7 +157,7 @@ func (m *AdminService) ListExecutions(
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"ListExecutions",
 		audit.ParametersFromNamedEntityIdentifier(request.Id),
-		admin.Request_READ_ONLY,
+		audit.ReadOnly,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -182,7 +182,7 @@ func (m *AdminService) TerminateExecution(
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"TerminateExecution",
 		audit.ParametersFromExecutionIdentifier(request.Id),
-		admin.Request_READ_WRITE,
+		audit.ReadWrite,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {

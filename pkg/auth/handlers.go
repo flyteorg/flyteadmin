@@ -182,7 +182,7 @@ func GetAuthenticationInterceptor(authContext interfaces.AuthenticationContext) 
 		}
 		if token != nil {
 			newCtx := WithUserEmail(context.WithValue(ctx, bearerTokenContextKey, token), token.Subject)
-			newCtx = WithAuditFields(ctx, token.Audience, token.IssuedAt)
+			newCtx = WithAuditFields(newCtx, token.Audience, token.IssuedAt)
 			return newCtx, nil
 		}
 		return ctx, nil

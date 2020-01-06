@@ -27,7 +27,7 @@ func (m *AdminService) GetNamedEntity(ctx context.Context, request *admin.NamedE
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"GetNamedEntity",
 		audit.ParametersFromNamedEntityIdentifierAndResource(request.Id, request.ResourceType),
-		admin.Request_READ_ONLY,
+		audit.ReadOnly,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -54,7 +54,7 @@ func (m *AdminService) UpdateNamedEntity(ctx context.Context, request *admin.Nam
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"UpdateNamedEntity",
 		audit.ParametersFromNamedEntityIdentifierAndResource(request.Id, request.ResourceType),
-		admin.Request_READ_WRITE,
+		audit.ReadWrite,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -84,7 +84,7 @@ func (m *AdminService) ListNamedEntities(ctx context.Context, request *admin.Nam
 			audit.Domain:       request.Domain,
 			audit.ResourceType: request.ResourceType.String(),
 		},
-		admin.Request_READ_ONLY,
+		audit.ReadOnly,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {

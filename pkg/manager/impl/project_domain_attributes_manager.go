@@ -3,6 +3,8 @@ package impl
 import (
 	"context"
 
+	"github.com/lyft/flytestdlib/logger"
+
 	"github.com/lyft/flytestdlib/contextutils"
 
 	"github.com/lyft/flyteadmin/pkg/manager/impl/validation"
@@ -37,6 +39,40 @@ func (m *ProjectDomainAttributesManager) UpdateProjectDomainAttributes(
 	}
 
 	return &admin.ProjectDomainAttributesUpdateResponse{}, nil
+}
+
+func (m *ProjectDomainAttributesManager) GetProjectDomainAttributes(
+	ctx context.Context, request admin.ProjectDomainAttributesGetRequest) (
+	*admin.ProjectDomainAttributesGetResponse, error) {
+	if err := validation.ValidateProjectDomainAttributesGetRequest(request); err != nil {
+		return nil, err
+	}
+	projectAttributesModel, err := m.db.ProjectDomainAttributesRepo().Get(
+		ctx, request.Project, request.Domain, request.ResourceType.String())
+	if err != nil {
+		return nil, err
+	}
+	projectAttributes, err := transformers.FromProjectDomainAttributesModel(projectAttributesModel)
+	if err != nil {
+		return nil, err
+	}
+	return &admin.ProjectDomainAttributesGetResponse{
+		Attributes: &projectAttributes,
+	}, nil
+}
+
+func (m *ProjectDomainAttributesManager) DeleteProjectDomainAttributes(ctx context.Context,
+	request admin.ProjectDomainAttributesDeleteRequest) (*admin.ProjectDomainAttributesDeleteResponse, error) {
+	if err := validation.ValidateProjectDomainAttributesDeleteRequest(request); err != nil {
+		return nil, err
+	}
+	if err := m.db.ProjectDomainAttributesRepo().Delete(
+		ctx, request.Project, request.Domain, request.ResourceType.String()); err != nil {
+		return nil, err
+	}
+	logger.Infof(ctx, "Deleted project-domain attributes for: %s-%s (%s)", request.Project,
+		request.Domain, request.ResourceType.String())
+	return &admin.ProjectDomainAttributesDeleteResponse{}, nil
 }
 
 func NewProjectDomainAttributesManager(

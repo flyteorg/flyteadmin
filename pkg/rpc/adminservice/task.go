@@ -31,7 +31,7 @@ func (m *AdminService) CreateTask(
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"CreateTask",
 		audit.ParametersFromIdentifier(request.Id),
-		admin.Request_READ_WRITE,
+		audit.ReadWrite,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -61,7 +61,7 @@ func (m *AdminService) GetTask(ctx context.Context, request *admin.ObjectGetRequ
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"GetTask",
 		audit.ParametersFromIdentifier(request.Id),
-		admin.Request_READ_ONLY,
+		audit.ReadOnly,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -89,7 +89,7 @@ func (m *AdminService) ListTaskIds(
 			audit.Project: request.Project,
 			audit.Domain:  request.Domain,
 		},
-		admin.Request_READ_ONLY,
+		audit.ReadOnly,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -114,7 +114,7 @@ func (m *AdminService) ListTasks(ctx context.Context, request *admin.ResourceLis
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"ListTasks",
 		audit.ParametersFromNamedEntityIdentifier(request.Id),
-		admin.Request_READ_ONLY,
+		audit.ReadOnly,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {

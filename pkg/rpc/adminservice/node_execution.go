@@ -30,7 +30,7 @@ func (m *AdminService) CreateNodeEvent(
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"CreateNodeEvent",
 		audit.ParametersFromNodeExecutionIdentifier(request.Event.Id),
-		admin.Request_READ_WRITE,
+		audit.ReadWrite,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -55,7 +55,7 @@ func (m *AdminService) GetNodeExecution(
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"GetNodeExecution",
 		audit.ParametersFromNodeExecutionIdentifier(request.Id),
-		admin.Request_READ_ONLY,
+		audit.ReadOnly,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -80,7 +80,7 @@ func (m *AdminService) ListNodeExecutions(
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"ListNodeExecutions",
 		audit.ParametersFromExecutionIdentifier(request.WorkflowExecutionId),
-		admin.Request_READ_ONLY,
+		audit.ReadOnly,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -112,7 +112,7 @@ func (m *AdminService) ListNodeExecutionsForTask(
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"ListNodeExecutionsForTask",
 		audit.ParametersFromTaskExecutionIdentifier(request.TaskExecutionId),
-		admin.Request_READ_ONLY,
+		audit.ReadOnly,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -137,7 +137,7 @@ func (m *AdminService) GetNodeExecutionData(
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"GetNodeExecutionData",
 		audit.ParametersFromNodeExecutionIdentifier(request.Id),
-		admin.Request_READ_ONLY,
+		audit.ReadOnly,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {

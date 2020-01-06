@@ -40,7 +40,7 @@ func (m *AdminService) CreateTaskEvent(
 			NodeExecutionId: request.Event.ParentNodeExecutionId,
 			RetryAttempt:    request.Event.RetryAttempt,
 		}),
-		admin.Request_READ_WRITE,
+		audit.ReadWrite,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -75,7 +75,7 @@ func (m *AdminService) GetTaskExecution(
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"GetTaskExecution",
 		audit.ParametersFromTaskExecutionIdentifier(request.Id),
-		admin.Request_READ_ONLY,
+		audit.ReadOnly,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -104,7 +104,7 @@ func (m *AdminService) ListTaskExecutions(
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"ListTaskExecutions",
 		audit.ParametersFromNodeExecutionIdentifier(request.NodeExecutionId),
-		admin.Request_READ_ONLY,
+		audit.ReadOnly,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -135,7 +135,7 @@ func (m *AdminService) GetTaskExecutionData(
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"GetTaskExecutionData",
 		audit.ParametersFromTaskExecutionIdentifier(request.Id),
-		admin.Request_READ_ONLY,
+		audit.ReadOnly,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {

@@ -30,7 +30,7 @@ func (m *AdminService) CreateLaunchPlan(
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"CreateLaunchPlan",
 		audit.ParametersFromIdentifier(request.Id),
-		admin.Request_READ_WRITE,
+		audit.ReadWrite,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -60,7 +60,7 @@ func (m *AdminService) GetLaunchPlan(ctx context.Context, request *admin.ObjectG
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"GetLaunchPlan",
 		audit.ParametersFromIdentifier(request.Id),
-		admin.Request_READ_ONLY,
+		audit.ReadOnly,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -85,7 +85,7 @@ func (m *AdminService) GetActiveLaunchPlan(ctx context.Context, request *admin.A
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"GetActiveLaunchPlan",
 		audit.ParametersFromNamedEntityIdentifier(request.Id),
-		admin.Request_READ_ONLY,
+		audit.ReadOnly,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -116,7 +116,7 @@ func (m *AdminService) UpdateLaunchPlan(ctx context.Context, request *admin.Laun
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"UpdateLaunchPlan",
 		audit.ParametersFromIdentifier(request.Id),
-		admin.Request_READ_WRITE,
+		audit.ReadWrite,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -141,7 +141,7 @@ func (m *AdminService) ListLaunchPlans(ctx context.Context, request *admin.Resou
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"ListLaunchPlans",
 		audit.ParametersFromNamedEntityIdentifier(request.Id),
-		admin.Request_READ_ONLY,
+		audit.ReadOnly,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -170,7 +170,7 @@ func (m *AdminService) ListActiveLaunchPlans(ctx context.Context, request *admin
 			audit.Project: request.Project,
 			audit.Domain:  request.Domain,
 		},
-		admin.Request_READ_ONLY,
+		audit.ReadOnly,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -200,7 +200,7 @@ func (m *AdminService) ListLaunchPlanIds(ctx context.Context, request *admin.Nam
 			audit.Project: request.Project,
 			audit.Domain:  request.Domain,
 		},
-		admin.Request_READ_ONLY,
+		audit.ReadOnly,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {

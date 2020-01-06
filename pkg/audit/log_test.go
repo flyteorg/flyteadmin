@@ -7,7 +7,6 @@ import (
 
 	"github.com/lyft/flyteadmin/pkg/common"
 	"github.com/lyft/flyteadmin/pkg/errors"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 )
@@ -15,9 +14,9 @@ import (
 func TestLogBuilderLog(t *testing.T) {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, common.PrincipalContextKey, "prince")
-	tokenIssuedAt := time.Unix(100, 0)
-	requestedAt := time.Unix(200, 0)
-	sentAt := time.Unix(300, 0)
+	tokenIssuedAt := time.Date(2020, time.January, 5, 10, 15, 0, 0, time.UTC)
+	requestedAt := time.Date(2020, time.January, 5, 10, 30, 0, 0, time.UTC)
+	sentAt := time.Date(2020, time.January, 5, 10, 31, 0, 0, time.UTC)
 	err := errors.NewFlyteAdminError(codes.AlreadyExists, "womp womp")
 	ctx = context.WithValue(ctx, common.AuditFieldsContextKey, AuthenticatedClientMeta{
 		ClientIds:     []string{"12345"},
@@ -27,10 +26,10 @@ func TestLogBuilderLog(t *testing.T) {
 	builder := NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"my_method", map[string]string{
 			"my": "params",
-		}, admin.Request_READ_WRITE, requestedAt).WithResponse(sentAt, err)
-	assert.EqualValues(t, "Recording request: [{\"principal\":{\"subject\":\"prince\",\"clientId\":\"12345\","+
-		"\"tokenIssuedAt\":\"1970-01-01T00:01:40Z\"},\"client\":{\"clientIp\":\"192.0.2.1:25\"},\"request\":"+
-		"{\"method\":\"my_method\",\"parameters\":{\"my\":\"params\"},\"mode\":\"READ_WRITE\",\"receivedAt\":"+
-		"\"1970-01-01T00:03:20Z\"},\"response\":{\"responseCode\":\"OK\",\"sentAt\":\"1970-01-01T00:05:00Z\"}}]",
-		builder.(*logBuilder).formatLogString(context.TODO()))
+		}, ReadWrite, requestedAt).WithResponse(sentAt, err)
+	assert.EqualValues(t, "Recording request: [{\"Principal\":{\"Subject\":\"prince\",\"ClientID\":\"12345\","+
+		"\"TokenIssuedAt\":\"2020-01-05T10:15:00Z\"},\"Client\":{\"ClientIP\":\"192.0.2.1:25\"},\"Request\":"+
+		"{\"Method\":\"my_method\",\"Parameters\":{\"my\":\"params\"},\"Mode\":1,\"ReceivedAt\":"+
+		"\"2020-01-05T10:30:00Z\"},\"Response\":{\"ResponseCode\":\"AlreadyExists\",\"SentAt\":"+
+		"\"2020-01-05T10:31:00Z\"}}]", builder.(*logBuilder).formatLogString(context.TODO()))
 }

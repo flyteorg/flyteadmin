@@ -29,7 +29,7 @@ func (m *AdminService) RegisterProject(ctx context.Context, request *admin.Proje
 		map[string]string{
 			audit.Project: request.Project.Id,
 		},
-		admin.Request_READ_WRITE,
+		audit.ReadWrite,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
@@ -53,7 +53,7 @@ func (m *AdminService) ListProjects(ctx context.Context, request *admin.ProjectL
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"ListProjects",
 		map[string]string{},
-		admin.Request_READ_ONLY,
+		audit.ReadOnly,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
