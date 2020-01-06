@@ -453,7 +453,7 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:e0612c76b3e7310a69091712378e4846f1718125f002f290292bb21fe695fd57"
+  digest = "1:b1ab65fa43650fb503aa710091eb9d13c6c5d7f0cf14684039827b457a1f2ac9"
   name = "github.com/lyft/flyteidl"
   packages = [
     "clients/go/admin",
@@ -466,8 +466,9 @@
     "gen/pb-go/flyteidl/service",
   ]
   pruneopts = "UT"
-  revision = "10d6b7f0f74195fc41f59678a302cd0aeeb0a5a2"
+  revision = "6deb3c002d84b2012f02cdecc32902f475deda83"
   source = "https://github.com/lyft/flyteidl"
+  version = "v0.16.4"
 
 [[projects]]
   digest = "1:938998e14bd5e42c54f3b640a41d869eb79029ad7c623fa47c604b8480c781fc"
@@ -1198,6 +1199,7 @@
     "github.com/graymeta/stow/s3",
     "github.com/grpc-ecosystem/go-grpc-middleware",
     "github.com/grpc-ecosystem/go-grpc-middleware/auth",
+    "github.com/grpc-ecosystem/go-grpc-middleware/util/metautils",
     "github.com/grpc-ecosystem/go-grpc-prometheus",
     "github.com/grpc-ecosystem/grpc-gateway/runtime",
     "github.com/grpc/grpc-go/credentials/oauth",
@@ -1241,7 +1243,6 @@
     "google.golang.org/grpc/credentials",
     "google.golang.org/grpc/grpclog",
     "google.golang.org/grpc/metadata",
-    "google.golang.org/grpc/peer",
     "google.golang.org/grpc/reflection",
     "google.golang.org/grpc/status",
     "gopkg.in/gormigrate.v1",
