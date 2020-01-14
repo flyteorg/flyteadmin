@@ -456,7 +456,7 @@
   version = "v1.3.0"
 
 [[projects]]
-  digest = "1:93e28b61815df4d76c520ffe48f5995503c581f3752a823be85141cc278b6745"
+  digest = "1:9f01843d5ce98395a8af3da88dc6c67d169e0e94d253337026c423e2b18cdf4f"
   name = "github.com/lyft/flyteidl"
   packages = [
     "clients/go/admin",
@@ -469,9 +469,9 @@
     "gen/pb-go/flyteidl/service",
   ]
   pruneopts = "UT"
-  revision = "ed373f903580e70fa1a08820b61d124163cb52da"
+  revision = "28c0dfb6608b70262aac9cb1ff83a750521ded8e"
   source = "https://github.com/lyft/flyteidl"
-  version = "v0.16.6"
+  version = "v0.16.5"
 
 [[projects]]
   digest = "1:aef670729de939f423811651dcc81328bb82f15ab3a6026db7c32e18b4dc9d9a"
@@ -491,9 +491,9 @@
     "pkg/utils",
   ]
   pruneopts = "UT"
-  revision = "b85d860e174270e0168769434f36f19d6090a921"
+  revision = "49835d09123b0f4dc67c63dd9c02bf7a9129db3e"
   source = "https://github.com/lyft/flytepropeller"
-  version = "v0.1.29"
+  version = "v0.1.30"
 
 [[projects]]
   digest = "1:fec3a1b3c4078de03a5b80cc00d5c2c3a683dedd9f8ddf74734e4a3e78cccce3"
@@ -876,6 +876,17 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:918a46e4a2fb83df33f668f5a6bd51b2996775d073fce1800d3ec01b0a5ddd2b"
+  name = "golang.org/x/xerrors"
+  packages = [
+    ".",
+    "internal",
+  ]
+  pruneopts = "UT"
+  revision = "9bdfabe68543c54f90421aeb9a60ef8061b5b544"
+
+[[projects]]
+  branch = "master"
   digest = "1:92be4e1210ff0dfe76525dbfeadeab782f41622cf8510b6a132ccffe04203ab3"
   name = "google.golang.org/api"
   packages = [
@@ -1015,9 +1026,10 @@
   version = "v2.2.7"
 
 [[projects]]
-  digest = "1:86ad5797d1189de342ed6988fbb76b92dc0429a4d677ad69888d6137efa5712e"
+  digest = "1:6a0e0db31c7f7513f5ef413c0b5a314a1910151aab87845593ea07c895d91d96"
   name = "k8s.io/api"
   packages = [
+    "admissionregistration/v1",
     "admissionregistration/v1beta1",
     "apps/v1",
     "apps/v1beta1",
@@ -1037,6 +1049,7 @@
     "coordination/v1",
     "coordination/v1beta1",
     "core/v1",
+    "discovery/v1alpha1",
     "events/v1beta1",
     "extensions/v1beta1",
     "networking/v1",
@@ -1056,11 +1069,11 @@
     "storage/v1beta1",
   ]
   pruneopts = "UT"
-  revision = "6e4e0e4f393bf5e8bbff570acd13217aa5a770cd"
-  version = "kubernetes-1.14.1"
+  revision = "b49a72c274e072a6e385d55c671acb3717186ce5"
+  source = "https://github.com/lyft/api"
 
 [[projects]]
-  digest = "1:23280b07ed0d639295f87180e6fcc211ca4eef6567cd8e8c723d75b91253fc4c"
+  digest = "1:b54631506e3c94c25e07c10751c97e66610bb8d7bdedf82dc41d7638118be42a"
   name = "k8s.io/apimachinery"
   packages = [
     "pkg/api/errors",
@@ -1068,7 +1081,6 @@
     "pkg/api/resource",
     "pkg/apis/meta/v1",
     "pkg/apis/meta/v1/unstructured",
-    "pkg/apis/meta/v1beta1",
     "pkg/conversion",
     "pkg/conversion/queryparams",
     "pkg/fields",
@@ -1102,11 +1114,11 @@
     "third_party/forked/golang/reflect",
   ]
   pruneopts = "UT"
-  revision = "6a84e37a896db9780c75367af8d2ed2bb944022e"
-  version = "kubernetes-1.14.1"
+  revision = "047e3ea32d7fb5984f444d7dd9510cfd362d7d7c"
+  source = "https://github.com/lyft/apimachinery"
 
 [[projects]]
-  digest = "1:36eda2149a202a27b173655b5a3b3a5486e7cad1e882767ab5d1d44330335ef2"
+  digest = "1:f0f9eae0f17cb523f829642d1ba0c9422a454826db6f1e52c84715533c5072f3"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -1138,8 +1150,8 @@
     "util/workqueue",
   ]
   pruneopts = "UT"
-  revision = "7e43eff7c80aab1d14728f84248931b9db28bdc0"
-  version = "kubernetes-1.14.6"
+  revision = "bec269661e48cb1e5fbb0d037f356ffe9e9978a0"
+  version = "kubernetes-1.16.2"
 
 [[projects]]
   digest = "1:93e82f25d75aba18436ad1ac042cb49493f096011f2541075721ed6f9e05c044"
@@ -1158,15 +1170,14 @@
   revision = "94aeca20bf0991bf33922a5938174b9147ab8ca7"
 
 [[projects]]
-  digest = "1:19c282f372fb82ff1e3599e1ecfa13d18a7d836a401abf38c11f5124d697a656"
+  digest = "1:9521edfb79fb1624a4616a8602d4c069af8b465144b1aebb89b5f1e6f99a4d5c"
   name = "sigs.k8s.io/controller-runtime"
   packages = [
     "pkg/client",
     "pkg/client/apiutil",
   ]
   pruneopts = "UT"
-  revision = "fc5542c693e3340f8abbe91c6345bd64c494a60c"
-  version = "v0.2.2"
+  revision = "40070e2a1958c3d974ba95da883a2bd088137789"
 
 [[projects]]
   digest = "1:7719608fe0b52a4ece56c2dde37bedd95b938677d1ab0f84b8a7852e4c59f849"
