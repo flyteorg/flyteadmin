@@ -350,14 +350,6 @@
   version = "v1.12.1"
 
 [[projects]]
-  digest = "1:9a0de3882cd5fa16871caff91af7265a254931181d1212322f5c6e18a9be7df4"
-  name = "github.com/grpc/grpc-go"
-  packages = ["credentials/oauth"]
-  pruneopts = "UT"
-  revision = "f5b0812e6fe574d90da76b205e9eb51f6ddb1919"
-  version = "v1.26.0"
-
-[[projects]]
   digest = "1:c0d19ab64b32ce9fe5cf4ddceba78d5bc9807f0016db6b1183599da3dcc24d10"
   name = "github.com/hashicorp/hcl"
   packages = [
@@ -1224,7 +1216,6 @@
     "github.com/grpc-ecosystem/go-grpc-middleware/util/metautils",
     "github.com/grpc-ecosystem/go-grpc-prometheus",
     "github.com/grpc-ecosystem/grpc-gateway/runtime",
-    "github.com/grpc/grpc-go/credentials/oauth",
     "github.com/jinzhu/gorm",
     "github.com/jinzhu/gorm/dialects/postgres",
     "github.com/lib/pq",

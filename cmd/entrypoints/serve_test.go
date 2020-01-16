@@ -6,7 +6,6 @@ package entrypoints
 
 import (
 	"bytes"
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -72,7 +71,7 @@ func GetEncodedCreds() string {
 
 	*/
 	clientId := "0oacwencpbysS05G01t7"
-	clientSecret := "password"
+	clientSecret := "fill_in_password_here"
 	concatenated := fmt.Sprintf("%s:%s", clientId, clientSecret)
 	encodedString := base64.StdEncoding.EncodeToString([]byte(concatenated))
 
@@ -80,28 +79,23 @@ func GetEncodedCreds() string {
 }
 
 func TestHttpClient(t *testing.T) {
-	ctx := context.Background()
-	endpoint := "https://flyte.lyft.net"
 	oktaEndpoint := "https://lyft.okta.com/oauth2/ausc5wmjw96cRKvTd1t7/v1/token"
 
 	credentials := GetEncodedCreds()
 	authHeader := fmt.Sprintf("Basic %s", credentials)
 
-	fmt.Println(ctx, endpoint, oktaEndpoint)
-	fmt.Println(authHeader)
+	// These have to be here in order for Okta to respond correctly.
+	var urlEncodedBody = []byte("grant_type=client_credentials&scope=svc")
 
-	var jsonStr = []byte(`{"grant_type":"client_credentials","scope":"svc"}`)
-	jsonStr = []byte("grant_type=client_credentials&scope=svc")
-
-	req, err := http.NewRequest("POST", oktaEndpoint, bytes.NewBuffer(jsonStr))
+	req, err := http.NewRequest("POST", oktaEndpoint, bytes.NewBuffer(urlEncodedBody))
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", authHeader)
 	req.Header.Add("Cache-Control", "no-cache")
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	x := http.Client{}
-	resp, err := x.Do(req)
+	client := http.Client{}
+	resp, err := client.Do(req)
 	assert.NoError(t, err)
 
 	var data map[string]interface{}
@@ -113,13 +107,12 @@ func TestHttpClient(t *testing.T) {
 	assert.True(t, ok)
 	fmt.Printf("token %s\n", accessToken)
 
-
 	// Make Flyte request
 	req2, err := http.NewRequest("GET", "https://flyte-staging.lyft.net/api/v1/projects", nil)
 	assert.NoError(t, err)
 	req2.Header.Add("flyte-authorization", fmt.Sprintf("Bearer %s", accessToken))
 
-	resp2, err := x.Do(req2)
+	resp2, err := client.Do(req2)
 	assert.NoError(t, err)
 
 	f, err := ioutil.ReadAll(resp2.Body)
