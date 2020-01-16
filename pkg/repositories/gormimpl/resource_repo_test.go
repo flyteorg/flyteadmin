@@ -49,8 +49,8 @@ func TestGetWorkflowAttributes(t *testing.T) {
 
 	query := GlobalMock.NewMock()
 	query.WithQuery(`SELECT * FROM "resources"  WHERE "resources"."deleted_at" IS NULL AND` +
-		` ((resource_type = resource AND domain = domain AND project IN ('',project)` +
-		` AND workflow IN ('',workflow) AND launch_plan IN (''))) ORDER BY` +
+		` ((resource_type = resource AND domain = domain AND project IN (,project)` +
+		` AND workflow IN (,workflow) AND launch_plan IN ())) ORDER BY` +
 		` priority desc,"resources"."id" ASC LIMIT 1`).WithReply(
 		[]map[string]interface{}{
 			response,
@@ -65,14 +65,43 @@ func TestGetWorkflowAttributes(t *testing.T) {
 	assert.Equal(t, []byte("attrs"), output.Attributes)
 }
 
+func TestProjectDomainAttributes(t *testing.T) {
+	resourceRepo := NewResourceRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
+	GlobalMock := mocket.Catcher.Reset()
+	GlobalMock.Logging = true
+
+	response := make(map[string]interface{})
+	response[project] = project
+	response[domain] = domain
+	response["resource_type"] = "resource-type"
+	response["attributes"] = []byte("attrs")
+
+	query := GlobalMock.NewMock()
+	query.WithQuery(`SELECT * FROM "resources"  WHERE "resources"."deleted_at" IS NULL AND` +
+		` ((resource_type = resource AND domain = domain AND project IN (,project)` +
+		` AND workflow IN () AND launch_plan IN ())) ORDER BY` +
+		` priority desc,"resources"."id" ASC LIMIT 1`).WithReply(
+		[]map[string]interface{}{
+			response,
+		})
+
+	output, err := resourceRepo.Get(context.Background(), interfaces.ResourceID{Project: "project", Domain: "domain", ResourceType: "resource"})
+	assert.Nil(t, err)
+	assert.Equal(t, project, output.Project)
+	assert.Equal(t, domain, output.Domain)
+	assert.Equal(t, "", output.Workflow)
+	assert.Equal(t, "resource-type", output.ResourceType)
+	assert.Equal(t, []byte("attrs"), output.Attributes)
+}
+
 func TestGetRawWorkflowAttributes(t *testing.T) {
 	resourceRepo := NewResourceRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
 	GlobalMock := mocket.Catcher.Reset()
 	GlobalMock.Logging = true
 
 	response := make(map[string]interface{})
-	response["project"] = "project"
-	response["domain"] = "domain"
+	response[project] = project
+	response[domain] = domain
 	response["workflow"] = "workflow"
 	response["resource_type"] = "resource"
 	response["launch_plan"] = "launch_plan"
@@ -88,8 +117,8 @@ func TestGetRawWorkflowAttributes(t *testing.T) {
 
 	output, err := resourceRepo.GetRaw(context.Background(), interfaces.ResourceID{Project: "project", Domain: "domain", Workflow: "workflow", LaunchPlan: "launch_plan", ResourceType: "resource"})
 	assert.Nil(t, err)
-	assert.Equal(t, "project", output.Project)
-	assert.Equal(t, "domain", output.Domain)
+	assert.Equal(t, project, output.Project)
+	assert.Equal(t, domain, output.Domain)
 	assert.Equal(t, "workflow", output.Workflow)
 	assert.Equal(t, "launch_plan", output.LaunchPlan)
 	assert.Equal(t, "resource", output.ResourceType)

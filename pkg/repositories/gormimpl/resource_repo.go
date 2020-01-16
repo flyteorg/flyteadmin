@@ -62,6 +62,7 @@ func (r *ResourceRepo) CreateOrUpdate(ctx context.Context, input models.Resource
 		Workflow:     input.Workflow,
 		LaunchPlan:   input.LaunchPlan,
 		ResourceType: input.ResourceType,
+		Priority:     input.Priority,
 	})
 	timer.Stop()
 	if tx.Error != nil {
@@ -82,36 +83,37 @@ func (r *ResourceRepo) Get(ctx context.Context, ID interfaces.ResourceID) (model
 	if !validateCreateOrUpdateResourceInput(ID.Project, ID.Domain, ID.Workflow, ID.LaunchPlan, ID.ResourceType) {
 		return models.Resource{}, r.errorTransformer.ToFlyteAdminError(errors.GetInvalidInputError(fmt.Sprintf("%v", ID)))
 	}
-	var model models.Resource
+	var resources []models.Resource
 	timer := r.metrics.GetDuration.Start()
 
 	txWhereClause := "resource_type = ? AND domain = ? AND project IN (?) AND workflow IN (?) AND launch_plan IN (?)"
-	project := []string{"''"}
+	project := []string{""}
 	if ID.Project != "" {
 		project = append(project, ID.Project)
 	}
 
-	workflow := []string{"''"}
+	workflow := []string{""}
 	if ID.Workflow != "" {
 		workflow = append(workflow, ID.Workflow)
 	}
 
-	launchPlan := []string{"''"}
+	launchPlan := []string{""}
 	if ID.LaunchPlan != "" {
 		launchPlan = append(launchPlan, ID.LaunchPlan)
 	}
 
 	tx := r.db.Where(txWhereClause, ID.ResourceType, ID.Domain, project, workflow, launchPlan)
-	tx.Order("priority desc").First(&model)
+	tx.Order("priority desc").First(&resources)
 	timer.Stop()
+
 	if tx.Error != nil {
 		return models.Resource{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
 	}
-	if tx.RecordNotFound() {
+	if tx.RecordNotFound() || len(resources) == 0 {
 		return models.Resource{}, flyteAdminErrors.NewFlyteAdminErrorf(codes.NotFound,
-			"%v", ID)
+			"%+v", ID)
 	}
-	return model, nil
+	return resources[0], nil
 }
 
 func (r *ResourceRepo) GetRaw(ctx context.Context, ID interfaces.ResourceID) (models.Resource, error) {

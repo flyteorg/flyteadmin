@@ -156,7 +156,7 @@ var Migrations = []*gormigrate.Migration{
 			return tx.AutoMigrate(&models.Resource{}).Error
 		},
 		Rollback: func(tx *gorm.DB) error {
-			return tx.DropTable("project_attributes").Error
+			return tx.DropTable("resources").Error
 		},
 	},
 }

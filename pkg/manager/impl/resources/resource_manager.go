@@ -124,7 +124,6 @@ func (m *ResourceManager) UpdateProjectDomainAttributes(
 	if err != nil {
 		return nil, err
 	}
-
 	return &admin.ProjectDomainAttributesUpdateResponse{}, nil
 }
 
