@@ -29,7 +29,7 @@ func TestUpdateProjectDomainAttributes(t *testing.T) {
 	client, conn := GetTestAdminServiceClient()
 	defer conn.Close()
 
-	db := databaseConfig.OpenDbConnection(databaseConfig.NewPostgresConfigProvider(getLocalDbConfig(), adminScope))
+	db := databaseConfig.OpenDbConnection(databaseConfig.NewPostgresConfigProvider(getDbConfig(), adminScope))
 	truncateTableForTesting(db, "resources")
 	db.Close()
 
@@ -65,6 +65,7 @@ func TestUpdateProjectDomainAttributes(t *testing.T) {
 		ResourceType: admin.MatchableResource_TASK_RESOURCE,
 	})
 	assert.Nil(t, err)
+	// Testing that if overrides are not set at workflow level, the one from Project-Domain is returned
 	assert.True(t, proto.Equal(&admin.WorkflowAttributesGetResponse{
 		Attributes: &admin.WorkflowAttributes{
 			Project:            "admintests",
@@ -95,7 +96,7 @@ func TestUpdateWorkflowAttributes(t *testing.T) {
 	client, conn := GetTestAdminServiceClient()
 	defer conn.Close()
 
-	db := databaseConfig.OpenDbConnection(databaseConfig.NewPostgresConfigProvider(getLocalDbConfig(), adminScope))
+	db := databaseConfig.OpenDbConnection(databaseConfig.NewPostgresConfigProvider(getDbConfig(), adminScope))
 	truncateTableForTesting(db, "resources")
 	db.Close()
 

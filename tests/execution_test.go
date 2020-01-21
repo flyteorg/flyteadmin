@@ -156,7 +156,7 @@ func populateWorkflowExecutionsForTestingOnly() {
 		fmt.Sprintf(insertExecutionQueryStr, "project1", "domain2", "name1", "RUNNING", 1, 2),
 		fmt.Sprintf(insertExecutionQueryStr, "project2", "domain2", "name1", "SUCCEEDED", 1, 2),
 	}
-	db := database_config.OpenDbConnection(database_config.NewPostgresConfigProvider(getLocalDbConfig(), adminScope))
+	db := database_config.OpenDbConnection(database_config.NewPostgresConfigProvider(getDbConfig(), adminScope))
 	defer db.Close()
 
 	// Insert dummy launch plans;

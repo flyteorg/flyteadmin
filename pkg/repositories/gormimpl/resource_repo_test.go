@@ -16,7 +16,6 @@ import (
 func TestCreateWorkflowAttributes(t *testing.T) {
 	resourceRepo := NewResourceRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
 	GlobalMock := mocket.Catcher.Reset()
-	GlobalMock.Logging = true
 
 	query := GlobalMock.NewMock()
 	query.WithQuery(
@@ -38,7 +37,6 @@ func TestCreateWorkflowAttributes(t *testing.T) {
 func TestGetWorkflowAttributes(t *testing.T) {
 	resourceRepo := NewResourceRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
 	GlobalMock := mocket.Catcher.Reset()
-	GlobalMock.Logging = true
 
 	response := make(map[string]interface{})
 	response["project"] = "project"
@@ -68,7 +66,6 @@ func TestGetWorkflowAttributes(t *testing.T) {
 func TestProjectDomainAttributes(t *testing.T) {
 	resourceRepo := NewResourceRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
 	GlobalMock := mocket.Catcher.Reset()
-	GlobalMock.Logging = true
 
 	response := make(map[string]interface{})
 	response[project] = project
@@ -97,7 +94,6 @@ func TestProjectDomainAttributes(t *testing.T) {
 func TestGetRawWorkflowAttributes(t *testing.T) {
 	resourceRepo := NewResourceRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
 	GlobalMock := mocket.Catcher.Reset()
-	GlobalMock.Logging = true
 
 	response := make(map[string]interface{})
 	response[project] = project
