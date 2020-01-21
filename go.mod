@@ -17,6 +17,7 @@ require (
 	github.com/coocood/freecache v1.1.0 // indirect
 	github.com/coreos/go-oidc v2.1.0+incompatible
 	github.com/dnaeon/go-vcr v1.0.1 // indirect
+	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/fsnotify/fsnotify v1.4.8-0.20191012010759-4bf2d1fec783 // indirect
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
@@ -74,4 +75,7 @@ require (
 	sigs.k8s.io/controller-runtime v0.2.2
 )
 
-replace github.com/grpc/grpc-go v1.24.0 => google.golang.org/grpc v1.24.0
+replace (
+	github.com/grpc/grpc-go v1.24.0 => google.golang.org/grpc v1.24.0
+	github.com/vektra/mockery => github.com/enghabu/mockery v0.0.0-20191009061720-9d0c8670c2f0
+)
