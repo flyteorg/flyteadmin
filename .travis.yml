@@ -14,7 +14,7 @@ jobs:
       script: BUILD_PHASE=builder make docker_build
     - if: fork = false
       stage: test
-      name: build
+      name: build, integration test, and push
       install: true
       script: BUILD_PHASE=builder make docker_build && make k8s_integration && make dockerhub_push
     - stage: test
