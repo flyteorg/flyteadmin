@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go v0.51.0 // indirect
 	github.com/NYTimes/gizmo v0.4.3
 	github.com/Selvatico/go-mocket v1.0.7
-	github.com/aws/aws-sdk-go v1.28.2
+	github.com/aws/aws-sdk-go v1.28.5
 	github.com/benbjohnson/clock v1.0.0
 	github.com/bradfitz/gomemcache v0.0.0-20190913173617-a41fca850d0b // indirect
 	github.com/coreos/go-oidc v2.1.0+incompatible
@@ -26,7 +26,7 @@ require (
 	github.com/json-iterator/go v1.1.9 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
 	github.com/lib/pq v1.3.0
-	github.com/lyft/flyteidl v0.16.5
+	github.com/lyft/flyteidl v0.16.6
 	github.com/lyft/flytepropeller v0.1.30
 	github.com/lyft/flytestdlib v0.2.31
 	github.com/magiconair/properties v1.8.1
@@ -42,16 +42,16 @@ require (
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.5
-	github.com/spf13/viper v1.6.1 // indirect
+	github.com/spf13/viper v1.6.2 // indirect
 	github.com/stretchr/testify v1.4.0
-	golang.org/x/crypto v0.0.0-20200109152110-61a87790db17 // indirect
+	golang.org/x/crypto v0.0.0-20200117160349-530e935923ad // indirect
 	golang.org/x/net v0.0.0-20200114155413-6afb5195e5aa // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
-	golang.org/x/sys v0.0.0-20200113162924-86b910548bc1 // indirect
+	golang.org/x/sys v0.0.0-20200117145432-59e60aa80a0c // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 // indirect
-	google.golang.org/api v0.15.1-0.20200114000728-abe50cf84d67 // indirect
-	google.golang.org/genproto v0.0.0-20200113173426-e1de0a7b01eb // indirect
+	google.golang.org/api v0.15.1-0.20200117000758-b4cd77d6a56c // indirect
+	google.golang.org/genproto v0.0.0-20200117163144-32f20d992d24 // indirect
 	google.golang.org/grpc v1.26.0
 	gopkg.in/gormigrate.v1 v1.6.0
 	gopkg.in/ini.v1 v1.51.1 // indirect
