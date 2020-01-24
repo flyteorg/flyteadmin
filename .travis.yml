@@ -7,7 +7,6 @@ services:
 jobs:
   include:
     # dont push to dockerhub on forks
-    # TODO: restore integration tests on Travis once the story around pushing flyteadmin images to dockerhub is resolved
     - if: fork = true
       stage: test
       name: build test
@@ -17,7 +16,7 @@ jobs:
       stage: test
       name: build
       install: true
-      script: BUILD_PHASE=builder make docker_build
+      script: BUILD_PHASE=builder make docker_build && make k8s_integration && make dockerhub_push
     - stage: test
       name: unit tests
       install: make install
