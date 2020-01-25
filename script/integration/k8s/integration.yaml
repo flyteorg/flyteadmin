@@ -243,13 +243,14 @@ metadata:
 data:
   # this will need to be templatized
   development.integration: |-
-    application:
+    server:
       httpPort: 8088
       grpcPort: 8089
       kube-config: "$HOME/.kube/config"
+      grpcServerReflection: true
+        security:
+          secure: false
     flyteadmin:
-      httpPort: 8088
-      grpcPort: 8089
       roleNameKey: "iam.amazonaws.com/role"
       metricsScope: "flyte:"
       testing:
