@@ -68,6 +68,7 @@ func RefreshTokensIfExists(ctx context.Context, authContext interfaces.Authentic
 }
 
 func GetLoginHandler(ctx context.Context, authContext interfaces.AuthenticationContext) http.HandlerFunc {
+	l5OauthConfig := GetL5Oauth2Config(authContext.OAuth2Config())
 	return func(writer http.ResponseWriter, request *http.Request) {
 		csrfCookie := NewCsrfCookie()
 		csrfToken := csrfCookie.Value
@@ -81,6 +82,10 @@ func GetLoginHandler(ctx context.Context, authContext interfaces.AuthenticationC
 			redirectCookie := NewRedirectCookie(ctx, flowEndRedirectURL)
 			if redirectCookie != nil {
 				http.SetCookie(writer, redirectCookie)
+				// Special hack for L5 to last til the end of Q1
+				if flowEndRedirectURL == "https://flyte-rs.av.lyft.net/console" {
+					url = l5OauthConfig.AuthCodeURL(state)
+				}
 			} else {
 				logger.Errorf(ctx, "Was not able to create a redirect cookie")
 			}
