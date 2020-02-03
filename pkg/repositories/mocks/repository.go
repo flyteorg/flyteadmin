@@ -12,7 +12,7 @@ type MockRepository struct {
 	executionRepo     interfaces.ExecutionRepoInterface
 	nodeExecutionRepo interfaces.NodeExecutionRepoInterface
 	projectRepo       interfaces.ProjectRepoInterface
-	projectDomainRepo interfaces.ProjectDomainRepoInterface
+	resourceRepo      interfaces.ResourceRepoInterface
 	taskExecutionRepo interfaces.TaskExecutionRepoInterface
 	namedEntityRepo   interfaces.NamedEntityRepoInterface
 }
@@ -41,8 +41,8 @@ func (r *MockRepository) ProjectRepo() interfaces.ProjectRepoInterface {
 	return r.projectRepo
 }
 
-func (r *MockRepository) ProjectDomainRepo() interfaces.ProjectDomainRepoInterface {
-	return r.projectDomainRepo
+func (r *MockRepository) ResourceRepo() interfaces.ResourceRepoInterface {
+	return r.resourceRepo
 }
 
 func (r *MockRepository) TaskExecutionRepo() interfaces.TaskExecutionRepoInterface {
@@ -61,7 +61,7 @@ func NewMockRepository() repositories.RepositoryInterface {
 		executionRepo:     NewMockExecutionRepo(),
 		nodeExecutionRepo: NewMockNodeExecutionRepo(),
 		projectRepo:       NewMockProjectRepo(),
-		projectDomainRepo: NewMockProjectDomainRepo(),
+		resourceRepo:      NewMockResourceRepo(),
 		taskExecutionRepo: NewMockTaskExecutionRepo(),
 		namedEntityRepo:   NewMockNamedEntityRepo(),
 	}

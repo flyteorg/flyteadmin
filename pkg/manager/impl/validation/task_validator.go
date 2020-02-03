@@ -189,18 +189,18 @@ func validateTaskResources(
 			if ok && limitQuantity.Value() < defaultQuantity.Value() {
 				// Only assert the requested limit is greater than than the requested default when the limit is actually set
 				return errors.NewFlyteAdminErrorf(codes.InvalidArgument,
-					"Resource %v for [%+v] cannot set default > limit", resourceName, identifier)
+					"Type %v for [%+v] cannot set default > limit", resourceName, identifier)
 			}
 			platformLimit, platformLimitOk := platformTaskResourceLimits[resourceName]
 			if ok && platformLimitOk && limitQuantity.Value() > platformLimit.Value() {
 				// Also check that the requested limit is less than the platform task limit.
 				return errors.NewFlyteAdminErrorf(codes.InvalidArgument,
-					"Resource %v for [%+v] cannot set limit > platform limit", resourceName, identifier)
+					"Type %v for [%+v] cannot set limit > platform limit", resourceName, identifier)
 			}
 			if platformLimitOk && defaultQuantity.Value() > platformTaskResourceLimits[resourceName].Value() {
 				// Also check that the requested limit is less than the platform task limit.
 				return errors.NewFlyteAdminErrorf(codes.InvalidArgument,
-					"Resource %v for [%+v] cannot set default > platform limit", resourceName, identifier)
+					"Type %v for [%+v] cannot set default > platform limit", resourceName, identifier)
 			}
 		case core.Resources_GPU:
 			limitQuantity, ok := requestedResourceLimits[resourceName]
@@ -212,102 +212,12 @@ func validateTaskResources(
 			platformLimit, platformLimitOk := platformTaskResourceLimits[resourceName]
 			if platformLimitOk && defaultQuantity.Value() > platformLimit.Value() {
 				return errors.NewFlyteAdminErrorf(codes.InvalidArgument,
-					"Resource %v for [%+v] cannot set default > platform limit", resourceName, identifier)
+					"Type %v for [%+v] cannot set default > platform limit", resourceName, identifier)
 			}
 		}
 	}
 
 	return nil
-}
-
-func assignResourcesIfUnset(ctx context.Context, identifier *core.Identifier,
-	platformValues runtimeInterfaces.TaskResourceSet,
-	resourceEntries []*core.Resources_ResourceEntry) []*core.Resources_ResourceEntry {
-	var cpuIndex, memoryIndex = -1, -1
-	for idx, entry := range resourceEntries {
-		switch entry.Name {
-		case core.Resources_CPU:
-			cpuIndex = idx
-		case core.Resources_MEMORY:
-			memoryIndex = idx
-		}
-	}
-	if cpuIndex > 0 && memoryIndex > 00 {
-		// nothing to do
-		return resourceEntries
-	}
-	if cpuIndex < 0 && platformValues.CPU != "" {
-		logger.Debugf(ctx, "Setting 'cpu' for [%+v] to %s", identifier, platformValues.CPU)
-		cpuResource := &core.Resources_ResourceEntry{
-			Name:  core.Resources_CPU,
-			Value: platformValues.CPU,
-		}
-		resourceEntries = append(resourceEntries, cpuResource)
-	}
-	if memoryIndex < 0 && platformValues.Memory != "" {
-		memoryResource := &core.Resources_ResourceEntry{
-			Name:  core.Resources_MEMORY,
-			Value: platformValues.Memory,
-		}
-		logger.Debugf(ctx, "Setting 'memory' for [%+v] to %s", identifier, platformValues.Memory)
-		resourceEntries = append(resourceEntries, memoryResource)
-	}
-	return resourceEntries
-}
-
-// Assumes input contains a compiled task with a valid container resource execConfig.
-//
-// Note: The system will assign a system-default value for request but for limit it will deduce it from the request
-// itself => Limit := Min([Some-Multiplier X Request], System-Max). For now we are using a multiplier of 1. In
-// general we recommend the users to set limits close to requests for more predictability in the system.
-func SetDefaults(ctx context.Context, taskConfig runtime.TaskResourceConfiguration, task *core.CompiledTask) {
-	if task == nil {
-		logger.Warningf(ctx, "Can't set default resources for nil task.")
-		return
-	}
-	if task.Template == nil || task.Template.GetContainer() == nil || task.Template.GetContainer().Resources == nil {
-		// Nothing to do
-		logger.Debugf(ctx, "Not setting default resources for task [%+v], no container resources found to check", task)
-		return
-	}
-	logger.Debugf(ctx, "Assigning task requested resources for [%+v]", task.Template.Id)
-	task.Template.GetContainer().Resources.Requests = assignResourcesIfUnset(
-		ctx, task.Template.Id, taskConfig.GetDefaults(), task.Template.GetContainer().Resources.Requests)
-	logger.Debugf(ctx, "Assigning task resource limits for [%+v]", task.Template.Id)
-	task.Template.GetContainer().Resources.Limits = assignResourcesIfUnset(
-		ctx, task.Template.Id, createTaskDefaultLimits(ctx, task), task.Template.GetContainer().Resources.Limits)
-}
-
-func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask) runtimeInterfaces.TaskResourceSet {
-	// The values below should never be used (deduce it from the request; request should be set by the time we get here).
-	// Setting them here just in case we end up with requests not set. We are not adding to config because it would add
-	// more confusion as its mostly not used.
-	cpuLimit := "500m"
-	memoryLimit := "500Mi"
-	resourceEntries := task.Template.GetContainer().Resources.Requests
-	var cpuIndex, memoryIndex = -1, -1
-	for idx, entry := range resourceEntries {
-		switch entry.Name {
-		case core.Resources_CPU:
-			cpuIndex = idx
-
-		case core.Resources_MEMORY:
-			memoryIndex = idx
-		}
-	}
-
-	if cpuIndex < 0 || memoryIndex < 0 {
-		logger.Errorf(ctx, "Cpu request and Memory request missing for %s", task.Template.Id)
-	}
-
-	if cpuIndex >= 0 {
-		cpuLimit = resourceEntries[cpuIndex].Value
-	}
-	if memoryIndex >= 0 {
-		memoryLimit = resourceEntries[memoryIndex].Value
-	}
-
-	return runtimeInterfaces.TaskResourceSet{CPU: cpuLimit, Memory: memoryLimit}
 }
 
 func validateTaskType(taskID core.Identifier, taskType string, whitelistConfig runtime.WhitelistConfiguration) error {

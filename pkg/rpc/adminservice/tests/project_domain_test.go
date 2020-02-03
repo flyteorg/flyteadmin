@@ -12,7 +12,7 @@ import (
 func TestUpdateProjectDomain(t *testing.T) {
 	ctx := context.Background()
 
-	mockProjectDomainManager := mocks.MockProjectDomainManager{}
+	mockProjectDomainManager := mocks.MockResourceManager{}
 	var updateCalled bool
 	mockProjectDomainManager.SetUpdateProjectDomainAttributes(
 		func(ctx context.Context,
@@ -22,10 +22,15 @@ func TestUpdateProjectDomain(t *testing.T) {
 		},
 	)
 	mockServer := NewMockAdminServer(NewMockAdminServerInput{
-		projectDomainManager: &mockProjectDomainManager,
+		resourceManager: &mockProjectDomainManager,
 	})
 
-	resp, err := mockServer.UpdateProjectDomainAttributes(ctx, &admin.ProjectDomainAttributesUpdateRequest{})
+	resp, err := mockServer.UpdateProjectDomainAttributes(ctx, &admin.ProjectDomainAttributesUpdateRequest{
+		Attributes: &admin.ProjectDomainAttributes{
+			Project: "project",
+			Domain:  "domain",
+		},
+	})
 	assert.NotNil(t, resp)
 	assert.NoError(t, err)
 	assert.True(t, updateCalled)

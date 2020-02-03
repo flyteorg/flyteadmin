@@ -11,7 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lyft/flyteadmin/pkg/repositories/transformers"
+	"github.com/lyft/flyteadmin/pkg/manager/impl/resources"
+	managerinterfaces "github.com/lyft/flyteadmin/pkg/manager/interfaces"
 
 	"github.com/lyft/flyteadmin/pkg/executioncluster/interfaces"
 
@@ -71,6 +72,7 @@ type controller struct {
 	db                     repositories.RepositoryInterface
 	config                 runtimeInterfaces.Configuration
 	executionCluster       interfaces.ClusterInterface
+	resourceManager        managerinterfaces.ResourceInterface
 	poller                 chan struct{}
 	metrics                controllerMetrics
 	lastAppliedTemplateDir string
@@ -175,21 +177,19 @@ func (c *controller) getCustomTemplateValues(
 		customTemplateValues[key] = value
 	}
 	collectedErrs := make([]error, 0)
-	// All project-domain defaults saved in the database take precedence over the domain-specific defaults.
-	projectDomainModel, err := c.db.ProjectDomainRepo().Get(ctx, project, domain)
+	// All override values saved in the database take precedence over the domain-specific defaults.
+	resource, err := c.resourceManager.GetResource(ctx, managerinterfaces.ResourceRequest{
+		Project:      project,
+		Domain:       domain,
+		ResourceType: admin.MatchableResource_CLUSTER_RESOURCE,
+	})
 	if err != nil {
-		if err.(errors.FlyteAdminError).Code() != codes.NotFound {
-			// Not found is fine because not every project-domain combination will have specific custom resource
-			// attributes.
+		if _, ok := err.(errors.FlyteAdminError); !ok || err.(errors.FlyteAdminError).Code() != codes.NotFound {
 			collectedErrs = append(collectedErrs, err)
 		}
 	}
-	projectDomain, err := transformers.FromProjectDomainModel(projectDomainModel)
-	if err != nil {
-		collectedErrs = append(collectedErrs, err)
-	}
-	if len(projectDomain.Attributes) > 0 {
-		for templateKey, templateValue := range projectDomain.Attributes {
+	if resource != nil && resource.Attributes != nil && resource.Attributes.GetClusterResourceAttributes() != nil {
+		for templateKey, templateValue := range resource.Attributes.GetClusterResourceAttributes().Attributes {
 			customTemplateValues[fmt.Sprintf(templateVariableFormat, templateKey)] = templateValue
 		}
 	}
@@ -284,12 +284,12 @@ func (c *controller) syncNamespace(ctx context.Context, namespace NamespaceName,
 		}
 		for _, target := range c.executionCluster.GetAllValidTargets() {
 			k8sObjCopy := k8sObj.DeepCopyObject()
-			logger.Debugf(ctx, "Attempting to create resource [%+v](%+v) in cluster [%v] for namespace [%s]",
-				k8sObj.GetObjectKind().GroupVersionKind().Kind, k8sObj, target.ID, namespace)
+			logger.Debugf(ctx, "Attempting to create resource [%+v] in cluster [%v] for namespace [%s]",
+				k8sObj.GetObjectKind().GroupVersionKind().Kind, target.ID, namespace)
 			err = target.Client.Create(ctx, k8sObjCopy)
 			if err != nil {
 				if k8serrors.IsAlreadyExists(err) {
-					logger.Debugf(ctx, "Resource [%+v] in namespace [%s] already exists - attempting update instead",
+					logger.Debugf(ctx, "Type [%+v] in namespace [%s] already exists - attempting update instead",
 						k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace)
 					c.metrics.AppliedTemplateExists.Inc()
 					// Use a strategic-merge-patch to mimic `kubectl apply` behavior.
@@ -430,6 +430,7 @@ func NewClusterResourceController(db repositories.RepositoryInterface, execution
 		db:               db,
 		config:           config,
 		executionCluster: executionCluster,
+		resourceManager:  resources.NewResourceManager(db),
 		poller:           make(chan struct{}),
 		metrics:          newMetrics(scope),
 		appliedTemplates: make(map[string]map[string]time.Time),

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"runtime/debug"
 
+	"github.com/lyft/flyteadmin/pkg/manager/impl/resources"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/lyft/flyteadmin/pkg/async/notifications"
 	"github.com/lyft/flyteadmin/pkg/async/schedule"
@@ -30,7 +32,7 @@ type AdminService struct {
 	NodeExecutionManager interfaces.NodeExecutionInterface
 	TaskExecutionManager interfaces.TaskExecutionInterface
 	ProjectManager       interfaces.ProjectInterface
-	ProjectDomainManager interfaces.ProjectDomainInterface
+	ResourceManager      interfaces.ResourceInterface
 	NamedEntityManager   interfaces.NamedEntityInterface
 	Metrics              AdminMetrics
 }
@@ -159,8 +161,8 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 			db, adminScope.NewSubScope("node_execution_manager"), urlData),
 		TaskExecutionManager: manager.NewTaskExecutionManager(
 			db, adminScope.NewSubScope("task_execution_manager"), urlData),
-		ProjectManager:       manager.NewProjectManager(db, configuration),
-		ProjectDomainManager: manager.NewProjectDomainManager(db, configuration),
-		Metrics:              InitMetrics(adminScope),
+		ProjectManager:  manager.NewProjectManager(db, configuration),
+		ResourceManager: resources.NewResourceManager(db),
+		Metrics:         InitMetrics(adminScope),
 	}
 }

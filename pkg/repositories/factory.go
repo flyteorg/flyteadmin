@@ -28,7 +28,7 @@ type RepositoryInterface interface {
 	LaunchPlanRepo() interfaces.LaunchPlanRepoInterface
 	ExecutionRepo() interfaces.ExecutionRepoInterface
 	ProjectRepo() interfaces.ProjectRepoInterface
-	ProjectDomainRepo() interfaces.ProjectDomainRepoInterface
+	ResourceRepo() interfaces.ResourceRepoInterface
 	NodeExecutionRepo() interfaces.NodeExecutionRepoInterface
 	TaskExecutionRepo() interfaces.TaskExecutionRepoInterface
 	NamedEntityRepo() interfaces.NamedEntityRepoInterface
