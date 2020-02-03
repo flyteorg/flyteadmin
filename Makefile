@@ -24,7 +24,7 @@ linux_compile:
 
 .PHONY: server
 server:
-	go run cmd/main.go --logtostderr --server.kube-config ~/.kube/config  --config flyteadmin_config.yaml serve
+	go run cmd/main.go --logtostderr --server.kube-config ~/.kube/config  --config ~/flyteadmin_config.yaml serve
 
 .PHONY: migrate
 migrate:

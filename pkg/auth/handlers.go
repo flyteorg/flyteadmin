@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/lyft/flyteadmin/pkg/audit"
@@ -78,14 +79,17 @@ func GetLoginHandler(ctx context.Context, authContext interfaces.AuthenticationC
 		logger.Debugf(ctx, "Setting CSRF state cookie to %s and state to %s\n", csrfToken, state)
 		url := authContext.OAuth2Config().AuthCodeURL(state)
 		queryParams := request.URL.Query()
+
+		// Special hack for L5 to last til the end of Q1
+		if strings.Contains(request.Host, "flyte-rs.av.lyft.net") {
+			logger.Debugf(ctx, "Changing the callback in the /authorize call to point to L5")
+			url = l5OauthConfig.AuthCodeURL(state)
+		}
+
 		if flowEndRedirectURL := queryParams.Get(RedirectURLParameter); flowEndRedirectURL != "" {
 			redirectCookie := NewRedirectCookie(ctx, flowEndRedirectURL)
 			if redirectCookie != nil {
 				http.SetCookie(writer, redirectCookie)
-				// Special hack for L5 to last til the end of Q1
-				if flowEndRedirectURL == "https://flyte-rs.av.lyft.net/console" {
-					url = l5OauthConfig.AuthCodeURL(state)
-				}
 			} else {
 				logger.Errorf(ctx, "Was not able to create a redirect cookie")
 			}
