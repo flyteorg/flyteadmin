@@ -99,6 +99,7 @@ func GetLoginHandler(ctx context.Context, authContext interfaces.AuthenticationC
 }
 
 func GetCallbackHandler(ctx context.Context, authContext interfaces.AuthenticationContext) http.HandlerFunc {
+	l5OauthConfig := GetL5Oauth2Config(authContext.OAuth2Config())
 	return func(writer http.ResponseWriter, request *http.Request) {
 		logger.Debugf(ctx, "Running callback handler...")
 		authorizationCode := request.FormValue(AuthorizationResponseCodeType)
@@ -114,11 +115,22 @@ func GetCallbackHandler(ctx context.Context, authContext interfaces.Authenticati
 		// The second parameter is necessary to get the initial refresh token
 		offlineAccessParam := oauth2.SetAuthURLParam(RefreshToken, OfflineAccessType)
 
-		token, err := authContext.OAuth2Config().Exchange(ctx, authorizationCode, offlineAccessParam)
-		if err != nil {
-			logger.Errorf(ctx, "Error when exchanging code %s", err)
-			writer.WriteHeader(http.StatusForbidden)
-			return
+		var token *oauth2.Token
+		// Additional hacks for L5
+		if strings.Contains(request.Host, "flyte-rs.av.lyft.net") {
+			token, err = l5OauthConfig.Exchange(ctx, authorizationCode, offlineAccessParam)
+			if err != nil {
+				logger.Errorf(ctx, "Error when exchanging code %s", err)
+				writer.WriteHeader(http.StatusForbidden)
+				return
+			}
+		} else {
+			token, err = authContext.OAuth2Config().Exchange(ctx, authorizationCode, offlineAccessParam)
+			if err != nil {
+				logger.Errorf(ctx, "Error when exchanging code %s", err)
+				writer.WriteHeader(http.StatusForbidden)
+				return
+			}
 		}
 
 		err = authContext.CookieManager().SetTokenCookies(ctx, writer, token)
