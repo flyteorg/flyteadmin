@@ -19,13 +19,11 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.1.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.12.2
-	github.com/imdario/mergo v0.3.8 // indirect
 	github.com/jinzhu/gorm v1.9.12
-	github.com/json-iterator/go v1.1.9 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
 	github.com/lib/pq v1.3.0
 	github.com/lyft/flyteidl v0.17.1-0.20200205002010-7915064c6149
-	github.com/lyft/flytepropeller v0.1.30
+	github.com/lyft/flytepropeller v0.2.1-0.20200205214057-f0028e0cdfac
 	github.com/lyft/flytestdlib v0.3.0
 	github.com/magiconair/properties v1.8.1
 	github.com/mitchellh/mapstructure v1.1.2
@@ -35,13 +33,11 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.4.0
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
-	google.golang.org/api v0.15.1-0.20200117000758-b4cd77d6a56c // indirect
 	google.golang.org/grpc v1.26.0
 	gopkg.in/gormigrate.v1 v1.6.0
 	k8s.io/apimachinery v0.17.2
 	k8s.io/client-go v11.0.0+incompatible
-	k8s.io/utils v0.0.0-20200109141947-94aeca20bf09 // indirect
-	sigs.k8s.io/controller-runtime v0.3.1-0.20191029211253-40070e2a1958
+	sigs.k8s.io/controller-runtime v0.4.0
 )
 
 // Pin the version of client-go to something that's compatible with katrogan's fork of api and apimachinery
@@ -50,6 +46,7 @@ require (
 // and it will be replaced with the 'sha' variant of the version
 
 replace (
+	github.com/GoogleCloudPlatform/spark-on-k8s-operator => github.com/lyft/spark-on-k8s-operator v0.1.3
 	k8s.io/api => github.com/lyft/api v0.0.0-20191031200350-b49a72c274e0
 	k8s.io/apimachinery => github.com/lyft/apimachinery v0.0.0-20191031200210-047e3ea32d7f
 	k8s.io/client-go => k8s.io/client-go v0.0.0-20191016111102-bec269661e48
