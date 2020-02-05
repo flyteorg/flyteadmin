@@ -103,7 +103,7 @@ func (w *WorkflowManager) getCompiledWorkflow(
 		launchPlans[idx] = launchPlanInterfaceProvider
 	}
 
-	closure, err := w.compiler.CompileWorkflow(request.Spec.Template, nil, tasks, launchPlans)
+	closure, err := w.compiler.CompileWorkflow(request.Spec.Template, request.Spec.SubWorkflows, tasks, launchPlans)
 	if err != nil {
 		w.metrics.CompilationFailures.Inc()
 		logger.Debugf(ctx, "Failed to compile workflow with id [%+v] with err %v", request.Id, err)
