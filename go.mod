@@ -22,7 +22,7 @@ require (
 	github.com/jinzhu/gorm v1.9.12
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
 	github.com/lib/pq v1.3.0
-	github.com/lyft/flyteidl v0.17.1-0.20200205002010-7915064c6149
+	github.com/lyft/flyteidl v0.17.2
 	github.com/lyft/flytepropeller v0.2.1-0.20200205214057-f0028e0cdfac
 	github.com/lyft/flytestdlib v0.3.0
 	github.com/magiconair/properties v1.8.1
