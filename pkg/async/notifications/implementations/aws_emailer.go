@@ -40,6 +40,8 @@ type AwsEmailer struct {
 func FlyteEmailToSesEmailInput(email admin.EmailMessage) ses.SendEmailInput {
 	var toAddress []*string
 	for _, toEmail := range email.RecipientsEmail {
+		// SES email input takes an array of pointers to strings so we have to create a new one for each email
+		//nolint:unconvert
 		e := string(toEmail)
 		toAddress = append(toAddress, &e)
 	}
