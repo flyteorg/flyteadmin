@@ -128,7 +128,7 @@ func NewRedirectCookie(ctx context.Context, redirectURL string) *http.Cookie {
 func getAuthFlowEndRedirect(ctx context.Context, authContext interfaces.AuthenticationContext, request *http.Request) string {
 	queryParams := request.URL.Query()
 	// Use the redirect URL specified in the request if one is available.
-	if redirectURL := queryParams.Get(RedirectURLParameter); redirectURL == "" {
+	if redirectURL := queryParams.Get(RedirectURLParameter); len(redirectURL) > 0 {
 		return redirectURL
 	}
 	cookie, err := request.Cookie(redirectURLCookieName)
