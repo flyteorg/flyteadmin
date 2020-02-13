@@ -348,10 +348,9 @@ func TestCreateExecution_TaggedQueue(t *testing.T) {
 		func(inputs workflowengineInterfaces.ExecuteWorkflowInput) (*workflowengineInterfaces.ExecutionInfo, error) {
 			assert.NotEmpty(t, inputs.WfClosure.Tasks)
 			for _, task := range inputs.WfClosure.Tasks {
-				assert.Len(t, task.Template.GetContainer().Config, 2)
-				assert.Contains(t, "primary Q", task.Template.GetContainer().Config[0].Value)
-				assert.Contains(t, childContainerQueueKey, task.Template.GetContainer().Config[1].Key)
-				assert.Contains(t, "dynamic Q", task.Template.GetContainer().Config[1].Value)
+				assert.Len(t, task.Template.GetContainer().Config, 1)
+				assert.Contains(t, childContainerQueueKey, task.Template.GetContainer().Config[0].Key)
+				assert.Contains(t, "dynamic Q", task.Template.GetContainer().Config[0].Value)
 			}
 			assert.Equal(t, requestedAt, inputs.AcceptedAt)
 			return &workflowengineInterfaces.ExecutionInfo{
