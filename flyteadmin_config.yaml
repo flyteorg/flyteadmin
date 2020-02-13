@@ -104,18 +104,17 @@ queues:
     - dynamic: "default"
       attributes:
         - defaultclusters
-  workflowConfigs      -
-    - primary: "my_queue_1"
+  workflowConfigs
+    - project: "my_queue_1"
       domain: "production"
       workflowName: "my_workflow_1"
       tags:
         - critical
-    - primary: "my_queue_1"
-      domain: "production"
+    - project: "production"
       workflowName: "my_workflow_2"
       tags:
         - gpu
-    - primary: "my_queue_3"
+    - project: "my_queue_3"
       domain: "production"
       workflowName: "my_workflow_3"
       tags:
