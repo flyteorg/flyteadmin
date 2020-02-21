@@ -3,6 +3,12 @@ package impl
 import (
 	"context"
 	"fmt"
+	"github.com/lyft/flyteadmin/pkg/errors"
+	"github.com/lyft/flyteadmin/pkg/manager/impl/resources"
+	managerInterfaces "github.com/lyft/flyteadmin/pkg/manager/interfaces"
+	"github.com/lyft/flyteadmin/pkg/repositories"
+	"github.com/lyft/flytestdlib/logger"
+	"google.golang.org/grpc/codes"
 	"hash/fnv"
 	"math/rand"
 
@@ -18,8 +24,9 @@ import (
 // Implementation of Random cluster selector
 // Selects cluster based on weights and domains.
 type RandomClusterSelector struct {
-	domainWeightedRandomMap map[string]random.WeightedRandomList
-	executionTargetMap      map[string]executioncluster.ExecutionTarget
+	labelWeightedRandomMap map[string]random.WeightedRandomList
+	executionTargetMap     map[string]executioncluster.ExecutionTarget
+	resourceManager        managerInterfaces.ResourceInterface
 }
 
 func getRandSource(seed string) (rand.Source, error) {
@@ -30,14 +37,6 @@ func getRandSource(seed string) (rand.Source, error) {
 	}
 	hashedSeed := int64(h.Sum64())
 	return rand.NewSource(hashedSeed), nil
-}
-
-func getValidDomainMap(validDomains runtime.DomainsConfig) map[string]runtime.Domain {
-	domainMap := make(map[string]runtime.Domain)
-	for _, domain := range validDomains {
-		domainMap[domain.ID] = domain
-	}
-	return domainMap
 }
 
 func getExecutionTargetMap(scope promutils.Scope, executionTargetProvider interfaces.ExecutionTargetProvider, clusterConfig runtime.ClusterConfiguration) (map[string]executioncluster.ExecutionTarget, error) {
@@ -55,62 +54,30 @@ func getExecutionTargetMap(scope promutils.Scope, executionTargetProvider interf
 	return executionTargetMap, nil
 }
 
-func getDomainsForCluster(cluster runtime.ClusterConfig, domainMap map[string]runtime.Domain) ([]string, error) {
-	if len(cluster.AllowedDomains) == 0 {
-		allDomains := make([]string, len(domainMap))
-		index := 0
-		for id := range domainMap {
-			allDomains[index] = id
-			index++
-		}
-		return allDomains, nil
-	}
-	for _, allowedDomain := range cluster.AllowedDomains {
-		if _, ok := domainMap[allowedDomain]; !ok {
-			return nil, fmt.Errorf("invalid domain %s", allowedDomain)
-		}
-	}
-	return cluster.AllowedDomains, nil
-}
-
-func getDomainWeightedRandomForCluster(ctx context.Context, scope promutils.Scope, executionTargetProvider interfaces.ExecutionTargetProvider,
-	clusterConfig runtime.ClusterConfiguration,
-	domainMap map[string]runtime.Domain) (map[string]random.WeightedRandomList, error) {
-	domainEntriesMap := make(map[string][]random.Entry)
-	for _, cluster := range clusterConfig.GetClusterConfigs() {
-		// If cluster is not enabled, it is not eligible for selection
-		if !cluster.Enabled {
-			continue
-		}
-		executionTarget, err := executionTargetProvider.GetExecutionTarget(scope, cluster)
-		if err != nil {
-			return nil, err
-		}
-		targetEntry := random.Entry{
-			Item:   *executionTarget,
-			Weight: cluster.Weight,
-		}
-		clusterDomains, err := getDomainsForCluster(cluster, domainMap)
-		if err != nil {
-			return nil, err
-		}
-		for _, domain := range clusterDomains {
-			if _, ok := domainEntriesMap[domain]; ok {
-				domainEntriesMap[domain] = append(domainEntriesMap[domain], targetEntry)
-			} else {
-				domainEntriesMap[domain] = []random.Entry{targetEntry}
+func getLabeledWeightedRandomForCluster(ctx context.Context, scope promutils.Scope,
+	clusterConfig runtime.ClusterConfiguration, executionTargetMap map[string]executioncluster.ExecutionTarget) (map[string]random.WeightedRandomList, error) {
+	labeledWeightedRandomMap := make(map[string]random.WeightedRandomList)
+	for label, clusterEntities := range clusterConfig.GetLabelClusterMap() {
+		entries := make([]random.Entry, len(clusterEntities))
+		for _, clusterEntity := range clusterEntities {
+			cluster := executionTargetMap[clusterEntity.ID]
+			// If cluster is not enabled, it is not eligible for selection
+			if !cluster.Enabled {
+				continue
 			}
+			targetEntry := random.Entry{
+				Item:   cluster,
+				Weight: clusterEntity.Weight,
+			}
+			entries = append(entries, targetEntry)
 		}
-	}
-	domainWeightedRandomMap := make(map[string]random.WeightedRandomList)
-	for domain, entries := range domainEntriesMap {
 		weightedRandomList, err := random.NewWeightedRandom(ctx, entries)
 		if err != nil {
 			return nil, err
 		}
-		domainWeightedRandomMap[domain] = weightedRandomList
+		labeledWeightedRandomMap[label] = weightedRandomList
 	}
-	return domainWeightedRandomMap, nil
+	return labeledWeightedRandomMap, nil
 }
 
 func (s RandomClusterSelector) GetAllValidTargets() []executioncluster.ExecutionTarget {
@@ -123,8 +90,8 @@ func (s RandomClusterSelector) GetAllValidTargets() []executioncluster.Execution
 	return v
 }
 
-func (s RandomClusterSelector) GetTarget(spec *executioncluster.ExecutionTargetSpec) (*executioncluster.ExecutionTarget, error) {
-	if spec == nil || (spec.TargetID == "" && spec.ExecutionID == nil) {
+func (s RandomClusterSelector) GetTarget(ctx context.Context, spec *executioncluster.ExecutionTargetSpec) (*executioncluster.ExecutionTarget, error) {
+	if spec == nil || (spec.TargetID == "") {
 		return nil, fmt.Errorf("invalid executionTargetSpec %v", spec)
 	}
 	if spec.TargetID != "" {
@@ -133,8 +100,25 @@ func (s RandomClusterSelector) GetTarget(spec *executioncluster.ExecutionTargetS
 		}
 		return nil, fmt.Errorf("invalid cluster target %s", spec.TargetID)
 	}
+	resource, err := s.resourceManager.GetResource(ctx, managerInterfaces.ResourceRequest{
+		Project: spec.Project,
+		Domain: spec.Domain,
+		Workflow: spec.Workflow,
+		LaunchPlan: spec.LaunchPlan,
+	})
+	if err != nil {
+		if flyteAdminError, ok := err.(errors.FlyteAdminError); !ok || flyteAdminError.Code() != codes.NotFound {
+			return nil, err
+		}
+		return nil, err
+	}
+	if resource != nil {
+		resource.Attributes.g
+	}
 	if spec.ExecutionID != nil {
-		if weightedRandomList, ok := s.domainWeightedRandomMap[spec.ExecutionID.GetDomain()]; ok {
+		// Change to resource manager.
+
+		if weightedRandomList, ok := s.labelWeightedRandomMap[spec.ExecutionID.GetDomain()]; ok {
 			executionName := spec.ExecutionID.GetName()
 			if executionName != "" {
 				randSrc, err := getRandSource(executionName)
@@ -151,23 +135,26 @@ func (s RandomClusterSelector) GetTarget(spec *executioncluster.ExecutionTargetS
 			execTarget := weightedRandomList.Get().(executioncluster.ExecutionTarget)
 			return &execTarget, nil
 		}
+
+		// Get random from the entire list
 	}
+
 	return nil, fmt.Errorf("invalid executionTargetSpec %v", *spec)
 
 }
 
-func NewRandomClusterSelector(scope promutils.Scope, clusterConfig runtime.ClusterConfiguration, executionTargetProvider interfaces.ExecutionTargetProvider, domainConfig *runtime.DomainsConfig) (interfaces.ClusterInterface, error) {
+func NewRandomClusterSelector(scope promutils.Scope, clusterConfig runtime.ClusterConfiguration, executionTargetProvider interfaces.ExecutionTargetProvider, db repositories.RepositoryInterface) (interfaces.ClusterInterface, error) {
 	executionTargetMap, err := getExecutionTargetMap(scope, executionTargetProvider, clusterConfig)
 	if err != nil {
 		return nil, err
 	}
-	domainMap := getValidDomainMap(*domainConfig)
-	domainWeightedRandomMap, err := getDomainWeightedRandomForCluster(context.Background(), scope, executionTargetProvider, clusterConfig, domainMap)
+	labelWeightedRandomMap, err := getLabeledWeightedRandomForCluster(context.Background(), scope, clusterConfig, executionTargetMap)
 	if err != nil {
 		return nil, err
 	}
 	return &RandomClusterSelector{
-		domainWeightedRandomMap: domainWeightedRandomMap,
-		executionTargetMap:      executionTargetMap,
+		labelWeightedRandomMap: labelWeightedRandomMap,
+		executionTargetMap:     executionTargetMap,
+		resourceManager:        resources.NewResourceManager(db),
 	}, nil
 }
