@@ -16,7 +16,7 @@ func GetExecutionCluster(scope promutils.Scope, kubeConfig, master string, confi
 		}
 		return cluster
 	default:
-		cluster, err := NewRandomClusterSelector(scope, config.ClusterConfiguration(), &clusterExecutionTargetProvider{}, config.ApplicationConfiguration().GetDomainsConfig())
+		cluster, err := NewRandomClusterSelector(scope, config.ClusterConfiguration(), &clusterExecutionTargetProvider{}, db)
 		if err != nil {
 			panic(err)
 		}

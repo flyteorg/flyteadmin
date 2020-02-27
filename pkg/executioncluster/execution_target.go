@@ -9,11 +9,12 @@ import (
 
 // Spec to determine the execution target
 type ExecutionTargetSpec struct {
-	TargetID   string
-	Project    string
-	Domain     string
-	Workflow   string
-	LaunchPlan string
+	TargetID    string
+	ExecutionID string
+	Project     string
+	Domain      string
+	Workflow    string
+	LaunchPlan  string
 }
 
 // Client object of the target execution cluster
