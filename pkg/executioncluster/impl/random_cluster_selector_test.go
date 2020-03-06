@@ -61,6 +61,7 @@ func getRandomClusterSelectorForTest(t *testing.T) interfaces2.ClusterInterface 
 			Domain:       ID.Domain,
 			Workflow:     ID.Workflow,
 			ResourceType: ID.ResourceType,
+			LaunchPlan:   ID.LaunchPlan,
 		}
 		if ID.Project == testProject && ID.Domain == testDomain {
 			matchingAttributes := &admin.MatchingAttributes{
@@ -72,7 +73,7 @@ func getRandomClusterSelectorForTest(t *testing.T) interfaces2.ClusterInterface 
 			}
 			marshalledMatchingAttributes, _ := proto.Marshal(matchingAttributes)
 			response.Attributes = marshalledMatchingAttributes
-		} else if ID.Workflow == testWorkflow {
+		} else {
 			matchingAttributes := &admin.MatchingAttributes{
 				Target: &admin.MatchingAttributes_ExecutionClusterLabel{
 					ExecutionClusterLabel: &admin.ExecutionClusterLabel{
@@ -106,8 +107,9 @@ func TestRandomClusterSelectorGetTarget(t *testing.T) {
 func TestRandomClusterSelectorGetTargetForDomain(t *testing.T) {
 	cluster := getRandomClusterSelectorForTest(t)
 	target, err := cluster.GetTarget(context.Background(), &executioncluster.ExecutionTargetSpec{
-		Project: testProject,
-		Domain:  testDomain,
+		Project:     testProject,
+		Domain:      testDomain,
+		ExecutionID: "e",
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "testcluster2", target.ID)

@@ -6,6 +6,8 @@ import (
 	"hash/fnv"
 	"math/rand"
 
+	"github.com/lyft/flytestdlib/logger"
+
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 
 	"github.com/lyft/flyteadmin/pkg/errors"
@@ -136,9 +138,14 @@ func (s RandomClusterSelector) GetTarget(ctx context.Context, spec *executionclu
 
 		if _, ok := s.labelWeightedRandomMap[label]; ok {
 			weightedRandomList = s.labelWeightedRandomMap[label]
+		} else {
+			logger.Debugf(ctx, "No cluster mapping found for the label %s", label)
 		}
+	} else {
+		logger.Debugf(ctx, "No override found for the spec %v", spec)
 	}
 	// If there is no label associated (or) if the label is invalid, choose from all enabled clusters.
+	// Note that if there is a valid label with zero "Enabled" clusters, we still choose from all enabled ones.
 	if weightedRandomList == nil {
 		weightedRandomList = s.equalWeightedAllClusters
 	}
