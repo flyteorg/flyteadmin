@@ -21,6 +21,8 @@ func validateMatchingAttributes(attributes *admin.MatchingAttributes, identifier
 		return admin.MatchableResource_CLUSTER_RESOURCE, nil
 	} else if attributes.GetExecutionQueueAttributes() != nil {
 		return admin.MatchableResource_EXECUTION_QUEUE, nil
+	} else if attributes.GetExecutionClusterLabel() != nil {
+		return admin.MatchableResource_EXECUTION_CLUSTER_LABEL, nil
 	}
 	return defaultMatchableResource, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
 		"Unrecognized matching attributes type for request %s", identifier)
@@ -108,5 +110,12 @@ func ValidateWorkflowAttributesDeleteRequest(request admin.WorkflowAttributesDel
 		return err
 	}
 
+	return nil
+}
+
+func ValidateListAllMatchableAttributesRequest(request admin.ListMatchableAttributesRequest) error {
+	if _, ok := admin.MatchableResource_name[int32(request.ResourceType)]; !ok {
+		return shared.GetInvalidArgumentError(shared.ResourceType)
+	}
 	return nil
 }
