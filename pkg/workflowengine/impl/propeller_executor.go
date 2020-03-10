@@ -118,16 +118,21 @@ func (c *FlytePropeller) ExecuteWorkflow(ctx context.Context, input interfaces.E
 	flyteWf.Annotations = annotations
 
 	executionTargetSpec := executioncluster.ExecutionTargetSpec{
-		ExecutionID: input.ExecutionID,
+		Project:     input.ExecutionID.Project,
+		Domain:      input.ExecutionID.Domain,
+		Workflow:    input.Reference.Spec.WorkflowId.Name,
+		LaunchPlan:  input.Reference.Id.Name,
+		ExecutionID: input.ExecutionID.Name,
 	}
-	targetCluster, err := c.executionCluster.GetTarget(&executionTargetSpec)
+	targetCluster, err := c.executionCluster.GetTarget(ctx, &executionTargetSpec)
 	if err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to create workflow in propeller %v", err)
 	}
 	_, err = targetCluster.FlyteClient.FlyteworkflowV1alpha1().FlyteWorkflows(namespace).Create(flyteWf)
 	if err != nil {
 		if !k8_api_err.IsAlreadyExists(err) {
-			logger.Debugf(ctx, "failed to create workflow [%+v[ in propeller %v", input.WfClosure.Primary.Template.Id, err)
+			logger.Debugf(ctx, "failed to create workflow [%+v] in cluster %s %v",
+				input.WfClosure.Primary.Template.Id, targetCluster.ID, err)
 			c.metrics.ExecutionCreationFailure.Inc()
 			return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to create workflow in propeller %v", err)
 		}
@@ -148,7 +153,7 @@ func (c *FlytePropeller) TerminateWorkflowExecution(
 		return errors.NewFlyteAdminErrorf(codes.Internal, "invalid execution id")
 	}
 	namespace := common.GetNamespaceName(c.config.GetNamespaceMappingConfig(), input.ExecutionID.GetProject(), input.ExecutionID.GetDomain())
-	target, err := c.executionCluster.GetTarget(&executioncluster.ExecutionTargetSpec{
+	target, err := c.executionCluster.GetTarget(ctx, &executioncluster.ExecutionTargetSpec{
 		TargetID: input.Cluster,
 	})
 	if err != nil {
