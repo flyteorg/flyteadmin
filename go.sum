@@ -476,6 +476,8 @@ github.com/lyft/flytepropeller v0.2.13 h1:RDFM8ps5bHWdHYK87NLyYX4iyF16ahkxerI0X9
 github.com/lyft/flytepropeller v0.2.13/go.mod h1:QJ9txCCxHnzvwQoG4TbcldVs1in4+C943prLZVDmmIA=
 github.com/lyft/flytepropeller v0.2.15-0.20200314205921-77839c863f84 h1:mjjVGhObeuJ5Bu9Zo0Ig/18lSP3V5FVyVC3BH9jSfWI=
 github.com/lyft/flytepropeller v0.2.15-0.20200314205921-77839c863f84/go.mod h1:3/l9NnTODP67LER2F9Lu9IZ2iG7YRwDIVFv6OhwfUec=
+github.com/lyft/flytepropeller v0.2.15-0.20200315164913-dcc042ef2204 h1:pR9JPULI9eO9KstrNlxoCO842ILHdOr03Ln8pHwI2zk=
+github.com/lyft/flytepropeller v0.2.15-0.20200315164913-dcc042ef2204/go.mod h1:3/l9NnTODP67LER2F9Lu9IZ2iG7YRwDIVFv6OhwfUec=
 github.com/lyft/flytestdlib v0.3.0 h1:nIkX4MlyYdcLLzaF35RI2P5BhARt+qMgHoFto8eVNzU=
 github.com/lyft/flytestdlib v0.3.0/go.mod h1:LJPPJlkFj+wwVWMrQT3K5JZgNhZi2mULsCG4ZYhinhU=
 github.com/lyft/flytestdlib v0.3.2 h1:bY6Y+Fg6Jdc7zY4GAYuR7t2hjWwynIdmRvtLcRNaGnw=

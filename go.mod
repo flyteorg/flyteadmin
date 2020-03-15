@@ -26,7 +26,7 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
 	github.com/lib/pq v1.3.0
 	github.com/lyft/flyteidl v0.17.20
-	github.com/lyft/flytepropeller v0.2.15-0.20200314205921-77839c863f84
+	github.com/lyft/flytepropeller v0.2.15-0.20200315164913-dcc042ef2204
 	github.com/lyft/flytestdlib v0.3.2
 	github.com/magiconair/properties v1.8.1
 	github.com/mitchellh/mapstructure v1.1.2
