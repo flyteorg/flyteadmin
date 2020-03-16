@@ -90,6 +90,10 @@ var descCreatedAtSortParam, _ = common.NewSortParameter(admin.Sort{
 // Kubectl defaults to using the StrategicMergePatch strategy.
 // However the controller-runtime only has an implementation for MergePatch which we were formerly
 // using but failed to actually always merge resources in the Patch call.
+// INTERESTINGLY Patch doesn't actually appear to update the majority of resources. We default to using Update but
+// whitelist the specific set of resources that require a Patch to work instead.
+// If you use update with a ServiceAccount - *every* call to Update results in a new corresponding secret being created
+// which has the (not so) fun side-effect of overwhelming API server when this Sync script is run as a cron.
 var strategicPatchTypes = map[string]bool {
 	v1.ServiceAccountKind: true,
 }
@@ -302,8 +306,6 @@ func (c *controller) syncNamespace(ctx context.Context, namespace NamespaceName,
 						k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace)
 					c.metrics.AppliedTemplateExists.Inc()
 
-					logger.Warningf(ctx, "*** k8sObjCopy.GetObjectKind().GroupVersionKind().Kind is [%+v]," +
-						k8sObjCopy.GetObjectKind().GroupVersionKind().Kind)
 					if ok := strategicPatchTypes[k8sObjCopy.GetObjectKind().GroupVersionKind().Kind]; ok {
 						err = target.Client.Patch(ctx, k8sObjCopy, StrategicMergeFrom(k8sObjCopy))
 					} else {
