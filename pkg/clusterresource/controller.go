@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	v1 "k8s.io/api/rbac/v1"
 	"os"
 	"path"
 	"path/filepath"
 	"runtime/debug"
 	"strings"
 	"time"
+
+	v1 "k8s.io/api/rbac/v1"
 
 	"github.com/lyft/flyteadmin/pkg/manager/impl/resources"
 	managerinterfaces "github.com/lyft/flyteadmin/pkg/manager/interfaces"
@@ -94,7 +95,7 @@ var descCreatedAtSortParam, _ = common.NewSortParameter(admin.Sort{
 // whitelist the specific set of resources that require a Patch to work instead.
 // If you use update with a ServiceAccount - *every* call to Update results in a new corresponding secret being created
 // which has the (not so) fun side-effect of overwhelming API server when this Sync script is run as a cron.
-var strategicPatchTypes = map[string]bool {
+var strategicPatchTypes = map[string]bool{
 	v1.ServiceAccountKind: true,
 }
 
