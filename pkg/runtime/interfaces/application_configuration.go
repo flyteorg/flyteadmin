@@ -129,7 +129,9 @@ type NotificationsConfig struct {
 	// scheme is used.
 	Type string `json:"type"`
 	// Some cloud providers require a region to be set.
-	Region                       string                       `json:"region"`
+	Region string `json:"region"`
+	// Some cloud providers require a project ID to be set.
+	ProjectID                    string                       `json:"projectId"`
 	NotificationsPublisherConfig NotificationsPublisherConfig `json:"publisher"`
 	NotificationsProcessorConfig NotificationsProcessorConfig `json:"processor"`
 	NotificationsEmailerConfig   NotificationsEmailerConfig   `json:"emailer"`
