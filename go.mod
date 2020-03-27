@@ -3,6 +3,9 @@ module github.com/lyft/flyteadmin
 go 1.13
 
 require (
+	cloud.google.com/go v0.54.0
+	cloud.google.com/go/storage v1.6.0
+	github.com/Azure/azure-sdk-for-go v40.3.0+incompatible // indirect
 	github.com/NYTimes/gizmo v1.3.5
 	github.com/Selvatico/go-mocket v1.0.7
 	github.com/aws/aws-sdk-go v1.29.23
@@ -34,6 +37,8 @@ require (
 	github.com/stretchr/testify v1.6.1
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/tools v0.0.0-20200818005847-188abfa75333 // indirect
+	google.golang.org/api v0.20.0
+	google.golang.org/genproto v0.0.0-20200312145019-da6875a35672
 	google.golang.org/grpc v1.28.0
 	gopkg.in/gormigrate.v1 v1.6.0
 	k8s.io/api v0.17.3
@@ -53,5 +58,4 @@ replace (
 	k8s.io/api => github.com/lyft/api v0.0.0-20191031200350-b49a72c274e0
 	k8s.io/apimachinery => github.com/lyft/apimachinery v0.0.0-20191031200210-047e3ea32d7f
 	k8s.io/client-go => k8s.io/client-go v0.0.0-20191016111102-bec269661e48
-
 )

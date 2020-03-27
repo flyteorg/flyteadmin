@@ -99,7 +99,8 @@ type SchedulerConfig struct {
 // Configuration specific to setting up signed urls.
 type SignedURL struct {
 	// The amount of time for which a signed URL is valid.
-	DurationMinutes int `json:"durationMinutes"`
+	DurationMinutes  int    `json:"durationMinutes"`
+	SigningPrincipal string `json:"signingPrincipal"`
 }
 
 // This configuration handles all requests to get remote data such as execution inputs & outputs.
