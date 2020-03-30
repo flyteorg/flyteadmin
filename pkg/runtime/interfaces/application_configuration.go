@@ -31,10 +31,11 @@ type ApplicationConfig struct {
 }
 
 type EventSchedulerConfig struct {
-	Scheme       string `json:"scheme"`
-	Region       string `json:"region"`
-	ScheduleRole string `json:"scheduleRole"`
-	TargetName   string `json:"targetName"`
+	Scheme             string `json:"scheme"`
+	Region             string `json:"region"`
+	ScheduleRole       string `json:"scheduleRole"`
+	TargetName         string `json:"targetName"`
+	ScheduleNamePrefix string `json:"scheduleNamePrefix"`
 }
 
 type WorkflowExecutorConfig struct {
