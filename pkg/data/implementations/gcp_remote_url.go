@@ -47,8 +47,7 @@ func (g *GCPRemoteURL) splitURI(ctx context.Context, uri string) (GCPGCSObject, 
 	}, nil
 }
 
-// name ...
-func (g *GCPRemoteURL) signUrl(ctx context.Context, gcsURI GCPGCSObject) (string, error) {
+func (g *GCPRemoteURL) signURL(ctx context.Context, gcsURI GCPGCSObject) (string, error) {
 	c, err := credentials.NewIamCredentialsClient(ctx)
 	if err != nil {
 		return "", err
@@ -91,7 +90,7 @@ func (g *GCPRemoteURL) Get(ctx context.Context, uri string) (admin.UrlBlob, erro
 	}
 
 	// The second return argument here is the GetObjectOutput, which we don't use below.
-	urlStr, err := g.signUrl(ctx, gcsURI)
+	urlStr, err := g.signURL(ctx, gcsURI)
 	if err != nil {
 		logger.Warning(ctx,
 			"failed to presign url for uri [%s] for %v with err %v", uri, g.signDuration, err)
