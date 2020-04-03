@@ -1,0 +1,37 @@
+name: DockerHub Publish
+
+on:
+  push:
+    # Publish `master` as Docker `latest` image.
+    branches:
+      - test-gh-wfs
+
+    # Publish `v1.2.3` tags as releases.
+    # tags:
+    #   - v*
+
+env:
+  # TODO: Change variable to your image's name.
+  IMAGE_NAME: image
+  SECRET: ${{ secrets.testsecret }}
+
+jobs:
+  # Push image to GitHub Packages.
+  # See also https://docs.docker.com/docker-hub/builds/
+  push:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build image
+        # run: docker build . --file Dockerfile --tag image
+        run: echo $SECRET
+
+      - name: Log into registry
+        run: |
+          echo "github ref ${{ github.ref }}"
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          echo "version $VERSION"
+
