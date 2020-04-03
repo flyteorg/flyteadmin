@@ -27,7 +27,7 @@ jobs:
 
       - name: Build image
         # run: docker build . --file Dockerfile --tag image
-        run: echo $SECRET
+        run: echo "$SECRET"
 
       - name: Log into registry
         run: |
