@@ -105,7 +105,6 @@ func applyScopedFilters(tx *gorm.DB, inlineFilters []common.InlineFilter, mapFil
 			return nil, adminErrors.NewFlyteAdminErrorf(codes.InvalidArgument,
 				"unrecognized entity in filter expression: %v", filter.GetEntity())
 		}
-		println(fmt.Sprintf("Applying scoped filters for [%+v] with tableName: %+v", filter.GetEntity(), tableName))
 		gormQueryExpr, err := filter.GetGormJoinTableQueryExpr(tableName)
 		if err != nil {
 			return nil, err
