@@ -62,7 +62,6 @@ func (w *WorkflowManager) setDefaults(request admin.WorkflowCreateRequest) (admi
 	return request, nil
 }
 
-// TODO: Once the SDK sends subworkflows, pipe them through to calls to GetRequirements & CompileWorkflow.
 func (w *WorkflowManager) getCompiledWorkflow(
 	ctx context.Context, request admin.WorkflowCreateRequest) (admin.WorkflowClosure, error) {
 	reqs, err := w.compiler.GetRequirements(request.Spec.Template, request.Spec.SubWorkflows)
@@ -335,26 +334,6 @@ func (w *WorkflowManager) ListWorkflowIdentifiers(ctx context.Context, request a
 		Token:    token,
 	}, nil
 
-}
-
-func (w *WorkflowManager) UpdateWorkflow(ctx context.Context, request admin.WorkflowUpdateRequest) (
-	*admin.WorkflowUpdateResponse, error) {
-	if err := validation.ValidateIdentifier(request.Id, common.Workflow); err != nil {
-		logger.Debugf(ctx, "invalid identifier [%+v]: %v", request.Id, err)
-		return nil, err
-	}
-	ctx = getWorkflowContext(ctx, request.Id)
-	workflowModel, err := util.GetWorkflowModel(ctx, w.db, *request.Id)
-	if err != nil {
-		return nil, err
-	}
-	stateInt := int32(request.State)
-	workflowModel.State = &stateInt
-	err = w.db.WorkflowRepo().Update(ctx, workflowModel)
-	if err != nil {
-		return nil, err
-	}
-	return &admin.WorkflowUpdateResponse{}, nil
 }
 
 func NewWorkflowManager(
