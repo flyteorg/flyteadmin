@@ -47,6 +47,16 @@ type ApplicationConfig struct {
 	MetadataStoragePrefix []string `json:"metadataStoragePrefix"`
 }
 
+// This section holds common config for AWS
+type AWSConfig struct {
+	Region string `json:"region"`
+}
+
+// This section holds common config for GCP
+type GCPConfig struct {
+	ProjectID string `json:"projectId"`
+}
+
 // This section holds configuration for the event scheduler used to schedule workflow executions.
 type EventSchedulerConfig struct {
 	// Defines the cloud provider that backs the scheduler. In the absence of a specification the no-op, 'local'
@@ -128,10 +138,10 @@ type NotificationsConfig struct {
 	// Defines the cloud provider that backs the scheduler. In the absence of a specification the no-op, 'local'
 	// scheme is used.
 	Type string `json:"type"`
-	// Some cloud providers require a region to be set.
-	Region string `json:"region"`
-	// Some cloud providers require a project ID to be set.
-	ProjectID                    string                       `json:"projectId"`
+	//  Deprecated: Please use AWSConfig instead.
+	Region                       string                       `json:"region"`
+	AWSConfig                    AWSConfig                    `json:"aws"`
+	GCPConfig                    GCPConfig                    `json:"gcp"`
 	NotificationsPublisherConfig NotificationsPublisherConfig `json:"publisher"`
 	NotificationsProcessorConfig NotificationsProcessorConfig `json:"processor"`
 	NotificationsEmailerConfig   NotificationsEmailerConfig   `json:"emailer"`

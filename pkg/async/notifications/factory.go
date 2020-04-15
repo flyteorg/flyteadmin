@@ -95,7 +95,11 @@ func NewNotificationsPublisher(config runtimeInterfaces.NotificationsConfig, sco
 		snsConfig := gizmoAWS.SNSConfig{
 			Topic: config.NotificationsPublisherConfig.TopicName,
 		}
-		snsConfig.Region = config.Region
+		if config.AWSConfig.Region != "" {
+			snsConfig.Region = config.AWSConfig.Region
+		} else {
+			snsConfig.Region = config.Region
+		}
 		publisher, err := gizmoAWS.NewPublisher(snsConfig)
 		// Any errors initiating Publisher with Amazon configurations results in a failed start up.
 		if err != nil {
@@ -106,7 +110,7 @@ func NewNotificationsPublisher(config runtimeInterfaces.NotificationsConfig, sco
 		pubsubConfig := gizmoGCP.Config{
 			Topic: config.NotificationsPublisherConfig.TopicName,
 		}
-		pubsubConfig.ProjectID = config.ProjectID
+		pubsubConfig.ProjectID = config.GCPConfig.ProjectID
 		publisher, err := gizmoGCP.NewPublisher(context.TODO(), pubsubConfig)
 		if err != nil {
 			panic(err)
