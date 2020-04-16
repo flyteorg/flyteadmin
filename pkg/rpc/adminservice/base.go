@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime/debug"
+	"time"
 
 	"github.com/lyft/flyteadmin/pkg/manager/impl/resources"
 
@@ -49,6 +50,8 @@ func (m *AdminService) interceptPanic(ctx context.Context, request proto.Message
 }
 
 const defaultRetries = 3
+
+var workflowExecutorReconnectDelay = 30 * time.Second
 
 func NewAdminServer(kubeConfig, master string) *AdminService {
 	configuration := runtime.NewConfigurationProvider()
@@ -135,8 +138,17 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 	scheduledWorkflowExecutor := workflowScheduler.GetWorkflowExecutor(executionManager, launchPlanManager)
 	logger.Info(context.Background(), "Successfully initialized a new scheduled workflow executor")
 	go func() {
+		logger.Info(context.Background(), "Starting the scheduled workflow executor")
 		scheduledWorkflowExecutor.Run()
-		logger.Info(context.Background(), "Successfully started running the scheduled workflow executor")
+
+		maxReconnectAttempts := configuration.ApplicationConfiguration().GetSchedulerConfig().
+			WorkflowExecutorConfig.ReconnectAttempts
+		for reconnectAttempt := 0; reconnectAttempt < maxReconnectAttempts; reconnectAttempt++ {
+			time.Sleep(workflowExecutorReconnectDelay)
+			logger.Warningf(context.Background(),
+				"Restarting scheduled workflow executor, attempt %d of %d", reconnectAttempt, maxReconnectAttempts)
+			scheduledWorkflowExecutor.Run()
+		}
 	}()
 
 	// Serve profiling endpoints.

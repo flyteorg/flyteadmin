@@ -74,6 +74,8 @@ type WorkflowExecutorConfig struct {
 	// The account id (according to whichever cloud provider scheme is used) that has permission to read from the above
 	// queue.
 	AccountID string `json:"accountId"`
+	// Specifies the number of times to attempt recreating a workflow executor client should there be any disruptions.
+	ReconnectAttempts int `json:"reconnectAttempts"`
 }
 
 // This configuration is the base configuration for all scheduler-related set-up.
