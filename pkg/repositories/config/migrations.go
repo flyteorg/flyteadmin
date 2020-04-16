@@ -199,4 +199,14 @@ var Migrations = []*gormigrate.Migration{
 			return tx.Exec("ALTER TABLE workflows ADD COLUMN IF NOT EXISTS state integer;").Error
 		},
 	},
+	// Add TaskID to Execution model.
+	{
+		ID: "2020-04-14-task-type",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&models.Execution{}).Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Exec("ALTER TABLE executions DROP COLUMN IF EXISTS task_id").Error
+		},
+	},
 }
