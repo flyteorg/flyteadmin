@@ -51,8 +51,6 @@ func (m *AdminService) interceptPanic(ctx context.Context, request proto.Message
 
 const defaultRetries = 3
 
-var workflowExecutorReconnectDelay = 30 * time.Second
-
 func NewAdminServer(kubeConfig, master string) *AdminService {
 	configuration := runtime.NewConfigurationProvider()
 	applicationConfiguration := configuration.ApplicationConfiguration().GetTopLevelConfig()
@@ -143,8 +141,10 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 
 		maxReconnectAttempts := configuration.ApplicationConfiguration().GetSchedulerConfig().
 			WorkflowExecutorConfig.ReconnectAttempts
+		reconnectDelay := time.Duration(configuration.ApplicationConfiguration().GetSchedulerConfig().
+			WorkflowExecutorConfig.ReconnectDelaySeconds) * time.Second
 		for reconnectAttempt := 0; reconnectAttempt < maxReconnectAttempts; reconnectAttempt++ {
-			time.Sleep(workflowExecutorReconnectDelay)
+			time.Sleep(reconnectDelay)
 			logger.Warningf(context.Background(),
 				"Restarting scheduled workflow executor, attempt %d of %d", reconnectAttempt, maxReconnectAttempts)
 			scheduledWorkflowExecutor.Run()
