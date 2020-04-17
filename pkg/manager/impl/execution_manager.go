@@ -83,6 +83,7 @@ type ExecutionManager struct {
 	userMetrics        executionUserMetrics
 	notificationClient notificationInterfaces.Publisher
 	urlData            dataInterfaces.RemoteURLInterface
+	workflowManager interfaces.WorkflowInterface
 }
 
 func getExecutionContext(ctx context.Context, id *core.WorkflowExecutionIdentifier) context.Context {
@@ -507,7 +508,16 @@ func (m *ExecutionManager) createDefaultObjectsForSingleTaskExecution(
 				Outputs: generateBindingsFromOutputs(*task.Closure.CompiledTask.Template.Interface.Outputs),
 			},
 		}
+		_, err = m.workflowManager.CreateWorkflow(ctx, admin.WorkflowCreateRequest{
+			Id:                   workflowSpec.Template.Id,
+			Spec:                 &workflowSpec,
+		})
+		if err != nil {
+			return err
+		}
 	}
+
+	// 3. Create a default launch plan (if necessary)
 }
 
 func (m *ExecutionManager) launchExecutionAndPrepareModel(
@@ -1247,7 +1257,8 @@ func NewExecutionManager(
 	systemScope promutils.Scope,
 	userScope promutils.Scope,
 	publisher notificationInterfaces.Publisher,
-	urlData dataInterfaces.RemoteURLInterface) interfaces.ExecutionInterface {
+	urlData dataInterfaces.RemoteURLInterface,
+	workflowManager interfaces.WorkflowInterface) interfaces.ExecutionInterface {
 	queueAllocator := executions.NewQueueAllocator(config, db)
 	systemMetrics := newExecutionSystemMetrics(systemScope)
 
@@ -1267,5 +1278,6 @@ func NewExecutionManager(
 		userMetrics:        userMetrics,
 		notificationClient: publisher,
 		urlData:            urlData,
+		workflowManager: workflowManager,
 	}
 }
