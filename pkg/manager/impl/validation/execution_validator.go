@@ -2,6 +2,7 @@ package validation
 
 import (
 	"context"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"regexp"
 	"strings"
 
@@ -19,10 +20,11 @@ import (
 const allowedExecutionNameLength = 20
 
 var executionIDRegex = regexp.MustCompile(`^[a-z][a-z\-0-9]*$`)
-var acceptedReferenceLaunchTypes = []core.ResourceType{
-	core.ResourceType_LAUNCH_PLAN,
-	core.ResourceType_TASK,
-}
+
+var acceptedReferenceLaunchTypes = sets.Int32KeySet(map[core.ResourceType]interface{}{
+	int32(core.ResourceType_LAUNCH_PLAN): nil,
+	int32(core.ResourceType_TASK): nil,
+})
 
 func ValidateExecutionRequest(ctx context.Context, request admin.ExecutionCreateRequest,
 	db repositories.RepositoryInterface, config runtimeInterfaces.ApplicationConfiguration) error {
@@ -48,21 +50,15 @@ func ValidateExecutionRequest(ctx context.Context, request admin.ExecutionCreate
 	if request.Spec == nil {
 		return shared.GetMissingArgumentError(shared.Spec)
 	}
-	// TODO(katrogan): Change usages of Spec.LaunchPlan to something more generic
+	// TODO(katrogan): Change the name of Spec.LaunchPlan to something more generic to permit reference Tasks.
 	// https://github.com/lyft/flyte/issues/262
 	if err := ValidateIdentifierFieldsSet(request.Spec.LaunchPlan); err != nil {
 		return err
 	}
-	validReferenceLaunchEntity := false
-	for _, resourceType := range acceptedReferenceLaunchTypes {
-		if request.Spec.LaunchPlan.ResourceType == resourceType {
-			validReferenceLaunchEntity = true
-		}
-	}
-	if !validReferenceLaunchEntity {
+	if !acceptedReferenceLaunchTypes.Has(int32(request.Spec.LaunchPlan.ResourceType)){
 		return errors.NewFlyteAdminErrorf(codes.InvalidArgument,
-			"Invalid reference entity resource type [%v], only [%+v] allowed",
-			request.Spec.LaunchPlan.ResourceType, acceptedReferenceLaunchTypes)
+		"Invalid reference entity resource type [%v], only [%+v] allowed",
+		request.Spec.LaunchPlan.ResourceType, acceptedReferenceLaunchTypes)
 	}
 	if err := validateLiteralMap(request.Inputs, shared.Inputs); err != nil {
 		return err

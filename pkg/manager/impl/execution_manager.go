@@ -3,12 +3,9 @@ package impl
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"strings"
-	"time"
-	"unicode"
-
 	"github.com/lyft/flyteadmin/pkg/manager/impl/resources"
+	"strconv"
+	"time"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -84,6 +81,7 @@ type ExecutionManager struct {
 	notificationClient notificationInterfaces.Publisher
 	urlData            dataInterfaces.RemoteURLInterface
 	workflowManager interfaces.WorkflowInterface
+	namedEntityManager interfaces.NamedEntityInterface
 }
 
 func getExecutionContext(ctx context.Context, id *core.WorkflowExecutionIdentifier) context.Context {
@@ -306,219 +304,6 @@ func setCompiledTaskDefaults(ctx context.Context, config runtimeInterfaces.Confi
 		taskResourceSpec)
 }
 
-const maxNodeIDLength = 63
-var defaultRetryStrategy = core.RetryStrategy{
-	Retries:3,
-}
-var defaultTimeout = ptypes.DurationProto(24 * time.Hour)
-
-func generateNodeNameFromTask(taskName string) string {
-	if len(taskName) >= maxNodeIDLength {
-		taskName = taskName[:maxNodeIDLength]
-	}
-	nodeNameBuilder := strings.Builder{}
-	for _, i := range taskName {
-		if i == '-' || unicode.IsLetter(i) || unicode.IsNumber(i) {
-			nodeNameBuilder.WriteRune(i)
-		}
-	}
-	return nodeNameBuilder.String()
-}
-
-func getBinding(literal *core.Literal) *core.BindingData{
-		if literal.GetScalar() != nil {
-			return &core.BindingData{
-				Value:                &core.BindingData_Scalar{
-					Scalar: literal.GetScalar(),
-				},
-			}
-		} else if literal.GetCollection() != nil {
-			bindings := make([]*core.BindingData, len(literal.GetCollection().Literals))
-			for idx, subLiteral := range literal.GetCollection().Literals {
-				bindings[idx] = getBinding(subLiteral)
-			}
-			return &core.BindingData{
-				Value:                &core.BindingData_Collection{
-					Collection: &core.BindingDataCollection{
-						Bindings:             bindings,
-					},
-				},
-			}
-		} else if literal.GetMap() != nil {
-			bindings := make(map[string]*core.BindingData)
-			for key, subLiteral := range literal.GetMap().Literals{
-				bindings[key] = getBinding(subLiteral)
-			}
-			return &core.BindingData{
-				Value:                &core.BindingData_Map{
-					Map: &core.BindingDataMap{
-						Bindings:             bindings,
-					},
-				},
-			}
-		}
-		return nil
-}
-
-func generateBindingsFromOutputs(outputs core.VariableMap) []*core.Binding{
-	bindings := make([]*core.Binding, len(outputs.Variables))
-	for key, _ := range outputs.Variables {
-		binding := &core.Binding{
-			Var: key,
-		}
-
-		bindings = append(bindings, binding)
-	}
-	return bindings
-}
-
-func generateBindingsFromInputs(inputTemplate core.VariableMap, inputs *core.LiteralMap) ([]*core.Binding, error){
-	bindings := make([]*core.Binding, len(inputTemplate.Variables))
-	for key, val := range inputTemplate.Variables{
-		binding := &core.Binding{
-			Var: key,
-		}
-		var bindingData core.BindingData
-		if val.Type.GetSimple() != core.SimpleType_NONE {
-				bindingData = core.BindingData{
-					Value: &core.BindingData_Scalar{
-						Scalar: inputs.Literals[key].GetScalar(),
-					},
-				}
-		} else if val.Type.GetSchema() != nil {
-			bindingData = core.BindingData{
-				Value: &core.BindingData_Scalar{
-					Scalar: &core.Scalar{
-						Value:                &core.Scalar_Schema{
-							Schema:inputs.Literals[key].GetScalar().GetSchema(),
-						},
-					},
-				},
-			}
-		} else if val.Type.GetCollectionType() != nil {
-			collectionBindings := make([]*core.BindingData, len(inputs.Literals[key].GetCollection().GetLiterals()))
-			for idx, literal := range inputs.Literals[key].GetCollection().GetLiterals(){
-				collectionBindings[idx] = getBinding(literal)
-
-			}
-			bindingData = core.BindingData{
-				Value: &core.BindingData_Collection{
-					Collection: &core.BindingDataCollection{
-						Bindings:             collectionBindings,
-					},
-				},
-			}
-		} else if val.Type.GetMapValueType() != nil {
-			bindingDataMap := make(map[string]*core.BindingData)
-			for k, v := range inputs.Literals[key].GetMap().Literals {
-				bindingDataMap[k] = getBinding(v)
-			}
-
-			bindingData = core.BindingData{
-				Value: &core.BindingData_Map{
-					Map: &core.BindingDataMap{
-						Bindings:             bindingDataMap,
-					},
-				},
-			}
-		} else if val.Type.GetBlob() != nil {
-			bindingData = core.BindingData{
-				Value: &core.BindingData_Scalar{
-					Scalar: &core.Scalar{
-						Value:                &core.Scalar_Blob{
-							Blob:inputs.Literals[key].GetScalar().GetBlob(),
-						},
-					},
-				},
-			}
-		} else {
-			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Unrecognized value type [%+v]", val.GetType())
-		}
-		binding.Binding = &bindingData
-		bindings = append(bindings, binding)
-		}
-	return bindings, nil
-}
-
-func (m *ExecutionManager) createDefaultObjectsForSingleTaskExecution(
-	ctx context.Context, request admin.ExecutionCreateRequest, requestedAt time.Time) error {
-	taskIdentifier := request.Spec.LaunchPlan
-
-	// 1) verify the reference task exists.
-	taskModel, err := m.db.TaskRepo().Get(ctx, repositoryInterfaces.GetResourceInput{
-		Project: taskIdentifier.Project,
-		Domain: taskIdentifier.Domain,
-		Name: taskIdentifier.Name,
-		Version: taskIdentifier.Version,
-	})
-	if err != nil {
-		return err
-	}
-	task, err := transformers.FromTaskModel(taskModel)
-	if err != nil {
-		return err
-	}
-
-	// 2) See if a corresponding skeleton workflow exists and if not, create one on the fly.
-	workflowModel, err := m.db.WorkflowRepo().Get(ctx, repositoryInterfaces.GetResourceInput{
-		Project: taskIdentifier.Project,
-		Domain: taskIdentifier.Domain,
-		Name: taskIdentifier.Name,
-		Version: taskIdentifier.Version,
-	})
-	if err != nil {
-		if ferr, ok := err.(errors.FlyteAdminError); !ok || ferr.Code() != codes.NotFound{
-			return err
-		}
-
-		generatedInputs, err := generateBindingsFromInputs(*task.Closure.CompiledTask.Template.Interface.Inputs, request.Inputs)
-		if err != nil {
-			return err
-		}
-		// If we got this far, there is no existing workflow. Create a skeleton one now.
-		workflowSpec := admin.WorkflowSpec{
-			Template:             &core.WorkflowTemplate{
-				Id:                   &core.Identifier{
-					ResourceType: core.ResourceType_WORKFLOW,
-					Project: taskIdentifier.Project,
-					Domain: taskIdentifier.Domain,
-					Name: taskIdentifier.Name,
-					Version: taskIdentifier.Version,
-				},
-				Interface: task.Closure.CompiledTask.Template.Interface,
-				Nodes:                []*core.Node{
-					{
-						Id: generateNodeNameFromTask(taskIdentifier.Name),
-						Metadata: &core.NodeMetadata{
-							Name: generateNodeNameFromTask(taskIdentifier.Name),
-							Retries: &defaultRetryStrategy,
-							Timeout: defaultTimeout,
-						},
-						Inputs: generatedInputs,
-						Target: &core.Node_TaskNode{
-							TaskNode: &core.TaskNode{
-								Reference:            &core.TaskNode_ReferenceId{
-									ReferenceId: taskIdentifier,
-								},
-							},
-						},
-					},
-				},
-
-				Outputs: generateBindingsFromOutputs(*task.Closure.CompiledTask.Template.Interface.Outputs),
-			},
-		}
-		_, err = m.workflowManager.CreateWorkflow(ctx, admin.WorkflowCreateRequest{
-			Id:                   workflowSpec.Template.Id,
-			Spec:                 &workflowSpec,
-		})
-		if err != nil {
-			return err
-		}
-	}
-
-	// 3. Create a default launch plan (if necessary)
-}
 
 func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	ctx context.Context, request admin.ExecutionCreateRequest, requestedAt time.Time) (
@@ -527,6 +312,17 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	if err != nil {
 		logger.Debugf(ctx, "Failed to validate ExecutionCreateRequest %+v with err %v", request, err)
 		return nil, nil, err
+	}
+	var taskID uint
+	if request.Spec.LaunchPlan.ResourceType == core.ResourceType_TASK {
+		// Prepare a skeleton workflow
+		referenceTaskModel, err := util.CreateDefaultObjectsForSingleTaskExecution(ctx, request, m.db, m.workflowManager, m.namedEntityManager)
+		if err != nil {
+			logger.Debugf(ctx, "Failed to create default objects for single task execution request: [%+v], with err %v",
+				request, err)
+			return nil, nil, err
+		}
+		taskID = referenceTaskModel.ID
 	}
 	launchPlanModel, err := util.GetLaunchPlanModel(ctx, m.db, *request.Spec.LaunchPlan)
 	if err != nil {
@@ -635,6 +431,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		RequestSpec:         request.Spec,
 		LaunchPlanID:        launchPlanModel.ID,
 		WorkflowID:          launchPlanModel.WorkflowID,
+		TaskID: taskID,
 		// The execution is not considered running until the propeller sends a specific event saying so.
 		Phase:                 core.WorkflowExecution_UNDEFINED,
 		CreatedAt:             m._clock.Now(),
@@ -1258,7 +1055,8 @@ func NewExecutionManager(
 	userScope promutils.Scope,
 	publisher notificationInterfaces.Publisher,
 	urlData dataInterfaces.RemoteURLInterface,
-	workflowManager interfaces.WorkflowInterface) interfaces.ExecutionInterface {
+	workflowManager interfaces.WorkflowInterface,
+	namedEntityManager interfaces.NamedEntityInterface) interfaces.ExecutionInterface {
 	queueAllocator := executions.NewQueueAllocator(config, db)
 	systemMetrics := newExecutionSystemMetrics(systemScope)
 
@@ -1279,5 +1077,6 @@ func NewExecutionManager(
 		notificationClient: publisher,
 		urlData:            urlData,
 		workflowManager: workflowManager,
+		namedEntityManager: namedEntityManager,
 	}
 }
