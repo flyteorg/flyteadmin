@@ -158,14 +158,9 @@ func TestListNamedEntity(t *testing.T) {
 	mockQuery := GlobalMock.NewMock()
 
 	mockQuery.WithQuery(
-		`SELECT entities.project, entities.domain, entities.name, '2' AS resource_type, ` +
-			`named_entity_metadata.description, named_entity_metadata.state FROM "named_entity_metadata" RIGHT JOIN ` +
-			`(SELECT project, domain, name FROM "workflows"  WHERE ("workflows"."project" = admintests) AND ` +
+		`(SELECT project, domain, name FROM "workflows"  WHERE ("workflows"."project" = admintests) AND ` +
 			`("workflows"."domain" = development) GROUP BY project, domain, name ORDER BY name desc LIMIT 20 ` +
-			`OFFSET 0) AS entities ON named_entity_metadata.resource_type = 2 AND named_entity_metadata.project = ` +
-			`entities.project AND named_entity_metadata.domain = entities.domain AND named_entity_metadata.name = ` +
-			`entities.name  GROUP BY entities.project, entities.domain, entities.name, ` +
-			`named_entity_metadata.description, named_entity_metadata.state ORDER BY name desc`).WithReply(results)
+			`OFFSET 0) AS entities`).WithReply(results)
 
 	sortParameter, _ := common.NewSortParameter(admin.Sort{
 		Direction: admin.Sort_DESCENDING,
@@ -182,9 +177,4 @@ func TestListNamedEntity(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.Len(t, output.Entities, 1)
-	/*assert.Equal(t, project, output.Entities[0].Project)
-	assert.Equal(t, domain, output.Entities[0].Domain)
-	assert.Equal(t, name, output.Entities[0].Name)
-	assert.Equal(t, resourceType, output.Entities[0].ResourceType)
-	assert.Equal(t, description, output.Entities[0].Description)*/
 }
