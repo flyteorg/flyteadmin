@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/lyft/flyteadmin/pkg/common"
+
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 
 	mocket "github.com/Selvatico/go-mocket"
@@ -132,4 +134,57 @@ func TestUpdateNamedEntity_CreateNew(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.True(t, mockQuery.Triggered)
+}
+
+func TestListNamedEntity(t *testing.T) {
+	metadataRepo := NewNamedEntityRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
+
+	results := make([]map[string]interface{}, 0)
+	metadata := getMockNamedEntityResponseFromDb(models.NamedEntity{
+		NamedEntityKey: models.NamedEntityKey{
+			ResourceType: resourceType,
+			Project:      project,
+			Domain:       domain,
+			Name:         name,
+		},
+		NamedEntityMetadataFields: models.NamedEntityMetadataFields{
+			Description: description,
+		},
+	})
+	results = append(results, metadata)
+
+	GlobalMock := mocket.Catcher.Reset()
+	GlobalMock.Logging = true
+	mockQuery := GlobalMock.NewMock()
+
+	mockQuery.WithQuery(
+		`SELECT entities.project, entities.domain, entities.name, '2' AS resource_type, ` +
+			`named_entity_metadata.description, named_entity_metadata.state FROM "named_entity_metadata" RIGHT JOIN ` +
+			`(SELECT project, domain, name FROM "workflows"  WHERE ("workflows"."project" = admintests) AND ` +
+			`("workflows"."domain" = development) GROUP BY project, domain, name ORDER BY name desc LIMIT 20 ` +
+			`OFFSET 0) AS entities ON named_entity_metadata.resource_type = 2 AND named_entity_metadata.project = ` +
+			`entities.project AND named_entity_metadata.domain = entities.domain AND named_entity_metadata.name = ` +
+			`entities.name  GROUP BY entities.project, entities.domain, entities.name, ` +
+			`named_entity_metadata.description, named_entity_metadata.state ORDER BY name desc`).WithReply(results)
+
+	sortParameter, _ := common.NewSortParameter(admin.Sort{
+		Direction: admin.Sort_DESCENDING,
+		Key:       "name",
+	})
+	output, err := metadataRepo.List(context.Background(), interfaces.ListNamedEntityInput{
+		ResourceType: resourceType,
+		Project:      "admintests",
+		Domain:       "development",
+		ListResourceInput: interfaces.ListResourceInput{
+			Limit:         20,
+			SortParameter: sortParameter,
+		},
+	})
+	assert.NoError(t, err)
+	assert.Len(t, output.Entities, 1)
+	/*assert.Equal(t, project, output.Entities[0].Project)
+	assert.Equal(t, domain, output.Entities[0].Domain)
+	assert.Equal(t, name, output.Entities[0].Name)
+	assert.Equal(t, resourceType, output.Entities[0].ResourceType)
+	assert.Equal(t, description, output.Entities[0].Description)*/
 }
