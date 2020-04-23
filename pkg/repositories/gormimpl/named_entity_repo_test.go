@@ -158,9 +158,7 @@ func TestListNamedEntity(t *testing.T) {
 	mockQuery := GlobalMock.NewMock()
 
 	mockQuery.WithQuery(
-		`(SELECT project, domain, name FROM "workflows"  WHERE ("workflows"."project" = admintests) AND ` +
-			`("workflows"."domain" = development) GROUP BY project, domain, name ORDER BY name desc LIMIT 20 ` +
-			`OFFSET 0) AS entities`).WithReply(results)
+		`GROUP BY project, domain, name ORDER BY name desc LIMIT 20 OFFSET 0) AS entities`).WithReply(results)
 
 	sortParameter, _ := common.NewSortParameter(admin.Sort{
 		Direction: admin.Sort_DESCENDING,
