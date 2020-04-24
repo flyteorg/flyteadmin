@@ -304,37 +304,34 @@ func setCompiledTaskDefaults(ctx context.Context, config runtimeInterfaces.Confi
 		taskResourceSpec)
 }
 
-
-func (m *ExecutionManager) launchExecutionAndPrepareModel(
-	ctx context.Context, request admin.ExecutionCreateRequest, requestedAt time.Time) (
-	context.Context, *models.Execution, error) {
-	err := validation.ValidateExecutionRequest(ctx, request, m.db, m.config.ApplicationConfiguration())
+func (m *ExecutionManager) prepareSingleTaskExecutionAndInputs(
+	ctx context.Context, request admin.ExecutionCreateRequest, requestedAt time.Time) (taskID uint, inputs *core.LiteralMap, err error) {
+	// Prepare a skeleton workflow
+	referenceTaskModel, err := util.CreateDefaultObjectsForSingleTaskExecution(ctx, request, m.db, m.workflowManager, m.namedEntityManager)
 	if err != nil {
-		logger.Debugf(ctx, "Failed to validate ExecutionCreateRequest %+v with err %v", request, err)
-		return nil, nil, err
+		logger.Debugf(ctx, "Failed to create default objects for single task execution request: [%+v], with err %v",
+			request, err)
+		return 0, nil, err
 	}
-	var taskID uint
-	if request.Spec.LaunchPlan.ResourceType == core.ResourceType_TASK {
-		// Prepare a skeleton workflow
-		referenceTaskModel, err := util.CreateDefaultObjectsForSingleTaskExecution(ctx, request, m.db, m.workflowManager, m.namedEntityManager)
-		if err != nil {
-			logger.Debugf(ctx, "Failed to create default objects for single task execution request: [%+v], with err %v",
-				request, err)
-			return nil, nil, err
-		}
-		taskID = referenceTaskModel.ID
-	}
+	taskID = referenceTaskModel.ID
+
+
+
+}
+
+func (m *ExecutionManager) prepareWorkflowExecutionAndInputs(
+	ctx context.Context, request admin.ExecutionCreateRequest, requestedAt time.Time) (launchPlanID uint, inputs *core.LiteralMap, err error) {
 	launchPlanModel, err := util.GetLaunchPlanModel(ctx, m.db, *request.Spec.LaunchPlan)
 	if err != nil {
 		logger.Debugf(ctx, "Failed to get launch plan model for ExecutionCreateRequest %+v with err %v", request, err)
-		return nil, nil, err
+		return 0, nil, err
 	}
 	launchPlan, err := transformers.FromLaunchPlanModel(launchPlanModel)
 	if err != nil {
 		logger.Debugf(ctx, "Failed to transform launch plan model %+v with err %v", launchPlanModel, err)
-		return nil, nil, err
+		return 0, nil, err
 	}
-	executionInputs, err := validation.CheckAndFetchInputsForExecution(
+	inputs, err = validation.CheckAndFetchInputsForExecution(
 		request.Inputs,
 		launchPlan.Spec.FixedInputs,
 		launchPlan.Closure.ExpectedInputs,
@@ -344,8 +341,36 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		logger.Debugf(ctx, "Failed to CheckAndFetchInputsForExecution with request.Inputs: %+v"+
 			"fixed inputs: %+v and expected inputs: %+v with err %v",
 			request.Inputs, launchPlan.Spec.FixedInputs, launchPlan.Closure.ExpectedInputs, err)
+		return 0, nil, err
+	}
+	return launchPlanModel.ID, inputs, nil
+}
+
+
+func (m *ExecutionManager) launchExecutionAndPrepareModel(
+	ctx context.Context, request admin.ExecutionCreateRequest, requestedAt time.Time) (
+	context.Context, *models.Execution, error) {
+	err := validation.ValidateExecutionRequest(ctx, request, m.db, m.config.ApplicationConfiguration())
+	if err != nil {
+		logger.Debugf(ctx, "Failed to validate ExecutionCreateRequest %+v with err %v", request, err)
 		return nil, nil, err
 	}
+	var taskID, launchPlanID uint
+	var inputs *core.LiteralMap
+	if request.Spec.LaunchPlan.ResourceType == core.ResourceType_TASK {
+		taskID, inputs, err = m.prepareSingleTaskExecutionAndInputs(ctx, request, requestedAt)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else if request.Spec.LaunchPlan.ResourceType == core.ResourceType_LAUNCH_PLAN {
+		launchPlanID, inputs, err = m. prepareWorkflowExecutionAndInputs(ctx, request, requestedAt)
+	} else {
+		// This should never occur since request validation should catch invalid resource types
+		logger.Warningf(ctx, "Invalid resource type specified for reference launch entity: [%+v]", request.Spec.LaunchPlan)
+		return nil, nil, errors.NewFlyteAdminErrorf(codes.Internal,
+			"Invalid resource type specified for reference launch entity: [%+v]", request.Spec.LaunchPlan)
+	}
+
 	workflow, err := util.GetWorkflow(ctx, m.db, m.storageClient, *launchPlan.Spec.WorkflowId)
 	if err != nil {
 		logger.Debugf(ctx, "Failed to get workflow with id %+v with err %v", launchPlan.Spec.WorkflowId, err)
