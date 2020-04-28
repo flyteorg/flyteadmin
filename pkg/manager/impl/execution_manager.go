@@ -466,12 +466,14 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	ctx context.Context, request admin.ExecutionCreateRequest, requestedAt time.Time) (
 	context.Context, *models.Execution, error) {
+		logger.Debug(ctx, "TODO remove me - i'm proxessing a create execution request")
 	err := validation.ValidateExecutionRequest(ctx, request, m.db, m.config.ApplicationConfiguration())
 	if err != nil {
 		logger.Debugf(ctx, "Failed to validate ExecutionCreateRequest %+v with err %v", request, err)
 		return nil, nil, err
 	}
 	if request.Spec.LaunchPlan.ResourceType == core.ResourceType_TASK {
+		logger.Debugf(ctx, "Launching single task execution with [%+v]")
 		return m.launchSingleTaskExecution(ctx, request, requestedAt)
 	}
 
@@ -636,6 +638,7 @@ func (m *ExecutionManager) CreateExecution(
 	if err != nil {
 		return nil, err
 	}
+	logger.Debug(ctx, "TODO remove me: i'm about to create an execution model")
 	workflowExecutionIdentifier, err := m.createExecutionModel(ctx, executionModel)
 	if err != nil {
 		return nil, err
