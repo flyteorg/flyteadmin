@@ -135,7 +135,8 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 	namedEntityManager := manager.NewNamedEntityManager(db, configuration, adminScope.NewSubScope("named_entity_manager"))
 	executionManager := manager.NewExecutionManager(
 		db, configuration, dataStorageClient, workflowExecutor, adminScope.NewSubScope("execution_manager"),
-		adminScope.NewSubScope("user_execution_metrics"), publisher, urlData, workflowManager, namedEntityManager)
+		adminScope.NewSubScope("user_execution_metrics"), publisher, urlData, workflowManager,
+		namedEntityManager)
 
 	scheduledWorkflowExecutor := workflowScheduler.GetWorkflowExecutor(executionManager, launchPlanManager)
 	logger.Info(context.Background(), "Successfully initialized a new scheduled workflow executor")

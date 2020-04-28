@@ -2,7 +2,6 @@ package validation
 
 import (
 	"context"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"regexp"
 	"strings"
 
@@ -21,10 +20,10 @@ const allowedExecutionNameLength = 20
 
 var executionIDRegex = regexp.MustCompile(`^[a-z][a-z\-0-9]*$`)
 
-var acceptedReferenceLaunchTypes = sets.Int32KeySet(map[core.ResourceType]interface{}{
-	int32(core.ResourceType_LAUNCH_PLAN): nil,
-	int32(core.ResourceType_TASK): nil,
-})
+var acceptedReferenceLaunchTypes = map[core.ResourceType]interface{}{
+	core.ResourceType_LAUNCH_PLAN: nil,
+	core.ResourceType_TASK: nil,
+}
 
 func ValidateExecutionRequest(ctx context.Context, request admin.ExecutionCreateRequest,
 	db repositories.RepositoryInterface, config runtimeInterfaces.ApplicationConfiguration) error {
@@ -55,7 +54,7 @@ func ValidateExecutionRequest(ctx context.Context, request admin.ExecutionCreate
 	if err := ValidateIdentifierFieldsSet(request.Spec.LaunchPlan); err != nil {
 		return err
 	}
-	if !acceptedReferenceLaunchTypes.Has(int32(request.Spec.LaunchPlan.ResourceType)){
+	if _, ok := acceptedReferenceLaunchTypes[request.Spec.LaunchPlan.ResourceType]; !ok{
 		return errors.NewFlyteAdminErrorf(codes.InvalidArgument,
 		"Invalid reference entity resource type [%v], only [%+v] allowed",
 		request.Spec.LaunchPlan.ResourceType, acceptedReferenceLaunchTypes)

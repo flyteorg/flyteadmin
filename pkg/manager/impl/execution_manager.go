@@ -166,6 +166,26 @@ func (m *ExecutionManager) addLabelsAndAnnotations(requestSpec *admin.ExecutionS
 	return nil
 }
 
+// Labels and annotations defined in the execution spec are preferred over those defined in the
+// reference launch plan spec.
+func (m *ExecutionManager) getAnnotations(dynamicSpec *admin.ExecutionSpec, staticAnnotations *admin.Annotations) (map[string]string, error) {
+
+	var annotations map[string]string
+	if dynamicSpec.Annotations != nil && dynamicSpec.Annotations.Values != nil {
+		annotations = dynamicSpec.Annotations.Values
+	} else if staticAnnotations != nil && staticAnnotations.Values != nil {
+		annotations = staticAnnotations.Values
+	}
+
+	err := validateMapSize(
+		m.config.RegistrationValidationConfiguration().GetMaxAnnotationEntries(), annotations, "Annotations")
+	if err != nil {
+		return nil, err
+	}
+
+	return annotations, nil
+}
+
 func (m *ExecutionManager) offloadInputs(ctx context.Context, literalMap *core.LiteralMap, identifier *core.WorkflowExecutionIdentifier, key string) (storage.DataReference, error) {
 	if literalMap == nil {
 		literalMap = &core.LiteralMap{}
@@ -304,48 +324,144 @@ func setCompiledTaskDefaults(ctx context.Context, config runtimeInterfaces.Confi
 		taskResourceSpec)
 }
 
-func (m *ExecutionManager) prepareSingleTaskExecutionAndInputs(
-	ctx context.Context, request admin.ExecutionCreateRequest, requestedAt time.Time) (taskID uint, inputs *core.LiteralMap, err error) {
+func (m *ExecutionManager) launchSingleTaskExecution(
+	ctx context.Context, request admin.ExecutionCreateRequest, requestedAt time.Time) (
+	context.Context, *models.Execution, error) {
+
+	taskModel, err := m.db.TaskRepo().Get(ctx, repositoryInterfaces.GetResourceInput{
+		Project: request.Spec.LaunchPlan.Project,
+		Domain: request.Spec.LaunchPlan.Domain,
+		Name: request.Spec.LaunchPlan.Name,
+		Version: request.Spec.LaunchPlan.Version,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	task, err := transformers.FromTaskModel(taskModel)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	// Prepare a skeleton workflow
-	referenceTaskModel, err := util.CreateDefaultObjectsForSingleTaskExecution(ctx, request, m.db, m.workflowManager, m.namedEntityManager)
+	taskIdentifier := request.Spec.LaunchPlan
+	workflowModel, err :=
+		util.CreateOrGetWorkflowModel(ctx, request, m.db, m.workflowManager, m.namedEntityManager, taskIdentifier, &task)
 	if err != nil {
-		logger.Debugf(ctx, "Failed to create default objects for single task execution request: [%+v], with err %v",
-			request, err)
-		return 0, nil, err
+		logger.Debugf(ctx, "Failed to created skeleton workflow for [%+v] with err: %v", taskIdentifier, err)
+		return nil, nil, err
 	}
-	taskID = referenceTaskModel.ID
+	workflow, err := transformers.FromWorkflowModel(*workflowModel)
+	if err != nil {
+		return nil, nil, err
+	}
 
+	// Also prepare a skeleton launch plan.
+	launchPlan, err := util.CreateOrGetLaunchPlan(ctx, m.db, m.config, taskIdentifier,
+		workflow.Closure.CompiledWorkflow.Primary.Template.Interface, workflowModel.ID)
+
+	name := util.GetExecutionName(request)
+	workflowExecutionID := core.WorkflowExecutionIdentifier{
+		Project: request.Project,
+		Domain:  request.Domain,
+		Name:    name,
+	}
+	ctx = getExecutionContext(ctx, &workflowExecutionID)
+
+	// Get the node execution (if any) that launched this execution
+	var parentNodeExecutionID uint
+	if request.Spec.Metadata != nil && request.Spec.Metadata.ParentNodeExecution != nil {
+		parentNodeExecutionModel, err := util.GetNodeExecutionModel(ctx, m.db, request.Spec.Metadata.ParentNodeExecution)
+		if err != nil {
+			logger.Errorf(ctx, "Failed to get node execution [%+v] that launched this execution [%+v] with error %v",
+				request.Spec.Metadata.ParentNodeExecution, workflowExecutionID, err)
+			return nil, nil, err
+		}
+
+		parentNodeExecutionID = parentNodeExecutionModel.ID
+	}
+
+	// Dynamically assign task resource defaults.
+	for _, task := range workflow.Closure.CompiledWorkflow.Tasks {
+		setCompiledTaskDefaults(ctx, m.config, task, m.db, name)
+	}
+
+	// Dynamically assign execution queues.
+	m.populateExecutionQueue(ctx, *workflow.Id, workflow.Closure.CompiledWorkflow)
+
+	inputsURI, err := m.offloadInputs(ctx, request.Inputs, &workflowExecutionID, shared.Inputs)
+	if err != nil {
+		return nil, nil, err
+	}
+	userInputsURI, err := m.offloadInputs(ctx, request.Inputs, &workflowExecutionID, shared.UserInputs)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	executeTaskInputs := workflowengineInterfaces.ExecuteTaskInput{
+		ExecutionID: &workflowExecutionID,
+		WfClosure:   *workflow.Closure.CompiledWorkflow,
+		Inputs:      request.Inputs,
+		ReferenceName: taskIdentifier.Name,
+		AcceptedAt:  requestedAt,
+		Auth: request.Spec.Auth,
+	}
+	if request.Spec.Labels != nil {
+		executeTaskInputs.Labels = request.Spec.Labels.Values
+	}
+	if request.Spec.Annotations != nil {
+		executeTaskInputs.Annotations = request.Spec.Annotations.Values
+	}
+
+	execInfo, err := m.workflowExecutor.ExecuteTask(ctx, executeTaskInputs)
+	if err != nil {
+		m.systemMetrics.PropellerFailures.Inc()
+		logger.Infof(ctx, "Failed to execute workflow %+v with execution id %+v and inputs %+v with err %v",
+			request, workflowExecutionID, request.Inputs, err)
+		return nil, nil, err
+	}
+	executionCreatedAt := time.Now()
+	acceptanceDelay := executionCreatedAt.Sub(requestedAt)
+	m.systemMetrics.AcceptanceDelay.Observe(acceptanceDelay.Seconds())
+
+	// Request notification settings takes precedence over the launch plan settings.
+	// If there is no notification in the request and DisableAll is not true, use the settings from the launch plan.
+	var notificationsSettings []*admin.Notification
+	if launchPlan.Spec.GetEntityMetadata() != nil {
+		notificationsSettings = launchPlan.Spec.EntityMetadata.GetNotifications()
+	}
+	if request.Spec.GetNotifications() != nil && request.Spec.GetNotifications().Notifications != nil &&
+		len(request.Spec.GetNotifications().Notifications) > 0 {
+		notificationsSettings = request.Spec.GetNotifications().Notifications
+	} else if request.Spec.GetDisableAll() {
+		notificationsSettings = make([]*admin.Notification, 0)
+	}
+
+	executionModel, err := transformers.CreateExecutionModel(transformers.CreateExecutionModelInput{
+		WorkflowExecutionID: workflowExecutionID,
+		RequestSpec:         request.Spec,
+		TaskID:        taskModel.ID,
+		WorkflowID:          workflowModel.ID,
+		// The execution is not considered running until the propeller sends a specific event saying so.
+		Phase:                 core.WorkflowExecution_UNDEFINED,
+		CreatedAt:             m._clock.Now(),
+		Notifications:         notificationsSettings,
+		WorkflowIdentifier:    workflow.Id,
+		ParentNodeExecutionID: parentNodeExecutionID,
+		Cluster:               execInfo.Cluster,
+		InputsURI:             inputsURI,
+		UserInputsURI:         userInputsURI,
+		Principal:             getUser(ctx),
+	})
+	if err != nil {
+		logger.Infof(ctx, "Failed to create execution model in transformer for id: [%+v] with err: %v",
+			workflowExecutionID, err)
+		return nil, nil, err
+	}
+	return ctx, executionModel, nil
+	return ctx, nil, nil
 
 
 }
-
-func (m *ExecutionManager) prepareWorkflowExecutionAndInputs(
-	ctx context.Context, request admin.ExecutionCreateRequest, requestedAt time.Time) (launchPlanID uint, inputs *core.LiteralMap, err error) {
-	launchPlanModel, err := util.GetLaunchPlanModel(ctx, m.db, *request.Spec.LaunchPlan)
-	if err != nil {
-		logger.Debugf(ctx, "Failed to get launch plan model for ExecutionCreateRequest %+v with err %v", request, err)
-		return 0, nil, err
-	}
-	launchPlan, err := transformers.FromLaunchPlanModel(launchPlanModel)
-	if err != nil {
-		logger.Debugf(ctx, "Failed to transform launch plan model %+v with err %v", launchPlanModel, err)
-		return 0, nil, err
-	}
-	inputs, err = validation.CheckAndFetchInputsForExecution(
-		request.Inputs,
-		launchPlan.Spec.FixedInputs,
-		launchPlan.Closure.ExpectedInputs,
-	)
-
-	if err != nil {
-		logger.Debugf(ctx, "Failed to CheckAndFetchInputsForExecution with request.Inputs: %+v"+
-			"fixed inputs: %+v and expected inputs: %+v with err %v",
-			request.Inputs, launchPlan.Spec.FixedInputs, launchPlan.Closure.ExpectedInputs, err)
-		return 0, nil, err
-	}
-	return launchPlanModel.ID, inputs, nil
-}
-
 
 func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	ctx context.Context, request admin.ExecutionCreateRequest, requestedAt time.Time) (
@@ -355,20 +471,31 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		logger.Debugf(ctx, "Failed to validate ExecutionCreateRequest %+v with err %v", request, err)
 		return nil, nil, err
 	}
-	var taskID, launchPlanID uint
-	var inputs *core.LiteralMap
 	if request.Spec.LaunchPlan.ResourceType == core.ResourceType_TASK {
-		taskID, inputs, err = m.prepareSingleTaskExecutionAndInputs(ctx, request, requestedAt)
-		if err != nil {
-			return nil, nil, err
-		}
-	} else if request.Spec.LaunchPlan.ResourceType == core.ResourceType_LAUNCH_PLAN {
-		launchPlanID, inputs, err = m. prepareWorkflowExecutionAndInputs(ctx, request, requestedAt)
-	} else {
-		// This should never occur since request validation should catch invalid resource types
-		logger.Warningf(ctx, "Invalid resource type specified for reference launch entity: [%+v]", request.Spec.LaunchPlan)
-		return nil, nil, errors.NewFlyteAdminErrorf(codes.Internal,
-			"Invalid resource type specified for reference launch entity: [%+v]", request.Spec.LaunchPlan)
+		return m.launchSingleTaskExecution(ctx, request, requestedAt)
+	}
+
+	launchPlanModel, err := util.GetLaunchPlanModel(ctx, m.db, *request.Spec.LaunchPlan)
+	if err != nil {
+		logger.Debugf(ctx, "Failed to get launch plan model for ExecutionCreateRequest %+v with err %v", request, err)
+		return nil, nil, err
+	}
+	launchPlan, err := transformers.FromLaunchPlanModel(launchPlanModel)
+	if err != nil {
+		logger.Debugf(ctx, "Failed to transform launch plan model %+v with err %v", launchPlanModel, err)
+		return nil, nil, err
+	}
+	executionInputs, err := validation.CheckAndFetchInputsForExecution(
+		request.Inputs,
+		launchPlan.Spec.FixedInputs,
+		launchPlan.Closure.ExpectedInputs,
+	)
+
+	if err != nil {
+		logger.Debugf(ctx, "Failed to CheckAndFetchInputsForExecution with request.Inputs: %+v"+
+			"fixed inputs: %+v and expected inputs: %+v with err %v",
+			request.Inputs, launchPlan.Spec.FixedInputs, launchPlan.Closure.ExpectedInputs, err)
+		return nil, nil, err
 	}
 
 	workflow, err := util.GetWorkflow(ctx, m.db, m.storageClient, *launchPlan.Spec.WorkflowId)
@@ -456,7 +583,6 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		RequestSpec:         request.Spec,
 		LaunchPlanID:        launchPlanModel.ID,
 		WorkflowID:          launchPlanModel.WorkflowID,
-		TaskID: taskID,
 		// The execution is not considered running until the propeller sends a specific event saying so.
 		Phase:                 core.WorkflowExecution_UNDEFINED,
 		CreatedAt:             m._clock.Now(),
