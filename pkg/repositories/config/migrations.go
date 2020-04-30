@@ -203,10 +203,13 @@ var Migrations = []*gormigrate.Migration{
 	{
 		ID: "2020-04-29-executions",
 		Migrate: func(tx *gorm.DB) error {
-			return tx.Exec("DO we need to do migrations for nullable column adds?").Error
+			return tx.AutoMigrate(&models.Execution{}, &models.NodeExecution{}).Error
 		},
 		Rollback: func(tx *gorm.DB) error {
-			return tx.Exec("Maybe revert less").Error
+			if err := tx.Model(&models.Execution{}).DropColumn("error_code").DropColumn("error_kind").Error; err != nil {
+				return err
+			}
+			return tx.Model(&models.NodeExecution{}).DropColumn("error_code").DropColumn("error_kind").Error
 		},
 	},
 }

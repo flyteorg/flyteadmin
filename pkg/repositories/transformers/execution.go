@@ -136,16 +136,15 @@ func UpdateExecutionModelState(
 				},
 			},
 		}
-	} else if request.Event.GetError() != nil {
-		k := request.Event.GetError().Kind.String()
-		execution.ErrorKind = &k
-		execution.ErrorCode = &request.Event.GetError().Code
 	}
 
 	if request.Event.GetError() != nil {
 		executionClosure.OutputResult = &admin.ExecutionClosure_Error{
 			Error: request.Event.GetError(),
 		}
+		k := request.Event.GetError().Kind.String()
+		execution.ErrorKind = &k
+		execution.ErrorCode = &request.Event.GetError().Code
 	}
 	marshaledClosure, err := proto.Marshal(&executionClosure)
 	if err != nil {
