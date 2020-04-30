@@ -199,4 +199,14 @@ var Migrations = []*gormigrate.Migration{
 			return tx.Exec("ALTER TABLE workflows ADD COLUMN IF NOT EXISTS state integer;").Error
 		},
 	},
+	// Modify the executions & node_executison table, if necessary
+	{
+		ID: "2020-04-29-executions",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.Exec("DO we need to do migrations for nullable column adds?").Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Exec("Maybe revert less").Error
+		},
+	},
 }

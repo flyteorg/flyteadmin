@@ -6,14 +6,15 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/lyft/flyteadmin/pkg/common"
-	"github.com/lyft/flyteadmin/pkg/errors"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/storage"
 	"google.golang.org/grpc/codes"
+
+	"github.com/lyft/flyteadmin/pkg/common"
+	"github.com/lyft/flyteadmin/pkg/errors"
+	"github.com/lyft/flyteadmin/pkg/repositories/models"
 )
 
 // Request parameters for calls to CreateExecutionModel.
@@ -135,6 +136,10 @@ func UpdateExecutionModelState(
 				},
 			},
 		}
+	} else if request.Event.GetError() != nil {
+		k := request.Event.GetError().Kind.String()
+		execution.ErrorKind = &k
+		execution.ErrorCode = &request.Event.GetError().Code
 	}
 
 	if request.Event.GetError() != nil {

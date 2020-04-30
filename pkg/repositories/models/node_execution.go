@@ -33,4 +33,8 @@ type NodeExecution struct {
 	ParentTaskExecutionID uint `sql:"default:null" gorm:"index"`
 	// The workflow execution (if any) which this node execution launched
 	LaunchedExecution Execution `gorm:"foreignkey:ParentNodeExecutionID"`
+	// Execution Error Kind. nullable
+	ErrorKind *string `gorm:"index"`
+	// Execution Error Code nullable
+	ErrorCode *string
 }
