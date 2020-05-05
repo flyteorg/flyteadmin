@@ -343,6 +343,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	}
 
 	// Prepare a skeleton workflow
+	logger.Warningf(ctx, "TODO - debug: creating a workflow model")
 	taskIdentifier := request.Spec.LaunchPlan
 	workflowModel, err :=
 		util.CreateOrGetWorkflowModel(ctx, request, m.db, m.workflowManager, m.namedEntityManager, taskIdentifier, &task)
@@ -354,13 +355,16 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	if err != nil {
 		return nil, nil, err
 	}
+	logger.Warningf(ctx, "TODO - debug: fetching remote closure identifier: %v", workflowModel.RemoteClosureIdentifier)
 	closure, err := util.FetchAndGetWorkflowClosure(ctx, m.storageClient, workflowModel.RemoteClosureIdentifier)
 	if err != nil {
 		return nil, nil, err
 	}
 	closure.CreatedAt = workflow.Closure.CreatedAt
 	workflow.Closure = closure
+	logger.Warningf(ctx, "TODO - debug: closure: %+v", closure)
 
+	logger.Warningf(ctx, "TODO - debug: creating a launch plan model")
 	// Also prepare a skeleton launch plan.
 	launchPlan, err := util.CreateOrGetLaunchPlan(ctx, m.db, m.config, taskIdentifier,
 		workflow.Closure.CompiledWorkflow.Primary.Template.Interface, workflowModel.ID)
@@ -373,6 +377,8 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	}
 	ctx = getExecutionContext(ctx, &workflowExecutionID)
 
+
+	logger.Warningf(ctx, "TODO - debug: getting the node execution (if any) that launched this execution")
 	// Get the node execution (if any) that launched this execution
 	var parentNodeExecutionID uint
 	if request.Spec.Metadata != nil && request.Spec.Metadata.ParentNodeExecution != nil {
@@ -386,6 +392,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		parentNodeExecutionID = parentNodeExecutionModel.ID
 	}
 
+	logger.Warningf(ctx, "TODO - debug: assigning task resource defaults")
 	// Dynamically assign task resource defaults.
 	for _, task := range workflow.Closure.CompiledWorkflow.Tasks {
 		setCompiledTaskDefaults(ctx, m.config, task, m.db, name)
@@ -394,6 +401,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	// Dynamically assign execution queues.
 	m.populateExecutionQueue(ctx, *workflow.Id, workflow.Closure.CompiledWorkflow)
 
+	logger.Warningf(ctx, "TODO - debug: offloading inputs")
 	inputsURI, err := m.offloadInputs(ctx, request.Inputs, &workflowExecutionID, shared.Inputs)
 	if err != nil {
 		return nil, nil, err
@@ -403,6 +411,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		return nil, nil, err
 	}
 
+	logger.Warningf(ctx, "TODO - debug: Preparing execute task inputs")
 	executeTaskInputs := workflowengineInterfaces.ExecuteTaskInput{
 		ExecutionID: &workflowExecutionID,
 		WfClosure:   *workflow.Closure.CompiledWorkflow,
@@ -418,6 +427,8 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		executeTaskInputs.Annotations = request.Spec.Annotations.Values
 	}
 
+
+	logger.Warningf(ctx, "TODO - debug: execute task inputs %+v", executeTaskInputs)
 	execInfo, err := m.workflowExecutor.ExecuteTask(ctx, executeTaskInputs)
 	if err != nil {
 		m.systemMetrics.PropellerFailures.Inc()
@@ -479,7 +490,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		return nil, nil, err
 	}
 	if request.Spec.LaunchPlan.ResourceType == core.ResourceType_TASK {
-		logger.Debugf(ctx, "Launching single task execution with [%+v]")
+		logger.Debugf(ctx, "Launching single task execution with [%+v]", request.Spec.LaunchPlan)
 		return m.launchSingleTaskExecution(ctx, request, requestedAt)
 	}
 
