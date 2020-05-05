@@ -14,7 +14,7 @@ import (
 
 func (m *AdminService) CreateExecution(
 	ctx context.Context, request *admin.ExecutionCreateRequest) (*admin.ExecutionCreateResponse, error) {
-	defer m.interceptPanic(ctx, request)
+	// defer m.interceptPanic(ctx, request)
 	requestedAt := time.Now()
 	if request == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Incorrect request, nil requests not allowed")
