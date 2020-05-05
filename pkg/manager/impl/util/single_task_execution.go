@@ -96,6 +96,7 @@ func generateBindingsFromOutputs(outputs core.VariableMap, nodeID string) []*cor
 }
 
 func generateBindingsFromInputs(inputTemplate core.VariableMap, inputs core.LiteralMap) ([]*core.Binding, error){
+	logger.Warningf(context.TODO(), "generating inputs from [%+v]", inputTemplate)
 	bindings := make([]*core.Binding, 0, len(inputTemplate.Variables))
 	for key, val := range inputTemplate.Variables{
 		binding := &core.Binding{
