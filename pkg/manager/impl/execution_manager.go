@@ -354,6 +354,12 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	if err != nil {
 		return nil, nil, err
 	}
+	closure, err := util.FetchAndGetWorkflowClosure(ctx, m.storageClient, workflowModel.RemoteClosureIdentifier)
+	if err != nil {
+		return nil, nil, err
+	}
+	closure.CreatedAt = workflow.Closure.CreatedAt
+	workflow.Closure = closure
 
 	// Also prepare a skeleton launch plan.
 	launchPlan, err := util.CreateOrGetLaunchPlan(ctx, m.db, m.config, taskIdentifier,
