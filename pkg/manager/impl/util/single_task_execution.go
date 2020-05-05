@@ -239,7 +239,7 @@ func CreateOrGetWorkflowModel(
 			},
 		}
 
-		logger.Warningf(ctx, "TODO - debug: 4")
+		logger.Warningf(ctx, "TODO - creating workflow with spec: %+v", workflowSpec)
 		_, err = workflowManager.CreateWorkflow(ctx, admin.WorkflowCreateRequest{
 			Id:                   workflowSpec.Template.Id,
 			Spec:                 &workflowSpec,
