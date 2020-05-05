@@ -91,6 +91,7 @@ func generateBindingsFromOutputs(outputs core.VariableMap, nodeID string) []*cor
 
 		bindings = append(bindings, binding)
 	}
+	logger.Warningf(context.TODO(), "Generated outputs: [%+v]", bindings)
 	return bindings
 }
 
@@ -172,6 +173,7 @@ func generateBindingsFromInputs(inputTemplate core.VariableMap, inputs core.Lite
 		binding.Binding = &bindingData
 		bindings = append(bindings, binding)
 	}
+	logger.Debugf(context.TODO(), "generated inputs [%+v]", bindings)
 	return bindings, nil
 }
 
