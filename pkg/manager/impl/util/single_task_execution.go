@@ -185,12 +185,15 @@ func CreateOrGetWorkflowModel(
 		Name: taskIdentifier.Name,
 		Version: taskIdentifier.Version,
 	})
+
+	logger.Warningf(ctx, "TODO - debug: 1")
 	if err != nil {
 		if ferr, ok := err.(errors.FlyteAdminError); !ok || ferr.Code() != codes.NotFound{
 			return nil, err
 		}
 		// If we got this far, there is no existing workflow. Create a skeleton one now.
 
+		logger.Warningf(ctx, "TODO - debug: 2")
 		var requestInputs = core.LiteralMap{
 			Literals: make(map[string]*core.Literal),
 		}
@@ -202,6 +205,7 @@ func CreateOrGetWorkflowModel(
 			logger.Debugf(ctx, "Failed to generate requestInputs from task input bindings: %v", err)
 			return nil,  err
 		}
+		logger.Warningf(ctx, "TODO - debug: 3")
 		workflowSpec := admin.WorkflowSpec{
 			Template:             &core.WorkflowTemplate{
 				Id:                   &core.Identifier{
@@ -235,6 +239,7 @@ func CreateOrGetWorkflowModel(
 			},
 		}
 
+		logger.Warningf(ctx, "TODO - debug: 4")
 		_, err = workflowManager.CreateWorkflow(ctx, admin.WorkflowCreateRequest{
 			Id:                   workflowSpec.Template.Id,
 			Spec:                 &workflowSpec,
@@ -244,6 +249,7 @@ func CreateOrGetWorkflowModel(
 			return nil, err
 		}
 		// Now, set the newly created skeleton workflow to 'ARCHIVED'.
+		logger.Warningf(ctx, "TODO - debug: 5")
 		_, err = namedEntityManager.UpdateNamedEntity(ctx, admin.NamedEntityUpdateRequest{
 			ResourceType: core.ResourceType_WORKFLOW,
 			Id: &admin.NamedEntityIdentifier{
@@ -253,6 +259,7 @@ func CreateOrGetWorkflowModel(
 			},
 			Metadata: &admin.NamedEntityMetadata{State: admin.NamedEntityState_NAMED_ENTITY_ARCHIVED},
 		})
+		logger.Warningf(ctx, "TODO - debug: 6")
 		if err != nil {
 			logger.Debug(ctx, "Failed to set skeleton workflow state to archived: %v", err)
 			return nil, err
@@ -263,6 +270,7 @@ func CreateOrGetWorkflowModel(
 			Name: taskIdentifier.Name,
 			Version: taskIdentifier.Version,
 		})
+		logger.Warningf(ctx, "TODO - debug: 7")
 		if err != nil {
 			// This is unexpected - at this point we've successfully just created the skeleton workflow.
 			logger.Warningf(ctx, "Failed to fetch newly created workflow model from db store: %v", err)
