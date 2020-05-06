@@ -362,7 +362,6 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	}
 	closure.CreatedAt = workflow.Closure.CreatedAt
 	workflow.Closure = closure
-	logger.Warningf(ctx, "TODO - debug: closure: %+v", closure)
 
 	logger.Warningf(ctx, "TODO - debug: creating a launch plan model")
 	// Also prepare a skeleton launch plan.

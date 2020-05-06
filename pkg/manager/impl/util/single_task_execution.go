@@ -287,7 +287,9 @@ func CreateOrGetWorkflowModel(
 func CreateOrGetLaunchPlan(ctx context.Context,
 	db repositories.RepositoryInterface, config runtimeInterfaces.Configuration, identifier *core.Identifier,
 	workflowInterface *core.TypedInterface, workflowID uint) (*admin.LaunchPlan, error) {
-	launchPlan, err := GetLaunchPlan(ctx, db, *identifier)
+		var launchPlan *admin.LaunchPlan
+		var err error
+	launchPlan, err = GetLaunchPlan(ctx, db, *identifier)
 	if err != nil {
 		if ferr, ok := err.(errors.FlyteAdminError); !ok || ferr.Code() != codes.NotFound {
 			return nil, err
@@ -322,15 +324,16 @@ func CreateOrGetLaunchPlan(ctx context.Context,
 			logger.Debugf(ctx, "could not create launch plan: %+v, request failed validation with err: %v", identifier, err)
 			return nil, err
 		}
-		launchPlan := transformers.CreateLaunchPlan(generatedCreateLaunchPlanReq, workflowInterface.Outputs)
-		launchPlanDigest, err := GetLaunchPlanDigest(ctx, &launchPlan)
+		transformedLaunchPlan := transformers.CreateLaunchPlan(generatedCreateLaunchPlanReq, workflowInterface.Outputs)
+		launchPlan = &transformedLaunchPlan
+		launchPlanDigest, err := GetLaunchPlanDigest(ctx, launchPlan)
 		if err != nil {
 			logger.Errorf(ctx, "failed to compute launch plan digest for [%+v] with err: %v", launchPlan.Id, err)
 			return nil, err
 		}
 		logger.Warningf(ctx, "TODO - debug: launch plan: %+v", launchPlan)
 		launchPlanModel, err :=
-			transformers.CreateLaunchPlanModel(launchPlan, workflowID, launchPlanDigest, admin.LaunchPlanState_INACTIVE)
+			transformers.CreateLaunchPlanModel(*launchPlan, workflowID, launchPlanDigest, admin.LaunchPlanState_INACTIVE)
 		if err != nil {
 			logger.Errorf(ctx,
 				"Failed to transform launch plan model [%+v], and workflow outputs [%+v] with err: %v",
