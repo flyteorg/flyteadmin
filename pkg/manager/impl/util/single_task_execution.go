@@ -294,8 +294,8 @@ func CreateOrGetLaunchPlan(ctx context.Context,
 		}
 
 		// Create launch plan.
-		launchPlan = &admin.LaunchPlan{
-			Id:                   &core.Identifier{
+		generatedCreateLaunchPlanReq := admin.LaunchPlanCreateRequest{
+			Id:                    &core.Identifier{
 				ResourceType: core.ResourceType_LAUNCH_PLAN,
 				Project: identifier.Project,
 				Domain: identifier.Domain,
@@ -318,11 +318,6 @@ func CreateOrGetLaunchPlan(ctx context.Context,
 				Auth:                 nil, // TODO: reconcile auth from CreateExecution request
 			},
 		}
-
-		generatedCreateLaunchPlanReq := admin.LaunchPlanCreateRequest{
-			Id:                   identifier,
-			Spec:                 launchPlan.Spec,
-		}
 		if err := validation.ValidateLaunchPlan(ctx, generatedCreateLaunchPlanReq, db, config.ApplicationConfiguration(), workflowInterface); err != nil {
 			logger.Debugf(ctx, "could not create launch plan: %+v, request failed validation with err: %v", identifier, err)
 			return nil, err
@@ -333,7 +328,7 @@ func CreateOrGetLaunchPlan(ctx context.Context,
 			logger.Errorf(ctx, "failed to compute launch plan digest for [%+v] with err: %v", launchPlan.Id, err)
 			return nil, err
 		}
-
+		logger.Warningf(ctx, "TODO - debug: launch plan: %+v", launchPlan)
 		launchPlanModel, err :=
 			transformers.CreateLaunchPlanModel(launchPlan, workflowID, launchPlanDigest, admin.LaunchPlanState_INACTIVE)
 		if err != nil {
@@ -342,6 +337,7 @@ func CreateOrGetLaunchPlan(ctx context.Context,
 				identifier, workflowInterface.Outputs, err)
 			return nil, err
 		}
+		logger.Warningf(ctx, "TODO - debug: launch plan model: %+v", launchPlanModel)
 		err = db.LaunchPlanRepo().Create(ctx, launchPlanModel)  // Where not exists in case of transactions?
 		if err != nil {
 			logger.Errorf(ctx, "Failed to save launch plan model %+v with err: %v", identifier, err)

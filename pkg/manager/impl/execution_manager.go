@@ -440,6 +440,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	acceptanceDelay := executionCreatedAt.Sub(requestedAt)
 	m.systemMetrics.AcceptanceDelay.Observe(acceptanceDelay.Seconds())
 
+	logger.Warningf(ctx, "TODO - debug: Launch plan is [%+v]", launchPlan)
 	// Request notification settings takes precedence over the launch plan settings.
 	// If there is no notification in the request and DisableAll is not true, use the settings from the launch plan.
 	var notificationsSettings []*admin.Notification

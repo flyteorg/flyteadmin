@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"errors"
+	"github.com/gogo/protobuf/jsonpb"
 	"testing"
 
 	"github.com/lyft/flyteadmin/pkg/auth"
@@ -2671,6 +2672,41 @@ func TestCreateSingleTaskExecution(t *testing.T) {
 	execManager := NewExecutionManager(
 		repository, getMockExecutionsConfigProvider(), mockStorage, workflowengineMocks.NewMockExecutor(),
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, workflowManager, namedEntityManager)
+	request := admin.ExecutionCreateRequest{
+		Project: "flytekit",
+		Domain:  "production",
+		Name:    "singletaskexec",
+		Spec: &admin.ExecutionSpec{
+			LaunchPlan: &core.Identifier{
+				Project:      "flytekit",
+				Domain:       "production",
+				Name:         "simple_task",
+				Version:      "12345",
+				ResourceType: core.ResourceType_TASK,
+			},
+		},
+		Inputs: &core.LiteralMap{
+			Literals: map[string]*core.Literal{
+				"a": {
+					Value: &core.Literal_Scalar{
+						Scalar: &core.Scalar{
+							Value: &core.Scalar_Primitive{
+								Primitive: &core.Primitive{
+									Value: &core.Primitive_Integer{
+										Integer: 999,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	marshaller := jsonpb.Marshaler{}
+	stringReq, ferr :=  marshaller.MarshalToString(&request)
+	assert.NoError(t, ferr)
+	println(fmt.Sprintf("req: %+v", stringReq))
 	_, err := execManager.CreateExecution(context.TODO(), admin.ExecutionCreateRequest{
 		Project: "flytekit",
 		Domain:  "production",
@@ -2702,5 +2738,6 @@ func TestCreateSingleTaskExecution(t *testing.T) {
 			},
 		},
 	}, time.Now())
+
 	assert.NoError(t, err)
 }
