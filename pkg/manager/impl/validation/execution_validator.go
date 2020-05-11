@@ -22,7 +22,7 @@ var executionIDRegex = regexp.MustCompile(`^[a-z][a-z\-0-9]*$`)
 
 var acceptedReferenceLaunchTypes = map[core.ResourceType]interface{}{
 	core.ResourceType_LAUNCH_PLAN: nil,
-	core.ResourceType_TASK: nil,
+	core.ResourceType_TASK:        nil,
 }
 
 func ValidateExecutionRequest(ctx context.Context, request admin.ExecutionCreateRequest,
@@ -54,10 +54,10 @@ func ValidateExecutionRequest(ctx context.Context, request admin.ExecutionCreate
 	if err := ValidateIdentifierFieldsSet(request.Spec.LaunchPlan); err != nil {
 		return err
 	}
-	if _, ok := acceptedReferenceLaunchTypes[request.Spec.LaunchPlan.ResourceType]; !ok{
+	if _, ok := acceptedReferenceLaunchTypes[request.Spec.LaunchPlan.ResourceType]; !ok {
 		return errors.NewFlyteAdminErrorf(codes.InvalidArgument,
-		"Invalid reference entity resource type [%v], only [%+v] allowed",
-		request.Spec.LaunchPlan.ResourceType, acceptedReferenceLaunchTypes)
+			"Invalid reference entity resource type [%v], only [%+v] allowed",
+			request.Spec.LaunchPlan.ResourceType, acceptedReferenceLaunchTypes)
 	}
 	if err := validateLiteralMap(request.Inputs, shared.Inputs); err != nil {
 		return err

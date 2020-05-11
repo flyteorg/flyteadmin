@@ -2,6 +2,10 @@ package util
 
 import (
 	"context"
+	"strings"
+	"time"
+	"unicode"
+
 	"github.com/golang/protobuf/ptypes"
 	"github.com/lyft/flyteadmin/pkg/errors"
 	"github.com/lyft/flyteadmin/pkg/manager/impl/validation"
@@ -15,14 +19,12 @@ import (
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/logger"
 	"google.golang.org/grpc/codes"
-	"strings"
-	"time"
-	"unicode"
 )
 
 const maxNodeIDLength = 63
+
 var defaultRetryStrategy = core.RetryStrategy{
-	Retries:3,
+	Retries: 3,
 }
 var defaultTimeout = ptypes.DurationProto(24 * time.Hour)
 
@@ -39,10 +41,10 @@ func generateNodeNameFromTask(taskName string) string {
 	return nodeNameBuilder.String()
 }
 
-func getBinding(literal *core.Literal) *core.BindingData{
+func getBinding(literal *core.Literal) *core.BindingData {
 	if literal.GetScalar() != nil {
 		return &core.BindingData{
-			Value:                &core.BindingData_Scalar{
+			Value: &core.BindingData_Scalar{
 				Scalar: literal.GetScalar(),
 			},
 		}
@@ -52,21 +54,21 @@ func getBinding(literal *core.Literal) *core.BindingData{
 			bindings[idx] = getBinding(subLiteral)
 		}
 		return &core.BindingData{
-			Value:                &core.BindingData_Collection{
+			Value: &core.BindingData_Collection{
 				Collection: &core.BindingDataCollection{
-					Bindings:             bindings,
+					Bindings: bindings,
 				},
 			},
 		}
 	} else if literal.GetMap() != nil {
 		bindings := make(map[string]*core.BindingData)
-		for key, subLiteral := range literal.GetMap().Literals{
+		for key, subLiteral := range literal.GetMap().Literals {
 			bindings[key] = getBinding(subLiteral)
 		}
 		return &core.BindingData{
-			Value:                &core.BindingData_Map{
+			Value: &core.BindingData_Map{
 				Map: &core.BindingDataMap{
-					Bindings:             bindings,
+					Bindings: bindings,
 				},
 			},
 		}
@@ -74,16 +76,16 @@ func getBinding(literal *core.Literal) *core.BindingData{
 	return nil
 }
 
-func generateBindingsFromOutputs(outputs core.VariableMap, nodeID string) []*core.Binding{
+func generateBindingsFromOutputs(outputs core.VariableMap, nodeID string) []*core.Binding {
 	bindings := make([]*core.Binding, 0, len(outputs.Variables))
 	for key := range outputs.Variables {
 		binding := &core.Binding{
 			Var: key,
 			Binding: &core.BindingData{
-				Value:                &core.BindingData_Promise{
+				Value: &core.BindingData_Promise{
 					Promise: &core.OutputReference{
 						NodeId: nodeID,
-						Var: key,
+						Var:    key,
 					},
 				},
 			},
@@ -95,10 +97,10 @@ func generateBindingsFromOutputs(outputs core.VariableMap, nodeID string) []*cor
 	return bindings
 }
 
-func generateBindingsFromInputs(inputTemplate core.VariableMap, inputs core.LiteralMap) ([]*core.Binding, error){
+func generateBindingsFromInputs(inputTemplate core.VariableMap, inputs core.LiteralMap) ([]*core.Binding, error) {
 	logger.Warningf(context.TODO(), "generating inputs from [%+v]", inputTemplate)
 	bindings := make([]*core.Binding, 0, len(inputTemplate.Variables))
-	for key, val := range inputTemplate.Variables{
+	for key, val := range inputTemplate.Variables {
 		binding := &core.Binding{
 			Var: key,
 		}
@@ -113,19 +115,19 @@ func generateBindingsFromInputs(inputTemplate core.VariableMap, inputs core.Lite
 			}
 
 		} else if val.Type.GetSchema() != nil {
-			if inputs.Literals[key] != nil && inputs.Literals[key].GetScalar() != nil{
+			if inputs.Literals[key] != nil && inputs.Literals[key].GetScalar() != nil {
 				bindingData = core.BindingData{
 					Value: &core.BindingData_Scalar{
 						Scalar: &core.Scalar{
-							Value:                &core.Scalar_Schema{
-								Schema:inputs.Literals[key].GetScalar().GetSchema(),
+							Value: &core.Scalar_Schema{
+								Schema: inputs.Literals[key].GetScalar().GetSchema(),
 							},
 						},
 					},
 				}
 			}
 		} else if val.Type.GetCollectionType() != nil {
-			if  inputs.Literals[key] != nil && inputs.Literals[key].GetCollection() != nil &&
+			if inputs.Literals[key] != nil && inputs.Literals[key].GetCollection() != nil &&
 				inputs.Literals[key].GetCollection().GetLiterals() != nil {
 				collectionBindings := make([]*core.BindingData, len(inputs.Literals[key].GetCollection().GetLiterals()))
 				for idx, literal := range inputs.Literals[key].GetCollection().GetLiterals() {
@@ -151,18 +153,18 @@ func generateBindingsFromInputs(inputTemplate core.VariableMap, inputs core.Lite
 				bindingData = core.BindingData{
 					Value: &core.BindingData_Map{
 						Map: &core.BindingDataMap{
-							Bindings:             bindingDataMap,
+							Bindings: bindingDataMap,
 						},
 					},
 				}
 			}
 		} else if val.Type.GetBlob() != nil {
-			if inputs.Literals[key] != nil && inputs.Literals[key].GetScalar() != nil{
+			if inputs.Literals[key] != nil && inputs.Literals[key].GetScalar() != nil {
 				bindingData = core.BindingData{
 					Value: &core.BindingData_Scalar{
 						Scalar: &core.Scalar{
-							Value:                &core.Scalar_Blob{
-								Blob:inputs.Literals[key].GetScalar().GetBlob(),
+							Value: &core.Scalar_Blob{
+								Blob: inputs.Literals[key].GetScalar().GetBlob(),
 							},
 						},
 					},
@@ -184,14 +186,14 @@ func CreateOrGetWorkflowModel(
 	task *admin.Task) (*models.Workflow, error) {
 	workflowModel, err := db.WorkflowRepo().Get(ctx, repositoryInterfaces.GetResourceInput{
 		Project: taskIdentifier.Project,
-		Domain: taskIdentifier.Domain,
-		Name: taskIdentifier.Name,
+		Domain:  taskIdentifier.Domain,
+		Name:    taskIdentifier.Name,
 		Version: taskIdentifier.Version,
 	})
 
 	logger.Warningf(ctx, "TODO - debug: 1")
 	if err != nil {
-		if ferr, ok := err.(errors.FlyteAdminError); !ok || ferr.Code() != codes.NotFound{
+		if ferr, ok := err.(errors.FlyteAdminError); !ok || ferr.Code() != codes.NotFound {
 			return nil, err
 		}
 		// If we got this far, there is no existing workflow. Create a skeleton one now.
@@ -206,31 +208,31 @@ func CreateOrGetWorkflowModel(
 		generatedInputs, err := generateBindingsFromInputs(*task.Closure.CompiledTask.Template.Interface.Inputs, requestInputs)
 		if err != nil {
 			logger.Debugf(ctx, "Failed to generate requestInputs from task input bindings: %v", err)
-			return nil,  err
+			return nil, err
 		}
 		logger.Warningf(ctx, "TODO - debug: 3")
 		workflowSpec := admin.WorkflowSpec{
-			Template:             &core.WorkflowTemplate{
-				Id:                   &core.Identifier{
+			Template: &core.WorkflowTemplate{
+				Id: &core.Identifier{
 					ResourceType: core.ResourceType_WORKFLOW,
-					Project: taskIdentifier.Project,
-					Domain: taskIdentifier.Domain,
-					Name: taskIdentifier.Name,
-					Version: taskIdentifier.Version,
+					Project:      taskIdentifier.Project,
+					Domain:       taskIdentifier.Domain,
+					Name:         taskIdentifier.Name,
+					Version:      taskIdentifier.Version,
 				},
 				Interface: task.Closure.CompiledTask.Template.Interface,
-				Nodes:                []*core.Node{
+				Nodes: []*core.Node{
 					{
 						Id: generateNodeNameFromTask(taskIdentifier.Name),
 						Metadata: &core.NodeMetadata{
-							Name: generateNodeNameFromTask(taskIdentifier.Name),
+							Name:    generateNodeNameFromTask(taskIdentifier.Name),
 							Retries: &defaultRetryStrategy,
 							Timeout: defaultTimeout,
 						},
 						Inputs: generatedInputs,
 						Target: &core.Node_TaskNode{
 							TaskNode: &core.TaskNode{
-								Reference:            &core.TaskNode_ReferenceId{
+								Reference: &core.TaskNode_ReferenceId{
 									ReferenceId: taskIdentifier,
 								},
 							},
@@ -244,8 +246,8 @@ func CreateOrGetWorkflowModel(
 
 		logger.Warningf(ctx, "TODO - creating workflow with spec: %+v", workflowSpec)
 		_, err = workflowManager.CreateWorkflow(ctx, admin.WorkflowCreateRequest{
-			Id:                   workflowSpec.Template.Id,
-			Spec:                 &workflowSpec,
+			Id:   workflowSpec.Template.Id,
+			Spec: &workflowSpec,
 		})
 		if err != nil {
 			logger.Debugf(ctx, "Failed to create skeleton workflow: %v", err)
@@ -257,8 +259,8 @@ func CreateOrGetWorkflowModel(
 			ResourceType: core.ResourceType_WORKFLOW,
 			Id: &admin.NamedEntityIdentifier{
 				Project: taskIdentifier.Project,
-				Domain: taskIdentifier.Domain,
-				Name: taskIdentifier.Name,
+				Domain:  taskIdentifier.Domain,
+				Name:    taskIdentifier.Name,
 			},
 			Metadata: &admin.NamedEntityMetadata{State: admin.NamedEntityState_NAMED_ENTITY_ARCHIVED},
 		})
@@ -269,8 +271,8 @@ func CreateOrGetWorkflowModel(
 		}
 		workflowModel, err = db.WorkflowRepo().Get(ctx, repositoryInterfaces.GetResourceInput{
 			Project: taskIdentifier.Project,
-			Domain: taskIdentifier.Domain,
-			Name: taskIdentifier.Name,
+			Domain:  taskIdentifier.Domain,
+			Name:    taskIdentifier.Name,
 			Version: taskIdentifier.Version,
 		})
 		logger.Warningf(ctx, "TODO - debug: 7")
@@ -287,8 +289,8 @@ func CreateOrGetWorkflowModel(
 func CreateOrGetLaunchPlan(ctx context.Context,
 	db repositories.RepositoryInterface, config runtimeInterfaces.Configuration, identifier *core.Identifier,
 	workflowInterface *core.TypedInterface, workflowID uint) (*admin.LaunchPlan, error) {
-		var launchPlan *admin.LaunchPlan
-		var err error
+	var launchPlan *admin.LaunchPlan
+	var err error
 	launchPlan, err = GetLaunchPlan(ctx, db, *identifier)
 	if err != nil {
 		if ferr, ok := err.(errors.FlyteAdminError); !ok || ferr.Code() != codes.NotFound {
@@ -297,27 +299,27 @@ func CreateOrGetLaunchPlan(ctx context.Context,
 
 		// Create launch plan.
 		generatedCreateLaunchPlanReq := admin.LaunchPlanCreateRequest{
-			Id:                    &core.Identifier{
+			Id: &core.Identifier{
 				ResourceType: core.ResourceType_LAUNCH_PLAN,
-				Project: identifier.Project,
-				Domain: identifier.Domain,
-				Name: identifier.Name,
-				Version: identifier.Version,
+				Project:      identifier.Project,
+				Domain:       identifier.Domain,
+				Name:         identifier.Name,
+				Version:      identifier.Version,
 			},
-			Spec:                 &admin.LaunchPlanSpec{
-				WorkflowId:           &core.Identifier{
+			Spec: &admin.LaunchPlanSpec{
+				WorkflowId: &core.Identifier{
 					ResourceType: core.ResourceType_WORKFLOW,
-					Project: identifier.Project,
-					Domain: identifier.Domain,
-					Name: identifier.Name,
-					Version: identifier.Version,
+					Project:      identifier.Project,
+					Domain:       identifier.Domain,
+					Name:         identifier.Name,
+					Version:      identifier.Version,
 				},
-				EntityMetadata:       &admin.LaunchPlanMetadata{},
-				DefaultInputs:        &core.ParameterMap{},
-				FixedInputs:          &core.LiteralMap{},
-				Labels:               &admin.Labels{},
-				Annotations:          &admin.Annotations{},
-				Auth:                 nil, // TODO: reconcile auth from CreateExecution request
+				EntityMetadata: &admin.LaunchPlanMetadata{},
+				DefaultInputs:  &core.ParameterMap{},
+				FixedInputs:    &core.LiteralMap{},
+				Labels:         &admin.Labels{},
+				Annotations:    &admin.Annotations{},
+				Auth:           nil, // TODO: reconcile auth from CreateExecution request
 			},
 		}
 		if err := validation.ValidateLaunchPlan(ctx, generatedCreateLaunchPlanReq, db, config.ApplicationConfiguration(), workflowInterface); err != nil {
@@ -341,7 +343,7 @@ func CreateOrGetLaunchPlan(ctx context.Context,
 			return nil, err
 		}
 		logger.Warningf(ctx, "TODO - debug: launch plan model: %+v", launchPlanModel)
-		err = db.LaunchPlanRepo().Create(ctx, launchPlanModel)  // Where not exists in case of transactions?
+		err = db.LaunchPlanRepo().Create(ctx, launchPlanModel) // Where not exists in case of transactions?
 		if err != nil {
 			logger.Errorf(ctx, "Failed to save launch plan model %+v with err: %v", identifier, err)
 			return nil, err

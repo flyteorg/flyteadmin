@@ -169,7 +169,7 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 	return &AdminService{
 		TaskManager: manager.NewTaskManager(db, configuration, workflowengine.NewCompiler(),
 			adminScope.NewSubScope("task_manager")),
-		WorkflowManager: workflowManager,
+		WorkflowManager:    workflowManager,
 		LaunchPlanManager:  launchPlanManager,
 		ExecutionManager:   executionManager,
 		NamedEntityManager: namedEntityManager,

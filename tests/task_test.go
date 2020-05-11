@@ -1,4 +1,4 @@
-// s+build integration
+// +build integration
 
 package tests
 
@@ -70,46 +70,6 @@ func TestCreateTaskWithoutContainer(t *testing.T) {
 	req.Spec.Template.Target = nil
 
 	_, err := client.CreateTask(ctx, &req)
-	assert.Nil(t, err)
-}
-
-func TestCreateSingleTaskExecution(t *testing.T) {
-	ctx := context.Background()
-	client, conn := GetTestAdminServiceClient()
-	defer conn.Close()
-	truncateAllTablesForTestingOnly()
-
-
-	req := admin.TaskCreateRequest{
-		Id: &core.Identifier{
-			ResourceType: core.ResourceType_TASK,
-			Project:      "admintests",
-			Domain:       "development",
-			Name:         "name_a",
-			Version:      "123",
-		},
-		Spec: testutils.GetValidTaskRequest().Spec,
-	}
-	_, err := client.CreateTask(ctx, &req)
-	assert.Nil(t, err)
-
-	_, err = client.CreateExecution(ctx, &admin.ExecutionCreateRequest{
-		Project:      "admintests",
-		Domain:       "development",
-		Name:         "name_a",
-		Spec:                 &admin.ExecutionSpec{
-			LaunchPlan:            &core.Identifier{
-				ResourceType: core.ResourceType_TASK,
-				Project:      "admintests",
-				Domain:       "development",
-				Name:         "name_a",
-				Version:      "123",
-			},
-			Metadata:              nil,
-		},
-		Inputs:               &core.LiteralMap{},
-
-	})
 	assert.Nil(t, err)
 }
 

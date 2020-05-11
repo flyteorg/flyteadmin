@@ -3,8 +3,9 @@ package impl
 import (
 	"context"
 	"errors"
-	"github.com/gogo/protobuf/jsonpb"
 	"testing"
+
+	"github.com/gogo/protobuf/jsonpb"
 
 	"github.com/lyft/flyteadmin/pkg/auth"
 
@@ -2704,7 +2705,7 @@ func TestCreateSingleTaskExecution(t *testing.T) {
 		},
 	}
 	marshaller := jsonpb.Marshaler{}
-	stringReq, ferr :=  marshaller.MarshalToString(&request)
+	stringReq, ferr := marshaller.MarshalToString(&request)
 	assert.NoError(t, ferr)
 	println(fmt.Sprintf("req: %+v", stringReq))
 	_, err := execManager.CreateExecution(context.TODO(), admin.ExecutionCreateRequest{

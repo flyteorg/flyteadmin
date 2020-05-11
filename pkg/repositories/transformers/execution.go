@@ -22,7 +22,7 @@ type CreateExecutionModelInput struct {
 	RequestSpec           *admin.ExecutionSpec
 	LaunchPlanID          uint
 	WorkflowID            uint
-	TaskID uint
+	TaskID                uint
 	Phase                 core.WorkflowExecution_Phase
 	CreatedAt             time.Time
 	Notifications         []*admin.Notification

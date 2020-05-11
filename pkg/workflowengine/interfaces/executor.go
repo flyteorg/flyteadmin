@@ -20,14 +20,14 @@ type ExecuteWorkflowInput struct {
 }
 
 type ExecuteTaskInput struct {
-	ExecutionID *core.WorkflowExecutionIdentifier
-	WfClosure   core.CompiledWorkflowClosure
-	Inputs      *core.LiteralMap
+	ExecutionID   *core.WorkflowExecutionIdentifier
+	WfClosure     core.CompiledWorkflowClosure
+	Inputs        *core.LiteralMap
 	ReferenceName string
-	Auth *admin.Auth
-	AcceptedAt  time.Time
-	Labels      map[string]string
-	Annotations map[string]string
+	Auth          *admin.Auth
+	AcceptedAt    time.Time
+	Labels        map[string]string
+	Annotations   map[string]string
 }
 
 type TerminateWorkflowInput struct {

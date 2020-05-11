@@ -12,7 +12,7 @@ type TerminateWorkflowExecutionFunc func(ctx context.Context, input interfaces.T
 
 type MockExecutor struct {
 	executeWorkflowCallback    ExecuteWorkflowFunc
-	executeTaskCallback ExecuteTaskFunc
+	executeTaskCallback        ExecuteTaskFunc
 	terminateExecutionCallback TerminateWorkflowExecutionFunc
 }
 

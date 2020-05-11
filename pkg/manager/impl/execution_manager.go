@@ -3,9 +3,10 @@ package impl
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flyteadmin/pkg/manager/impl/resources"
 	"strconv"
 	"time"
+
+	"github.com/lyft/flyteadmin/pkg/manager/impl/resources"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -80,7 +81,7 @@ type ExecutionManager struct {
 	userMetrics        executionUserMetrics
 	notificationClient notificationInterfaces.Publisher
 	urlData            dataInterfaces.RemoteURLInterface
-	workflowManager interfaces.WorkflowInterface
+	workflowManager    interfaces.WorkflowInterface
 	namedEntityManager interfaces.NamedEntityInterface
 }
 
@@ -164,26 +165,6 @@ func (m *ExecutionManager) addLabelsAndAnnotations(requestSpec *admin.ExecutionS
 	partiallyPopulatedInputs.Labels = labels
 	partiallyPopulatedInputs.Annotations = annotations
 	return nil
-}
-
-// Labels and annotations defined in the execution spec are preferred over those defined in the
-// reference launch plan spec.
-func (m *ExecutionManager) getAnnotations(dynamicSpec *admin.ExecutionSpec, staticAnnotations *admin.Annotations) (map[string]string, error) {
-
-	var annotations map[string]string
-	if dynamicSpec.Annotations != nil && dynamicSpec.Annotations.Values != nil {
-		annotations = dynamicSpec.Annotations.Values
-	} else if staticAnnotations != nil && staticAnnotations.Values != nil {
-		annotations = staticAnnotations.Values
-	}
-
-	err := validateMapSize(
-		m.config.RegistrationValidationConfiguration().GetMaxAnnotationEntries(), annotations, "Annotations")
-	if err != nil {
-		return nil, err
-	}
-
-	return annotations, nil
 }
 
 func (m *ExecutionManager) offloadInputs(ctx context.Context, literalMap *core.LiteralMap, identifier *core.WorkflowExecutionIdentifier, key string) (storage.DataReference, error) {
@@ -330,8 +311,8 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 
 	taskModel, err := m.db.TaskRepo().Get(ctx, repositoryInterfaces.GetResourceInput{
 		Project: request.Spec.LaunchPlan.Project,
-		Domain: request.Spec.LaunchPlan.Domain,
-		Name: request.Spec.LaunchPlan.Name,
+		Domain:  request.Spec.LaunchPlan.Domain,
+		Name:    request.Spec.LaunchPlan.Name,
 		Version: request.Spec.LaunchPlan.Version,
 	})
 	if err != nil {
@@ -362,11 +343,12 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	}
 	closure.CreatedAt = workflow.Closure.CreatedAt
 	workflow.Closure = closure
-
-	logger.Warningf(ctx, "TODO - debug: creating a launch plan model")
 	// Also prepare a skeleton launch plan.
 	launchPlan, err := util.CreateOrGetLaunchPlan(ctx, m.db, m.config, taskIdentifier,
 		workflow.Closure.CompiledWorkflow.Primary.Template.Interface, workflowModel.ID)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	name := util.GetExecutionName(request)
 	workflowExecutionID := core.WorkflowExecutionIdentifier{
@@ -376,8 +358,6 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	}
 	ctx = getExecutionContext(ctx, &workflowExecutionID)
 
-
-	logger.Warningf(ctx, "TODO - debug: getting the node execution (if any) that launched this execution")
 	// Get the node execution (if any) that launched this execution
 	var parentNodeExecutionID uint
 	if request.Spec.Metadata != nil && request.Spec.Metadata.ParentNodeExecution != nil {
@@ -412,12 +392,12 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 
 	logger.Warningf(ctx, "TODO - debug: Preparing execute task inputs")
 	executeTaskInputs := workflowengineInterfaces.ExecuteTaskInput{
-		ExecutionID: &workflowExecutionID,
-		WfClosure:   *workflow.Closure.CompiledWorkflow,
-		Inputs:      request.Inputs,
+		ExecutionID:   &workflowExecutionID,
+		WfClosure:     *workflow.Closure.CompiledWorkflow,
+		Inputs:        request.Inputs,
 		ReferenceName: taskIdentifier.Name,
-		AcceptedAt:  requestedAt,
-		Auth: request.Spec.Auth,
+		AcceptedAt:    requestedAt,
+		Auth:          request.Spec.Auth,
 	}
 	if request.Spec.Labels != nil {
 		executeTaskInputs.Labels = request.Spec.Labels.Values
@@ -425,7 +405,6 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	if request.Spec.Annotations != nil {
 		executeTaskInputs.Annotations = request.Spec.Annotations.Values
 	}
-
 
 	logger.Warningf(ctx, "TODO - debug: execute task inputs %+v", executeTaskInputs)
 	execInfo, err := m.workflowExecutor.ExecuteTask(ctx, executeTaskInputs)
@@ -456,7 +435,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	executionModel, err := transformers.CreateExecutionModel(transformers.CreateExecutionModelInput{
 		WorkflowExecutionID: workflowExecutionID,
 		RequestSpec:         request.Spec,
-		TaskID:        taskModel.ID,
+		TaskID:              taskModel.ID,
 		WorkflowID:          workflowModel.ID,
 		// The execution is not considered running until the propeller sends a specific event saying so.
 		Phase:                 core.WorkflowExecution_UNDEFINED,
@@ -475,15 +454,13 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		return nil, nil, err
 	}
 	return ctx, executionModel, nil
-	return ctx, nil, nil
-
 
 }
 
 func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	ctx context.Context, request admin.ExecutionCreateRequest, requestedAt time.Time) (
 	context.Context, *models.Execution, error) {
-		logger.Debug(ctx, "TODO remove me - i'm proxessing a create execution request")
+	logger.Debug(ctx, "TODO remove me - i'm proxessing a create execution request")
 	err := validation.ValidateExecutionRequest(ctx, request, m.db, m.config.ApplicationConfiguration())
 	if err != nil {
 		logger.Debugf(ctx, "Failed to validate ExecutionCreateRequest %+v with err %v", request, err)
@@ -1247,7 +1224,7 @@ func NewExecutionManager(
 		userMetrics:        userMetrics,
 		notificationClient: publisher,
 		urlData:            urlData,
-		workflowManager: workflowManager,
+		workflowManager:    workflowManager,
 		namedEntityManager: namedEntityManager,
 	}
 }
