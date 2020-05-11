@@ -345,7 +345,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	workflow.Closure = closure
 	// Also prepare a skeleton launch plan.
 	launchPlan, err := util.CreateOrGetLaunchPlan(ctx, m.db, m.config, taskIdentifier,
-		workflow.Closure.CompiledWorkflow.Primary.Template.Interface, workflowModel.ID)
+		workflow.Closure.CompiledWorkflow.Primary.Template.Interface, workflowModel.ID, request.Spec)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -371,7 +371,6 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		parentNodeExecutionID = parentNodeExecutionModel.ID
 	}
 
-	logger.Warningf(ctx, "TODO - debug: assigning task resource defaults")
 	// Dynamically assign task resource defaults.
 	for _, task := range workflow.Closure.CompiledWorkflow.Tasks {
 		setCompiledTaskDefaults(ctx, m.config, task, m.db, name)
@@ -380,7 +379,6 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	// Dynamically assign execution queues.
 	m.populateExecutionQueue(ctx, *workflow.Id, workflow.Closure.CompiledWorkflow)
 
-	logger.Warningf(ctx, "TODO - debug: offloading inputs")
 	inputsURI, err := m.offloadInputs(ctx, request.Inputs, &workflowExecutionID, shared.Inputs)
 	if err != nil {
 		return nil, nil, err
@@ -389,8 +387,6 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	if err != nil {
 		return nil, nil, err
 	}
-
-	logger.Warningf(ctx, "TODO - debug: Preparing execute task inputs")
 	executeTaskInputs := workflowengineInterfaces.ExecuteTaskInput{
 		ExecutionID:   &workflowExecutionID,
 		WfClosure:     *workflow.Closure.CompiledWorkflow,
@@ -406,7 +402,6 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		executeTaskInputs.Annotations = request.Spec.Annotations.Values
 	}
 
-	logger.Warningf(ctx, "TODO - debug: execute task inputs %+v", executeTaskInputs)
 	execInfo, err := m.workflowExecutor.ExecuteTask(ctx, executeTaskInputs)
 	if err != nil {
 		m.systemMetrics.PropellerFailures.Inc()
@@ -418,7 +413,6 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	acceptanceDelay := executionCreatedAt.Sub(requestedAt)
 	m.systemMetrics.AcceptanceDelay.Observe(acceptanceDelay.Seconds())
 
-	logger.Warningf(ctx, "TODO - debug: Launch plan is [%+v]", launchPlan)
 	// Request notification settings takes precedence over the launch plan settings.
 	// If there is no notification in the request and DisableAll is not true, use the settings from the launch plan.
 	var notificationsSettings []*admin.Notification
@@ -460,7 +454,6 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	ctx context.Context, request admin.ExecutionCreateRequest, requestedAt time.Time) (
 	context.Context, *models.Execution, error) {
-	logger.Debug(ctx, "TODO remove me - i'm proxessing a create execution request")
 	err := validation.ValidateExecutionRequest(ctx, request, m.db, m.config.ApplicationConfiguration())
 	if err != nil {
 		logger.Debugf(ctx, "Failed to validate ExecutionCreateRequest %+v with err %v", request, err)

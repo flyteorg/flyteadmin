@@ -93,12 +93,10 @@ func generateBindingsFromOutputs(outputs core.VariableMap, nodeID string) []*cor
 
 		bindings = append(bindings, binding)
 	}
-	logger.Warningf(context.TODO(), "Generated outputs: [%+v]", bindings)
 	return bindings
 }
 
 func generateBindingsFromInputs(inputTemplate core.VariableMap, inputs core.LiteralMap) ([]*core.Binding, error) {
-	logger.Warningf(context.TODO(), "generating inputs from [%+v]", inputTemplate)
 	bindings := make([]*core.Binding, 0, len(inputTemplate.Variables))
 	for key, val := range inputTemplate.Variables {
 		binding := &core.Binding{
@@ -176,7 +174,6 @@ func generateBindingsFromInputs(inputTemplate core.VariableMap, inputs core.Lite
 		binding.Binding = &bindingData
 		bindings = append(bindings, binding)
 	}
-	logger.Debugf(context.TODO(), "generated inputs [%+v]", bindings)
 	return bindings, nil
 }
 
@@ -191,14 +188,11 @@ func CreateOrGetWorkflowModel(
 		Version: taskIdentifier.Version,
 	})
 
-	logger.Warningf(ctx, "TODO - debug: 1")
 	if err != nil {
 		if ferr, ok := err.(errors.FlyteAdminError); !ok || ferr.Code() != codes.NotFound {
 			return nil, err
 		}
 		// If we got this far, there is no existing workflow. Create a skeleton one now.
-
-		logger.Warningf(ctx, "TODO - debug: 2")
 		var requestInputs = core.LiteralMap{
 			Literals: make(map[string]*core.Literal),
 		}
@@ -207,10 +201,9 @@ func CreateOrGetWorkflowModel(
 		}
 		generatedInputs, err := generateBindingsFromInputs(*task.Closure.CompiledTask.Template.Interface.Inputs, requestInputs)
 		if err != nil {
-			logger.Debugf(ctx, "Failed to generate requestInputs from task input bindings: %v", err)
+			logger.Warningf(ctx, "Failed to generate requestInputs from task input bindings: %v", err)
 			return nil, err
 		}
-		logger.Warningf(ctx, "TODO - debug: 3")
 		workflowSpec := admin.WorkflowSpec{
 			Template: &core.WorkflowTemplate{
 				Id: &core.Identifier{
@@ -244,17 +237,14 @@ func CreateOrGetWorkflowModel(
 			},
 		}
 
-		logger.Warningf(ctx, "TODO - creating workflow with spec: %+v", workflowSpec)
 		_, err = workflowManager.CreateWorkflow(ctx, admin.WorkflowCreateRequest{
 			Id:   workflowSpec.Template.Id,
 			Spec: &workflowSpec,
 		})
 		if err != nil {
-			logger.Debugf(ctx, "Failed to create skeleton workflow: %v", err)
 			return nil, err
 		}
 		// Now, set the newly created skeleton workflow to 'ARCHIVED'.
-		logger.Warningf(ctx, "TODO - debug: 5")
 		_, err = namedEntityManager.UpdateNamedEntity(ctx, admin.NamedEntityUpdateRequest{
 			ResourceType: core.ResourceType_WORKFLOW,
 			Id: &admin.NamedEntityIdentifier{
@@ -264,9 +254,8 @@ func CreateOrGetWorkflowModel(
 			},
 			Metadata: &admin.NamedEntityMetadata{State: admin.NamedEntityState_NAMED_ENTITY_ARCHIVED},
 		})
-		logger.Warningf(ctx, "TODO - debug: 6")
 		if err != nil {
-			logger.Debug(ctx, "Failed to set skeleton workflow state to archived: %v", err)
+			logger.Warningf(ctx, "Failed to set skeleton workflow state to archived: %v", err)
 			return nil, err
 		}
 		workflowModel, err = db.WorkflowRepo().Get(ctx, repositoryInterfaces.GetResourceInput{
@@ -275,7 +264,6 @@ func CreateOrGetWorkflowModel(
 			Name:    taskIdentifier.Name,
 			Version: taskIdentifier.Version,
 		})
-		logger.Warningf(ctx, "TODO - debug: 7")
 		if err != nil {
 			// This is unexpected - at this point we've successfully just created the skeleton workflow.
 			logger.Warningf(ctx, "Failed to fetch newly created workflow model from db store: %v", err)
@@ -288,7 +276,7 @@ func CreateOrGetWorkflowModel(
 
 func CreateOrGetLaunchPlan(ctx context.Context,
 	db repositories.RepositoryInterface, config runtimeInterfaces.Configuration, identifier *core.Identifier,
-	workflowInterface *core.TypedInterface, workflowID uint) (*admin.LaunchPlan, error) {
+	workflowInterface *core.TypedInterface, workflowID uint, spec *admin.ExecutionSpec) (*admin.LaunchPlan, error) {
 	var launchPlan *admin.LaunchPlan
 	var err error
 	launchPlan, err = GetLaunchPlan(ctx, db, *identifier)
@@ -319,7 +307,7 @@ func CreateOrGetLaunchPlan(ctx context.Context,
 				FixedInputs:    &core.LiteralMap{},
 				Labels:         &admin.Labels{},
 				Annotations:    &admin.Annotations{},
-				Auth:           nil, // TODO: reconcile auth from CreateExecution request
+				Auth:           spec.Auth,
 			},
 		}
 		if err := validation.ValidateLaunchPlan(ctx, generatedCreateLaunchPlanReq, db, config.ApplicationConfiguration(), workflowInterface); err != nil {
@@ -333,7 +321,6 @@ func CreateOrGetLaunchPlan(ctx context.Context,
 			logger.Errorf(ctx, "failed to compute launch plan digest for [%+v] with err: %v", launchPlan.Id, err)
 			return nil, err
 		}
-		logger.Warningf(ctx, "TODO - debug: launch plan: %+v", launchPlan)
 		launchPlanModel, err :=
 			transformers.CreateLaunchPlanModel(*launchPlan, workflowID, launchPlanDigest, admin.LaunchPlanState_INACTIVE)
 		if err != nil {
@@ -342,8 +329,7 @@ func CreateOrGetLaunchPlan(ctx context.Context,
 				identifier, workflowInterface.Outputs, err)
 			return nil, err
 		}
-		logger.Warningf(ctx, "TODO - debug: launch plan model: %+v", launchPlanModel)
-		err = db.LaunchPlanRepo().Create(ctx, launchPlanModel) // Where not exists in case of transactions?
+		err = db.LaunchPlanRepo().Create(ctx, launchPlanModel)
 		if err != nil {
 			logger.Errorf(ctx, "Failed to save launch plan model %+v with err: %v", identifier, err)
 			return nil, err
