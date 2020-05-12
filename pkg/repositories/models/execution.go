@@ -52,4 +52,8 @@ type Execution struct {
 	InputsURI storage.DataReference
 	// User specified inputs. This map might be incomplete and not include defaults applied
 	UserInputsURI storage.DataReference
+	// Execution Error Kind. nullable
+	ErrorKind *string `gorm:"index"`
+	// Execution Error Code nullable
+	ErrorCode *string
 }
