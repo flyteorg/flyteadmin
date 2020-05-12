@@ -324,7 +324,6 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	}
 
 	// Prepare a skeleton workflow
-	logger.Warningf(ctx, "TODO - debug: creating a workflow model")
 	taskIdentifier := request.Spec.LaunchPlan
 	workflowModel, err :=
 		util.CreateOrGetWorkflowModel(ctx, request, m.db, m.workflowManager, m.namedEntityManager, taskIdentifier, &task)
@@ -336,7 +335,6 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	if err != nil {
 		return nil, nil, err
 	}
-	logger.Warningf(ctx, "TODO - debug: fetching remote closure identifier: %v", workflowModel.RemoteClosureIdentifier)
 	closure, err := util.FetchAndGetWorkflowClosure(ctx, m.storageClient, workflowModel.RemoteClosureIdentifier)
 	if err != nil {
 		return nil, nil, err
@@ -488,6 +486,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	}
 
 	workflow, err := util.GetWorkflow(ctx, m.db, m.storageClient, *launchPlan.Spec.WorkflowId)
+
 	if err != nil {
 		logger.Debugf(ctx, "Failed to get workflow with id %+v with err %v", launchPlan.Spec.WorkflowId, err)
 		return nil, nil, err
@@ -625,7 +624,6 @@ func (m *ExecutionManager) CreateExecution(
 	if err != nil {
 		return nil, err
 	}
-	logger.Debug(ctx, "TODO remove me: i'm about to create an execution model")
 	workflowExecutionIdentifier, err := m.createExecutionModel(ctx, executionModel)
 	if err != nil {
 		return nil, err
