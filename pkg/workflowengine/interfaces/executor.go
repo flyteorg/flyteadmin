@@ -24,7 +24,7 @@ type ExecuteTaskInput struct {
 	WfClosure     core.CompiledWorkflowClosure
 	Inputs        *core.LiteralMap
 	ReferenceName string
-	Auth          *admin.Auth
+	Auth          *admin.AuthRole
 	AcceptedAt    time.Time
 	Labels        map[string]string
 	Annotations   map[string]string

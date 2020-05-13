@@ -391,7 +391,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		Inputs:        request.Inputs,
 		ReferenceName: taskIdentifier.Name,
 		AcceptedAt:    requestedAt,
-		Auth:          request.Spec.Auth,
+		Auth:          request.Spec.AuthRole,
 	}
 	if request.Spec.Labels != nil {
 		executeTaskInputs.Labels = request.Spec.Labels.Values

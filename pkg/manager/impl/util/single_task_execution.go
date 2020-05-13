@@ -307,7 +307,7 @@ func CreateOrGetLaunchPlan(ctx context.Context,
 				FixedInputs:    &core.LiteralMap{},
 				Labels:         &admin.Labels{},
 				Annotations:    &admin.Annotations{},
-				Auth:           spec.Auth,
+				AuthRole:       spec.AuthRole,
 			},
 		}
 		if err := validation.ValidateLaunchPlan(ctx, generatedCreateLaunchPlanReq, db, config.ApplicationConfiguration(), workflowInterface); err != nil {
