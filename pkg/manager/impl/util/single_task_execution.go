@@ -30,7 +30,7 @@ var defaultTimeout = ptypes.DurationProto(24 * time.Hour)
 
 func generateNodeNameFromTask(taskName string) string {
 	if len(taskName) >= maxNodeIDLength {
-		taskName = taskName[:maxNodeIDLength]
+		taskName = taskName[len(taskName)-maxNodeIDLength:]
 	}
 	nodeNameBuilder := strings.Builder{}
 	for _, i := range taskName {
@@ -244,7 +244,7 @@ func CreateOrGetWorkflowModel(
 		if err != nil {
 			return nil, err
 		}
-		// Now, set the newly created skeleton workflow to 'ARCHIVED'.
+		// Now, set the newly created skeleton workflow to 'SYSTEM_GENERATED'.
 		_, err = namedEntityManager.UpdateNamedEntity(ctx, admin.NamedEntityUpdateRequest{
 			ResourceType: core.ResourceType_WORKFLOW,
 			Id: &admin.NamedEntityIdentifier{
@@ -252,7 +252,7 @@ func CreateOrGetWorkflowModel(
 				Domain:  taskIdentifier.Domain,
 				Name:    taskIdentifier.Name,
 			},
-			Metadata: &admin.NamedEntityMetadata{State: admin.NamedEntityState_NAMED_ENTITY_ARCHIVED},
+			Metadata: &admin.NamedEntityMetadata{State: admin.NamedEntityState_SYSTEM_GENERATED},
 		})
 		if err != nil {
 			logger.Warningf(ctx, "Failed to set skeleton workflow state to archived: %v", err)
