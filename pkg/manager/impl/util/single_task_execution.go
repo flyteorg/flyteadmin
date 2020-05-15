@@ -2,6 +2,7 @@ package util
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 	"unicode"
@@ -28,6 +29,8 @@ var defaultRetryStrategy = core.RetryStrategy{
 }
 var defaultTimeout = ptypes.DurationProto(24 * time.Hour)
 
+const systemNamePrefix = ".flytegen.%s"
+
 func generateNodeNameFromTask(taskName string) string {
 	if len(taskName) >= maxNodeIDLength {
 		taskName = taskName[len(taskName)-maxNodeIDLength:]
@@ -39,6 +42,10 @@ func generateNodeNameFromTask(taskName string) string {
 		}
 	}
 	return nodeNameBuilder.String()
+}
+
+func generateWorkflowNameFromTask(taskName string) string {
+	return fmt.Sprintf(systemNamePrefix, taskName)
 }
 
 func getBinding(literal *core.Literal) *core.BindingData {
@@ -181,11 +188,18 @@ func CreateOrGetWorkflowModel(
 	ctx context.Context, request admin.ExecutionCreateRequest, db repositories.RepositoryInterface,
 	workflowManager interfaces.WorkflowInterface, namedEntityManager interfaces.NamedEntityInterface, taskIdentifier *core.Identifier,
 	task *admin.Task) (*models.Workflow, error) {
+	workflowIdentifier := core.Identifier{
+		ResourceType: core.ResourceType_WORKFLOW,
+		Project:      taskIdentifier.Project,
+		Domain:       taskIdentifier.Domain,
+		Name:         generateWorkflowNameFromTask(taskIdentifier.Name),
+		Version:      taskIdentifier.Version,
+	}
 	workflowModel, err := db.WorkflowRepo().Get(ctx, repositoryInterfaces.GetResourceInput{
-		Project: taskIdentifier.Project,
-		Domain:  taskIdentifier.Domain,
-		Name:    taskIdentifier.Name,
-		Version: taskIdentifier.Version,
+		Project: workflowIdentifier.Project,
+		Domain:  workflowIdentifier.Domain,
+		Name:    workflowIdentifier.Name,
+		Version: workflowIdentifier.Version,
 	})
 
 	if err != nil {
@@ -206,13 +220,7 @@ func CreateOrGetWorkflowModel(
 		}
 		workflowSpec := admin.WorkflowSpec{
 			Template: &core.WorkflowTemplate{
-				Id: &core.Identifier{
-					ResourceType: core.ResourceType_WORKFLOW,
-					Project:      taskIdentifier.Project,
-					Domain:       taskIdentifier.Domain,
-					Name:         taskIdentifier.Name,
-					Version:      taskIdentifier.Version,
-				},
+				Id:        &workflowIdentifier,
 				Interface: task.Closure.CompiledTask.Template.Interface,
 				Nodes: []*core.Node{
 					{
@@ -238,19 +246,23 @@ func CreateOrGetWorkflowModel(
 		}
 
 		_, err = workflowManager.CreateWorkflow(ctx, admin.WorkflowCreateRequest{
-			Id:   workflowSpec.Template.Id,
+			Id:   &workflowIdentifier,
 			Spec: &workflowSpec,
 		})
 		if err != nil {
-			return nil, err
+			// In the case of race conditions, if the workflow already exists we can safely ignore the corresponding
+			// error.
+			if ferr, ok := err.(errors.FlyteAdminError); !ok || ferr.Code() != codes.AlreadyExists {
+				return nil, err
+			}
 		}
 		// Now, set the newly created skeleton workflow to 'SYSTEM_GENERATED'.
 		_, err = namedEntityManager.UpdateNamedEntity(ctx, admin.NamedEntityUpdateRequest{
 			ResourceType: core.ResourceType_WORKFLOW,
 			Id: &admin.NamedEntityIdentifier{
-				Project: taskIdentifier.Project,
-				Domain:  taskIdentifier.Domain,
-				Name:    taskIdentifier.Name,
+				Project: workflowIdentifier.Project,
+				Domain:  workflowIdentifier.Domain,
+				Name:    workflowIdentifier.Name,
 			},
 			Metadata: &admin.NamedEntityMetadata{State: admin.NamedEntityState_SYSTEM_GENERATED},
 		})
@@ -259,10 +271,10 @@ func CreateOrGetWorkflowModel(
 			return nil, err
 		}
 		workflowModel, err = db.WorkflowRepo().Get(ctx, repositoryInterfaces.GetResourceInput{
-			Project: taskIdentifier.Project,
-			Domain:  taskIdentifier.Domain,
-			Name:    taskIdentifier.Name,
-			Version: taskIdentifier.Version,
+			Project: workflowIdentifier.Project,
+			Domain:  workflowIdentifier.Domain,
+			Name:    workflowIdentifier.Name,
+			Version: workflowIdentifier.Version,
 		})
 		if err != nil {
 			// This is unexpected - at this point we've successfully just created the skeleton workflow.
@@ -275,11 +287,18 @@ func CreateOrGetWorkflowModel(
 }
 
 func CreateOrGetLaunchPlan(ctx context.Context,
-	db repositories.RepositoryInterface, config runtimeInterfaces.Configuration, identifier *core.Identifier,
+	db repositories.RepositoryInterface, config runtimeInterfaces.Configuration, taskIdentifier *core.Identifier,
 	workflowInterface *core.TypedInterface, workflowID uint, spec *admin.ExecutionSpec) (*admin.LaunchPlan, error) {
 	var launchPlan *admin.LaunchPlan
 	var err error
-	launchPlan, err = GetLaunchPlan(ctx, db, *identifier)
+	launchPlanIdentifier := core.Identifier{
+		ResourceType: core.ResourceType_LAUNCH_PLAN,
+		Project:      taskIdentifier.Project,
+		Domain:       taskIdentifier.Domain,
+		Name:         generateWorkflowNameFromTask(taskIdentifier.Name),
+		Version:      taskIdentifier.Version,
+	}
+	launchPlan, err = GetLaunchPlan(ctx, db, launchPlanIdentifier)
 	if err != nil {
 		if ferr, ok := err.(errors.FlyteAdminError); !ok || ferr.Code() != codes.NotFound {
 			return nil, err
@@ -287,20 +306,14 @@ func CreateOrGetLaunchPlan(ctx context.Context,
 
 		// Create launch plan.
 		generatedCreateLaunchPlanReq := admin.LaunchPlanCreateRequest{
-			Id: &core.Identifier{
-				ResourceType: core.ResourceType_LAUNCH_PLAN,
-				Project:      identifier.Project,
-				Domain:       identifier.Domain,
-				Name:         identifier.Name,
-				Version:      identifier.Version,
-			},
+			Id: &launchPlanIdentifier,
 			Spec: &admin.LaunchPlanSpec{
 				WorkflowId: &core.Identifier{
 					ResourceType: core.ResourceType_WORKFLOW,
-					Project:      identifier.Project,
-					Domain:       identifier.Domain,
-					Name:         identifier.Name,
-					Version:      identifier.Version,
+					Project:      taskIdentifier.Project,
+					Domain:       taskIdentifier.Domain,
+					Name:         taskIdentifier.Name,
+					Version:      taskIdentifier.Version,
 				},
 				EntityMetadata: &admin.LaunchPlanMetadata{},
 				DefaultInputs:  &core.ParameterMap{},
@@ -311,7 +324,7 @@ func CreateOrGetLaunchPlan(ctx context.Context,
 			},
 		}
 		if err := validation.ValidateLaunchPlan(ctx, generatedCreateLaunchPlanReq, db, config.ApplicationConfiguration(), workflowInterface); err != nil {
-			logger.Debugf(ctx, "could not create launch plan: %+v, request failed validation with err: %v", identifier, err)
+			logger.Debugf(ctx, "could not create launch plan: %+v, request failed validation with err: %v", taskIdentifier, err)
 			return nil, err
 		}
 		transformedLaunchPlan := transformers.CreateLaunchPlan(generatedCreateLaunchPlanReq, workflowInterface.Outputs)
@@ -326,12 +339,12 @@ func CreateOrGetLaunchPlan(ctx context.Context,
 		if err != nil {
 			logger.Errorf(ctx,
 				"Failed to transform launch plan model [%+v], and workflow outputs [%+v] with err: %v",
-				identifier, workflowInterface.Outputs, err)
+				taskIdentifier, workflowInterface.Outputs, err)
 			return nil, err
 		}
 		err = db.LaunchPlanRepo().Create(ctx, launchPlanModel)
 		if err != nil {
-			logger.Errorf(ctx, "Failed to save launch plan model %+v with err: %v", identifier, err)
+			logger.Errorf(ctx, "Failed to save launch plan model [%+v] with err: %v", launchPlanIdentifier, err)
 			return nil, err
 		}
 	}

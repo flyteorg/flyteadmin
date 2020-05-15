@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/lyft/flyteadmin/pkg/manager/impl/testutils"
+
+	runtimeMocks "github.com/lyft/flyteadmin/pkg/runtime/mocks"
+
 	"github.com/golang/protobuf/proto"
 	managerMocks "github.com/lyft/flyteadmin/pkg/manager/mocks"
 	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
@@ -22,6 +26,10 @@ func TestGenerateNodeNameFromTask(t *testing.T) {
 	assert.EqualValues(t, "foo-12345", generateNodeNameFromTask("foo@`!=+- 1,2$3(4)5"))
 	assert.EqualValues(t, "nametoadefinedtasksomewhereincodeveryverynestedcrazy",
 		generateNodeNameFromTask("app.long.path.name.to.a.defined.task.somewhere.in.code.very.very.nested.crazy"))
+}
+
+func TestGenerateWorkflowNameFromTask(t *testing.T) {
+	assert.EqualValues(t, ".flytegen.SingleTask", generateWorkflowNameFromTask("SingleTask"))
 }
 
 func TestGetBinding(t *testing.T) {
@@ -590,7 +598,7 @@ func TestCreateOrGetWorkflowModel(t *testing.T) {
 		assert.True(t, proto.Equal(request.Id, &admin.NamedEntityIdentifier{
 			Project: "flytekit",
 			Domain:  "production",
-			Name:    "app.workflows.MyWorkflow.my_task",
+			Name:    ".flytegen.app.workflows.MyWorkflow.my_task",
 		}), fmt.Sprintf("%+v", request.Id))
 		assert.True(t, proto.Equal(request.Metadata, &admin.NamedEntityMetadata{
 			State: admin.NamedEntityState_SYSTEM_GENERATED,
@@ -604,7 +612,7 @@ func TestCreateOrGetWorkflowModel(t *testing.T) {
 			ResourceType: core.ResourceType_WORKFLOW,
 			Project:      "flytekit",
 			Domain:       "production",
-			Name:         "app.workflows.MyWorkflow.my_task",
+			Name:         ".flytegen.app.workflows.MyWorkflow.my_task",
 			Version:      "12345",
 		}), fmt.Sprintf("%+v", request.Id))
 		return &admin.WorkflowCreateResponse{}, nil
@@ -660,4 +668,78 @@ func TestCreateOrGetWorkflowModel(t *testing.T) {
 	}, repository, &mockWorkflowManager, &mockNamedEntityManager, taskIdentifier, task)
 	assert.NoError(t, err)
 	assert.EqualValues(t, workflowModel, &newlyCreatedWorkflow)
+}
+
+func TestCreateOrGetLaunchPlan(t *testing.T) {
+	repository := repositoryMocks.NewMockRepository()
+	var getCalledCount = 0
+	var newlyCreatedLP models.LaunchPlan
+	launchPlanCreateFunc := func(input models.LaunchPlan) error {
+		newlyCreatedLP = input
+		return nil
+	}
+	repository.LaunchPlanRepo().(*repositoryMocks.MockLaunchPlanRepo).SetCreateCallback(launchPlanCreateFunc)
+
+	launchPlanGetFunc := func(input interfaces.GetResourceInput) (models.LaunchPlan, error) {
+		if getCalledCount == 0 {
+			getCalledCount++
+			return models.LaunchPlan{}, flyteAdminErrors.NewFlyteAdminErrorf(codes.NotFound, "not found")
+		}
+		getCalledCount++
+		return newlyCreatedLP, nil
+	}
+	repository.LaunchPlanRepo().(*repositoryMocks.MockLaunchPlanRepo).SetGetCallback(launchPlanGetFunc)
+
+	workflowInterface := &core.TypedInterface{
+		Inputs: &core.VariableMap{
+			Variables: map[string]*core.Variable{
+				"an_int": {
+					Type: &core.LiteralType{
+						Type: &core.LiteralType_Simple{
+							Simple: core.SimpleType_INTEGER,
+						},
+					},
+				},
+			},
+		},
+		Outputs: &core.VariableMap{
+			Variables: map[string]*core.Variable{
+				"an_output": {
+					Type: &core.LiteralType{
+						Type: &core.LiteralType_Simple{
+							Simple: core.SimpleType_DURATION,
+						},
+					},
+				},
+			},
+		},
+	}
+	workflowID := uint(12)
+	taskIdentifier := &core.Identifier{
+		ResourceType: core.ResourceType_TASK,
+		Project:      "flytekit",
+		Domain:       "production",
+		Name:         "app.workflows.MyWorkflow.my_task",
+		Version:      "12345",
+	}
+	config := runtimeMocks.NewMockConfigurationProvider(
+		testutils.GetApplicationConfigWithDefaultDomains(), nil, nil, nil, nil, nil)
+	spec := admin.ExecutionSpec{
+		LaunchPlan: taskIdentifier,
+		AuthRole: &admin.AuthRole{
+			Method: &admin.AuthRole_AssumableIamRole{AssumableIamRole: "assumable_role"},
+		},
+	}
+	launchPlan, err := CreateOrGetLaunchPlan(
+		context.Background(), repository, config, taskIdentifier, workflowInterface, workflowID, &spec)
+	assert.NoError(t, err)
+	assert.True(t, proto.Equal(&core.Identifier{
+		ResourceType: core.ResourceType_LAUNCH_PLAN,
+		Project:      "flytekit",
+		Domain:       "production",
+		Name:         ".flytegen.app.workflows.MyWorkflow.my_task",
+		Version:      "12345",
+	}, launchPlan.Id))
+	assert.True(t, proto.Equal(launchPlan.Closure.ExpectedOutputs, workflowInterface.Outputs))
+	assert.True(t, proto.Equal(launchPlan.Spec.AuthRole, spec.AuthRole))
 }
