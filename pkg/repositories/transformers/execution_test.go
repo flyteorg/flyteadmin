@@ -82,6 +82,7 @@ func TestCreateExecutionModel(t *testing.T) {
 	assert.EqualValues(t, createdAt, *execution.ExecutionUpdatedAt)
 	assert.Equal(t, int32(admin.ExecutionMetadata_SYSTEM), execution.Mode)
 	assert.Equal(t, nodeID, execution.ParentNodeExecutionID)
+	assert.Equal(t, sourceID, execution.SourceExecutionID)
 	expectedSpec := execRequest.Spec
 	expectedSpec.Metadata.Principal = principal
 	expectedSpec.Metadata.SystemMetadata = &admin.SystemMetadata{
