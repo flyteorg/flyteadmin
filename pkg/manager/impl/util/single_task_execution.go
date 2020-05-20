@@ -267,7 +267,7 @@ func CreateOrGetWorkflowModel(
 			Metadata: &admin.NamedEntityMetadata{State: admin.NamedEntityState_SYSTEM_GENERATED},
 		})
 		if err != nil {
-			logger.Warningf(ctx, "Failed to set skeleton workflow state to archived: %v", err)
+			logger.Warningf(ctx, "Failed to set skeleton workflow state to system-generated: %v", err)
 			return nil, err
 		}
 		workflowModel, err = db.WorkflowRepo().Get(ctx, repositoryInterfaces.GetResourceInput{
