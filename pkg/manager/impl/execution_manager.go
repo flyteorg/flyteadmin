@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"github.com/lyft/flyteadmin/pkg/manager/impl/resources"
 
 	"github.com/golang/protobuf/ptypes"
@@ -213,24 +215,42 @@ func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask) runti
 	return runtimeInterfaces.TaskResourceSet{CPU: cpuLimit, Memory: memoryLimit}
 }
 
+// This type stores the locations of where a CPU and memory resource are defined in a []core.Resources_ResourceEntry.
+type taskResourceIndices struct {
+	cpuIndex    int
+	memoryIndex int
+}
+
+func newTaskResourceIndices() taskResourceIndices {
+	return taskResourceIndices{
+		cpuIndex:    -1,
+		memoryIndex: -1,
+	}
+}
+
+func (i taskResourceIndices) isValid() bool {
+	return i.cpuIndex >= 0 && i.memoryIndex >= 0
+}
+
 func assignResourcesIfUnset(ctx context.Context, identifier *core.Identifier,
 	platformValues runtimeInterfaces.TaskResourceSet,
-	resourceEntries []*core.Resources_ResourceEntry, taskResourceSpec *admin.TaskResourceSpec) []*core.Resources_ResourceEntry {
-	var cpuIndex, memoryIndex = -1, -1
+	resourceEntries []*core.Resources_ResourceEntry, taskResourceSpec *admin.TaskResourceSpec) (
+	[]*core.Resources_ResourceEntry, taskResourceIndices) {
+	resourceIndices := newTaskResourceIndices()
 	for idx, entry := range resourceEntries {
 		switch entry.Name {
 		case core.Resources_CPU:
-			cpuIndex = idx
+			resourceIndices.cpuIndex = idx
 		case core.Resources_MEMORY:
-			memoryIndex = idx
+			resourceIndices.memoryIndex = idx
 		}
 	}
-	if cpuIndex > 0 && memoryIndex > 0 {
+	if resourceIndices.isValid() {
 		// nothing to do
-		return resourceEntries
+		return resourceEntries, resourceIndices
 	}
 
-	if cpuIndex < 0 && platformValues.CPU != "" {
+	if resourceIndices.cpuIndex < 0 && platformValues.CPU != "" {
 		logger.Debugf(ctx, "Setting 'cpu' for [%+v] to %s", identifier, platformValues.CPU)
 		cpuValue := platformValues.CPU
 		if taskResourceSpec != nil && len(taskResourceSpec.Cpu) > 0 {
@@ -242,8 +262,9 @@ func assignResourcesIfUnset(ctx context.Context, identifier *core.Identifier,
 			Value: cpuValue,
 		}
 		resourceEntries = append(resourceEntries, cpuResource)
+		resourceIndices.cpuIndex = len(resourceEntries) - 1
 	}
-	if memoryIndex < 0 && platformValues.Memory != "" {
+	if resourceIndices.memoryIndex < 0 && platformValues.Memory != "" {
 		memoryValue := platformValues.Memory
 		if taskResourceSpec != nil && len(taskResourceSpec.Memory) > 0 {
 			// Use the custom attributes from the database rather than the platform defaults from the application config
@@ -255,8 +276,31 @@ func assignResourcesIfUnset(ctx context.Context, identifier *core.Identifier,
 		}
 		logger.Debugf(ctx, "Setting 'memory' for [%+v] to %s", identifier, platformValues.Memory)
 		resourceEntries = append(resourceEntries, memoryResource)
+		resourceIndices.memoryIndex = len(resourceEntries) - 1
 	}
-	return resourceEntries
+	return resourceEntries, resourceIndices
+}
+
+// This func makes sure that between all the default values substitution that the requests for a specific resource
+// never exceed the limits.
+func finalizeTaskResources(ctx context.Context, task *core.CompiledTask,
+	resourceRequestIndex, resourceLimitIndex int, resourceName string) error {
+	requested, err := resource.ParseQuantity(task.Template.GetContainer().Resources.Requests[resourceRequestIndex].Value)
+	if err != nil {
+		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Unable to parse requested cpu quantity [%s]: [%v]",
+			task.Template.GetContainer().Resources.Requests[resourceRequestIndex].Value, err)
+	}
+	limit, err := resource.ParseQuantity(task.Template.GetContainer().Resources.Limits[resourceLimitIndex].Value)
+	if err != nil {
+		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Unable to parse cpu limit quantity [%s]: [%v]",
+			task.Template.GetContainer().Resources.Limits[resourceLimitIndex].Value, err)
+	}
+	if limit.Cmp(requested) < 0 {
+		logger.Debugf(ctx, "Adjusting task [%+v] resource requests for [%s] from [%s] -> [%s]",
+			task.Template.Id, resourceName, requested.String(), limit.String())
+		task.Template.GetContainer().Resources.Requests[resourceRequestIndex].Value = limit.String()
+	}
+	return nil
 }
 
 // Assumes input contains a compiled task with a valid container resource execConfig.
@@ -292,7 +336,8 @@ func setCompiledTaskDefaults(ctx context.Context, config runtimeInterfaces.Confi
 	if resource != nil && resource.Attributes != nil && resource.Attributes.GetTaskResourceAttributes() != nil {
 		taskResourceSpec = resource.Attributes.GetTaskResourceAttributes().Defaults
 	}
-	task.Template.GetContainer().Resources.Requests = assignResourcesIfUnset(
+	var resourceRequestIndices = newTaskResourceIndices()
+	task.Template.GetContainer().Resources.Requests, resourceRequestIndices = assignResourcesIfUnset(
 		ctx, task.Template.Id, config.TaskResourceConfiguration().GetDefaults(), task.Template.GetContainer().Resources.Requests,
 		taskResourceSpec)
 
@@ -300,9 +345,25 @@ func setCompiledTaskDefaults(ctx context.Context, config runtimeInterfaces.Confi
 	if resource != nil && resource.Attributes != nil && resource.Attributes.GetTaskResourceAttributes() != nil {
 		taskResourceSpec = resource.Attributes.GetTaskResourceAttributes().Limits
 	}
-	task.Template.GetContainer().Resources.Limits = assignResourcesIfUnset(
+
+	var resourceLimitIndices = newTaskResourceIndices()
+	task.Template.GetContainer().Resources.Limits, resourceLimitIndices = assignResourcesIfUnset(
 		ctx, task.Template.Id, createTaskDefaultLimits(ctx, task), task.Template.GetContainer().Resources.Limits,
 		taskResourceSpec)
+
+	if !(resourceRequestIndices.isValid() && resourceLimitIndices.isValid()) {
+		logger.Warningf(ctx, "Validating task resource requests & limits that are incomplete [%+v]", task.Template.Id)
+		return
+	}
+
+	if err = finalizeTaskResources(ctx, task, resourceRequestIndices.cpuIndex, resourceLimitIndices.cpuIndex, "cpu"); err != nil {
+		logger.Warningf(ctx, "Failed to finalize task resources [%v]", err)
+		return
+	}
+	if err = finalizeTaskResources(ctx, task, resourceRequestIndices.memoryIndex, resourceLimitIndices.memoryIndex, "memory"); err != nil {
+		logger.Warningf(ctx, "Failed to finalize task resources [%v]", err)
+		return
+	}
 }
 
 func (m *ExecutionManager) launchSingleTaskExecution(

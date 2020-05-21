@@ -2392,7 +2392,7 @@ func TestAssignResourcesIfUnset(t *testing.T) {
 		Cpu:    "400m",
 		Memory: "400Gi",
 	}
-	assignedResources := assignResourcesIfUnset(context.Background(), &core.Identifier{
+	assignedResources, indices := assignResourcesIfUnset(context.Background(), &core.Identifier{
 		Project: "project",
 		Domain:  "domain",
 		Name:    "name",
@@ -2409,6 +2409,71 @@ func TestAssignResourcesIfUnset(t *testing.T) {
 			Value: taskResourceSpec.Memory,
 		},
 	}, assignedResources)
+
+	assert.EqualValues(t, taskResourceIndices{
+		memoryIndex: 1,
+		cpuIndex:    0,
+	}, indices)
+}
+
+func TestFinalizeTaskResources(t *testing.T) {
+	t.Run("LimitsLessThanRequests", func(t *testing.T) {
+		task := &core.CompiledTask{
+			Template: &core.TaskTemplate{
+				Target: &core.TaskTemplate_Container{
+					Container: &core.Container{
+						Resources: &core.Resources{
+							Requests: []*core.Resources_ResourceEntry{
+								{},
+								{
+									Value: "2",
+								},
+							},
+							Limits: []*core.Resources_ResourceEntry{
+								{
+									Value: "1",
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		var resourceRequestIndex, resourceLimitIndex = 1, 0
+		err := finalizeTaskResources(context.Background(), task, resourceRequestIndex, resourceLimitIndex, "my imaginary resource")
+		assert.Nil(t, err)
+		assert.EqualValues(t, task.Template.GetContainer().Resources.Requests[resourceRequestIndex].Value,
+			task.Template.GetContainer().Resources.Limits[resourceLimitIndex].Value)
+	})
+
+	t.Run("LimitsGreaterThanRequests", func(t *testing.T) {
+		task := &core.CompiledTask{
+			Template: &core.TaskTemplate{
+				Target: &core.TaskTemplate_Container{
+					Container: &core.Container{
+						Resources: &core.Resources{
+							Requests: []*core.Resources_ResourceEntry{
+								{},
+								{
+									Value: "2",
+								},
+							},
+							Limits: []*core.Resources_ResourceEntry{
+								{
+									Value: "10",
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		var resourceRequestIndex, resourceLimitIndex = 1, 0
+		err := finalizeTaskResources(context.Background(), task, resourceRequestIndex, resourceLimitIndex, "my imaginary resource")
+		assert.Nil(t, err)
+		assert.EqualValues(t, task.Template.GetContainer().Resources.Requests[resourceRequestIndex].Value, "2")
+		assert.EqualValues(t, task.Template.GetContainer().Resources.Limits[resourceLimitIndex].Value, "10")
+	})
 }
 
 func TestSetDefaults(t *testing.T) {
