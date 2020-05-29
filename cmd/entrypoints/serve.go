@@ -205,7 +205,7 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig) error {
 	}()
 
 	logger.Infof(ctx, "Starting HTTP/1 Gateway server on %s", cfg.GetHostAddress())
-	httpServer, err := newHTTPServer(ctx, cfg, authContext, cfg.GetGrpcHostAddress(), grpc.WithInsecure())
+	httpServer, err := newHTTPServer(ctx, cfg, authContext, cfg.GetGrpcHostAddress(), grpc.WithInsecure(), grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(16777216)))
 	if err != nil {
 		return err
 	}
