@@ -15,6 +15,10 @@ integration:
 k8s_integration:
 	@script/integration/launch.sh
 
+.PHONY: k8s_integration_execute
+k8s_integration_execute:
+	@script/integration/execute.sh
+
 .PHONY: compile
 compile:
 	go build -o flyteadmin ./cmd/ && mv ./flyteadmin ${GOPATH}/bin

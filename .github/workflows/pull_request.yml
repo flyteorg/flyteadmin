@@ -28,6 +28,16 @@ jobs:
           echo "current-context:" $(kubectl config current-context)
           echo "environment-kubeconfig:" ${KUBECONFIG}
           ADMIN=${{ secrets.flytegithub_repo }}/flyteadmin:${{ github.sha }} make end2end_execute
+      - name: Integration
+        env:
+          DOCKER_USERNAME: ${{ github.actor }}
+          DOCKER_PASSWORD: "${{ secrets.GITHUB_TOKEN }}"
+        run: |
+          kubectl cluster-info
+          kubectl get pods -n kube-system
+          echo "current-context:" $(kubectl config current-context)
+          echo "environment-kubeconfig:" ${KUBECONFIG}
+          make k8s_integration_execute
   push-dockerhub:
     runs-on: ubuntu-latest
     steps:
