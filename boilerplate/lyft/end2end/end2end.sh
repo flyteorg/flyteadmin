@@ -13,7 +13,6 @@ OUT="${DIR}/tmp"
 rm -rf ${OUT}
 git clone https://github.com/lyft/flyte.git "${OUT}"
 
-# TODO: load all images
 echo "Loading github docker images into 'kind' cluster to workaround this issue: https://github.com/containerd/containerd/issues/3291#issuecomment-631746985"
 docker login --username ${DOCKER_USERNAME} --password ${DOCKER_PASSWORD} docker.pkg.github.com
 
