@@ -13,14 +13,7 @@ echo "Loading github docker images into 'kind' cluster to workaround this issue:
 docker login --username ${DOCKER_USERNAME} --password ${DOCKER_PASSWORD} docker.pkg.github.com
 
 GIT_SHA=$(git rev-parse HEAD)
-
-if ! docker images | grep "${GIT_SHA}-builder"; then
-  echo "ERROR:"
-  echo "flyteadmin:${GIT_SHA}-builder image does not exist."
-  echo "build the image first with BUILD_PHASE=builder make docker_build"
-fi
-
-docker tag "flyteadmin:${GIT_SHA}-builder" "flyteadmin:test"
+docker tag "flyteadmin:${GIT_SHA}" "flyteadmin:test"
 kind load docker-image flyteadmin:test
 
 # start flyteadmin and dependencies
