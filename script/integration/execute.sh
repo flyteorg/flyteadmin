@@ -22,7 +22,7 @@ kubectl apply -f "${DIR}/k8s/integration.yaml"
 kubectl -n flyte rollout status deployment flyteadmin
 
 # get the name of the flyteadmin pod
-POD_NAME=$(kubectl get pods -n flyte -o go-template="{{range .items}}{{.metadata.name}}:{{end}}" | tr ":" "\n" | grep flyteadmin)
+POD_NAME=$(kubectl get pods -n flyte -o go-template="{{range .items}}{{.metadata.name}}:{{end}}" | tr ":" "\n" | grep flyteadmin | grep Running)
 
 # launch the integration tests
 kubectl exec -it -n flyte "$POD_NAME" -- make -C /go/src/github.com/lyft/flyteadmin integration
