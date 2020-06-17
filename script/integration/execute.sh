@@ -12,9 +12,8 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 echo "Loading github docker images into 'kind' cluster to workaround this issue: https://github.com/containerd/containerd/issues/3291#issuecomment-631746985"
 docker login --username ${DOCKER_USERNAME} --password ${DOCKER_PASSWORD} docker.pkg.github.com
 
-#GIT_SHA=$(git rev-parse HEAD)
-#docker tag "flyteadmin:${GIT_SHA}" "flyteadmin:test"
-kind load docker-image my_awesome_image:latest
+docker tag "my_awesome_image:latest" "flyteadmin:test"
+kind load docker-image flyteadmin:test
 
 # start flyteadmin and dependencies
 kubectl apply -f "${DIR}/k8s/integration.yaml"
