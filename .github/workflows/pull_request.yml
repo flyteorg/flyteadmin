@@ -38,9 +38,10 @@ jobs:
           username: "${{ github.actor }}"
           password: "${{ secrets.GITHUB_TOKEN }}"
           image_name: ${{ secrets.flytegithub_repo }}/flyteadmin
-          image_tag: ${{ github.sha }}
+          image_tag: ${{ github.sha }}-builder
           push_git_tag: true
           registry: docker.pkg.github.com
+          build_extra_args: "--target=builder"
       - uses: engineerd/setup-kind@v0.4.0
       - name: Integration
         env:
