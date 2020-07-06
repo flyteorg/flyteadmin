@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/lyft/flyteadmin/pkg/async"
+
 	"github.com/lyft/flyteadmin/pkg/async/notifications/implementations"
 	"github.com/lyft/flyteadmin/pkg/async/notifications/interfaces"
 	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
@@ -38,11 +40,18 @@ type EmailerConfig struct {
 	BaseURL     string
 }
 
-func GetEmailer(config runtimeInterfaces.NotificationsConfig, scope promutils.Scope) interfaces.Emailer {
+func GetEmailer(config runtimeInterfaces.NotificationsConfig, scope promutils.Scope,
+	reconnectAttempts int, reconnectDelay time.Duration) interfaces.Emailer {
 	switch config.Type {
 	case common.AWS:
 		awsConfig := aws.NewConfig().WithRegion(config.Region).WithMaxRetries(maxRetries)
-		awsSession, err := session.NewSession(awsConfig)
+		var awsSession *session.Session
+		var err error
+		err = async.Retry(reconnectAttempts, reconnectDelay, func() error {
+			awsSession, err = session.NewSession(awsConfig)
+			return err
+		})
+
 		if err != nil {
 			panic(err)
 		}
@@ -60,8 +69,9 @@ func GetEmailer(config runtimeInterfaces.NotificationsConfig, scope promutils.Sc
 	}
 }
 
-func NewNotificationsProcessor(config runtimeInterfaces.NotificationsConfig, scope promutils.Scope,
-	reconnectAttempts int, reconnectDelay time.Duration) interfaces.Processor {
+func NewNotificationsProcessor(config runtimeInterfaces.NotificationsConfig, scope promutils.Scope) interfaces.Processor {
+	reconnectAttempts := config.ReconnectAttempts
+	reconnectDelay := time.Duration(config.ReconnectDelaySeconds) * time.Second
 	var sub pubsub.Subscriber
 	var emailer interfaces.Emailer
 	switch config.Type {
@@ -75,12 +85,16 @@ func NewNotificationsProcessor(config runtimeInterfaces.NotificationsConfig, sco
 			ConsumeBase64: &enable64decoding,
 		}
 		sqsConfig.Region = config.Region
-		process, err := gizmoAWS.NewSubscriber(sqsConfig)
+		var err error
+		err = async.Retry(reconnectAttempts, reconnectDelay, func() error {
+			sub, err = gizmoAWS.NewSubscriber(sqsConfig)
+			return err
+		})
+
 		if err != nil {
 			panic(err)
 		}
-		sub = process
-		emailer = GetEmailer(config, scope)
+		emailer = GetEmailer(config, scope, reconnectAttempts, reconnectDelay)
 	case common.Local:
 		fallthrough
 	default:
@@ -88,10 +102,12 @@ func NewNotificationsProcessor(config runtimeInterfaces.NotificationsConfig, sco
 			"Using default noop notifications processor implementation for config type [%s]", config.Type)
 		return implementations.NewNoopProcess()
 	}
-	return implementations.NewProcessor(sub, emailer, scope, reconnectAttempts, reconnectDelay)
+	return implementations.NewProcessor(sub, emailer, scope)
 }
 
 func NewNotificationsPublisher(config runtimeInterfaces.NotificationsConfig, scope promutils.Scope) interfaces.Publisher {
+	reconnectAttempts := config.ReconnectAttempts
+	reconnectDelay := time.Duration(config.ReconnectDelaySeconds) * time.Second
 	switch config.Type {
 	case common.AWS:
 		snsConfig := gizmoAWS.SNSConfig{
@@ -102,8 +118,15 @@ func NewNotificationsPublisher(config runtimeInterfaces.NotificationsConfig, sco
 		} else {
 			snsConfig.Region = config.Region
 		}
-		publisher, err := gizmoAWS.NewPublisher(snsConfig)
-		// Any errors initiating Publisher with Amazon configurations results in a failed start up.
+
+		var publisher pubsub.Publisher
+		var err error
+		err = async.Retry(reconnectAttempts, reconnectDelay, func() error {
+			publisher, err = gizmoAWS.NewPublisher(snsConfig)
+			return err
+		})
+
+		// Any persistent errors initiating Publisher with Amazon configurations results in a failed start up.
 		if err != nil {
 			panic(err)
 		}
@@ -113,7 +136,13 @@ func NewNotificationsPublisher(config runtimeInterfaces.NotificationsConfig, sco
 			Topic: config.NotificationsPublisherConfig.TopicName,
 		}
 		pubsubConfig.ProjectID = config.GCPConfig.ProjectID
-		publisher, err := gizmoGCP.NewPublisher(context.TODO(), pubsubConfig)
+		var publisher pubsub.MultiPublisher
+		var err error
+		err = async.Retry(reconnectAttempts, reconnectDelay, func() error {
+			publisher, err = gizmoGCP.NewPublisher(context.TODO(), pubsubConfig)
+			return err
+		})
+
 		if err != nil {
 			panic(err)
 		}

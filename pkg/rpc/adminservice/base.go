@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"runtime/debug"
-	"time"
 
 	"github.com/lyft/flyteadmin/pkg/manager/impl/resources"
 
@@ -96,10 +95,7 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 	}
 
 	publisher := notifications.NewNotificationsPublisher(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope)
-	processor := notifications.NewNotificationsProcessor(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope,
-		configuration.ApplicationConfiguration().GetNotificationsConfig().ReconnectAttempts,
-		time.Duration(configuration.ApplicationConfiguration().GetNotificationsConfig().
-			ReconnectDelaySeconds)*time.Second)
+	processor := notifications.NewNotificationsProcessor(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope)
 	go func() {
 		logger.Info(context.Background(), "Started processing notifications.")
 		processor.StartProcessing()
@@ -108,10 +104,9 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 	// Configure workflow scheduler async processes.
 	schedulerConfig := configuration.ApplicationConfiguration().GetSchedulerConfig()
 	workflowScheduler := schedule.NewWorkflowScheduler(schedule.WorkflowSchedulerConfig{
-		Retries:                defaultRetries,
-		EventSchedulerConfig:   schedulerConfig.EventSchedulerConfig,
-		WorkflowExecutorConfig: schedulerConfig.WorkflowExecutorConfig,
-		Scope:                  adminScope,
+		Retries:         defaultRetries,
+		SchedulerConfig: *schedulerConfig,
+		Scope:           adminScope,
 	})
 
 	eventScheduler := workflowScheduler.GetEventScheduler()
@@ -142,17 +137,6 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 	go func() {
 		logger.Info(context.Background(), "Starting the scheduled workflow executor")
 		scheduledWorkflowExecutor.Run()
-
-		maxReconnectAttempts := configuration.ApplicationConfiguration().GetSchedulerConfig().
-			WorkflowExecutorConfig.ReconnectAttempts
-		reconnectDelay := time.Duration(configuration.ApplicationConfiguration().GetSchedulerConfig().
-			WorkflowExecutorConfig.ReconnectDelaySeconds) * time.Second
-		for reconnectAttempt := 0; reconnectAttempt < maxReconnectAttempts; reconnectAttempt++ {
-			time.Sleep(reconnectDelay)
-			logger.Warningf(context.Background(),
-				"Restarting scheduled workflow executor, attempt %d of %d", reconnectAttempt, maxReconnectAttempts)
-			scheduledWorkflowExecutor.Run()
-		}
 	}()
 
 	// Serve profiling endpoints.

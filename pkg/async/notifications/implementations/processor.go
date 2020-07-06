@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/lyft/flyteadmin/pkg/async"
+
 	"github.com/lyft/flyteadmin/pkg/async/notifications/interfaces"
 
 	"encoding/base64"
@@ -31,26 +33,23 @@ type processorSystemMetrics struct {
 
 // TODO: Add a counter that encompasses the publisher stats grouped by project and domain.
 type Processor struct {
-	sub               pubsub.Subscriber
-	email             interfaces.Emailer
-	systemMetrics     processorSystemMetrics
-	reconnectAttempts int
-	reconnectDelay    time.Duration
-}
-
-func (p *Processor) StartProcessing() {
-	for reconnectAttempt := 0; reconnectAttempt <= p.reconnectAttempts; reconnectAttempt++ {
-		err := p.run()
-		logger.Errorf(context.Background(), "error with running processor err: [%v] ", err)
-		time.Sleep(p.reconnectDelay)
-		logger.Warningf(context.Background(),
-			"Restarting notifications processor, attempt %d of %d", reconnectAttempt, p.reconnectAttempts)
-	}
+	sub           pubsub.Subscriber
+	email         interfaces.Emailer
+	systemMetrics processorSystemMetrics
 }
 
 // Currently only email is the supported notification because slack and pagerduty both use
 // email client to trigger those notifications.
 // When Pagerduty and other notifications are supported, a publisher per type should be created.
+func (p *Processor) StartProcessing() {
+	for {
+		logger.Warningf(context.Background(), "Starting notifications processor")
+		err := p.run()
+		logger.Errorf(context.Background(), "error with running processor err: [%v] ", err)
+		time.Sleep(async.RetryDelay)
+	}
+}
+
 func (p *Processor) run() error {
 	var emailMessage admin.EmailMessage
 	var err error
@@ -164,13 +163,10 @@ func newProcessorSystemMetrics(scope promutils.Scope) processorSystemMetrics {
 	}
 }
 
-func NewProcessor(sub pubsub.Subscriber, emailer interfaces.Emailer, scope promutils.Scope,
-	reconnectAttempts int, reconnectDelay time.Duration) interfaces.Processor {
+func NewProcessor(sub pubsub.Subscriber, emailer interfaces.Emailer, scope promutils.Scope) interfaces.Processor {
 	return &Processor{
-		sub:               sub,
-		email:             emailer,
-		systemMetrics:     newProcessorSystemMetrics(scope.NewSubScope("processor")),
-		reconnectAttempts: reconnectAttempts,
-		reconnectDelay:    reconnectDelay,
+		sub:           sub,
+		email:         emailer,
+		systemMetrics: newProcessorSystemMetrics(scope.NewSubScope("processor")),
 	}
 }

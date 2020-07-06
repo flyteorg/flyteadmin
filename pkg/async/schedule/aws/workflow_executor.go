@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/lyft/flyteadmin/pkg/async"
+	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
+
 	"github.com/lyft/flytestdlib/contextutils"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -168,6 +171,15 @@ func (e *workflowExecutor) formulateExecutionCreateRequest(
 }
 
 func (e *workflowExecutor) Run() {
+	for {
+		logger.Warningf(context.Background(), "Starting workflow executor")
+		err := e.run()
+		logger.Errorf(context.Background(), "error with workflow executor err: [%v] ", err)
+		time.Sleep(async.RetryDelay)
+	}
+}
+
+func (e *workflowExecutor) run() error {
 	for message := range e.subscriber.Start() {
 		scheduledWorkflowExecutionRequest, err := DeserializeScheduleWorkflowPayload(message.Message())
 		ctx := context.Background()
@@ -244,6 +256,7 @@ func (e *workflowExecutor) Run() {
 	}
 	err := e.subscriber.Err()
 	logger.Errorf(context.TODO(), "Gizmo subscriber closed channel with err: [%+v]", err)
+	return err
 }
 
 func (e *workflowExecutor) Stop() error {
@@ -290,14 +303,23 @@ func newWorkflowExecutorMetrics(scope promutils.Scope) workflowExecutorMetrics {
 }
 
 func NewWorkflowExecutor(
-	config aws.SQSConfig, executionManager interfaces.ExecutionInterface,
+	config aws.SQSConfig, schedulerConfig runtimeInterfaces.SchedulerConfig, executionManager interfaces.ExecutionInterface,
 	launchPlanManager interfaces.LaunchPlanInterface, scope promutils.Scope) scheduleInterfaces.WorkflowExecutor {
 
 	config.TimeoutSeconds = &timeout
 	// By default gizmo tries to base64 decode messages. Since we don't use the gizmo publisher interface to publish
 	// messages these are not encoded in base64 by default. Disable this behavior.
 	config.ConsumeBase64 = &doNotconsumeBase64
-	subscriber, err := aws.NewSubscriber(config)
+
+	maxReconnectAttempts := schedulerConfig.ReconnectAttempts
+	reconnectDelay := time.Duration(schedulerConfig.ReconnectDelaySeconds) * time.Second
+	var subscriber pubsub.Subscriber
+	var err error
+	err = async.Retry(maxReconnectAttempts, reconnectDelay, func() error {
+		subscriber, err = aws.NewSubscriber(config)
+		return err
+	})
+
 	if err != nil {
 		scope.MustNewCounter(
 			"initialize_executor_failed", "failures initializing scheduled workflow executor").Inc()
