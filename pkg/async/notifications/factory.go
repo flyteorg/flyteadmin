@@ -2,6 +2,7 @@ package notifications
 
 import (
 	"context"
+	"time"
 
 	"github.com/lyft/flyteadmin/pkg/async/notifications/implementations"
 	"github.com/lyft/flyteadmin/pkg/async/notifications/interfaces"
@@ -59,7 +60,8 @@ func GetEmailer(config runtimeInterfaces.NotificationsConfig, scope promutils.Sc
 	}
 }
 
-func NewNotificationsProcessor(config runtimeInterfaces.NotificationsConfig, scope promutils.Scope) interfaces.Processor {
+func NewNotificationsProcessor(config runtimeInterfaces.NotificationsConfig, scope promutils.Scope,
+	reconnectAttempts int, reconnectDelay time.Duration) interfaces.Processor {
 	var sub pubsub.Subscriber
 	var emailer interfaces.Emailer
 	switch config.Type {
@@ -86,7 +88,7 @@ func NewNotificationsProcessor(config runtimeInterfaces.NotificationsConfig, sco
 			"Using default noop notifications processor implementation for config type [%s]", config.Type)
 		return implementations.NewNoopProcess()
 	}
-	return implementations.NewProcessor(sub, emailer, scope)
+	return implementations.NewProcessor(sub, emailer, scope, reconnectAttempts, reconnectDelay)
 }
 
 func NewNotificationsPublisher(config runtimeInterfaces.NotificationsConfig, scope promutils.Scope) interfaces.Publisher {

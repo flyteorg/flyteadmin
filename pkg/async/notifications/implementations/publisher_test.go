@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/lyft/flyteadmin/pkg/async/notifications/mocks"
 
@@ -48,7 +49,11 @@ var testSubscriberMessage = map[string]interface{}{
 var testSubscriber pubsubtest.TestSubscriber
 var mockSub pubsub.Subscriber = &testSubscriber
 var mockEmail mocks.MockEmailer
-var testProcessor = NewProcessor(mockSub, &mockEmail, promutils.NewTestScope())
+
+const retryAttempts = 3
+
+var retryDelay = time.Minute
+var testProcessor = NewProcessor(mockSub, &mockEmail, promutils.NewTestScope(), retryAttempts, retryDelay)
 
 // This method should be invoked before every test around Publisher.
 func initializePublisher() {

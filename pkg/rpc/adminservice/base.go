@@ -96,21 +96,13 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 	}
 
 	publisher := notifications.NewNotificationsPublisher(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope)
-	processor := notifications.NewNotificationsProcessor(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope)
+	processor := notifications.NewNotificationsProcessor(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope,
+		configuration.ApplicationConfiguration().GetNotificationsConfig().ReconnectAttempts,
+		time.Duration(configuration.ApplicationConfiguration().GetNotificationsConfig().
+			ReconnectDelaySeconds)*time.Second)
 	go func() {
 		logger.Info(context.Background(), "Started processing notifications.")
-		err = processor.StartProcessing()
-
-		maxReconnectAttempts := configuration.ApplicationConfiguration().GetNotificationsConfig().ReconnectAttempts
-		reconnectDelay := time.Duration(configuration.ApplicationConfiguration().GetNotificationsConfig().
-			ReconnectDelaySeconds) * time.Second
-		for reconnectAttempt := 0; reconnectAttempt < maxReconnectAttempts; reconnectAttempt++ {
-			logger.Errorf(context.Background(), "error with starting processor err: [%v] ", err)
-			time.Sleep(reconnectDelay)
-			logger.Warningf(context.Background(),
-				"Restarting notifications processor, attempt %d of %d", reconnectAttempt, maxReconnectAttempts)
-			err = processor.StartProcessing()
-		}
+		processor.StartProcessing()
 	}()
 
 	// Configure workflow scheduler async processes.
