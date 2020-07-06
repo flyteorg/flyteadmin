@@ -149,6 +149,10 @@ type NotificationsConfig struct {
 	NotificationsPublisherConfig NotificationsPublisherConfig `json:"publisher"`
 	NotificationsProcessorConfig NotificationsProcessorConfig `json:"processor"`
 	NotificationsEmailerConfig   NotificationsEmailerConfig   `json:"emailer"`
+	// Number of times to attempt recreating a notifications processor client should there be any disruptions.
+	ReconnectAttempts int `json:"reconnectAttempts"`
+	// Specifies the time interval to wait before attempting to reconnect the notifications processor client.
+	ReconnectDelaySeconds int `json:"reconnectDelaySeconds"`
 }
 
 // Domains are always globally set in the application config, whereas individual projects can be individually registered.

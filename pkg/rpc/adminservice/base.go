@@ -98,11 +98,18 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 	publisher := notifications.NewNotificationsPublisher(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope)
 	processor := notifications.NewNotificationsProcessor(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope)
 	go func() {
+		logger.Info(context.Background(), "Started processing notifications.")
 		err = processor.StartProcessing()
-		if err != nil {
+
+		maxReconnectAttempts := configuration.ApplicationConfiguration().GetNotificationsConfig().ReconnectAttempts
+		reconnectDelay := time.Duration(configuration.ApplicationConfiguration().GetNotificationsConfig().
+			ReconnectDelaySeconds) * time.Second
+		for reconnectAttempt := 0; reconnectAttempt < maxReconnectAttempts; reconnectAttempt++ {
 			logger.Errorf(context.Background(), "error with starting processor err: [%v] ", err)
-		} else {
-			logger.Info(context.Background(), "Successfully started processing notifications.")
+			time.Sleep(reconnectDelay)
+			logger.Warningf(context.Background(),
+				"Restarting notifications processor, attempt %d of %d", reconnectAttempt, maxReconnectAttempts)
+			err = processor.StartProcessing()
 		}
 	}()
 
