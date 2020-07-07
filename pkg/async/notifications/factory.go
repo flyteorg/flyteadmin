@@ -40,8 +40,7 @@ type EmailerConfig struct {
 	BaseURL     string
 }
 
-func GetEmailer(config runtimeInterfaces.NotificationsConfig, scope promutils.Scope,
-	reconnectAttempts int, reconnectDelay time.Duration) interfaces.Emailer {
+func GetEmailer(config runtimeInterfaces.NotificationsConfig, scope promutils.Scope) interfaces.Emailer {
 	switch config.Type {
 	case common.AWS:
 		awsConfig := aws.NewConfig().WithRegion(config.Region).WithMaxRetries(maxRetries)
