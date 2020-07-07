@@ -45,13 +45,7 @@ func GetEmailer(config runtimeInterfaces.NotificationsConfig, scope promutils.Sc
 	switch config.Type {
 	case common.AWS:
 		awsConfig := aws.NewConfig().WithRegion(config.Region).WithMaxRetries(maxRetries)
-		var awsSession *session.Session
-		var err error
-		err = async.Retry(reconnectAttempts, reconnectDelay, func() error {
-			awsSession, err = session.NewSession(awsConfig)
-			return err
-		})
-
+		awsSession, err := session.NewSession(awsConfig)
 		if err != nil {
 			panic(err)
 		}
