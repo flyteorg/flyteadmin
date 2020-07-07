@@ -87,7 +87,7 @@ func NewNotificationsProcessor(config runtimeInterfaces.NotificationsConfig, sco
 		if err != nil {
 			panic(err)
 		}
-		emailer = GetEmailer(config, scope, reconnectAttempts, reconnectDelay)
+		emailer = GetEmailer(config, scope)
 	case common.Local:
 		fallthrough
 	default:
