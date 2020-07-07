@@ -8,7 +8,7 @@ import (
 )
 
 // RetryDelay indicates how long to wait between restarting a subscriber connection in the case of network failures.
-var RetryDelay = 30 * time.Minute
+var RetryDelay = 30 * time.Second
 
 func Retry(attempts int, delay time.Duration, f func() error) error {
 	var err error

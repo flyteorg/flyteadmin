@@ -45,6 +45,7 @@ type workflowExecutorMetrics struct {
 	MessageReceivedDelay                labeled.StopWatch
 	ScheduledEventProcessingDelay       labeled.StopWatch
 	CreateExecutionDuration             labeled.StopWatch
+	ChannelClosedError                  prometheus.Counter
 }
 
 type workflowExecutor struct {
@@ -255,7 +256,10 @@ func (e *workflowExecutor) run() error {
 			observedMessageTriggeredTime)
 	}
 	err := e.subscriber.Err()
-	logger.Errorf(context.TODO(), "Gizmo subscriber closed channel with err: [%+v]", err)
+	if err != nil {
+		logger.Errorf(context.TODO(), "Gizmo subscriber closed channel with err: [%+v]", err)
+		e.metrics.ChannelClosedError.Inc()
+	}
 	return err
 }
 
@@ -299,6 +303,7 @@ func newWorkflowExecutorMetrics(scope promutils.Scope) workflowExecutorMetrics {
 		CreateExecutionDuration: labeled.NewStopWatch("create_execution_duration",
 			"time spent waiting on the call to CreateExecution to return",
 			time.Second, scope, labeled.EmitUnlabeledMetric),
+		ChannelClosedError: scope.MustNewCounter("channel_closed_error", "count of channel closing errors"),
 	}
 }
 
