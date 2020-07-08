@@ -33,6 +33,22 @@ type qualityOfServiceAllocator struct {
 	resourceManager interfaces.ResourceInterface
 }
 
+/*
+Users can specify the quality of service for an execution (in order of decreasing specificity)
+
+- At CreateExecution request time
+- In the LaunchPlan spec
+- In the Workflow spec
+- As an overridable MatchableResource (https://lyft.github.io/flyte/administrator/install/managing_customizable_resources.html)
+  for the underlying workflow
+
+System administrators can specify default QualityOfService specs
+(https://github.com/lyft/flyteidl/blob/e9727afcedf8d4c30a1fc2eeac45593e426d9bb0/protos/flyteidl/core/execution.proto#L92)s
+for different QualityOfService tiers. The execution domain determines the tier, which in turn determines the configured
+QualityOfService spec to apply.
+
+This method handles resolving the QualityOfService for an execution given the above rules.
+ */
 func (q qualityOfServiceAllocator) GetQualityOfService(ctx context.Context, input GetQualityOfServiceInput) (QualityOfServiceSpec, error) {
 	workflowIdentifier := input.Workflow.Id
 
