@@ -2449,7 +2449,10 @@ func TestSetDefaults(t *testing.T) {
 	mockConfig := runtimeMocks.NewMockConfigurationProvider(
 		testutils.GetApplicationConfigWithDefaultDomains(), nil, nil, &taskConfig,
 		runtimeMocks.NewMockWhitelistConfiguration(), nil)
-	setCompiledTaskDefaults(context.Background(), mockConfig, task, repositoryMocks.NewMockRepository(), "workflow")
+	execManager := NewExecutionManager(
+		repositoryMocks.NewMockRepository(), mockConfig, getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
+		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil)
+	execManager.(*ExecutionManager).setCompiledTaskDefaults(context.Background(), task, "workflow")
 	assert.True(t, proto.Equal(
 		&core.Container{
 			Resources: &core.Resources{
@@ -2515,7 +2518,10 @@ func TestSetDefaults_MissingDefaults(t *testing.T) {
 	mockConfig := runtimeMocks.NewMockConfigurationProvider(
 		testutils.GetApplicationConfigWithDefaultDomains(), nil, nil, &taskConfig,
 		runtimeMocks.NewMockWhitelistConfiguration(), nil)
-	setCompiledTaskDefaults(context.Background(), mockConfig, task, repositoryMocks.NewMockRepository(), "workflow")
+	execManager := NewExecutionManager(
+		repositoryMocks.NewMockRepository(), mockConfig, getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
+		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil)
+	execManager.(*ExecutionManager).setCompiledTaskDefaults(context.Background(), task, "workflow")
 	assert.True(t, proto.Equal(
 		&core.Container{
 			Resources: &core.Resources{

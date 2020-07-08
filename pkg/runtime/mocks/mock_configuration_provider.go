@@ -11,6 +11,7 @@ type MockConfigurationProvider struct {
 	registrationValidationConfiguration interfaces.RegistrationValidationConfiguration
 	clusterResourceConfiguration        interfaces.ClusterResourceConfiguration
 	namespaceMappingConfiguration       interfaces.NamespaceMappingConfiguration
+	qualityOfServiceConfiguration       interfaces.QualityOfServiceConfiguration
 }
 
 func (p *MockConfigurationProvider) ApplicationConfiguration() interfaces.ApplicationConfiguration {
@@ -57,6 +58,14 @@ func (p *MockConfigurationProvider) AddNamespaceMappingConfiguration(config inte
 	p.namespaceMappingConfiguration = config
 }
 
+func (p *MockConfigurationProvider) QualityOfServiceConfiguration() interfaces.QualityOfServiceConfiguration {
+	return p.qualityOfServiceConfiguration
+}
+
+func (p *MockConfigurationProvider) AddQualityOfServiceConfiguration(config interfaces.QualityOfServiceConfiguration) {
+	p.qualityOfServiceConfiguration = config
+}
+
 func NewMockConfigurationProvider(
 	applicationConfiguration interfaces.ApplicationConfiguration,
 	queueConfiguration interfaces.QueueConfiguration,
@@ -71,5 +80,6 @@ func NewMockConfigurationProvider(
 		taskResourceConfiguration:     taskResourceConfiguration,
 		whitelistConfiguration:        whitelistConfiguration,
 		namespaceMappingConfiguration: namespaceMappingConfiguration,
+		qualityOfServiceConfiguration: NewMockQualityOfServiceProvider(),
 	}
 }
