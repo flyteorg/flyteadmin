@@ -33,6 +33,34 @@ type qualityOfServiceAllocator struct {
 	resourceManager interfaces.ResourceInterface
 }
 
+func (q qualityOfServiceAllocator) getQualityOfServiceFromDb(ctx context.Context, workflowIdentifier *core.Identifier) (
+	*core.QualityOfService, error) {
+	resource, err := q.resourceManager.GetResource(ctx, interfaces.ResourceRequest{
+		Project:      workflowIdentifier.Project,
+		Domain:       workflowIdentifier.Domain,
+		Workflow:     workflowIdentifier.Name,
+		ResourceType: admin.MatchableResource_QUALITY_OF_SERVICE_SPECIFICATION,
+	})
+	if err != nil {
+		if _, ok := err.(errors.FlyteAdminError); !ok || err.(errors.FlyteAdminError).Code() != codes.NotFound {
+			logger.Warningf(ctx,
+				"Failed to fetch override values when assigning quality of service values for [%+v] with err: %v",
+				workflowIdentifier, err)
+			return nil, err
+		}
+		logger.Debugf(ctx, "No quality of service specified as an overridable matching attribute in db")
+		return nil, nil
+	}
+
+	if resource != nil && resource.Attributes != nil && resource.Attributes.GetQualityOfService() != nil &&
+		resource.Attributes.GetQualityOfService() != nil {
+		// Use custom override value in database rather than from registered entities or the admin application config.
+		return resource.Attributes.GetQualityOfService(), nil
+	}
+	logger.Warningf(ctx, "Empty quality of service specified as an overridable matching attribute in db")
+	return nil, nil
+}
+
 /*
 Users can specify the quality of service for an execution (in order of decreasing specificity)
 
@@ -48,7 +76,7 @@ for different QualityOfService tiers. The execution domain determines the tier, 
 QualityOfService spec to apply.
 
 This method handles resolving the QualityOfService for an execution given the above rules.
- */
+*/
 func (q qualityOfServiceAllocator) GetQualityOfService(ctx context.Context, input GetQualityOfServiceInput) (QualityOfServiceSpec, error) {
 	workflowIdentifier := input.Workflow.Id
 
@@ -100,42 +128,32 @@ func (q qualityOfServiceAllocator) GetQualityOfService(ctx context.Context, inpu
 		qualityOfServiceTier = input.Workflow.Closure.CompiledWorkflow.Primary.Template.Metadata.QualityOfService.GetTier()
 	}
 
-	// If nothing in the hierarchy has set the quality of service, see if an override exists in the matchable attributes
-	// resource table.
-	resource, err := q.resourceManager.GetResource(ctx, interfaces.ResourceRequest{
-		Project:      workflowIdentifier.Project,
-		Domain:       workflowIdentifier.Domain,
-		Workflow:     workflowIdentifier.Name,
-		ResourceType: admin.MatchableResource_QUALITY_OF_SERVICE_SPECIFICATION,
-	})
-	if err != nil {
-		if _, ok := err.(errors.FlyteAdminError); !ok || err.(errors.FlyteAdminError).Code() != codes.NotFound {
-			logger.Warningf(ctx,
-				"Failed to fetch override values when assigning quality of service values for [%+v] with err: %v",
-				workflowIdentifier, err)
-		}
-	}
-
-	if resource != nil && resource.Attributes != nil && resource.Attributes.GetQualityOfService() != nil &&
-		resource.Attributes.GetQualityOfService().GetSpec() != nil {
-		// Use custom override value in database rather than from registered entities or the admin application config.
-		duration, err := ptypes.Duration(resource.Attributes.GetQualityOfService().GetSpec().QueueingBudget)
-		if err != nil {
-			return QualityOfServiceSpec{}, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
-				"Invalid custom quality of service set for [%+v], failed to parse duration [%v] with: %v",
-				workflowIdentifier, resource.Attributes.GetQualityOfService().GetSpec().QueueingBudget, err)
-		}
-		return QualityOfServiceSpec{
-			QueuingBudget: duration,
-		}, nil
-	} else if resource != nil && resource.Attributes != nil && resource.Attributes.GetQualityOfService() != nil &&
-		resource.Attributes.GetQualityOfService().GetTier() != core.QualityOfService_UNDEFINED {
-		qualityOfServiceTier = resource.Attributes.GetQualityOfService().GetTier()
-	}
-
+	// If nothing in the hierarchy of registrable entities has set the quality of service,
+	// see if an override exists in the matchable attributes resource table.
 	if qualityOfServiceTier == core.QualityOfService_UNDEFINED {
-		// If we've come all this way and at no layer is an overridable configuration for the quality of service tier
-		// set, use the default values from the admin application config.
+		qualityOfService, err := q.getQualityOfServiceFromDb(ctx, workflowIdentifier)
+		if err != nil {
+			return QualityOfServiceSpec{}, err
+		}
+		if qualityOfService != nil && qualityOfService.GetSpec() != nil {
+			duration, err := ptypes.Duration(qualityOfService.GetSpec().QueueingBudget)
+			if err != nil {
+				return QualityOfServiceSpec{}, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
+					"Invalid custom quality of service set in overridable matching attributes for [%v],"+
+						"failed to parse duration [%v] with: %v", workflowIdentifier,
+					input.ExecutionCreateRequest.Spec.QualityOfService.GetSpec().QueueingBudget, err)
+			}
+			return QualityOfServiceSpec{
+				QueuingBudget: duration,
+			}, nil
+		} else if qualityOfService != nil && qualityOfService.GetTier() != core.QualityOfService_UNDEFINED {
+			qualityOfServiceTier = input.Workflow.Closure.CompiledWorkflow.Primary.Template.Metadata.QualityOfService.GetTier()
+		}
+	}
+
+	// If we've come all this way and at no layer is an overridable configuration for the quality of service tier
+	// set, use the default values from the admin application config.
+	if qualityOfServiceTier == core.QualityOfService_UNDEFINED {
 		var ok bool
 		qualityOfServiceTier, ok = q.config.QualityOfServiceConfiguration().GetDefaultTiers()[input.ExecutionCreateRequest.Domain]
 		if !ok {

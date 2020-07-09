@@ -217,12 +217,32 @@ func TestCreateExecution(t *testing.T) {
 				"annotation3": "3",
 				"annotation4": "4",
 			}, inputs.Annotations)
+			assert.EqualValues(t, 10*time.Minute, inputs.QueueingBudget)
 			return &workflowengineInterfaces.ExecutionInfo{
 				Cluster: testCluster,
 			}, nil
 		})
+	qosProvider := runtimeMocks.NewMockQualityOfServiceProvider()
+	qosProvider.(*runtimeMocks.MockQualityOfServiceProvider).TierExecutionValues = map[core.QualityOfService_Tier]core.QualityOfServiceSpec{
+		core.QualityOfService_HIGH: {
+			QueueingBudget: ptypes.DurationProto(10 * time.Minute),
+		},
+		core.QualityOfService_MEDIUM: {
+			QueueingBudget: ptypes.DurationProto(20 * time.Minute),
+		},
+		core.QualityOfService_LOW: {
+			QueueingBudget: ptypes.DurationProto(30 * time.Minute),
+		},
+	}
+
+	qosProvider.(*runtimeMocks.MockQualityOfServiceProvider).DefaultTiers = map[string]core.QualityOfService_Tier{
+		"domain": core.QualityOfService_HIGH,
+	}
+
+	mockConfig := getMockExecutionsConfigProvider()
+	mockConfig.(*runtimeMocks.MockConfigurationProvider).AddQualityOfServiceConfiguration(qosProvider)
 	execManager := NewExecutionManager(
-		repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockExecutor,
+		repository, mockConfig, getMockStorageForExecTest(context.Background()), mockExecutor,
 		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil)
 	request := testutils.GetExecutionRequest()
 	request.Spec.Metadata = &admin.ExecutionMetadata{
