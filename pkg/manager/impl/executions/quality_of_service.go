@@ -83,6 +83,9 @@ func (q qualityOfServiceAllocator) GetQualityOfService(ctx context.Context, inpu
 	var qualityOfServiceTier core.QualityOfService_Tier
 	if input.ExecutionCreateRequest.Spec.QualityOfService != nil {
 		if input.ExecutionCreateRequest.Spec.QualityOfService.GetSpec() != nil {
+			logger.Debugf(ctx, "Determining quality of service from execution spec for [%s/%s/%s]",
+				input.ExecutionCreateRequest.Project, input.ExecutionCreateRequest.Domain,
+				input.ExecutionCreateRequest.Name)
 			duration, err := ptypes.Duration(input.ExecutionCreateRequest.Spec.QualityOfService.GetSpec().QueueingBudget)
 			if err != nil {
 				return QualityOfServiceSpec{}, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
@@ -98,6 +101,9 @@ func (q qualityOfServiceAllocator) GetQualityOfService(ctx context.Context, inpu
 		qualityOfServiceTier = input.ExecutionCreateRequest.Spec.QualityOfService.GetTier()
 	} else if input.LaunchPlan.Spec.QualityOfService != nil {
 		if input.LaunchPlan.Spec.QualityOfService.GetSpec() != nil {
+			logger.Debugf(ctx, "Determining quality of service from launch plan spec for [%s/%s/%s]",
+				input.ExecutionCreateRequest.Project, input.ExecutionCreateRequest.Domain,
+				input.ExecutionCreateRequest.Name)
 			duration, err := ptypes.Duration(input.LaunchPlan.Spec.QualityOfService.GetSpec().QueueingBudget)
 			if err != nil {
 				return QualityOfServiceSpec{}, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
@@ -112,6 +118,9 @@ func (q qualityOfServiceAllocator) GetQualityOfService(ctx context.Context, inpu
 		qualityOfServiceTier = input.LaunchPlan.Spec.QualityOfService.GetTier()
 	} else if input.Workflow.Closure.CompiledWorkflow.Primary.Template.Metadata != nil &&
 		input.Workflow.Closure.CompiledWorkflow.Primary.Template.Metadata.QualityOfService != nil {
+		logger.Debugf(ctx, "Determining quality of service from workflow spec for [%s/%s/%s]",
+			input.ExecutionCreateRequest.Project, input.ExecutionCreateRequest.Domain,
+			input.ExecutionCreateRequest.Name)
 		if input.Workflow.Closure.CompiledWorkflow.Primary.Template.Metadata.QualityOfService.GetSpec() != nil {
 			duration, err := ptypes.Duration(input.Workflow.Closure.CompiledWorkflow.Primary.Template.Metadata.QualityOfService.
 				GetSpec().QueueingBudget)
@@ -136,6 +145,9 @@ func (q qualityOfServiceAllocator) GetQualityOfService(ctx context.Context, inpu
 			return QualityOfServiceSpec{}, err
 		}
 		if qualityOfService != nil && qualityOfService.GetSpec() != nil {
+			logger.Debugf(ctx, "Determining quality of service from spec database override for [%s/%s/%s]",
+				input.ExecutionCreateRequest.Project, input.ExecutionCreateRequest.Domain,
+				input.ExecutionCreateRequest.Name)
 			duration, err := ptypes.Duration(qualityOfService.GetSpec().QueueingBudget)
 			if err != nil {
 				return QualityOfServiceSpec{}, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
@@ -147,6 +159,9 @@ func (q qualityOfServiceAllocator) GetQualityOfService(ctx context.Context, inpu
 				QueuingBudget: duration,
 			}, nil
 		} else if qualityOfService != nil && qualityOfService.GetTier() != core.QualityOfService_UNDEFINED {
+			logger.Debugf(ctx, "Determining quality of service tier from database override for [%s/%s/%s]",
+				input.ExecutionCreateRequest.Project, input.ExecutionCreateRequest.Domain,
+				input.ExecutionCreateRequest.Name)
 			qualityOfServiceTier = input.Workflow.Closure.CompiledWorkflow.Primary.Template.Metadata.QualityOfService.GetTier()
 		}
 	}
@@ -154,6 +169,9 @@ func (q qualityOfServiceAllocator) GetQualityOfService(ctx context.Context, inpu
 	// If we've come all this way and at no layer is an overridable configuration for the quality of service tier
 	// set, use the default values from the admin application config.
 	if qualityOfServiceTier == core.QualityOfService_UNDEFINED {
+		logger.Debugf(ctx, "Determining quality of service tier from application config override for [%s/%s/%s]",
+			input.ExecutionCreateRequest.Project, input.ExecutionCreateRequest.Domain,
+			input.ExecutionCreateRequest.Name)
 		var ok bool
 		qualityOfServiceTier, ok = q.config.QualityOfServiceConfiguration().GetDefaultTiers()[input.ExecutionCreateRequest.Domain]
 		if !ok {
@@ -166,6 +184,9 @@ func (q qualityOfServiceAllocator) GetQualityOfService(ctx context.Context, inpu
 		// No queueing budget to set when no default is specified
 		return QualityOfServiceSpec{}, nil
 	}
+	logger.Debugf(ctx, "Determining quality of service spec from application config override for [%s/%s/%s] with tier [%v]",
+		input.ExecutionCreateRequest.Project, input.ExecutionCreateRequest.Domain,
+		input.ExecutionCreateRequest.Name, qualityOfServiceTier)
 	// Config values should always be vetted so there's no need to check the error from conversion.
 	duration, _ := ptypes.Duration(executionValues.QueueingBudget)
 
