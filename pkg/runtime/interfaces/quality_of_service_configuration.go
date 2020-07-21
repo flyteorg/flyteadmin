@@ -7,6 +7,9 @@ import (
 
 type TierName = string
 
+// Just incrementally start using mockery, replace with -all when working on https://github.com/lyft/flyte/issues/149
+//go:generate mockery -name QualityOfServiceConfiguration -output=mocks -case=underscore
+
 type QualityOfServiceSpec struct {
 	QueueingBudget config.Duration `json:"queueingBudget"`
 }

@@ -1,6 +1,10 @@
 package mocks
 
-import "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
+import (
+	"github.com/lyft/flyteadmin/pkg/runtime/interfaces"
+	ifaceMocks "github.com/lyft/flyteadmin/pkg/runtime/interfaces/mocks"
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+)
 
 type MockConfigurationProvider struct {
 	applicationConfiguration            interfaces.ApplicationConfiguration
@@ -73,6 +77,11 @@ func NewMockConfigurationProvider(
 	taskResourceConfiguration interfaces.TaskResourceConfiguration,
 	whitelistConfiguration interfaces.WhitelistConfiguration,
 	namespaceMappingConfiguration interfaces.NamespaceMappingConfiguration) interfaces.Configuration {
+
+	mockQualityOfServiceConfiguration := &ifaceMocks.QualityOfServiceConfiguration{}
+	mockQualityOfServiceConfiguration.OnGetDefaultTiers().Return(make(map[string]core.QualityOfService_Tier))
+	mockQualityOfServiceConfiguration.OnGetTierExecutionValues().Return(make(map[core.QualityOfService_Tier]core.QualityOfServiceSpec))
+
 	return &MockConfigurationProvider{
 		applicationConfiguration:      applicationConfiguration,
 		queueConfiguration:            queueConfiguration,
@@ -80,6 +89,6 @@ func NewMockConfigurationProvider(
 		taskResourceConfiguration:     taskResourceConfiguration,
 		whitelistConfiguration:        whitelistConfiguration,
 		namespaceMappingConfiguration: namespaceMappingConfiguration,
-		qualityOfServiceConfiguration: NewMockQualityOfServiceProvider(),
+		qualityOfServiceConfiguration: mockQualityOfServiceConfiguration,
 	}
 }

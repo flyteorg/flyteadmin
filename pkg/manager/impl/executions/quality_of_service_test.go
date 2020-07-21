@@ -9,6 +9,7 @@ import (
 	"github.com/lyft/flyteadmin/pkg/manager/interfaces"
 	managerMocks "github.com/lyft/flyteadmin/pkg/manager/mocks"
 	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
+	runtimeIFaceMocks "github.com/lyft/flyteadmin/pkg/runtime/interfaces/mocks"
 	"github.com/lyft/flyteadmin/pkg/runtime/mocks"
 	runtimeMocks "github.com/lyft/flyteadmin/pkg/runtime/mocks"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
@@ -35,8 +36,8 @@ func getQualityOfServiceWithDuration(duration time.Duration) *core.QualityOfServ
 
 func getMockConfig() runtimeInterfaces.Configuration {
 	mockConfig := mocks.NewMockConfigurationProvider(nil, nil, nil, nil, nil, nil)
-	provider := runtimeMocks.NewMockQualityOfServiceProvider()
-	provider.(*runtimeMocks.MockQualityOfServiceProvider).TierExecutionValues = map[core.QualityOfService_Tier]core.QualityOfServiceSpec{
+	provider := &runtimeIFaceMocks.QualityOfServiceConfiguration{}
+	provider.OnGetTierExecutionValues().Return(map[core.QualityOfService_Tier]core.QualityOfServiceSpec{
 		core.QualityOfService_HIGH: {
 			QueueingBudget: ptypes.DurationProto(10 * time.Minute),
 		},
@@ -46,12 +47,12 @@ func getMockConfig() runtimeInterfaces.Configuration {
 		core.QualityOfService_LOW: {
 			QueueingBudget: ptypes.DurationProto(30 * time.Minute),
 		},
-	}
+	})
 
-	provider.(*runtimeMocks.MockQualityOfServiceProvider).DefaultTiers = map[string]core.QualityOfService_Tier{
+	provider.OnGetDefaultTiers().Return(map[string]core.QualityOfService_Tier{
 		"production":  core.QualityOfService_HIGH,
 		"development": core.QualityOfService_LOW,
-	}
+	})
 
 	mockConfig.(*runtimeMocks.MockConfigurationProvider).AddQualityOfServiceConfiguration(provider)
 	return mockConfig
