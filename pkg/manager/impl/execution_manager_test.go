@@ -223,7 +223,6 @@ func TestCreateExecution(t *testing.T) {
 				Cluster: testCluster,
 			}, nil
 		})
-	//qosProvider := runtimeMocks.NewMockQualityOfServiceProvider()
 	qosProvider := &runtimeIFaceMocks.QualityOfServiceConfiguration{}
 	qosProvider.OnGetTierExecutionValues().Return(map[core.QualityOfService_Tier]core.QualityOfServiceSpec{
 		core.QualityOfService_HIGH: {
