@@ -2241,6 +2241,12 @@ func TestGetExecutionData_LegacyModel(t *testing.T) {
 			Url:   "inputs",
 			Bytes: 200,
 		},
+		FullInputs: &core.LiteralMap{
+			Literals: map[string]*core.Literal{
+				"foo": testutils.MakeStringLiteral("foo-value-1"),
+			},
+		},
+		FullOutputs: &core.LiteralMap{},
 	}, dataResponse))
 	var inputs core.LiteralMap
 	err = storageClient.ReadProtobuf(context.Background(), storage.DataReference("s3://bucket/metadata/project/domain/name/inputs"), &inputs)
