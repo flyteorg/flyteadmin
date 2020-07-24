@@ -3,12 +3,17 @@ package impl
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
+
+	"github.com/lyft/flyteadmin/pkg/manager/impl/testutils"
+	"github.com/lyft/flytestdlib/storage"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/lyft/flyteadmin/pkg/common"
+	commonMocks "github.com/lyft/flyteadmin/pkg/common/mocks"
 	dataMocks "github.com/lyft/flyteadmin/pkg/data/mocks"
 	flyteAdminErrors "github.com/lyft/flyteadmin/pkg/errors"
 	"github.com/lyft/flyteadmin/pkg/repositories"
@@ -128,7 +133,8 @@ func TestCreateNodeEvent(t *testing.T) {
 			}, *input)
 			return nil
 		})
-	nodeExecManager := NewNodeExecutionManager(repository, mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
+	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(),
+		getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
 	resp, err := nodeExecManager.CreateNodeEvent(context.Background(), request)
 	assert.Nil(t, err)
 	assert.NotNil(t, resp)
@@ -183,7 +189,8 @@ func TestCreateNodeEvent_Update(t *testing.T) {
 
 			return nil
 		})
-	nodeExecManager := NewNodeExecutionManager(repository, mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
+	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(),
+		getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
 	resp, err := nodeExecManager.CreateNodeEvent(context.Background(), request)
 	assert.Nil(t, err)
 	assert.NotNil(t, resp)
@@ -196,7 +203,8 @@ func TestCreateNodeEvent_MissingExecution(t *testing.T) {
 		func(ctx context.Context, input interfaces.GetResourceInput) (models.Execution, error) {
 			return models.Execution{}, expectedErr
 		})
-	nodeExecManager := NewNodeExecutionManager(repository, mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
+	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(),
+		getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
 	resp, err := nodeExecManager.CreateNodeEvent(context.Background(), request)
 	assert.EqualError(t, err, "failed to get existing execution id: [project:\"project\""+
 		" domain:\"domain\" name:\"name\" ] with err: expected error")
@@ -216,7 +224,8 @@ func TestCreateNodeEvent_CreateDatabaseError(t *testing.T) {
 		func(ctx context.Context, event *models.NodeExecutionEvent, input *models.NodeExecution) error {
 			return expectedErr
 		})
-	nodeExecManager := NewNodeExecutionManager(repository, mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
+	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(),
+		getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
 	resp, err := nodeExecManager.CreateNodeEvent(context.Background(), request)
 	assert.EqualError(t, err, expectedErr.Error())
 	assert.Nil(t, resp)
@@ -251,7 +260,8 @@ func TestCreateNodeEvent_UpdateDatabaseError(t *testing.T) {
 		func(ctx context.Context, event *models.NodeExecutionEvent, nodeExecution *models.NodeExecution) error {
 			return expectedErr
 		})
-	nodeExecManager := NewNodeExecutionManager(repository, mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
+	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(),
+		getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
 	resp, err := nodeExecManager.CreateNodeEvent(context.Background(), request)
 	assert.EqualError(t, err, expectedErr.Error())
 	assert.Nil(t, resp)
@@ -280,7 +290,8 @@ func TestCreateNodeEvent_UpdateTerminalEventError(t *testing.T) {
 				StartedAt: &occurredAt,
 			}, nil
 		})
-	nodeExecManager := NewNodeExecutionManager(repository, mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
+	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(),
+		getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
 	resp, err := nodeExecManager.CreateNodeEvent(context.Background(), request)
 	assert.Nil(t, resp)
 	assert.NotNil(t, err)
@@ -315,7 +326,8 @@ func TestCreateNodeEvent_UpdateDuplicateEventError(t *testing.T) {
 				StartedAt: &occurredAt,
 			}, nil
 		})
-	nodeExecManager := NewNodeExecutionManager(repository, mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
+	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(),
+		getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
 	resp, err := nodeExecManager.CreateNodeEvent(context.Background(), request)
 	assert.Equal(t, codes.AlreadyExists, err.(flyteAdminErrors.FlyteAdminError).Code())
 	assert.Nil(t, resp)
@@ -328,7 +340,8 @@ func TestCreateNodeEvent_FirstEventIsTerminal(t *testing.T) {
 		func(ctx context.Context, input interfaces.GetNodeExecutionInput) (models.NodeExecution, error) {
 			return models.NodeExecution{}, flyteAdminErrors.NewFlyteAdminError(codes.NotFound, "foo")
 		})
-	nodeExecManager := NewNodeExecutionManager(repository, mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
+	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(),
+		getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
 	succeededRequest := admin.NodeExecutionEventRequest{
 		RequestId: "request id",
 		Event: &event.NodeExecutionEvent{
@@ -383,7 +396,8 @@ func TestGetNodeExecution(t *testing.T) {
 				Closure:   closureBytes,
 			}, nil
 		})
-	nodeExecManager := NewNodeExecutionManager(repository, mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
+	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(),
+		getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
 	nodeExecution, err := nodeExecManager.GetNodeExecution(context.Background(), admin.NodeExecutionGetRequest{
 		Id: &nodeExecutionIdentifier,
 	})
@@ -402,7 +416,8 @@ func TestGetNodeExecution_DatabaseError(t *testing.T) {
 		func(ctx context.Context, input interfaces.GetNodeExecutionInput) (models.NodeExecution, error) {
 			return models.NodeExecution{}, expectedErr
 		})
-	nodeExecManager := NewNodeExecutionManager(repository, mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
+	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(),
+		getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
 	nodeExecution, err := nodeExecManager.GetNodeExecution(context.Background(), admin.NodeExecutionGetRequest{
 		Id: &nodeExecutionIdentifier,
 	})
@@ -429,7 +444,8 @@ func TestGetNodeExecution_TransformerError(t *testing.T) {
 				Closure:   []byte("i'm invalid"),
 			}, nil
 		})
-	nodeExecManager := NewNodeExecutionManager(repository, mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
+	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(),
+		getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
 	nodeExecution, err := nodeExecManager.GetNodeExecution(context.Background(), admin.NodeExecutionGetRequest{
 		Id: &nodeExecutionIdentifier,
 	})
@@ -490,7 +506,8 @@ func TestListNodeExecutions(t *testing.T) {
 				},
 			}, nil
 		})
-	nodeExecManager := NewNodeExecutionManager(repository, mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
+	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(),
+		getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
 	nodeExecutions, err := nodeExecManager.ListNodeExecutions(context.Background(), admin.NodeExecutionListRequest{
 		WorkflowExecutionId: &core.WorkflowExecutionIdentifier{
 			Project: "project",
@@ -522,7 +539,8 @@ func TestListNodeExecutions(t *testing.T) {
 }
 
 func TestListNodeExecutions_InvalidParams(t *testing.T) {
-	nodeExecManager := NewNodeExecutionManager(nil, mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
+	nodeExecManager := NewNodeExecutionManager(nil, getMockExecutionsConfigProvider(),
+		getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
 	_, err := nodeExecManager.ListNodeExecutions(context.Background(), admin.NodeExecutionListRequest{
 		Filters: "eq(execution.project, project)",
 	})
@@ -548,7 +566,8 @@ func TestListNodeExecutions_DatabaseError(t *testing.T) {
 			interfaces.NodeExecutionCollectionOutput, error) {
 			return interfaces.NodeExecutionCollectionOutput{}, expectedErr
 		})
-	nodeExecManager := NewNodeExecutionManager(repository, mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
+	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(),
+		getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
 	nodeExecutions, err := nodeExecManager.ListNodeExecutions(context.Background(), admin.NodeExecutionListRequest{
 		WorkflowExecutionId: &core.WorkflowExecutionIdentifier{
 			Project: "project",
@@ -586,7 +605,8 @@ func TestListNodeExecutions_TransformerError(t *testing.T) {
 				},
 			}, nil
 		})
-	nodeExecManager := NewNodeExecutionManager(repository, mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
+	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(),
+		getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
 	nodeExecutions, err := nodeExecManager.ListNodeExecutions(context.Background(), admin.NodeExecutionListRequest{
 		WorkflowExecutionId: &core.WorkflowExecutionIdentifier{
 			Project: "project",
@@ -614,7 +634,8 @@ func TestListNodeExecutions_NothingToReturn(t *testing.T) {
 			listExecutionsCalled = true
 			return interfaces.ExecutionCollectionOutput{}, nil
 		})
-	nodeExecManager := NewNodeExecutionManager(repository, mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
+	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(),
+		getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
 	_, err := nodeExecManager.ListNodeExecutions(context.Background(), admin.NodeExecutionListRequest{
 		WorkflowExecutionId: &core.WorkflowExecutionIdentifier{
 			Project: "project",
@@ -692,7 +713,8 @@ func TestListNodeExecutionsForTask(t *testing.T) {
 				},
 			}, nil
 		})
-	nodeExecManager := NewNodeExecutionManager(repository, mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
+	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(),
+		getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
 	nodeExecutions, err := nodeExecManager.ListNodeExecutionsForTask(context.Background(), admin.NodeExecutionForTaskListRequest{
 		TaskExecutionId: &core.TaskExecutionIdentifier{
 			NodeExecutionId: &core.NodeExecutionIdentifier{
@@ -787,7 +809,32 @@ func TestGetNodeExecutionData(t *testing.T) {
 
 		return admin.UrlBlob{}, errors.New("unexpected input")
 	}
-	nodeExecManager := NewNodeExecutionManager(repository, mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
+	mockStorage := commonMocks.GetMockStorageClient()
+	fullInputs := &core.LiteralMap{
+		Literals: map[string]*core.Literal{
+			"foo": testutils.MakeStringLiteral("foo-value-1"),
+		},
+	}
+	fullOutputs := &core.LiteralMap{
+		Literals: map[string]*core.Literal{
+			"bar": testutils.MakeStringLiteral("bar-value-1"),
+		},
+	}
+	mockStorage.ComposedProtobufStore.(*commonMocks.TestDataStore).ReadProtobufCb = func(
+		ctx context.Context, reference storage.DataReference, msg proto.Message) error {
+		if reference.String() == "input uri" {
+			marshalled, _ := proto.Marshal(fullInputs)
+			_ = proto.Unmarshal(marshalled, msg)
+			return nil
+		} else if reference.String() == "output uri" {
+			marshalled, _ := proto.Marshal(fullOutputs)
+			_ = proto.Unmarshal(marshalled, msg)
+			return nil
+		}
+		return fmt.Errorf("unexpected call to find value in storage [%v]", reference.String())
+	}
+	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(), mockStorage,
+		mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
 	dataResponse, err := nodeExecManager.GetNodeExecutionData(context.Background(), admin.NodeExecutionGetDataRequest{
 		Id: &nodeExecutionIdentifier,
 	})
@@ -801,5 +848,7 @@ func TestGetNodeExecutionData(t *testing.T) {
 			Url:   "outputs",
 			Bytes: 200,
 		},
+		FullInputs:  fullInputs,
+		FullOutputs: fullOutputs,
 	}, dataResponse))
 }
