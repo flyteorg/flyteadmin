@@ -206,9 +206,9 @@ func TestUpdateNodeExecutionModel(t *testing.T) {
 						CatalogKey: &core.CatalogMetadata{
 							DatasetId: &core.Identifier{
 								ResourceType: core.ResourceType_DATASET,
-								Name: "x",
-								Project: "proj",
-								Domain: "domain",
+								Name:         "x",
+								Project:      "proj",
+								Domain:       "domain",
 							},
 						},
 					},
@@ -233,7 +233,7 @@ func TestUpdateNodeExecutionModel(t *testing.T) {
 			TargetMetadata: &admin.NodeExecutionClosure_TaskNodeMetadata{
 				TaskNodeMetadata: &admin.TaskNodeMetadata{
 					CacheStatus: request.Event.GetTaskNodeMetadata().CacheStatus,
-					CatalogKey: request.Event.GetTaskNodeMetadata().CatalogKey,
+					CatalogKey:  request.Event.GetTaskNodeMetadata().CatalogKey,
 				},
 			},
 		}
