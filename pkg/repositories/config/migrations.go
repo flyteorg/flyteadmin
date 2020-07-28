@@ -225,7 +225,7 @@ var Migrations = []*gormigrate.Migration{
 
 	// NodeExecutions table has CacheStatus for Task nodes
 	{
-		ID: "2020-04-29-executions",
+		ID: "2020-07-27-cachestatus",
 		Migrate: func(tx *gorm.DB) error {
 			return tx.AutoMigrate(&models.NodeExecution{}).Error
 		},
