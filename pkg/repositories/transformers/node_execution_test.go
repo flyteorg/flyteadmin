@@ -224,7 +224,7 @@ func TestUpdateNodeExecutionModel(t *testing.T) {
 		assert.Equal(t, occurredAt, *nodeExecutionModel.StartedAt)
 		assert.EqualValues(t, occurredAt, *nodeExecutionModel.NodeExecutionUpdatedAt)
 		assert.NotNil(t, nodeExecutionModel.CacheStatus)
-		assert.Equal(t, *nodeExecutionModel.CacheStatus, request.Event.GetTaskNodeMetadata().CacheStatus)
+		assert.Equal(t, *nodeExecutionModel.CacheStatus, request.Event.GetTaskNodeMetadata().CacheStatus.String())
 
 		var closure = &admin.NodeExecutionClosure{
 			Phase:     core.NodeExecution_RUNNING,
