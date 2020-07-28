@@ -36,5 +36,7 @@ type NodeExecution struct {
 	// Execution Error Kind. nullable, can be one of core.ExecutionError_ErrorKind
 	ErrorKind *string `gorm:"index"`
 	// Execution Error Code nullable. string value, but finite set determined by the execution engine and plugins
-	ErrorCode *string
+	ErrorCode   *string
+	// TODO, This is never really null after this point
+	CacheStatus *string
 }
