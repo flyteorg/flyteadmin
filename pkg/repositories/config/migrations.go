@@ -222,4 +222,15 @@ var Migrations = []*gormigrate.Migration{
 			return tx.Exec("ALTER TABLE executions DROP COLUMN IF EXISTS task_id").Error
 		},
 	},
+
+	// NodeExecutions table has CacheStatus for Task nodes
+	{
+		ID: "2020-04-29-executions",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&models.NodeExecution{}).Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Model(&models.NodeExecution{}).DropColumn("cache_status").Error
+		},
+	},
 }
