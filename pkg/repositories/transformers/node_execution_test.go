@@ -340,11 +340,11 @@ func TestFromNodeExecutionModels(t *testing.T) {
 					Name:    "name",
 				},
 			},
-			Phase:    "NodeExecutionPhase_NODE_PHASE_RUNNING",
-			Closure:  closureBytes,
+			Phase:                 "NodeExecutionPhase_NODE_PHASE_RUNNING",
+			Closure:               closureBytes,
 			NodeExecutionMetadata: nodeExecutionMetadataBytes,
-			InputURI: "input uri",
-			Duration: duration,
+			InputURI:              "input uri",
+			Duration:              duration,
 		},
 	})
 	assert.Nil(t, err)
