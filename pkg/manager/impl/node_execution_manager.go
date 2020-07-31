@@ -83,6 +83,8 @@ func (m *NodeExecutionManager) createNodeExecutionWithEvent(
 			NodeId:      request.Event.ParentNodeMetadata.NodeId,
 		})
 		if err != nil {
+			logger.Errorf(ctx, "failed to fetch node execution for the parent node: %v %s with err",
+				request.Event.Id.ExecutionId, request.Event.ParentNodeMetadata.NodeId, err)
 			return err
 		}
 		parentID = &parentNodeExecutionModel.ID

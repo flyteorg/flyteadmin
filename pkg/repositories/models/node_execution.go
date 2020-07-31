@@ -36,6 +36,7 @@ type NodeExecution struct {
 	// List of child node executions - for cases like Dynamic task, sub workflow, etc
 	ChildNodeExecutions []NodeExecution `gorm:"foreignkey:ParentID"`
 	// The task execution (if any) which launched this node execution.
+	// TO BE DEPRECATED - as we have now introduced ParentID
 	ParentTaskExecutionID uint `sql:"default:null" gorm:"index"`
 	// The workflow execution (if any) which this node execution launched
 	// NOTE: LaunchedExecution[foreignkey:ParentNodeExecutionID] refers to Workflow execution launched and is different from ParentID
