@@ -128,6 +128,7 @@ func TestCreateNodeEvent(t *testing.T) {
 				InputURI:               "input uri",
 				StartedAt:              &occurredAt,
 				Closure:                closureBytes,
+				NodeExecutionMetadata:  []byte{},
 				NodeExecutionCreatedAt: &occurredAt,
 				NodeExecutionUpdatedAt: &occurredAt,
 			}, *input)
@@ -369,6 +370,11 @@ func TestGetNodeExecution(t *testing.T) {
 	expectedClosure := admin.NodeExecutionClosure{
 		Phase: core.NodeExecution_SUCCEEDED,
 	}
+	expectedMetadata := admin.NodeExecutionMetaData{
+		SpecNodeId: "spec_node_id",
+		RetryGroup: "retry_group",
+	}
+	metadataBytes, _ := proto.Marshal(&expectedMetadata)
 	closureBytes, _ := proto.Marshal(&expectedClosure)
 	repository.NodeExecutionRepo().(*repositoryMocks.MockNodeExecutionRepo).SetGetCallback(
 		func(ctx context.Context, input interfaces.GetNodeExecutionInput) (models.NodeExecution, error) {
@@ -390,10 +396,11 @@ func TestGetNodeExecution(t *testing.T) {
 						Name:    "name",
 					},
 				},
-				Phase:     core.NodeExecution_SUCCEEDED.String(),
-				InputURI:  "input uri",
-				StartedAt: &occurredAt,
-				Closure:   closureBytes,
+				Phase:                 core.NodeExecution_SUCCEEDED.String(),
+				InputURI:              "input uri",
+				StartedAt:             &occurredAt,
+				Closure:               closureBytes,
+				NodeExecutionMetadata: metadataBytes,
 			}, nil
 		})
 	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(),
@@ -406,6 +413,71 @@ func TestGetNodeExecution(t *testing.T) {
 		Id:       &nodeExecutionIdentifier,
 		InputUri: "input uri",
 		Closure:  &expectedClosure,
+		Metadata: &expectedMetadata,
+	}, nodeExecution))
+}
+
+func TestGetNodeExecutionParentNode(t *testing.T) {
+	repository := repositoryMocks.NewMockRepository()
+	expectedClosure := admin.NodeExecutionClosure{
+		Phase: core.NodeExecution_SUCCEEDED,
+	}
+	expectedMetadata := admin.NodeExecutionMetaData{
+		SpecNodeId: "spec_node_id",
+		RetryGroup: "retry_group",
+	}
+	metadataBytes, _ := proto.Marshal(&expectedMetadata)
+	closureBytes, _ := proto.Marshal(&expectedClosure)
+	repository.NodeExecutionRepo().(*repositoryMocks.MockNodeExecutionRepo).SetGetCallback(
+		func(ctx context.Context, input interfaces.GetNodeExecutionInput) (models.NodeExecution, error) {
+			workflowExecutionIdentifier := core.WorkflowExecutionIdentifier{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			}
+			assert.True(t, proto.Equal(&core.NodeExecutionIdentifier{
+				NodeId:      "node id",
+				ExecutionId: &workflowExecutionIdentifier,
+			}, &input.NodeExecutionIdentifier))
+			return models.NodeExecution{
+				NodeExecutionKey: models.NodeExecutionKey{
+					NodeID: "node id",
+					ExecutionKey: models.ExecutionKey{
+						Project: "project",
+						Domain:  "domain",
+						Name:    "name",
+					},
+				},
+				Phase:                 core.NodeExecution_SUCCEEDED.String(),
+				InputURI:              "input uri",
+				StartedAt:             &occurredAt,
+				Closure:               closureBytes,
+				NodeExecutionMetadata: metadataBytes,
+				ChildNodeExecutions: []models.NodeExecution{
+					{
+						NodeExecutionKey: models.NodeExecutionKey{
+							NodeID: "node-child",
+							ExecutionKey: models.ExecutionKey{
+								Project: "project",
+								Domain:  "domain",
+								Name:    "name",
+							},
+						},
+					},
+				},
+			}, nil
+		})
+	nodeExecManager := NewNodeExecutionManager(repository, mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
+	nodeExecution, err := nodeExecManager.GetNodeExecution(context.Background(), admin.NodeExecutionGetRequest{
+		Id: &nodeExecutionIdentifier,
+	})
+	assert.Nil(t, err)
+	expectedMetadata.IsParentNode = true
+	assert.True(t, proto.Equal(&admin.NodeExecution{
+		Id:       &nodeExecutionIdentifier,
+		InputUri: "input uri",
+		Closure:  &expectedClosure,
+		Metadata: &expectedMetadata,
 	}, nodeExecution))
 }
 
@@ -453,12 +525,18 @@ func TestGetNodeExecution_TransformerError(t *testing.T) {
 	assert.Equal(t, err.(flyteAdminErrors.FlyteAdminError).Code(), codes.Internal)
 }
 
-func TestListNodeExecutions(t *testing.T) {
+func TestListNodeExecutionsLevelZero(t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
 	expectedClosure := admin.NodeExecutionClosure{
 		Phase: core.NodeExecution_SUCCEEDED,
 	}
+	expectedMetadata := admin.NodeExecutionMetaData{
+		SpecNodeId: "spec_node_id",
+		RetryGroup: "retry_group",
+	}
+	metadataBytes, _ := proto.Marshal(&expectedMetadata)
 	closureBytes, _ := proto.Marshal(&expectedClosure)
+
 	repository.NodeExecutionRepo().(*repositoryMocks.MockNodeExecutionRepo).SetListCallback(
 		func(ctx context.Context, input interfaces.ListResourceInput) (
 			interfaces.NodeExecutionCollectionOutput, error) {
@@ -483,6 +561,7 @@ func TestListNodeExecutions(t *testing.T) {
 			assert.Len(t, input.MapFilters, 1)
 			filter := input.MapFilters[0].GetFilter()
 			assert.Equal(t, map[string]interface{}{
+				"parent_id":                nil,
 				"parent_task_execution_id": nil,
 			}, filter)
 
@@ -498,10 +577,11 @@ func TestListNodeExecutions(t *testing.T) {
 								Name:    "name",
 							},
 						},
-						Phase:     core.NodeExecution_SUCCEEDED.String(),
-						InputURI:  "input uri",
-						StartedAt: &occurredAt,
-						Closure:   closureBytes,
+						Phase:                 core.NodeExecution_SUCCEEDED.String(),
+						InputURI:              "input uri",
+						StartedAt:             &occurredAt,
+						Closure:               closureBytes,
+						NodeExecutionMetadata: metadataBytes,
 					},
 				},
 			}, nil
@@ -534,6 +614,107 @@ func TestListNodeExecutions(t *testing.T) {
 		},
 		InputUri: "input uri",
 		Closure:  &expectedClosure,
+		Metadata: &expectedMetadata,
+	}, nodeExecutions.NodeExecutions[0]))
+	assert.Equal(t, "3", nodeExecutions.Token)
+}
+
+func TestListNodeExecutionsWithParent(t *testing.T) {
+	repository := repositoryMocks.NewMockRepository()
+	expectedClosure := admin.NodeExecutionClosure{
+		Phase: core.NodeExecution_SUCCEEDED,
+	}
+	expectedMetadata := admin.NodeExecutionMetaData{
+		SpecNodeId: "spec_node_id",
+		RetryGroup: "retry_group",
+	}
+	metadataBytes, _ := proto.Marshal(&expectedMetadata)
+	closureBytes, _ := proto.Marshal(&expectedClosure)
+	parentID := uint(12)
+	repository.NodeExecutionRepo().(*repositoryMocks.MockNodeExecutionRepo).SetGetCallback(func(ctx context.Context, input interfaces.GetNodeExecutionInput) (execution models.NodeExecution, e error) {
+		assert.Equal(t, "parent_1", input.NodeExecutionIdentifier.NodeId)
+		return models.NodeExecution{
+			BaseModel: models.BaseModel{
+				ID: parentID,
+			},
+		}, nil
+	})
+	repository.NodeExecutionRepo().(*repositoryMocks.MockNodeExecutionRepo).SetListCallback(
+		func(ctx context.Context, input interfaces.ListResourceInput) (
+			interfaces.NodeExecutionCollectionOutput, error) {
+			assert.Equal(t, 1, input.Limit)
+			assert.Equal(t, 2, input.Offset)
+			assert.Len(t, input.InlineFilters, 4)
+			assert.Equal(t, common.Execution, input.InlineFilters[0].GetEntity())
+			queryExpr, _ := input.InlineFilters[0].GetGormQueryExpr()
+			assert.Equal(t, "project", queryExpr.Args)
+			assert.Equal(t, "execution_project = ?", queryExpr.Query)
+
+			assert.Equal(t, common.Execution, input.InlineFilters[1].GetEntity())
+			queryExpr, _ = input.InlineFilters[1].GetGormQueryExpr()
+			assert.Equal(t, "domain", queryExpr.Args)
+			assert.Equal(t, "execution_domain = ?", queryExpr.Query)
+
+			assert.Equal(t, common.Execution, input.InlineFilters[2].GetEntity())
+			queryExpr, _ = input.InlineFilters[2].GetGormQueryExpr()
+			assert.Equal(t, "name", queryExpr.Args)
+			assert.Equal(t, "execution_name = ?", queryExpr.Query)
+
+			assert.Equal(t, common.NodeExecution, input.InlineFilters[3].GetEntity())
+			queryExpr, _ = input.InlineFilters[3].GetGormQueryExpr()
+			assert.Equal(t, parentID, queryExpr.Args)
+			assert.Equal(t, "parent_id = ?", queryExpr.Query)
+
+			assert.Equal(t, "domain asc", input.SortParameter.GetGormOrderExpr())
+			return interfaces.NodeExecutionCollectionOutput{
+				NodeExecutions: []models.NodeExecution{
+					{
+						NodeExecutionKey: models.NodeExecutionKey{
+							NodeID: "node id",
+							ExecutionKey: models.ExecutionKey{
+								Project: "project",
+								Domain:  "domain",
+								Name:    "name",
+							},
+						},
+						Phase:                 core.NodeExecution_SUCCEEDED.String(),
+						InputURI:              "input uri",
+						StartedAt:             &occurredAt,
+						Closure:               closureBytes,
+						NodeExecutionMetadata: metadataBytes,
+					},
+				},
+			}, nil
+		})
+	nodeExecManager := NewNodeExecutionManager(repository, mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
+	nodeExecutions, err := nodeExecManager.ListNodeExecutions(context.Background(), admin.NodeExecutionListRequest{
+		WorkflowExecutionId: &core.WorkflowExecutionIdentifier{
+			Project: "project",
+			Domain:  "domain",
+			Name:    "name",
+		},
+		Limit: 1,
+		Token: "2",
+		SortBy: &admin.Sort{
+			Direction: admin.Sort_ASCENDING,
+			Key:       "domain",
+		},
+		UniqueParentId: "parent_1",
+	})
+	assert.Nil(t, err)
+	assert.Len(t, nodeExecutions.NodeExecutions, 1)
+	assert.True(t, proto.Equal(&admin.NodeExecution{
+		Id: &core.NodeExecutionIdentifier{
+			NodeId: "node id",
+			ExecutionId: &core.WorkflowExecutionIdentifier{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			},
+		},
+		InputUri: "input uri",
+		Closure:  &expectedClosure,
+		Metadata: &expectedMetadata,
 	}, nodeExecutions.NodeExecutions[0]))
 	assert.Equal(t, "3", nodeExecutions.Token)
 }
@@ -658,7 +839,13 @@ func TestListNodeExecutionsForTask(t *testing.T) {
 	expectedClosure := admin.NodeExecutionClosure{
 		Phase: core.NodeExecution_SUCCEEDED,
 	}
+	execMetadata := admin.NodeExecutionMetaData{
+		SpecNodeId: "spec-n1",
+	}
+
 	closureBytes, _ := proto.Marshal(&expectedClosure)
+	execMetadataBytes, _ := proto.Marshal(&execMetadata)
+
 	repository.TaskExecutionRepo().(*repositoryMocks.MockTaskExecutionRepo).SetGetCallback(
 		func(ctx context.Context, input interfaces.GetTaskExecutionInput) (models.TaskExecution, error) {
 			return models.TaskExecution{
@@ -705,10 +892,23 @@ func TestListNodeExecutionsForTask(t *testing.T) {
 								Name:    "name",
 							},
 						},
-						Phase:     core.NodeExecution_SUCCEEDED.String(),
-						InputURI:  "input uri",
-						StartedAt: &occurredAt,
-						Closure:   closureBytes,
+						Phase:                 core.NodeExecution_SUCCEEDED.String(),
+						InputURI:              "input uri",
+						StartedAt:             &occurredAt,
+						Closure:               closureBytes,
+						NodeExecutionMetadata: execMetadataBytes,
+						ChildNodeExecutions: []models.NodeExecution{
+							{
+								NodeExecutionKey: models.NodeExecutionKey{
+									NodeID: "node-c",
+									ExecutionKey: models.ExecutionKey{
+										Project: "project",
+										Domain:  "domain",
+										Name:    "name",
+									},
+								},
+							},
+						},
 					},
 				},
 			}, nil
@@ -742,6 +942,10 @@ func TestListNodeExecutionsForTask(t *testing.T) {
 	})
 	assert.Nil(t, err)
 	assert.Len(t, nodeExecutions.NodeExecutions, 1)
+	expectedMetadata := admin.NodeExecutionMetaData{
+		SpecNodeId:   "spec-n1",
+		IsParentNode: true,
+	}
 	assert.True(t, proto.Equal(&admin.NodeExecution{
 		Id: &core.NodeExecutionIdentifier{
 			NodeId: "node id",
@@ -753,6 +957,7 @@ func TestListNodeExecutionsForTask(t *testing.T) {
 		},
 		InputUri: "input uri",
 		Closure:  &expectedClosure,
+		Metadata: &expectedMetadata,
 	}, nodeExecutions.NodeExecutions[0]))
 	assert.Equal(t, "3", nodeExecutions.Token)
 }
@@ -765,6 +970,7 @@ func TestGetNodeExecutionData(t *testing.T) {
 			OutputUri: "output uri",
 		},
 	}
+
 	closureBytes, _ := proto.Marshal(&expectedClosure)
 	repository.NodeExecutionRepo().(*repositoryMocks.MockNodeExecutionRepo).SetGetCallback(
 		func(ctx context.Context, input interfaces.GetNodeExecutionInput) (models.NodeExecution, error) {

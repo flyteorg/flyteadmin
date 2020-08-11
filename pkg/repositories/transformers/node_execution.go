@@ -3,23 +3,26 @@ package transformers
 import (
 	"context"
 
-	"github.com/lyft/flyteadmin/pkg/common"
 	"github.com/lyft/flytestdlib/logger"
+
+	"github.com/lyft/flyteadmin/pkg/common"
 
 	"github.com/golang/protobuf/proto"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 
-	"github.com/lyft/flyteadmin/pkg/errors"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 	"google.golang.org/grpc/codes"
+
+	"github.com/lyft/flyteadmin/pkg/errors"
+	"github.com/lyft/flyteadmin/pkg/repositories/models"
 )
 
 type ToNodeExecutionModelInput struct {
 	Request               *admin.NodeExecutionEventRequest
 	ParentTaskExecutionID uint
+	ParentID              *uint
 }
 
 func addNodeRunningState(request *admin.NodeExecutionEventRequest, nodeExecutionModel *models.NodeExecution,
@@ -90,6 +93,11 @@ func CreateNodeExecutionModel(input ToNodeExecutionModelInput) (*models.NodeExec
 		UpdatedAt: input.Request.Event.OccurredAt,
 	}
 
+	nodeExecutionMetadata := admin.NodeExecutionMetaData{
+		RetryGroup: input.Request.Event.RetryGroup,
+		SpecNodeId: input.Request.Event.SpecNodeId,
+	}
+
 	if input.Request.Event.Phase == core.NodeExecution_RUNNING {
 		err := addNodeRunningState(input.Request, nodeExecution, &closure)
 		if err != nil {
@@ -107,7 +115,13 @@ func CreateNodeExecutionModel(input ToNodeExecutionModelInput) (*models.NodeExec
 		return nil, errors.NewFlyteAdminErrorf(
 			codes.Internal, "failed to marshal node execution closure with error: %v", err)
 	}
+	marshaledNodeExecutionMetadata, err := proto.Marshal(&nodeExecutionMetadata)
+	if err != nil {
+		return nil, errors.NewFlyteAdminErrorf(
+			codes.Internal, "failed to marshal node execution metadata with error: %v", err)
+	}
 	nodeExecution.Closure = marshaledClosure
+	nodeExecution.NodeExecutionMetadata = marshaledNodeExecutionMetadata
 	nodeExecutionCreatedAt, err := ptypes.Timestamp(input.Request.Event.OccurredAt)
 	if err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to read event timestamp")
@@ -117,6 +131,7 @@ func CreateNodeExecutionModel(input ToNodeExecutionModelInput) (*models.NodeExec
 	if input.Request.Event.ParentTaskMetadata != nil {
 		nodeExecution.ParentTaskExecutionID = input.ParentTaskExecutionID
 	}
+	nodeExecution.ParentID = input.ParentID
 	return nodeExecution, nil
 }
 
@@ -132,6 +147,7 @@ func UpdateNodeExecutionModel(
 	nodeExecutionModel.Phase = request.Event.Phase.String()
 	nodeExecutionClosure.Phase = request.Event.Phase
 	nodeExecutionClosure.UpdatedAt = request.Event.OccurredAt
+
 	if request.Event.Phase == core.NodeExecution_RUNNING {
 		err := addNodeRunningState(request, nodeExecutionModel, &nodeExecutionClosure)
 		if err != nil {
@@ -154,11 +170,24 @@ func UpdateNodeExecutionModel(
 		}
 	}
 
+	// Update TaskNodeMetadata, which includes caching information today.
+	if request.Event.GetTaskNodeMetadata() != nil {
+		st := request.Event.GetTaskNodeMetadata().GetCacheStatus().String()
+		nodeExecutionClosure.TargetMetadata = &admin.NodeExecutionClosure_TaskNodeMetadata{
+			TaskNodeMetadata: &admin.TaskNodeMetadata{
+				CacheStatus: request.Event.GetTaskNodeMetadata().GetCacheStatus(),
+				CatalogKey:  request.Event.GetTaskNodeMetadata().GetCatalogKey(),
+			},
+		}
+		nodeExecutionModel.CacheStatus = &st
+	}
+
 	marshaledClosure, err := proto.Marshal(&nodeExecutionClosure)
 	if err != nil {
 		return errors.NewFlyteAdminErrorf(
 			codes.Internal, "failed to marshal node execution closure with error: %v", err)
 	}
+
 	nodeExecutionModel.Closure = marshaledClosure
 	updatedAt, err := ptypes.Timestamp(request.Event.OccurredAt)
 	if err != nil {
@@ -175,6 +204,14 @@ func FromNodeExecutionModel(nodeExecutionModel models.NodeExecution) (*admin.Nod
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal closure")
 	}
 
+	var nodeExecutionMetadata admin.NodeExecutionMetaData
+	err = proto.Unmarshal(nodeExecutionModel.NodeExecutionMetadata, &nodeExecutionMetadata)
+	if err != nil {
+		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal nodeExecutionMetadata")
+	}
+	if len(nodeExecutionModel.ChildNodeExecutions) > 0 {
+		nodeExecutionMetadata.IsParentNode = true
+	}
 	return &admin.NodeExecution{
 		Id: &core.NodeExecutionIdentifier{
 			NodeId: nodeExecutionModel.NodeID,
@@ -186,6 +223,7 @@ func FromNodeExecutionModel(nodeExecutionModel models.NodeExecution) (*admin.Nod
 		},
 		InputUri: nodeExecutionModel.InputURI,
 		Closure:  &closure,
+		Metadata: &nodeExecutionMetadata,
 	}, nil
 }
 

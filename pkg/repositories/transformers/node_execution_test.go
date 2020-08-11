@@ -7,11 +7,12 @@ import (
 	"github.com/golang/protobuf/ptypes"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/lyft/flyteadmin/pkg/repositories/models"
 )
 
 var occurredAt = time.Now().UTC()
@@ -26,6 +27,12 @@ var closure = &admin.NodeExecutionClosure{
 	Duration:  ptypes.DurationProto(duration),
 }
 var closureBytes, _ = proto.Marshal(closure)
+var nodeExecutionMetadata = admin.NodeExecutionMetaData{
+	IsParentNode: false,
+	RetryGroup:   "r",
+	SpecNodeId:   "sp",
+}
+var nodeExecutionMetadataBytes, _ = proto.Marshal(&nodeExecutionMetadata)
 
 var childExecutionID = &core.WorkflowExecutionIdentifier{
 	Project: "p",
@@ -153,43 +160,93 @@ func TestCreateNodeExecutionModel(t *testing.T) {
 		StartedAt:              &occurredAt,
 		NodeExecutionCreatedAt: &occurredAt,
 		NodeExecutionUpdatedAt: &occurredAt,
+		NodeExecutionMetadata:  []byte{},
 		ParentTaskExecutionID:  8,
 	}, nodeExecutionModel)
 }
 
 func TestUpdateNodeExecutionModel(t *testing.T) {
-	request := admin.NodeExecutionEventRequest{
-		Event: &event.NodeExecutionEvent{
-			Phase:      core.NodeExecution_RUNNING,
-			OccurredAt: occurredAtProto,
-			TargetMetadata: &event.NodeExecutionEvent_WorkflowNodeMetadata{
-				WorkflowNodeMetadata: &event.WorkflowNodeMetadata{
+	t.Run("child-workflow", func(t *testing.T) {
+		request := admin.NodeExecutionEventRequest{
+			Event: &event.NodeExecutionEvent{
+				Phase:      core.NodeExecution_RUNNING,
+				OccurredAt: occurredAtProto,
+				TargetMetadata: &event.NodeExecutionEvent_WorkflowNodeMetadata{
+					WorkflowNodeMetadata: &event.WorkflowNodeMetadata{
+						ExecutionId: childExecutionID,
+					},
+				},
+			},
+		}
+		nodeExecutionModel := models.NodeExecution{
+			Phase: core.NodeExecution_UNDEFINED.String(),
+		}
+		err := UpdateNodeExecutionModel(&request, &nodeExecutionModel, childExecutionID)
+		assert.Nil(t, err)
+		assert.Equal(t, core.NodeExecution_RUNNING.String(), nodeExecutionModel.Phase)
+		assert.Equal(t, occurredAt, *nodeExecutionModel.StartedAt)
+		assert.EqualValues(t, occurredAt, *nodeExecutionModel.NodeExecutionUpdatedAt)
+		assert.Nil(t, nodeExecutionModel.CacheStatus)
+
+		var closure = &admin.NodeExecutionClosure{
+			Phase:     core.NodeExecution_RUNNING,
+			StartedAt: occurredAtProto,
+			UpdatedAt: occurredAtProto,
+			TargetMetadata: &admin.NodeExecutionClosure_WorkflowNodeMetadata{
+				WorkflowNodeMetadata: &admin.WorkflowNodeMetadata{
 					ExecutionId: childExecutionID,
 				},
 			},
-		},
-	}
-	nodeExecutionModel := models.NodeExecution{
-		Phase: core.NodeExecution_UNDEFINED.String(),
-	}
-	err := UpdateNodeExecutionModel(&request, &nodeExecutionModel, childExecutionID)
-	assert.Nil(t, err)
-	assert.Equal(t, core.NodeExecution_RUNNING.String(), nodeExecutionModel.Phase)
-	assert.Equal(t, occurredAt, *nodeExecutionModel.StartedAt)
-	assert.EqualValues(t, occurredAt, *nodeExecutionModel.NodeExecutionUpdatedAt)
+		}
+		var closureBytes, _ = proto.Marshal(closure)
+		assert.Equal(t, nodeExecutionModel.Closure, closureBytes)
+	})
 
-	var closure = &admin.NodeExecutionClosure{
-		Phase:     core.NodeExecution_RUNNING,
-		StartedAt: occurredAtProto,
-		UpdatedAt: occurredAtProto,
-		TargetMetadata: &admin.NodeExecutionClosure_WorkflowNodeMetadata{
-			WorkflowNodeMetadata: &admin.WorkflowNodeMetadata{
-				ExecutionId: childExecutionID,
+	t.Run("task-node-metadata", func(t *testing.T) {
+		request := admin.NodeExecutionEventRequest{
+			Event: &event.NodeExecutionEvent{
+				Phase:      core.NodeExecution_RUNNING,
+				OccurredAt: occurredAtProto,
+				TargetMetadata: &event.NodeExecutionEvent_TaskNodeMetadata{
+					TaskNodeMetadata: &event.TaskNodeMetadata{
+						CacheStatus: core.CatalogCacheStatus_CACHE_POPULATED,
+						CatalogKey: &core.CatalogMetadata{
+							DatasetId: &core.Identifier{
+								ResourceType: core.ResourceType_DATASET,
+								Name:         "x",
+								Project:      "proj",
+								Domain:       "domain",
+							},
+						},
+					},
+				},
 			},
-		},
-	}
-	var closureBytes, _ = proto.Marshal(closure)
-	assert.Equal(t, nodeExecutionModel.Closure, closureBytes)
+		}
+		nodeExecutionModel := models.NodeExecution{
+			Phase: core.NodeExecution_UNDEFINED.String(),
+		}
+		err := UpdateNodeExecutionModel(&request, &nodeExecutionModel, childExecutionID)
+		assert.Nil(t, err)
+		assert.Equal(t, core.NodeExecution_RUNNING.String(), nodeExecutionModel.Phase)
+		assert.Equal(t, occurredAt, *nodeExecutionModel.StartedAt)
+		assert.EqualValues(t, occurredAt, *nodeExecutionModel.NodeExecutionUpdatedAt)
+		assert.NotNil(t, nodeExecutionModel.CacheStatus)
+		assert.Equal(t, *nodeExecutionModel.CacheStatus, request.Event.GetTaskNodeMetadata().CacheStatus.String())
+
+		var closure = &admin.NodeExecutionClosure{
+			Phase:     core.NodeExecution_RUNNING,
+			StartedAt: occurredAtProto,
+			UpdatedAt: occurredAtProto,
+			TargetMetadata: &admin.NodeExecutionClosure_TaskNodeMetadata{
+				TaskNodeMetadata: &admin.TaskNodeMetadata{
+					CacheStatus: request.Event.GetTaskNodeMetadata().CacheStatus,
+					CatalogKey:  request.Event.GetTaskNodeMetadata().CatalogKey,
+				},
+			},
+		}
+		var closureBytes, _ = proto.Marshal(closure)
+		assert.Equal(t, nodeExecutionModel.Closure, closureBytes)
+	})
 }
 
 func TestFromNodeExecutionModel(t *testing.T) {
@@ -210,8 +267,52 @@ func TestFromNodeExecutionModel(t *testing.T) {
 				Name:    "name",
 			},
 		},
-		Phase:    "NodeExecutionPhase_NODE_PHASE_RUNNING",
-		Closure:  closureBytes,
+		Phase:                 "NodeExecutionPhase_NODE_PHASE_RUNNING",
+		Closure:               closureBytes,
+		NodeExecutionMetadata: nodeExecutionMetadataBytes,
+		InputURI:              "input uri",
+		Duration:              duration,
+	})
+	assert.Nil(t, err)
+	assert.True(t, proto.Equal(&admin.NodeExecution{
+		Id:       &nodeExecutionIdentifier,
+		InputUri: "input uri",
+		Closure:  closure,
+		Metadata: &nodeExecutionMetadata,
+	}, nodeExecution))
+}
+
+func TestFromNodeExecutionModelWithChildren(t *testing.T) {
+	nodeExecutionIdentifier := core.NodeExecutionIdentifier{
+		NodeId: "nodey",
+		ExecutionId: &core.WorkflowExecutionIdentifier{
+			Project: "project",
+			Domain:  "domain",
+			Name:    "name",
+		},
+	}
+	nodeExecution, err := FromNodeExecutionModel(models.NodeExecution{
+		NodeExecutionKey: models.NodeExecutionKey{
+			NodeID: "nodey",
+			ExecutionKey: models.ExecutionKey{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			},
+		},
+		Phase:                 "NodeExecutionPhase_NODE_PHASE_RUNNING",
+		Closure:               closureBytes,
+		NodeExecutionMetadata: nodeExecutionMetadataBytes,
+		ChildNodeExecutions: []models.NodeExecution{
+			{NodeExecutionKey: models.NodeExecutionKey{
+				NodeID: "nodec1",
+				ExecutionKey: models.ExecutionKey{
+					Project: "project",
+					Domain:  "domain",
+					Name:    "name",
+				},
+			}},
+		},
 		InputURI: "input uri",
 		Duration: duration,
 	})
@@ -220,6 +321,11 @@ func TestFromNodeExecutionModel(t *testing.T) {
 		Id:       &nodeExecutionIdentifier,
 		InputUri: "input uri",
 		Closure:  closure,
+		Metadata: &admin.NodeExecutionMetaData{
+			IsParentNode: true,
+			RetryGroup:   "r",
+			SpecNodeId:   "sp",
+		},
 	}, nodeExecution))
 }
 
@@ -234,10 +340,11 @@ func TestFromNodeExecutionModels(t *testing.T) {
 					Name:    "name",
 				},
 			},
-			Phase:    "NodeExecutionPhase_NODE_PHASE_RUNNING",
-			Closure:  closureBytes,
-			InputURI: "input uri",
-			Duration: duration,
+			Phase:                 "NodeExecutionPhase_NODE_PHASE_RUNNING",
+			Closure:               closureBytes,
+			NodeExecutionMetadata: nodeExecutionMetadataBytes,
+			InputURI:              "input uri",
+			Duration:              duration,
 		},
 	})
 	assert.Nil(t, err)
@@ -253,5 +360,6 @@ func TestFromNodeExecutionModels(t *testing.T) {
 		},
 		InputUri: "input uri",
 		Closure:  closure,
+		Metadata: &nodeExecutionMetadata,
 	}, nodeExecutions[0]))
 }
