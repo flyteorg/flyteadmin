@@ -467,7 +467,8 @@ func TestGetNodeExecutionParentNode(t *testing.T) {
 				},
 			}, nil
 		})
-	nodeExecManager := NewNodeExecutionManager(repository, mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
+	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(),
+		getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
 	nodeExecution, err := nodeExecManager.GetNodeExecution(context.Background(), admin.NodeExecutionGetRequest{
 		Id: &nodeExecutionIdentifier,
 	})
@@ -686,7 +687,8 @@ func TestListNodeExecutionsWithParent(t *testing.T) {
 				},
 			}, nil
 		})
-	nodeExecManager := NewNodeExecutionManager(repository, mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
+	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(),
+		getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL)
 	nodeExecutions, err := nodeExecManager.ListNodeExecutions(context.Background(), admin.NodeExecutionListRequest{
 		WorkflowExecutionId: &core.WorkflowExecutionIdentifier{
 			Project: "project",
