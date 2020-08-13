@@ -74,7 +74,7 @@ func (m *AdminService) UpdateProject(ctx context.Context, request *admin.Project
 	var response *admin.ProjectUpdateResponse
 	var err error
 	m.Metrics.projectEndpointMetrics.register.Time(func() {
-		// TODO: this should do nothing right now.
+		response, err = m.ProjectManager.UpdateProject(ctx, *request)
 	})
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"UpdateProject",

@@ -60,6 +60,19 @@ func (m *ProjectManager) ListProjects(ctx context.Context, request admin.Project
 	}, nil
 }
 
+func (m *ProjectManager) UpdateProject(ctx context.Context, project admin.Project) (*admin.ProjectUpdateResponse, error) {
+	var response *admin.ProjectUpdateResponse
+
+	projectModel := transformers.CreateProjectModel(&project);
+	_, err := m.db.ProjectRepo().UpdateProject(ctx, projectModel)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
 func NewProjectManager(db repositories.RepositoryInterface, config runtimeInterfaces.Configuration) interfaces.ProjectInterface {
 	return &ProjectManager{
 		db:     db,
