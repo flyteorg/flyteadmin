@@ -71,18 +71,32 @@ func NewProjectRepo(db *gorm.DB, errorTransformer errors.ErrorTransformer,
 	}
 }
 
-func (r *ProjectRepo) UpdateProject(ctx context.Context, project models.Project) (models.Project, error) {
-	projectModel, err = r.Get(ctx, project)
+func (r *ProjectRepo) UpdateProject(ctx context.Context, updatedProject models.Project) (models.Project, error) {
+	var project models.Project
 
-	// If the project is not found, the error from the Get operation should be passed
-	// back to the caller of the UpdateProject function.
-	if err != nil {
-		return models.Project{}, err
+	timer := r.metrics.GetDuration.Start()
+	tx := r.db.Where(&models.Project{
+		Identifier: updatedProject.Identifier,
+	}).First(&project)
+	timer.Stop()
+
+	// Error handling and checking for the result of the database query.
+	if tx.Error != nil {
+		return models.Project{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
 	}
 
-	// Else, the first project model should be retrieved and updated with the properties of the
-	// project models.Project passed to the UpdateProject function.
-	// TODO - implement update on DB here.
+	if tx.RecordNotFound() {
+		return models.Project{}, flyteAdminErrors.NewFlyteAdminErrorf(codes.NotFound, "project [%s] not found", updatedProject.Identifier)
+	}
+
+	// TODO: update the project with the fields and persist to the DB.
+	if updatedProject.Description != "" {
+		project.Description = updatedProject.Description;
+	}
+
+	if len(updatedProject.Labels) > 0 {
+		project.Labels = updatedProject.Labels;
+	}
 
 	return models.Project{}, nil
 }
