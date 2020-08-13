@@ -70,3 +70,19 @@ func NewProjectRepo(db *gorm.DB, errorTransformer errors.ErrorTransformer,
 		metrics:          metrics,
 	}
 }
+
+func (r *ProjectRepo) UpdateProject(ctx context.Context, project models.Project) (models.Project, error) {
+	projectModel, err = r.Get(ctx, project)
+
+	// If the project is not found, the error from the Get operation should be passed
+	// back to the caller of the UpdateProject function.
+	if err != nil {
+		return models.Project{}, err
+	}
+
+	// Else, the first project model should be retrieved and updated with the properties of the
+	// project models.Project passed to the UpdateProject function.
+	// TODO - implement update on DB here.
+
+	return models.Project{}, nil
+}
