@@ -15,5 +15,5 @@ type ProjectRepoInterface interface {
 	// Lists unique projects registered as namespaces
 	ListAll(ctx context.Context, sortParameter common.SortParameter) ([]models.Project, error)
 	// Updates the properties of the given project.
-	UpdateProject(ctx context.Context, updatedProject models.Project) (models.Project, error)
+	UpdateProject(ctx context.Context, updatedProject models.Project) (error)
 }

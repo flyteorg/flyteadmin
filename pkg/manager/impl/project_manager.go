@@ -64,7 +64,7 @@ func (m *ProjectManager) UpdateProject(ctx context.Context, project admin.Projec
 	var response *admin.ProjectUpdateResponse
 
 	projectModel := transformers.CreateProjectModel(&project);
-	_, err := m.db.ProjectRepo().UpdateProject(ctx, projectModel)
+	err := m.db.ProjectRepo().UpdateProject(ctx, projectModel)
 
 	if err != nil {
 		return nil, err
