@@ -99,7 +99,12 @@ func (r *ProjectRepo) UpdateProject(ctx context.Context, updatedProject models.P
 	}
 
 	// Use gorm client to update the two fields that are changed.
-	r.db.Model(&project).Update("Description", "Labels")
+	writeTx := r.db.Model(&project).Update("Description", "Labels")
+
+	// Return error if applies.
+	if writeTx != nil {
+		r.errorTransformer.ToFlyteAdminError(writeTx.Error)
+	}
 
 	return nil
 }
