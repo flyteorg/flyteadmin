@@ -41,7 +41,7 @@ func (r *MockProjectRepo) ListAll(ctx context.Context, sortParameter common.Sort
 	return make([]models.Project, 0), nil
 }
 
-func (r *MockProjectRepo) UpdateProject(ctx context.Context, project models.Project, projectUpdate models.Project) (error) {
+func (r *MockProjectRepo) UpdateProject(ctx context.Context, projectUpdate models.Project) (error) {
 	if r.UpdateProjectFunction != nil {
 		return r.UpdateProjectFunction(ctx, project, projectUpdate)
 	}
