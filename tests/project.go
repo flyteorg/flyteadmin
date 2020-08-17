@@ -66,7 +66,7 @@ func TestUpdateProjectDescription(t *testing.T) {
 
 	// Attempt to modify the name of the Project. Modifying the Name should be a
 	// no-op, while the Description is modified.
-	resp, err := client.UpdateProject(ctx, &admin.Project{
+	_, err := client.UpdateProject(ctx, &admin.Project{
 		Id: "potato",
 		Name: "foobar",
 		Description: "a-new-description",
@@ -82,4 +82,53 @@ func TestUpdateProjectDescription(t *testing.T) {
 	assert.Equal(t, updatedProject.Id, "potato")
 	assert.Equal(t, updatedProject.Name, "spud") // unchanged
 	assert.Equal(t, updatedProject.Description, "a-new-description") // changed
+}
+
+func TestUpdateProjectLabels(t *testing.T) {
+	ctx := context.Background()
+	client, conn := GetTestAdminServiceClient()
+	defer conn.Close()
+
+	// Create a new project.
+	req := admin.ProjectRegisterRequest{
+		Project: &admin.Project{
+			Id:   "potato",
+			Name: "spud",
+		},
+	}
+	_, err := client.RegisterProject(ctx, &req)
+	assert.Nil(t, err)
+
+	// Verify the project has been registered.
+	projects, err := client.ListProjects(ctx, &admin.ProjectListRequest{})
+	assert.Nil(t, err)
+	assert.NotEmpty(t, projects.Projects)
+
+	// Attempt to modify the name of the Project. Modifying the Name should be a
+	// no-op, while the Labels are modified.
+	_, err := client.UpdateProject(ctx, &admin.Project{
+		Id: "potato",
+		Name: "foobar",
+		Labels: &admin.Labels{
+			Values: map[string]string{
+				"foo": "bar",
+				"bar": "baz",
+			},
+		},
+	})
+
+	// Fetch updated projects.
+	projectsUpdated, err := client.ListProjects(ctx, &admin.ProjectListRequest{})
+	assert.Nil(t, err)
+	assert.NotEmpty(t, projectsUpdated.Projects)
+
+	// Verify that the expected labels have been added to the project.
+	updatedProject := projectsUpdated.Projects[0]
+	labelsMap := updatedProject.Labels
+	fooVal, fooExists := labelsMap["foo"]
+	barVal, barExists := labelsMap["bar"]
+	assert.Equal(t, fooExists, true)
+	assert.Equal(t, fooVal, "bar")
+	assert.Equal(t, barExists, true)
+	assert.Equal(t, barVal, "baz")
 }
