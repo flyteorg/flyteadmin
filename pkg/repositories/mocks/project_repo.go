@@ -11,7 +11,7 @@ import (
 type CreateProjectFunction func(ctx context.Context, project models.Project) error
 type GetProjectFunction func(ctx context.Context, projectID string) (models.Project, error)
 type ListProjectsFunction func(ctx context.Context, sortParameter common.SortParameter) ([]models.Project, error)
-type UpdateProjectFunction func(ctx context.Context, project models.Project, projectUpdate models.Project) (error)
+type UpdateProjectFunction func(ctx context.Context, projectUpdate models.Project) (error)
 
 type MockProjectRepo struct {
 	CreateFunction       CreateProjectFunction
