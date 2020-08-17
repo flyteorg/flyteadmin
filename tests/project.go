@@ -64,7 +64,8 @@ func TestUpdateProjectDescription(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotEmpty(t, projects.Projects)
 
-	// Attempt to modify the name of the project. This should be a no-op.
+	// Attempt to modify the name of the Project. Modifying the Name should be a
+	// no-op, while the Description is modified.
 	resp, err := client.UpdateProject(admin.Project{
 		Id: "potato",
 		Name: "foobar",
@@ -76,7 +77,7 @@ func TestUpdateProjectDescription(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotEmpty(t, projectsUpdated.Projects)
 
-	// Finally verify that the project's name has not been modified.
+	// Verify that the project's Name has not been modified but the Description has.
 	updatedProject := projectsUpdated.Projects[0]
 	assert.Equal(t, updatedProject.Id, "potato")
 	assert.Equal(t, updatedProject.Name, "spud") // unchanged
