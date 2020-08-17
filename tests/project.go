@@ -125,8 +125,8 @@ func TestUpdateProjectLabels(t *testing.T) {
 	// Verify that the expected labels have been added to the project.
 	updatedProject := projectsUpdated.Projects[0]
 	labelsMap := updatedProject.Labels
-	fooVal, fooExists := labelsMap.values["foo"]
-	barVal, barExists := labelsMap.values["bar"]
+	fooVal, fooExists := labelsMap.Values["foo"]
+	barVal, barExists := labelsMap.Values["bar"]
 	assert.Equal(t, fooExists, true)
 	assert.Equal(t, fooVal, "bar")
 	assert.Equal(t, barExists, true)
