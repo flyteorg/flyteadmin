@@ -60,19 +60,19 @@ func (m *ProjectManager) ListProjects(ctx context.Context, request admin.Project
 	}, nil
 }
 
-func (m *ProjectManager) UpdateProject(ctx context.Context, project admin.Project) (*admin.ProjectUpdateResponse, error) {
+func (m *ProjectManager) UpdateProject(ctx context.Context, projectUpdate admin.Project) (*admin.ProjectUpdateResponse, error) {
 	var response *admin.ProjectUpdateResponse
 	projectRepo := m.db.ProjectRepo()
 
-	// Fetch the existing project if exists.
-	existingProjectModel, err := projectRepo.Get(ctx, project.Id)
+	// Fetch the existing project if exists. If not, return err and do not update.
+	_, err := projectRepo.Get(ctx, projectUpdate.Id)
 	if err != nil {
 		return nil, err
 	}
 
 	// Transform the provided project into a model and apply to the DB.
-	projectModel := transformers.CreateProjectModel(&project);
-	err = projectRepo.UpdateProject(ctx, existingProjectModel, projectModel)
+	projectUpdateModel := transformers.CreateProjectModel(&projectUpdate);
+	err = projectRepo.UpdateProject(ctx, projectUpdateModel)
 
 	if err != nil {
 		return nil, err

@@ -71,18 +71,9 @@ func NewProjectRepo(db *gorm.DB, errorTransformer errors.ErrorTransformer,
 	}
 }
 
-func (r *ProjectRepo) UpdateProject(ctx context.Context, project models.Project, projectUpdate models.Project) (error) {
-	// Modify below fields if not null in the projectUpdate.
-	if projectUpdate.Description != "" {
-		project.Description = projectUpdate.Description;
-	}
-
-	if len(projectUpdate.Labels) > 0 {
-		project.Labels = projectUpdate.Labels;
-	}
-
+func (r *ProjectRepo) UpdateProject(ctx context.Context, projectUpdate models.Project) (error) {
 	// Use gorm client to update the two fields that are changed.
-	writeTx := r.db.Model(&project).Update("Description", "Labels")
+	writeTx := r.db.Model(&projectUpdate).Update("Description", "Labels")
 
 	// Return error if applies.
 	if writeTx != nil {
