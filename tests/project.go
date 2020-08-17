@@ -66,7 +66,7 @@ func TestUpdateProjectDescription(t *testing.T) {
 
 	// Attempt to modify the name of the Project. Modifying the Name should be a
 	// no-op, while the Description is modified.
-	resp, err := client.UpdateProject(admin.Project{
+	resp, err := client.UpdateProject(ctx, &admin.Project{
 		Id: "potato",
 		Name: "foobar",
 		Description: "a-new-description",
