@@ -43,3 +43,42 @@ func TestCreateProject(t *testing.T) {
 	}
 	assert.True(t, sawNewProject)
 }
+
+func TestUpdateProjectDescription(t *testing.T) {
+	ctx := context.Background()
+	client, conn := GetTestAdminServiceClient()
+	defer conn.Close()
+
+	// Create a new project.
+	req := admin.ProjectRegisterRequest{
+		Project: &admin.Project{
+			Id:   "potato",
+			Name: "spud",
+		},
+	}
+	_, err := client.RegisterProject(ctx, &req)
+	assert.Nil(t, err)
+
+	// Verify the project has been registered.
+	projects, err := client.ListProjects(ctx, &admin.ProjectListRequest{})
+	assert.Nil(t, err)
+	assert.NotEmpty(t, projects.Projects)
+
+	// Attempt to modify the name of the project. This should be a no-op.
+	resp, err := client.UpdateProject(admin.Project{
+		Id: "potato",
+		Name: "foobar",
+		Description: "a-new-description",
+	})
+
+	// Fetch updated projects.
+	projectsUpdated, err := client.ListProjects(ctx, &admin.ProjectListRequest{})
+	assert.Nil(t, err)
+	assert.NotEmpty(t, projectsUpdated.Projects)
+
+	// Finally verify that the project's name has not been modified.
+	updatedProject := projectsUpdated.Projects[0]
+	assert.Equal(t, updatedProject.Id, "potato")
+	assert.Equal(t, updatedProject.Name, "spud") // unchanged
+	assert.Equal(t, updatedProject.Description, "a-new-description") // changed
+}
