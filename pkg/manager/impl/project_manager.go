@@ -62,9 +62,17 @@ func (m *ProjectManager) ListProjects(ctx context.Context, request admin.Project
 
 func (m *ProjectManager) UpdateProject(ctx context.Context, project admin.Project) (*admin.ProjectUpdateResponse, error) {
 	var response *admin.ProjectUpdateResponse
+	projectRepo := m.db.ProjectRepo()
 
+	// Fetch the existing project if exists.
+	existingProjectModel, err := projectRepo.Get(ctx, project.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Transform the provided project into a model and apply to the DB.
 	projectModel := transformers.CreateProjectModel(&project);
-	err := m.db.ProjectRepo().UpdateProject(ctx, projectModel)
+	err = projectRepo.UpdateProject(ctx, existingProjectModel, projectModel)
 
 	if err != nil {
 		return nil, err

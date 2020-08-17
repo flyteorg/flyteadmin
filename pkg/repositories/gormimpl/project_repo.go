@@ -71,31 +71,14 @@ func NewProjectRepo(db *gorm.DB, errorTransformer errors.ErrorTransformer,
 	}
 }
 
-func (r *ProjectRepo) UpdateProject(ctx context.Context, updatedProject models.Project) (error) {
-	var project models.Project
-
-	timer := r.metrics.GetDuration.Start()
-	tx := r.db.Where(&models.Project{
-		Identifier: updatedProject.Identifier,
-	}).First(&project)
-	timer.Stop()
-
-	// Error handling and checking for the result of the database query.
-	if tx.Error != nil {
-		r.errorTransformer.ToFlyteAdminError(tx.Error)
+func (r *ProjectRepo) UpdateProject(ctx context.Context, project models.Project, projectUpdate models.Project) (error) {
+	// Modify below fields if not null in the projectUpdate.
+	if projectUpdate.Description != "" {
+		project.Description = projectUpdate.Description;
 	}
 
-	if tx.RecordNotFound() {
-		flyteAdminErrors.NewFlyteAdminErrorf(codes.NotFound, "project [%s] not found", updatedProject.Identifier)
-	}
-
-	// Modify below fields if not null in the updatedProject.
-	if updatedProject.Description != "" {
-		project.Description = updatedProject.Description;
-	}
-
-	if len(updatedProject.Labels) > 0 {
-		project.Labels = updatedProject.Labels;
+	if len(projectUpdate.Labels) > 0 {
+		project.Labels = projectUpdate.Labels;
 	}
 
 	// Use gorm client to update the two fields that are changed.
