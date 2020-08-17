@@ -54,6 +54,12 @@ func TestUpdateProjectDescription(t *testing.T) {
 		Project: &admin.Project{
 			Id:   "potato",
 			Name: "spud",
+			Labels: &admin.Labels{
+				Values: map[string]string{
+					"foo": "bar",
+					"bar": "baz",
+				},
+			},
 		},
 	}
 	_, err := client.RegisterProject(ctx, &req)
@@ -65,11 +71,12 @@ func TestUpdateProjectDescription(t *testing.T) {
 	assert.NotEmpty(t, projects.Projects)
 
 	// Attempt to modify the name of the Project. Modifying the Name should be a
-	// no-op, while the Description is modified.
+	// no-op, while the Description is modified. Labels should be a no-op.
 	_, err = client.UpdateProject(ctx, &admin.Project{
 		Id: "potato",
 		Name: "foobar",
 		Description: "a-new-description",
+		Labels: &admin.Labels{},
 	})
 
 	// Fetch updated projects.
@@ -82,6 +89,15 @@ func TestUpdateProjectDescription(t *testing.T) {
 	assert.Equal(t, updatedProject.Id, "potato")
 	assert.Equal(t, updatedProject.Name, "spud") // unchanged
 	assert.Equal(t, updatedProject.Description, "a-new-description") // changed
+
+	// Verify that project labels are not removed.
+	labelsMap := updatedProject.Labels
+	fooVal, fooExists := labelsMap.Values["foo"]
+	barVal, barExists := labelsMap.Values["bar"]
+	assert.Equal(t, fooExists, true)
+	assert.Equal(t, fooVal, "bar")
+	assert.Equal(t, barExists, true)
+	assert.Equal(t, barVal, "baz")
 }
 
 func TestUpdateProjectLabels(t *testing.T) {
