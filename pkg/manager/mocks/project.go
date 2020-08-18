@@ -20,8 +20,7 @@ func (m *MockProjectManager) SetCreateProject(createProjectFunc CreateProjectFun
 	m.createProjectFunc = createProjectFunc
 }
 
-func (m *MockProjectManager) CreateProject(ctx context.Context, request admin.ProjectRegisterRequest) (
-	*admin.ProjectRegisterResponse, error) {
+func (m *MockProjectManager) CreateProject(ctx context.Context, request admin.ProjectRegisterRequest) (*admin.ProjectRegisterResponse, error) {
 	if m.createProjectFunc != nil {
 		return m.createProjectFunc(ctx, request)
 	}
@@ -31,7 +30,7 @@ func (m *MockProjectManager) CreateProject(ctx context.Context, request admin.Pr
 func (m *MockProjectManager) UpdateProject(ctx context.Context, request admin.Project) (
 	*admin.ProjectUpdateResponse, error) {
 	if m.updateProjectFunc != nil {
-		return m.createProjectFunc(ctx, request)
+		return m.updateProjectFunc(ctx, request)
 	}
 	return nil, nil
 }
