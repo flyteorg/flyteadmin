@@ -10,7 +10,7 @@ require (
 	github.com/bradfitz/gomemcache v0.0.0-20190913173617-a41fca850d0b // indirect
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/evanphx/json-patch v4.5.0+incompatible
-	github.com/gogo/protobuf v1.3.1
+	github.com/golang/protobuf v1.3.5
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.4.2
 	github.com/golangci/golangci-lint v1.30.0 // indirect
@@ -30,7 +30,7 @@ require (
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.5.0
-	github.com/spf13/cobra v1.0.0
+	github.com/spf13/cobra v0.0.6
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
