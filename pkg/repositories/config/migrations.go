@@ -243,4 +243,13 @@ var Migrations = []*gormigrate.Migration{
 			return tx.Model(&models.NodeExecution{}).DropColumn("parent_id").DropColumn("node_execution_metadata").Error
 		},
 	},
+	{
+		ID: "2020-08-17-labels-addition",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&models.NodeExecution{}).Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Model(&models.NodeExecution{}).DropColumn("labels").Error
+		},
+	},
 }
