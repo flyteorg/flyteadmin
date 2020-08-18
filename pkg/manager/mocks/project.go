@@ -27,8 +27,7 @@ func (m *MockProjectManager) CreateProject(ctx context.Context, request admin.Pr
 	return nil, nil
 }
 
-func (m *MockProjectManager) UpdateProject(ctx context.Context, request admin.Project) (
-	*admin.ProjectUpdateResponse, error) {
+func (m *MockProjectManager) UpdateProject(ctx context.Context, request admin.Project) (*admin.ProjectUpdateResponse, error) {
 	if m.updateProjectFunc != nil {
 		return m.updateProjectFunc(ctx, request)
 	}
