@@ -76,7 +76,6 @@ func TestUpdateProjectDescription(t *testing.T) {
 		Id:          "potato",
 		Name:        "foobar",
 		Description: "a-new-description",
-		Labels:      &admin.Labels{},
 	})
 
 	// Fetch updated projects.
