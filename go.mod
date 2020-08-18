@@ -10,8 +10,9 @@ require (
 	github.com/bradfitz/gomemcache v0.0.0-20190913173617-a41fca850d0b // indirect
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/evanphx/json-patch v4.5.0+incompatible
-	github.com/golang/protobuf v1.3.1
+	github.com/gogo/protobuf v1.3.1
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
+	github.com/golang/protobuf v1.3.5
 	github.com/golangci/golangci-lint v1.30.0 // indirect
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/securecookie v1.1.1
