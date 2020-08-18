@@ -76,8 +76,8 @@ func (r *ProjectRepo) UpdateProject(ctx context.Context, projectUpdate models.Pr
 	writeTx := r.db.Model(&projectUpdate).Updates(projectUpdate)
 
 	// Return error if applies.
-	if writeTx != nil {
-		_ = r.errorTransformer.ToFlyteAdminError(writeTx.Error)
+	if writeTx.Error != nil {
+		return r.errorTransformer.ToFlyteAdminError(writeTx.Error)
 	}
 
 	return nil
