@@ -254,10 +254,10 @@ var Migrations = []*gormigrate.Migration{
 	{
 		ID: "2020-08-17-labels-addition",
 		Migrate: func(tx *gorm.DB) error {
-			return tx.AutoMigrate(&models.NodeExecution{}).Error
+			return tx.AutoMigrate(&models.Project{}).Error
 		},
 		Rollback: func(tx *gorm.DB) error {
-			return tx.Model(&models.NodeExecution{}).DropColumn("labels").Error
+			return tx.Model(&models.Project{}).DropColumn("labels").Error
 		},
 	},
 }
