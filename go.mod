@@ -13,7 +13,6 @@ require (
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.3.5
-	github.com/golangci/golangci-lint v1.30.0 // indirect
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/securecookie v1.1.1
 	github.com/graymeta/stow v0.2.5
