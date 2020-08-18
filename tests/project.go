@@ -12,6 +12,7 @@ import (
 )
 
 func TestCreateProject(t *testing.T) {
+	truncateAllTablesForTestingOnly()
 	ctx := context.Background()
 	client, conn := GetTestAdminServiceClient()
 	defer conn.Close()
@@ -45,6 +46,7 @@ func TestCreateProject(t *testing.T) {
 }
 
 func TestUpdateProjectDescription(t *testing.T) {
+	truncateAllTablesForTestingOnly()
 	ctx := context.Background()
 	client, conn := GetTestAdminServiceClient()
 	defer conn.Close()
