@@ -12,7 +12,6 @@ require (
 	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/golang/protobuf v1.3.5
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
-	github.com/golang/protobuf v1.4.2
 	github.com/golangci/golangci-lint v1.30.0 // indirect
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/securecookie v1.1.1
