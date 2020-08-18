@@ -1,9 +1,9 @@
 package transformers
 
 import (
+	"github.com/golang/protobuf/proto"
 	"github.com/lyft/flyteadmin/pkg/repositories/models"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/golang/protobuf/proto"
 )
 
 type CreateProjectModelInput struct {
@@ -21,7 +21,7 @@ func CreateProjectModel(project *admin.Project) models.Project {
 		Identifier:  project.Id,
 		Name:        project.Name,
 		Description: project.Description,
-		Labels:		 	 projectBytes,
+		Labels:      projectBytes,
 	}
 }
 
@@ -35,7 +35,7 @@ func FromProjectModel(projectModel models.Project, domains []*admin.Domain) admi
 		Id:          projectModel.Identifier,
 		Name:        projectModel.Name,
 		Description: projectModel.Description,
-		Labels:			 projectDeserialized.Labels,
+		Labels:      projectDeserialized.Labels,
 	}
 	project.Domains = domains
 	return project

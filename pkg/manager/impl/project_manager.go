@@ -71,7 +71,7 @@ func (m *ProjectManager) UpdateProject(ctx context.Context, projectUpdate admin.
 	}
 
 	// Transform the provided project into a model and apply to the DB.
-	projectUpdateModel := transformers.CreateProjectModel(&projectUpdate);
+	projectUpdateModel := transformers.CreateProjectModel(&projectUpdate)
 	err = projectRepo.UpdateProject(ctx, projectUpdateModel)
 
 	if err != nil {

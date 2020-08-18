@@ -33,6 +33,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
+	golang.org/x/tools v0.0.0-20200818005847-188abfa75333 // indirect
 	google.golang.org/grpc v1.28.0
 	gopkg.in/gormigrate.v1 v1.6.0
 	k8s.io/api v0.17.3

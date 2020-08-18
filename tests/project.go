@@ -73,10 +73,10 @@ func TestUpdateProjectDescription(t *testing.T) {
 	// Attempt to modify the name of the Project. Modifying the Name should be a
 	// no-op, while the Description is modified. Labels should be a no-op.
 	_, err = client.UpdateProject(ctx, &admin.Project{
-		Id: "potato",
-		Name: "foobar",
+		Id:          "potato",
+		Name:        "foobar",
 		Description: "a-new-description",
-		Labels: &admin.Labels{},
+		Labels:      &admin.Labels{},
 	})
 
 	// Fetch updated projects.
@@ -87,7 +87,7 @@ func TestUpdateProjectDescription(t *testing.T) {
 	// Verify that the project's Name has not been modified but the Description has.
 	updatedProject := projectsUpdated.Projects[0]
 	assert.Equal(t, updatedProject.Id, "potato")
-	assert.Equal(t, updatedProject.Name, "spud") // unchanged
+	assert.Equal(t, updatedProject.Name, "spud")                     // unchanged
 	assert.Equal(t, updatedProject.Description, "a-new-description") // changed
 
 	// Verify that project labels are not removed.
@@ -123,7 +123,7 @@ func TestUpdateProjectLabels(t *testing.T) {
 	// Attempt to modify the name of the Project. Modifying the Name should be a
 	// no-op, while the Labels are modified.
 	_, err = client.UpdateProject(ctx, &admin.Project{
-		Id: "potato",
+		Id:   "potato",
 		Name: "foobar",
 		Labels: &admin.Labels{
 			Values: map[string]string{

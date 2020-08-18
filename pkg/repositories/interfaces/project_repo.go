@@ -17,5 +17,5 @@ type ProjectRepoInterface interface {
 	// Given a project that exists in the DB and a partial set of fields to update
 	// as a second project (projectUpdate), updates the original project which already
 	// exists in the DB.
-	UpdateProject(ctx context.Context, projectUpdate models.Project) (error)
+	UpdateProject(ctx context.Context, projectUpdate models.Project) error
 }
