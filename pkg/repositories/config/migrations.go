@@ -233,7 +233,6 @@ var Migrations = []*gormigrate.Migration{
 			return tx.Model(&models.NodeExecution{}).DropColumn("cache_status").Error
 		},
 	},
-
 	{
 		ID: "2020-07-31-node-execution",
 		Migrate: func(tx *gorm.DB) error {
@@ -241,6 +240,24 @@ var Migrations = []*gormigrate.Migration{
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return tx.Model(&models.NodeExecution{}).DropColumn("parent_id").DropColumn("node_execution_metadata").Error
+		},
+	},
+	{
+		ID: "2020-08-13-node-execution",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&models.NodeExecution{}).Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Model(&models.NodeExecution{}).DropColumn("parent_id").DropColumn("node_execution_metadata").Error
+		},
+	},
+	{
+		ID: "2020-08-17-labels-addition",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&models.Project{}).Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Model(&models.Project{}).DropColumn("labels").Error
 		},
 	},
 }
