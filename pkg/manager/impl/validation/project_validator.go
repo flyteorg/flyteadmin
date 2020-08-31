@@ -34,7 +34,7 @@ func ValidateProjectRegisterRequest(request admin.ProjectRegisterRequest) error 
 		return err
 	}
 	// TODO: this is not where we should be hardcoding a required tag
-	tag := "slack"
+	tag := "foo"
 	if err := ValidateProjectHasTag(request.Project, tag) {
 		return err
 	}
