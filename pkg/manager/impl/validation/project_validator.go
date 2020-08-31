@@ -33,6 +33,11 @@ func ValidateProjectRegisterRequest(request admin.ProjectRegisterRequest) error 
 	if err := ValidateMaxLengthStringField(request.Project.Description, projectDescription, maxDescriptionLength); err != nil {
 		return err
 	}
+	// TODO: this is not where we should be hardcoding a required tag
+	tag := "slack"
+	if err := ValidateProjectHasTag(request.Project, tag) {
+		return err
+	}
 	if request.Project.Domains != nil {
 		return errors.NewFlyteAdminError(codes.InvalidArgument,
 			"Domains are currently only set system wide. Please retry without domains included in your request.")

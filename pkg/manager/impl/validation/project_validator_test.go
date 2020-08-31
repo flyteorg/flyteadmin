@@ -21,6 +21,20 @@ func TestValidateProjectRegisterRequest_ValidRequest(t *testing.T) {
 	}))
 }
 
+funct TestValidateProjectRegisterRequest_ValidRequestWithLabels(t *testing.T) {
+	assert.Nil(t, ValidateProjectRegisterRequest(admin.ProjectRegisterRequest{
+		Project: &admin.Project{
+			Id:   "proj",
+			Name: "proj",
+			Labels: &admin.Labels{
+				Values: map[string]string{
+					"foo": "bar",
+					"bar": "baz",
+				},
+		},
+	}))
+}
+
 func TestValidateProjectRegisterRequest(t *testing.T) {
 	type testValue struct {
 		request       admin.ProjectRegisterRequest
