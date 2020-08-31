@@ -220,8 +220,10 @@ func ValidateLimit(limit uint32) error {
 }
 
 func ValidateProjectHasTag(project admin.Project, tag string) error {
-	if _, ok := project.Labels.Values[tag]; ok {
-		return nil;
+	if project.Labels != nil && project.Labels.Values != nil {
+		if _, ok := project.Labels.Values[tag]; ok {
+			return nil;
+		}
 	}
 	return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "The Project did not contain a required tag %s", tag);
 }
