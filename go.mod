@@ -5,7 +5,6 @@ go 1.13
 require (
 	cloud.google.com/go v0.54.0
 	cloud.google.com/go/storage v1.6.0
-	github.com/Azure/azure-sdk-for-go v40.3.0+incompatible // indirect
 	github.com/NYTimes/gizmo v1.3.5
 	github.com/Selvatico/go-mocket v1.0.7
 	github.com/aws/aws-sdk-go v1.29.23
