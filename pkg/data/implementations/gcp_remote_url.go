@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	gax "github.com/googleapis/gax-go/v2"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 	"golang.org/x/oauth2"
 
@@ -20,10 +21,18 @@ import (
 
 const gcsScheme = "gs"
 
+type iamCredentialsInterface interface {
+	SignBlob(ctx context.Context, req *credentialspb.SignBlobRequest, opts ...gax.CallOption) (*credentialspb.SignBlobResponse, error)
+}
+
+type gcsInterface interface {
+	Bucket(name string) *gcs.BucketHandle
+}
+
 // GCP-specific implementation of RemoteURLInterface
 type GCPRemoteURL struct {
-	credentialsClient *credentials.IamCredentialsClient
-	gcsClient         *gcs.Client
+	credentialsClient iamCredentialsInterface
+	gcsClient         gcsInterface
 	signDuration      time.Duration
 	signingPrincipal  string
 }
