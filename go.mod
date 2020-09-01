@@ -39,6 +39,7 @@ require (
 	google.golang.org/api v0.30.0
 	google.golang.org/genproto v0.0.0-20200827165113-ac2560b5e952
 	google.golang.org/grpc v1.31.0
+	google.golang.org/protobuf v1.25.0
 	gopkg.in/gormigrate.v1 v1.6.0
 	k8s.io/api v0.17.3
 	k8s.io/apimachinery v0.17.3

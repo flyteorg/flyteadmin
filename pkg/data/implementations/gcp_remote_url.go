@@ -23,6 +23,7 @@ const gcsScheme = "gs"
 
 type iamCredentialsInterface interface {
 	SignBlob(ctx context.Context, req *credentialspb.SignBlobRequest, opts ...gax.CallOption) (*credentialspb.SignBlobResponse, error)
+	GenerateAccessToken(ctx context.Context, req *credentialspb.GenerateAccessTokenRequest, opts ...gax.CallOption) (*credentialspb.GenerateAccessTokenResponse, error)
 }
 
 type gcsClientWrapper struct {
@@ -60,6 +61,11 @@ type GCPRemoteURL struct {
 type GCPGCSObject struct {
 	bucket string
 	object string
+}
+
+type impersonationTokenSource struct {
+	iamCredentialsClient iamCredentialsInterface
+	signingPrincipal     string
 }
 
 func (c *gcsClientWrapper) Bucket(name string) bucketHandleInterface {
@@ -141,18 +147,13 @@ func (g *GCPRemoteURL) Get(ctx context.Context, uri string) (admin.UrlBlob, erro
 	}, nil
 }
 
-type impersonationTokenSource struct {
-	credentialsClient *credentials.IamCredentialsClient
-	signingPrincipal  string
-}
-
 func (ts impersonationTokenSource) Token() (*oauth2.Token, error) {
 	req := credentialspb.GenerateAccessTokenRequest{
 		Name:  "projects/-/serviceAccounts/" + ts.signingPrincipal,
 		Scope: []string{"https://www.googleapis.com/auth/devstorage.read_only"},
 	}
 
-	resp, err := ts.credentialsClient.GenerateAccessToken(context.Background(), &req)
+	resp, err := ts.iamCredentialsClient.GenerateAccessToken(context.Background(), &req)
 	if err != nil {
 		return nil, err
 	}
@@ -172,8 +173,8 @@ func NewGCPRemoteURL(signingPrincipal string, signDuration time.Duration) interf
 	gcsClient, err := gcs.NewClient(context.Background(),
 		option.WithScopes(gcs.ScopeReadOnly),
 		option.WithTokenSource(impersonationTokenSource{
-			credentialsClient: iamCredentialsClient,
-			signingPrincipal:  signingPrincipal,
+			iamCredentialsClient: iamCredentialsClient,
+			signingPrincipal:     signingPrincipal,
 		}))
 	if err != nil {
 		panic(err)
