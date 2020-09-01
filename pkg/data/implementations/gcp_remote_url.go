@@ -25,21 +25,53 @@ type iamCredentialsInterface interface {
 	SignBlob(ctx context.Context, req *credentialspb.SignBlobRequest, opts ...gax.CallOption) (*credentialspb.SignBlobResponse, error)
 }
 
+type gcsClientWrapper struct {
+	delegate *gcs.Client
+}
+
+type bucketHandleWrapper struct {
+	delegate *gcs.BucketHandle
+}
+
+type objectHandleWrapper struct {
+	delegate *gcs.ObjectHandle
+}
+
 type gcsInterface interface {
-	Bucket(name string) *gcs.BucketHandle
+	Bucket(name string) bucketHandleInterface
+}
+
+type bucketHandleInterface interface {
+	Object(name string) objectHandleInterface
+}
+
+type objectHandleInterface interface {
+	Attrs(ctx context.Context) (attrs *gcs.ObjectAttrs, err error)
 }
 
 // GCP-specific implementation of RemoteURLInterface
 type GCPRemoteURL struct {
-	credentialsClient iamCredentialsInterface
-	gcsClient         gcsInterface
-	signDuration      time.Duration
-	signingPrincipal  string
+	iamCredentialsClient iamCredentialsInterface
+	gcsClient            gcsInterface
+	signDuration         time.Duration
+	signingPrincipal     string
 }
 
 type GCPGCSObject struct {
 	bucket string
 	object string
+}
+
+func (c *gcsClientWrapper) Bucket(name string) bucketHandleInterface {
+	return &bucketHandleWrapper{delegate: c.delegate.Bucket(name)}
+}
+
+func (b *bucketHandleWrapper) Object(name string) objectHandleInterface {
+	return &objectHandleWrapper{delegate: b.delegate.Object(name)}
+}
+
+func (o *objectHandleWrapper) Attrs(ctx context.Context) (attrs *gcs.ObjectAttrs, err error) {
+	return o.delegate.Attrs(ctx)
 }
 
 func (g *GCPRemoteURL) splitURI(ctx context.Context, uri string) (GCPGCSObject, error) {
@@ -67,7 +99,7 @@ func (g *GCPRemoteURL) signURL(ctx context.Context, gcsURI GCPGCSObject) (string
 				Payload: b,
 				Name:    "projects/-/serviceAccounts/" + g.signingPrincipal,
 			}
-			resp, err := g.credentialsClient.SignBlob(ctx, req)
+			resp, err := g.iamCredentialsClient.SignBlob(ctx, req)
 			if err != nil {
 				return nil, err
 			}
@@ -132,7 +164,7 @@ func (ts impersonationTokenSource) Token() (*oauth2.Token, error) {
 }
 
 func NewGCPRemoteURL(signingPrincipal string, signDuration time.Duration) interfaces.RemoteURLInterface {
-	credentialsClient, err := credentials.NewIamCredentialsClient(context.Background())
+	iamCredentialsClient, err := credentials.NewIamCredentialsClient(context.Background())
 	if err != nil {
 		panic(err)
 	}
@@ -140,7 +172,7 @@ func NewGCPRemoteURL(signingPrincipal string, signDuration time.Duration) interf
 	gcsClient, err := gcs.NewClient(context.Background(),
 		option.WithScopes(gcs.ScopeReadOnly),
 		option.WithTokenSource(impersonationTokenSource{
-			credentialsClient: credentialsClient,
+			credentialsClient: iamCredentialsClient,
 			signingPrincipal:  signingPrincipal,
 		}))
 	if err != nil {
@@ -148,9 +180,9 @@ func NewGCPRemoteURL(signingPrincipal string, signDuration time.Duration) interf
 	}
 
 	return &GCPRemoteURL{
-		credentialsClient: credentialsClient,
-		gcsClient:         gcsClient,
-		signDuration:      signDuration,
-		signingPrincipal:  signingPrincipal,
+		iamCredentialsClient: iamCredentialsClient,
+		gcsClient:            &gcsClientWrapper{delegate: gcsClient},
+		signDuration:         signDuration,
+		signingPrincipal:     signingPrincipal,
 	}
 }
