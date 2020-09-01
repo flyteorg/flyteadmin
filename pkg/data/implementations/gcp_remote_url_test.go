@@ -74,7 +74,7 @@ func (m *mockIAMCredentialsImpl) SignBlob(ctx context.Context, req *credentialsp
 	return m.signBlobFunc(ctx, req, opts...)
 }
 
-func TestAWSGet(t *testing.T) {
+func TestGCPGet(t *testing.T) {
 	signDuration := 3 * time.Minute
 	signingPrincipal := "principal@example.com"
 	signedBlob := "signed"
