@@ -22,9 +22,10 @@ const gcsScheme = "gs"
 
 // GCP-specific implementation of RemoteURLInterface
 type GCPRemoteURL struct {
-	gcsClient        *gcs.Client
-	signDuration     time.Duration
-	signingPrincipal string
+	credentialsClient *credentials.IamCredentialsClient
+	gcsClient         *gcs.Client
+	signDuration      time.Duration
+	signingPrincipal  string
 }
 
 type GCPGCSObject struct {
@@ -49,11 +50,6 @@ func (g *GCPRemoteURL) splitURI(ctx context.Context, uri string) (GCPGCSObject, 
 }
 
 func (g *GCPRemoteURL) signURL(ctx context.Context, gcsURI GCPGCSObject) (string, error) {
-	c, err := credentials.NewIamCredentialsClient(ctx)
-	if err != nil {
-		return "", err
-	}
-
 	opts := &gcs.SignedURLOptions{
 		Method:         "GET",
 		GoogleAccessID: g.signingPrincipal,
@@ -62,7 +58,7 @@ func (g *GCPRemoteURL) signURL(ctx context.Context, gcsURI GCPGCSObject) (string
 				Payload: b,
 				Name:    "projects/-/serviceAccounts/" + g.signingPrincipal,
 			}
-			resp, err := c.SignBlob(ctx, req)
+			resp, err := g.credentialsClient.SignBlob(ctx, req)
 			if err != nil {
 				return nil, err
 			}
@@ -105,21 +101,17 @@ func (g *GCPRemoteURL) Get(ctx context.Context, uri string) (admin.UrlBlob, erro
 }
 
 type impersonationTokenSource struct {
-	signingPrincipal string
+	credentialsClient *credentials.IamCredentialsClient
+	signingPrincipal  string
 }
 
 func (ts impersonationTokenSource) Token() (*oauth2.Token, error) {
-	c, err := credentials.NewIamCredentialsClient(context.Background())
-	if err != nil {
-		return nil, err
-	}
-
 	req := credentialspb.GenerateAccessTokenRequest{
 		Name:  "projects/-/serviceAccounts/" + ts.signingPrincipal,
 		Scope: []string{"https://www.googleapis.com/auth/devstorage.read_only"},
 	}
 
-	resp, err := c.GenerateAccessToken(context.Background(), &req)
+	resp, err := ts.credentialsClient.GenerateAccessToken(context.Background(), &req)
 	if err != nil {
 		return nil, err
 	}
@@ -131,14 +123,25 @@ func (ts impersonationTokenSource) Token() (*oauth2.Token, error) {
 }
 
 func NewGCPRemoteURL(signingPrincipal string, signDuration time.Duration) interfaces.RemoteURLInterface {
-	gcsClient, err := gcs.NewClient(context.Background(), option.WithScopes(gcs.ScopeReadOnly), option.WithTokenSource(impersonationTokenSource{signingPrincipal: signingPrincipal}))
+	credentialsClient, err := credentials.NewIamCredentialsClient(context.Background())
+	if err != nil {
+		panic(err)
+	}
+
+	gcsClient, err := gcs.NewClient(context.Background(),
+		option.WithScopes(gcs.ScopeReadOnly),
+		option.WithTokenSource(impersonationTokenSource{
+			credentialsClient: credentialsClient,
+			signingPrincipal:  signingPrincipal,
+		}))
 	if err != nil {
 		panic(err)
 	}
 
 	return &GCPRemoteURL{
-		gcsClient:        gcsClient,
-		signDuration:     signDuration,
-		signingPrincipal: signingPrincipal,
+		credentialsClient: credentialsClient,
+		gcsClient:         gcsClient,
+		signDuration:      signDuration,
+		signingPrincipal:  signingPrincipal,
 	}
 }
