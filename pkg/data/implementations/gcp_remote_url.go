@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
+	"golang.org/x/oauth2"
 
 	credentials "cloud.google.com/go/iam/credentials/apiv1"
 	gcs "cloud.google.com/go/storage"
@@ -103,8 +104,34 @@ func (g *GCPRemoteURL) Get(ctx context.Context, uri string) (admin.UrlBlob, erro
 	}, nil
 }
 
+type impersonatedTokenSource struct {
+	signingPrincipal string
+}
+
+func (ts impersonatedTokenSource) Token() (*oauth2.Token, error) {
+	c, err := credentials.NewIamCredentialsClient(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	req := credentialspb.GenerateAccessTokenRequest{
+		Name:  "projects/-/serviceAccounts/" + ts.signingPrincipal,
+		Scope: []string{"https://www.googleapis.com/auth/devstorage.read_only"},
+	}
+
+	resp, err := c.GenerateAccessToken(context.Background(), &req)
+	if err != nil {
+		return nil, err
+	}
+
+	return &oauth2.Token{
+		AccessToken: resp.AccessToken,
+		Expiry:      resp.ExpireTime.AsTime(),
+	}, nil
+}
+
 func NewGCPRemoteURL(signingPrincipal string, signDuration time.Duration) interfaces.RemoteURLInterface {
-	gcsClient, err := gcs.NewClient(context.Background(), option.WithScopes(gcs.ScopeReadOnly))
+	gcsClient, err := gcs.NewClient(context.Background(), option.WithScopes(gcs.ScopeReadOnly), option.WithTokenSource(impersonatedTokenSource{signingPrincipal: signingPrincipal}))
 	if err != nil {
 		panic(err)
 	}
