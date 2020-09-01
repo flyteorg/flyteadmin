@@ -3,8 +3,8 @@ module github.com/lyft/flyteadmin
 go 1.13
 
 require (
-	cloud.google.com/go v0.54.0
-	cloud.google.com/go/storage v1.6.0
+	cloud.google.com/go v0.65.0
+	cloud.google.com/go/storage v1.11.0
 	github.com/NYTimes/gizmo v1.3.5
 	github.com/Selvatico/go-mocket v1.0.7
 	github.com/aws/aws-sdk-go v1.29.23
@@ -14,7 +14,7 @@ require (
 	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
-	github.com/golang/protobuf v1.3.5
+	github.com/golang/protobuf v1.4.2
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/securecookie v1.1.1
 	github.com/graymeta/stow v0.2.5
@@ -35,10 +35,9 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
-	golang.org/x/tools v0.0.0-20200818005847-188abfa75333 // indirect
-	google.golang.org/api v0.20.0
-	google.golang.org/genproto v0.0.0-20200312145019-da6875a35672
-	google.golang.org/grpc v1.28.0
+	google.golang.org/api v0.30.0
+	google.golang.org/genproto v0.0.0-20200827165113-ac2560b5e952
+	google.golang.org/grpc v1.31.0
 	gopkg.in/gormigrate.v1 v1.6.0
 	k8s.io/api v0.17.3
 	k8s.io/apimachinery v0.17.3
