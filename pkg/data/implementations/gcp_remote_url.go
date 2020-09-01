@@ -104,11 +104,11 @@ func (g *GCPRemoteURL) Get(ctx context.Context, uri string) (admin.UrlBlob, erro
 	}, nil
 }
 
-type impersonatedTokenSource struct {
+type impersonationTokenSource struct {
 	signingPrincipal string
 }
 
-func (ts impersonatedTokenSource) Token() (*oauth2.Token, error) {
+func (ts impersonationTokenSource) Token() (*oauth2.Token, error) {
 	c, err := credentials.NewIamCredentialsClient(context.Background())
 	if err != nil {
 		return nil, err
@@ -131,7 +131,7 @@ func (ts impersonatedTokenSource) Token() (*oauth2.Token, error) {
 }
 
 func NewGCPRemoteURL(signingPrincipal string, signDuration time.Duration) interfaces.RemoteURLInterface {
-	gcsClient, err := gcs.NewClient(context.Background(), option.WithScopes(gcs.ScopeReadOnly), option.WithTokenSource(impersonatedTokenSource{signingPrincipal: signingPrincipal}))
+	gcsClient, err := gcs.NewClient(context.Background(), option.WithScopes(gcs.ScopeReadOnly), option.WithTokenSource(impersonationTokenSource{signingPrincipal: signingPrincipal}))
 	if err != nil {
 		panic(err)
 	}
