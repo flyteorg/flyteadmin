@@ -59,7 +59,7 @@ func (g *GCPRemoteURL) signURL(ctx context.Context, gcsURI GCPGCSObject) (string
 		SignBytes: func(b []byte) ([]byte, error) {
 			req := &credentialspb.SignBlobRequest{
 				Payload: b,
-				Name:    g.signingPrincipal,
+				Name:    "projects/-/serviceAccounts/" + g.signingPrincipal,
 			}
 			resp, err := c.SignBlob(ctx, req)
 			if err != nil {
