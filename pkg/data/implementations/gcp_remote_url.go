@@ -165,7 +165,7 @@ func (ts impersonationTokenSource) Token() (*oauth2.Token, error) {
 }
 
 func asTime(t *timestamp.Timestamp) time.Time {
-	return time.Unix(int64(t.GetSeconds()), int64(t.GetNanos())).UTC()
+	return time.Unix(t.GetSeconds(), int64(t.GetNanos())).UTC()
 }
 
 func NewGCPRemoteURL(signingPrincipal string, signDuration time.Duration) interfaces.RemoteURLInterface {
