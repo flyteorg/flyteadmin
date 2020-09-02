@@ -8,10 +8,10 @@ import (
 	"time"
 
 	gcs "cloud.google.com/go/storage"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	gax "github.com/googleapis/gax-go/v2"
 	"github.com/stretchr/testify/assert"
 	credentialspb "google.golang.org/genproto/googleapis/iam/credentials/v1"
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestGCPSplitURI(t *testing.T) {
@@ -113,7 +113,7 @@ func TestGCPGet(t *testing.T) {
 func TestToken(t *testing.T) {
 	token := "token"
 	signingPrincipal := "principal@example.com"
-	timestamp := timestamppb.Timestamp{Seconds: int64(42)}
+	timestamp := timestamp.Timestamp{Seconds: int64(42)}
 
 	mockIAMCredentials := mockIAMCredentialsImpl{}
 	mockIAMCredentials.generateAccessTokenFunc = func(ctx context.Context, req *credentialspb.GenerateAccessTokenRequest, opts ...gax.CallOption) (*credentialspb.GenerateAccessTokenResponse, error) {
@@ -133,5 +133,5 @@ func TestToken(t *testing.T) {
 	oauthToken, err := ts.Token()
 	assert.Nil(t, err)
 	assert.Equal(t, token, oauthToken.AccessToken)
-	assert.Equal(t, timestamp.AsTime(), oauthToken.Expiry)
+	assert.Equal(t, asTime(&timestamp), oauthToken.Expiry)
 }

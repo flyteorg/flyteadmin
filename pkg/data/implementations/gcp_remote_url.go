@@ -10,6 +10,7 @@ import (
 
 	credentials "cloud.google.com/go/iam/credentials/apiv1"
 	gcs "cloud.google.com/go/storage"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/lyft/flyteadmin/pkg/data/interfaces"
 	"github.com/lyft/flyteadmin/pkg/errors"
 	"github.com/lyft/flytestdlib/logger"
@@ -159,8 +160,12 @@ func (ts impersonationTokenSource) Token() (*oauth2.Token, error) {
 
 	return &oauth2.Token{
 		AccessToken: resp.AccessToken,
-		Expiry:      resp.ExpireTime.AsTime(),
+		Expiry:      asTime(resp.ExpireTime),
 	}, nil
+}
+
+func asTime(t *timestamp.Timestamp) time.Time {
+	return time.Unix(int64(t.GetSeconds()), int64(t.GetNanos())).UTC()
 }
 
 func NewGCPRemoteURL(signingPrincipal string, signDuration time.Duration) interfaces.RemoteURLInterface {
