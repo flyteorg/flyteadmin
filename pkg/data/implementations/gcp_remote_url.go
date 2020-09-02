@@ -133,7 +133,6 @@ func (g *GCPRemoteURL) Get(ctx context.Context, uri string) (admin.UrlBlob, erro
 			codes.Internal, "failed to get object size for %s with %v", uri, err)
 	}
 
-	// The second return argument here is the GetObjectOutput, which we don't use below.
 	urlStr, err := g.signURL(ctx, gcsURI)
 	if err != nil {
 		logger.Warning(ctx,
