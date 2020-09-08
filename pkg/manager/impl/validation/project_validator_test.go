@@ -21,7 +21,7 @@ func TestValidateProjectRegisterRequest_ValidRequest(t *testing.T) {
 	}))
 }
 
-funct TestValidateProjectRegisterRequest_ValidRequestWithLabels(t *testing.T) {
+func TestValidateProjectRegisterRequest_ValidRequestWithLabels(t *testing.T) {
 	assert.Nil(t, ValidateProjectRegisterRequest(admin.ProjectRegisterRequest{
 		Project: &admin.Project{
 			Id:   "proj",
