@@ -81,7 +81,7 @@ var executionIdentifierFields = map[string]bool{
 
 var entityMetadataFields = map[string]bool{
 	"description": true,
-	"state": true,
+	"state":       true,
 }
 
 const unrecognizedFilterFunction = "unrecognized filter function: %s"
@@ -241,6 +241,8 @@ func customizeField(field string, entity Entity) string {
 }
 
 func customizeEntity(field string, entity Entity) Entity {
+	// NamedEntity is considered a single object, but the metdata
+	// is stored using a different entity type.
 	if entity == NamedEntity && entityMetadataFields[field] {
 		return NamedEntityMetadata
 	}
