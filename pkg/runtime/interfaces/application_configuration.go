@@ -1,5 +1,20 @@
 package interfaces
 
+type AWSDbConfig struct {
+	Region string `json:"region"`
+	UseIAM bool   `json:"useIAM"`
+}
+
+type DBCertSection struct {
+	// Either Password or PasswordPath must be set.
+	// The Password resolves to the database password.
+	Password     string `json:"password"`
+	PasswordPath string `json:"passwordPath"`
+	// If using a root CA, either RootCA or RootCAPath should be set.
+	RootCA     string `json:"rootCA"`
+	RootCAPath string `json:"rootCAPath"`
+}
+
 // This configuration section is used to for initiating the database connection with the store that holds registered
 // entities (e.g. workflows, tasks, launch plans...)
 // This struct specifically maps to the flyteadmin config yaml structure.
@@ -12,12 +27,10 @@ type DbConfigSection struct {
 	DbName string `json:"dbname"`
 	// The database user who is connecting to the server.
 	User string `json:"username"`
-	// Either Password or PasswordPath must be set.
-	// The Password resolves to the database password.
-	Password     string `json:"password"`
-	PasswordPath string `json:"passwordPath"`
 	// See http://gorm.io/docs/connecting_to_the_database.html for available options passed, in addition to the above.
-	ExtraOptions string `json:"options"`
+	ExtraOptions  string        `json:"options"`
+	DBCertSection DBCertSection `json:"dbCert"`
+	AWSDbConfig   AWSDbConfig   `json:"awsDbConfig"`
 }
 
 // This represents a configuration used for initiating database connections much like DbConfigSection, however the
@@ -29,7 +42,10 @@ type DbConfig struct {
 	DbName       string `json:"dbname"`
 	User         string `json:"username"`
 	Password     string `json:"password"`
+	RootCA       string `json:"rootCA"`
 	ExtraOptions string `json:"options"`
+	Region       string `json:"region"` // AWS specific
+	UseIAM       bool   `json:"useIAM"`
 }
 
 // This configuration is the base configuration to start admin

@@ -22,9 +22,12 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.14.3
+	github.com/jackc/pgconn v1.6.4
+	github.com/jackc/pgx/v4 v4.8.1
 	github.com/jinzhu/gorm v1.9.12
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
 	github.com/lib/pq v1.3.0
+	github.com/lyft/datacatalog v0.2.1
 	github.com/lyft/flyteidl v0.18.3
 	github.com/lyft/flytepropeller v0.3.7
 	github.com/lyft/flytestdlib v0.3.9
@@ -41,6 +44,7 @@ require (
 	google.golang.org/genproto v0.0.0-20200331122359-1ee6d9798940
 	google.golang.org/grpc v1.28.0
 	gopkg.in/gormigrate.v1 v1.6.0
+	gorm.io/driver/postgres v1.0.0
 	k8s.io/api v0.17.3
 	k8s.io/apimachinery v0.17.3
 	k8s.io/client-go v11.0.1-0.20190918222721-c0e3722d5cf0+incompatible

@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/lyft/flyteadmin/pkg/repositories/config"
@@ -38,7 +39,11 @@ func GetRepository(repoType RepoConfig, dbConfig config.DbConfig, scope promutil
 	switch repoType {
 	case POSTGRES:
 		postgresScope := scope.NewSubScope("postgres")
-		db := config.OpenDbConnection(config.NewPostgresConfigProvider(dbConfig, postgresScope))
+		// TODO(katrogan): pass a context here?
+		db, err := config.OpenDbConnection(context.Background(), dbConfig)
+		if err != nil {
+			panic(err)
+		}
 		return NewPostgresRepo(
 			db,
 			errors.NewPostgresErrorTransformer(postgresScope.NewSubScope("errors")),
