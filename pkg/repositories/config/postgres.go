@@ -1,12 +1,24 @@
 package config
 
 import (
+	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/rds/rdsutils"
+	"github.com/jackc/pgconn"
+	"github.com/jackc/pgx/v4"
+	"github.com/lyft/flyteadmin/pkg/errors"
+	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/promutils"
+	"google.golang.org/grpc/codes"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres" // Required to import database driver.
+	// goGormPostgres "gorm.io/driver/postgres"
 )
 
 const Postgres = "postgres"
@@ -71,11 +83,65 @@ func (p *PostgresConfigProvider) IsDebug() bool {
 
 // Opens a connection to the database specified in the config.
 // You must call CloseDbConnection at the end of your session!
-func OpenDbConnection(config DbConnectionConfigProvider) *gorm.DB {
-	db, err := gorm.Open(config.GetType(), config.GetArgs())
-	if err != nil {
-		panic(err)
+func OpenDbConnection(ctx context.Context, dbConfig DbConfig) (*gorm.DB, error) {
+	connConfig := pgx.ConnConfig{
+		Config: pgconn.Config{
+			Host:     dbConfig.Host,
+			User:     dbConfig.User,
+			Database: dbConfig.DbName,
+		},
 	}
-	db.LogMode(config.IsDebug())
-	return db
+
+	if len(dbConfig.RootCA) > 0 {
+		logger.Debugf(ctx, "Preparing to append a root CA")
+		ca := x509.NewCertPool()
+		if ok := ca.AppendCertsFromPEM([]byte(dbConfig.RootCA)); !ok {
+			logger.Errorf(ctx, "Failed to append cert from PEM")
+			return nil, errors.NewFlyteAdminErrorf(codes.Internal, "Failed to append cert from PEM")
+		}
+
+		connConfig.TLSConfig = &tls.Config{
+			RootCAs:    ca,
+			ServerName: dbConfig.Host,
+		}
+	}
+
+	// Use IAM auth when connecting to the database.
+	if dbConfig.UseIAM {
+		logger.Debugf(ctx, "Preparing to use IAM")
+		sess, err := session.NewSession(
+			&aws.Config{
+				Region: aws.String(dbConfig.Region),
+			},
+		)
+		if err != nil {
+			logger.Errorf(ctx, "Failed to create new AWS session with err: [%+v]", err)
+			return nil, errors.NewFlyteAdminErrorf(codes.Internal, "Failed to create new AWS session with err: [%+v]", err)
+		}
+
+		endpoint := fmt.Sprintf("%s:%d", dbConfig.Host, dbConfig.Port)
+		token, err := rdsutils.BuildAuthToken(
+			endpoint,
+			dbConfig.Region,
+			dbConfig.User,
+			sess.Config.Credentials,
+		)
+		if err != nil {
+			logger.Errorf(ctx, "Failed to build auth token with err: [%+v]", err)
+			return nil, errors.NewFlyteAdminErrorf(codes.Internal, "Failed to build auth token with err: [%+v]", err)
+		}
+
+		connConfig.Password = token
+	} else {
+		logger.Debugf(ctx, "Not using IAM")
+		connConfig.Password = dbConfig.Password
+	}
+
+	db, err := gorm.Open("postgres", connConfig.ConnString())
+	if err != nil {
+		logger.Errorf(ctx, "Failed to open db connection with err: [%+v]", err)
+		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "Failed to open db connection with err: [%+v]", err)
+	}
+	db.LogMode(dbConfig.IsDebug)
+	return db, nil
 }

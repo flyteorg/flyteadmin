@@ -29,25 +29,46 @@ type ApplicationConfigurationProvider struct{}
 
 func (p *ApplicationConfigurationProvider) GetDbConfig() interfaces.DbConfig {
 	dbConfigSection := databaseConfig.GetConfig().(*interfaces.DbConfigSection)
-	password := dbConfigSection.Password
-	if len(dbConfigSection.PasswordPath) > 0 {
-		if _, err := os.Stat(dbConfigSection.PasswordPath); os.IsNotExist(err) {
+	password := dbConfigSection.DBCertSection.Password
+	if len(dbConfigSection.DBCertSection.PasswordPath) > 0 {
+		if _, err := os.Stat(dbConfigSection.DBCertSection.PasswordPath); os.IsNotExist(err) {
 			logger.Fatalf(context.Background(),
-				"missing database password at specified path [%s]", dbConfigSection.PasswordPath)
+				"missing database password at specified path [%s]", dbConfigSection.DBCertSection.PasswordPath)
 		}
-		passwordVal, err := ioutil.ReadFile(dbConfigSection.PasswordPath)
+		passwordVal, err := ioutil.ReadFile(dbConfigSection.DBCertSection.PasswordPath)
 		if err != nil {
 			logger.Fatalf(context.Background(), "failed to read database password from path [%s] with err: %v",
-				dbConfigSection.PasswordPath, err)
+				dbConfigSection.DBCertSection.PasswordPath, err)
 		}
 		password = string(passwordVal)
 	}
+	rootCA := dbConfigSection.DBCertSection.RootCA
+	if len(dbConfigSection.DBCertSection.RootCAPath) > 0 {
+		if _, err := os.Stat(dbConfigSection.DBCertSection.RootCAPath); os.IsNotExist(err) {
+			logger.Fatalf(context.Background(),
+				"missing database root CA at specified path [%s]", dbConfigSection.DBCertSection.RootCAPath)
+		}
+		rootCAVal, err := ioutil.ReadFile(dbConfigSection.DBCertSection.RootCAPath)
+		if err != nil {
+			logger.Fatalf(context.Background(), "failed to read database root CA from path [%s] with err: %v",
+				dbConfigSection.DBCertSection.RootCAPath, err)
+		}
+		rootCA = string(rootCAVal)
+	}
+	var region string
+	if len(dbConfigSection.AWSDbConfig.Region) > 0 {
+		region = dbConfigSection.AWSDbConfig.Region
+	}
+
 	return interfaces.DbConfig{
 		Host:         dbConfigSection.Host,
 		Port:         dbConfigSection.Port,
 		DbName:       dbConfigSection.DbName,
 		User:         dbConfigSection.User,
 		Password:     password,
+		RootCA:       rootCA,
+		Region:       region,
+		UseIAM:       dbConfigSection.AWSDbConfig.UseIAM,
 		ExtraOptions: dbConfigSection.ExtraOptions,
 	}
 }

@@ -71,7 +71,10 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 		DbName:       dbConfigValues.DbName,
 		User:         dbConfigValues.User,
 		Password:     dbConfigValues.Password,
+		RootCA:       dbConfigValues.RootCA,
 		ExtraOptions: dbConfigValues.ExtraOptions,
+		Region:       dbConfigValues.Region,
+		UseIAM:       dbConfigValues.UseIAM,
 	}
 	db := repositories.GetRepository(
 		repositories.POSTGRES, dbConfig, adminScope.NewSubScope("database"))
