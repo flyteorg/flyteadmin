@@ -282,7 +282,8 @@ func resolveTaskLimitsAndPlatformRequestDefaults(ctx context.Context, identifier
 		limitValue, ok := resourceLimits[resourceEntry.Name]
 		if !ok {
 			// Unexpected - at this stage both requests and limits should be populated.
-			logger.Warningf(ctx, "No limit specified for [%s] although request was set", identifier)
+			logger.Warningf(ctx, "No limit specified for [%v] resource [%s] although request was set", identifier,
+				resourceEntry.Name)
 			continue
 		}
 		if quantity.Cmp(resource.MustParse(limitValue)) == 1 {
