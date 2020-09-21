@@ -18,6 +18,7 @@ type ExecuteWorkflowInput struct {
 	Labels         map[string]string
 	Annotations    map[string]string
 	QueueingBudget time.Duration
+	TaskPluginOverrides []admin.PluginOverride
 }
 
 type ExecuteTaskInput struct {

@@ -171,6 +171,12 @@ func (m *ExecutionManager) addLabelsAndAnnotations(requestSpec *admin.ExecutionS
 	return nil
 }
 
+func (m *ExecutionManager) AddPluginOverrides(ctx context.Context, requestSpec *admin.ExecutionSpec,
+	partiallyPopulatedInputs *workflowengineInterfaces.ExecuteWorkflowInput) error {
+		m.resourceManager.GetResource(ctx )
+
+	}
+
 func (m *ExecutionManager) offloadInputs(ctx context.Context, literalMap *core.LiteralMap, identifier *core.WorkflowExecutionIdentifier, key string) (storage.DataReference, error) {
 	if literalMap == nil {
 		literalMap = &core.LiteralMap{}
@@ -573,6 +579,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	if err != nil {
 		return nil, nil, err
 	}
+
 
 	execInfo, err := m.workflowExecutor.ExecuteWorkflow(ctx, executeWorkflowInputs)
 	if err != nil {
