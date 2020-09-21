@@ -2464,7 +2464,7 @@ func TestAssignResourcesIfUnset(t *testing.T) {
 	}, assignedResources)
 }
 
-func TestResolveTaskLimitsAndPlatformRequestDefaults(t *testing.T) {
+func TestCheckTaskRequestsLessThanLimits(t *testing.T) {
 	ctx := context.Background()
 	identifier := &core.Identifier{
 		ResourceType: core.ResourceType_TASK,
@@ -2496,7 +2496,7 @@ func TestResolveTaskLimitsAndPlatformRequestDefaults(t *testing.T) {
 				},
 			},
 		}
-		resolveTaskLimitsAndPlatformRequestDefaults(ctx, identifier, resources)
+		checkTaskRequestsLessThanLimits(ctx, identifier, resources)
 		assert.True(t, proto.Equal(&core.Resources{
 			Requests: []*core.Resources_ResourceEntry{
 				{
@@ -2543,7 +2543,7 @@ func TestResolveTaskLimitsAndPlatformRequestDefaults(t *testing.T) {
 				},
 			},
 		}
-		resolveTaskLimitsAndPlatformRequestDefaults(ctx, identifier, resources)
+		checkTaskRequestsLessThanLimits(ctx, identifier, resources)
 		assert.True(t, proto.Equal(&core.Resources{
 			Requests: []*core.Resources_ResourceEntry{
 				{

@@ -265,7 +265,7 @@ func assignResourcesIfUnset(ctx context.Context, identifier *core.Identifier,
 	return resourceEntries
 }
 
-func resolveTaskLimitsAndPlatformRequestDefaults(ctx context.Context, identifier *core.Identifier,
+func checkTaskRequestsLessThanLimits(ctx context.Context, identifier *core.Identifier,
 	taskResources *core.Resources) {
 	// We choose the minimum of the platform request defaults or the limit itself for every resource request.
 	// Otherwise we can find ourselves in confusing scenarios where the injected platform request defaults exceed a
@@ -342,7 +342,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 	task.Template.GetContainer().Resources.Limits = assignResourcesIfUnset(
 		ctx, task.Template.Id, createTaskDefaultLimits(ctx, task), task.Template.GetContainer().Resources.Limits,
 		taskResourceSpec)
-	resolveTaskLimitsAndPlatformRequestDefaults(ctx, task.Template.Id, task.Template.GetContainer().Resources)
+	checkTaskRequestsLessThanLimits(ctx, task.Template.Id, task.Template.GetContainer().Resources)
 }
 
 func (m *ExecutionManager) launchSingleTaskExecution(
