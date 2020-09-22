@@ -288,7 +288,7 @@ func checkTaskRequestsLessThanLimits(ctx context.Context, identifier *core.Ident
 		}
 		if quantity.Cmp(resource.MustParse(limitValue)) == 1 {
 			// The quantity is greater than the limit! Course correct below.
-			logger.Debugf(ctx, "Updating requested value for task [%+v] resource [%s]. Overriding to [%s] from [%s]",
+			logger.Infof(ctx, "Updating requested value for task [%+v] resource [%s]. Overriding to smaller limit value [%s] from original request [%s]",
 				identifier, resourceEntry.Name, limitValue, value)
 			value = limitValue
 		}
