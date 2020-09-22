@@ -10,15 +10,15 @@ import (
 )
 
 type ExecuteWorkflowInput struct {
-	ExecutionID    *core.WorkflowExecutionIdentifier
-	WfClosure      core.CompiledWorkflowClosure
-	Inputs         *core.LiteralMap
-	Reference      admin.LaunchPlan
-	AcceptedAt     time.Time
-	Labels         map[string]string
-	Annotations    map[string]string
-	QueueingBudget time.Duration
-	TaskPluginOverrides []admin.PluginOverride
+	ExecutionID         *core.WorkflowExecutionIdentifier
+	WfClosure           core.CompiledWorkflowClosure
+	Inputs              *core.LiteralMap
+	Reference           admin.LaunchPlan
+	AcceptedAt          time.Time
+	Labels              map[string]string
+	Annotations         map[string]string
+	QueueingBudget      time.Duration
+	TaskPluginOverrides []*admin.PluginOverride
 }
 
 type ExecuteTaskInput struct {
