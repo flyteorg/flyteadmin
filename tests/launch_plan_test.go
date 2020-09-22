@@ -53,6 +53,11 @@ func getWorkflowCreateRequest() admin.WorkflowCreateRequest {
 						},
 					},
 				},
+				Nodes: []*core.Node{
+					{
+						Id: "I'm a node",
+					},
+				},
 			},
 		},
 	}
