@@ -2156,6 +2156,29 @@ func TestAddPluginOverrides(t *testing.T) {
 	}
 }
 
+func TestPluginOverrides_ResourceGetFailure(t *testing.T) {
+	executionID := &core.WorkflowExecutionIdentifier{
+		Project: project,
+		Domain:  domain,
+		Name:    "unused",
+	}
+	workflowName := "workflow_name"
+	launchPlanName := "launch_plan_name"
+
+	db := repositoryMocks.NewMockRepository()
+	db.ResourceRepo().(*repositoryMocks.MockResourceRepo).GetFunction = func(ctx context.Context, ID interfaces.ResourceID) (
+		models.Resource, error) {
+		return models.Resource{}, flyteAdminErrors.NewFlyteAdminErrorf(codes.Aborted, "uh oh")
+	}
+	execManager := NewExecutionManager(
+		db, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
+		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil)
+
+	err := execManager.(*ExecutionManager).addPluginOverrides(
+		context.Background(), executionID, workflowName, launchPlanName, &workflowengineInterfaces.ExecuteWorkflowInput{})
+	assert.Error(t, err, "uh oh")
+}
+
 func TestGetExecution_Legacy(t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
 	startedAt := time.Date(2018, 8, 30, 0, 0, 0, 0, time.UTC)
