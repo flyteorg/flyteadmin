@@ -92,11 +92,11 @@ func (c *FlytePropeller) addPermissions(launchPlan admin.LaunchPlan, flyteWf *v1
 }
 
 func addExecutionOverrides(taskPluginOverrides []*admin.PluginOverride, flyteWf *v1alpha1.FlyteWorkflow) {
-	if len(taskPluginOverrides) == 0 {
-		return
-	}
 	executionConfig := v1alpha1.ExecutionConfig{
 		TaskPluginImpls: make(map[string]v1alpha1.TaskPluginOverride),
+	}
+	if len(taskPluginOverrides) == 0 {
+		return
 	}
 	for _, override := range taskPluginOverrides {
 		executionConfig.TaskPluginImpls[override.TaskType] = v1alpha1.TaskPluginOverride{

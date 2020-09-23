@@ -75,10 +75,10 @@ func MergeUpdateWorkflowAttributes(ctx context.Context, model models.Resource, r
 		model.Attributes = marshaledAttributes
 		return model, nil
 	default:
-		logger.Warningf(ctx, "Tried to create or merge-update an unsupported resource type [%s] for [%+v]",
+		logger.Warningf(ctx, "Tried to merge-update an unsupported resource type [%s] for [%+v]",
 			resource.String(), resourceID)
 		return models.Resource{}, errors.NewFlyteAdminErrorf(codes.Internal,
-			"Tried to create or merge-update an unsupported resource type [%s] for [%+v]",
+			"Tried to merge-update an unsupported resource type [%s] for [%+v]",
 			resource.String(), resourceID)
 	}
 }
@@ -131,10 +131,10 @@ func MergeUpdateProjectDomainAttributes(ctx context.Context, model models.Resour
 		model.Attributes = marshaledAttributes
 		return model, nil
 	default:
-		logger.Warningf(ctx, "Tried to create or merge-update an unsupported resource type [%s] for [%+v]",
+		logger.Warningf(ctx, "Tried to merge-update an unsupported resource type [%s] for [%+v]",
 			resource.String(), resourceID)
 		return models.Resource{}, errors.NewFlyteAdminErrorf(codes.Internal,
-			"Tried to create or merge-update an unsupported resource type [%s] for [%+v]",
+			"Tried to merge-update an unsupported resource type [%s] for [%+v]",
 			resource.String(), resourceID)
 	}
 }
