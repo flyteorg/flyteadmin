@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/lyft/flyteadmin/pkg/common"
+
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/jinzhu/gorm"
@@ -111,10 +113,18 @@ func (r *ExecutionRepo) List(ctx context.Context, input interfaces.ListResourceI
 	tx := r.db.Limit(input.Limit).Offset(input.Offset)
 	// And add join condition (joining multiple tables is fine even we only filter on a subset of table attributes).
 	// (this query isn't called for deletes).
-	tx = tx.Joins(fmt.Sprintf("INNER JOIN %s ON %s.launch_plan_id = %s.id",
-		launchPlanTableName, executionTableName, launchPlanTableName))
-	tx = tx.Joins(fmt.Sprintf("INNER JOIN %s ON %s.workflow_id = %s.id",
-		workflowTableName, executionTableName, workflowTableName))
+	if ok := input.JoinTableEntities[common.LaunchPlan]; ok {
+		tx = tx.Joins(fmt.Sprintf("INNER JOIN %s ON %s.launch_plan_id = %s.id",
+			launchPlanTableName, executionTableName, launchPlanTableName))
+	}
+	if ok := input.JoinTableEntities[common.Workflow]; ok {
+		tx = tx.Joins(fmt.Sprintf("INNER JOIN %s ON %s.workflow_id = %s.id",
+			workflowTableName, executionTableName, workflowTableName))
+	}
+	if ok := input.JoinTableEntities[common.Task]; ok {
+		tx = tx.Joins(fmt.Sprintf("INNER JOIN %s ON %s.task_id = %s.id",
+			taskTableName, executionTableName, taskTableName))
+	}
 
 	// Apply filters
 	tx, err := applyScopedFilters(tx, input.InlineFilters, input.MapFilters)
