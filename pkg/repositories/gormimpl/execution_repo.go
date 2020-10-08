@@ -111,8 +111,7 @@ func (r *ExecutionRepo) List(ctx context.Context, input interfaces.ListResourceI
 	}
 	var executions []models.Execution
 	tx := r.db.Limit(input.Limit).Offset(input.Offset)
-	// And add join condition (joining multiple tables is fine even we only filter on a subset of table attributes).
-	// (this query isn't called for deletes).
+	// And add join condition as required by user-specified filters (which can potentially include join table attrs).
 	if ok := input.JoinTableEntities[common.LaunchPlan]; ok {
 		tx = tx.Joins(fmt.Sprintf("INNER JOIN %s ON %s.launch_plan_id = %s.id",
 			launchPlanTableName, executionTableName, launchPlanTableName))
