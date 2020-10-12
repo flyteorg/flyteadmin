@@ -25,6 +25,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	notificationMocks "github.com/lyft/flyteadmin/pkg/async/notifications/mocks"
+	commonTestUtils "github.com/lyft/flyteadmin/pkg/common/testutils"
 	dataMocks "github.com/lyft/flyteadmin/pkg/data/mocks"
 	flyteAdminErrors "github.com/lyft/flyteadmin/pkg/errors"
 	"github.com/lyft/flyteadmin/pkg/manager/impl/executions"
@@ -34,6 +35,7 @@ import (
 	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
 	repositoryMocks "github.com/lyft/flyteadmin/pkg/repositories/mocks"
 	"github.com/lyft/flyteadmin/pkg/repositories/models"
+	"github.com/lyft/flyteadmin/pkg/repositories/transformers"
 	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
 	runtimeIFaceMocks "github.com/lyft/flyteadmin/pkg/runtime/interfaces/mocks"
 	runtimeMocks "github.com/lyft/flyteadmin/pkg/runtime/mocks"
@@ -197,6 +199,17 @@ func getMockRepositoryForExecTest() repositories.RepositoryInterface {
 
 func TestCreateExecution(t *testing.T) {
 	repository := getMockRepositoryForExecTest()
+	labels := admin.Labels{
+		Values: map[string]string{
+			"label3": "3",
+			"label2": "1", // common label, will be dropped
+		}}
+	repository.ProjectRepo().(*repositoryMocks.MockProjectRepo).GetFunction = func(
+		ctx context.Context, projectID string) (models.Project, error) {
+		return transformers.CreateProjectModel(&admin.Project{
+			Labels: &labels}), nil
+	}
+
 	principal := "principal"
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(
 		func(ctx context.Context, input models.Execution) error {
@@ -213,6 +226,7 @@ func TestCreateExecution(t *testing.T) {
 			assert.EqualValues(t, map[string]string{
 				"label1": "1",
 				"label2": "2",
+				"label3": "3",
 			}, inputs.Labels)
 			assert.EqualValues(t, map[string]string{
 				"annotation3": "3",
@@ -1448,6 +1462,9 @@ func TestListExecutions(t *testing.T) {
 		assert.Equal(t, limit, input.Limit)
 		assert.Equal(t, "domain asc", input.SortParameter.GetGormOrderExpr())
 		assert.Equal(t, 2, input.Offset)
+		assert.EqualValues(t, map[common.Entity]bool{
+			common.Execution: true,
+		}, input.JoinTableEntities)
 		return interfaces.ExecutionCollectionOutput{
 			Executions: []models.Execution{
 				{
@@ -2104,6 +2121,80 @@ func TestAddLabelsAndAnnotationsRuntimeLimitsObserved(t *testing.T) {
 	assert.EqualError(t, err, "Labels has too many entries [2 > 1]")
 }
 
+func TestAddPluginOverrides(t *testing.T) {
+	executionID := &core.WorkflowExecutionIdentifier{
+		Project: project,
+		Domain:  domain,
+		Name:    "unused",
+	}
+	workflowName := "workflow_name"
+	launchPlanName := "launch_plan_name"
+
+	db := repositoryMocks.NewMockRepository()
+	db.ResourceRepo().(*repositoryMocks.MockResourceRepo).GetFunction = func(ctx context.Context, ID interfaces.ResourceID) (
+		models.Resource, error) {
+		assert.Equal(t, project, ID.Project)
+		assert.Equal(t, domain, ID.Domain)
+		assert.Equal(t, workflowName, ID.Workflow)
+		assert.Equal(t, launchPlanName, ID.LaunchPlan)
+		existingAttributes := commonTestUtils.GetPluginOverridesAttributes(map[string][]string{
+			"python": {"plugin a"},
+			"hive":   {"plugin b"},
+		})
+		bytes, err := proto.Marshal(existingAttributes)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return models.Resource{
+			Project:    project,
+			Domain:     domain,
+			Attributes: bytes,
+		}, nil
+	}
+	partiallyPopulatedInputs := workflowengineInterfaces.ExecuteWorkflowInput{}
+
+	execManager := NewExecutionManager(
+		db, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
+		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil)
+
+	err := execManager.(*ExecutionManager).addPluginOverrides(
+		context.Background(), executionID, workflowName, launchPlanName, &partiallyPopulatedInputs)
+	assert.NoError(t, err)
+	assert.Len(t, partiallyPopulatedInputs.TaskPluginOverrides, 2)
+	for _, override := range partiallyPopulatedInputs.TaskPluginOverrides {
+		if override.TaskType == "python" {
+			assert.EqualValues(t, []string{"plugin a"}, override.PluginId)
+		} else if override.TaskType == "hive" {
+			assert.EqualValues(t, []string{"plugin b"}, override.PluginId)
+		} else {
+			t.Errorf("Unexpected task type [%s] plugin override committed to db", override.TaskType)
+		}
+	}
+}
+
+func TestPluginOverrides_ResourceGetFailure(t *testing.T) {
+	executionID := &core.WorkflowExecutionIdentifier{
+		Project: project,
+		Domain:  domain,
+		Name:    "unused",
+	}
+	workflowName := "workflow_name"
+	launchPlanName := "launch_plan_name"
+
+	db := repositoryMocks.NewMockRepository()
+	db.ResourceRepo().(*repositoryMocks.MockResourceRepo).GetFunction = func(ctx context.Context, ID interfaces.ResourceID) (
+		models.Resource, error) {
+		return models.Resource{}, flyteAdminErrors.NewFlyteAdminErrorf(codes.Aborted, "uh oh")
+	}
+	execManager := NewExecutionManager(
+		db, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(),
+		mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil)
+
+	err := execManager.(*ExecutionManager).addPluginOverrides(
+		context.Background(), executionID, workflowName, launchPlanName, &workflowengineInterfaces.ExecuteWorkflowInput{})
+	assert.Error(t, err, "uh oh")
+}
+
 func TestGetExecution_Legacy(t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
 	startedAt := time.Date(2018, 8, 30, 0, 0, 0, 0, time.UTC)
@@ -2462,6 +2553,111 @@ func TestAssignResourcesIfUnset(t *testing.T) {
 			Value: taskResourceSpec.Memory,
 		},
 	}, assignedResources)
+}
+
+func TestCheckTaskRequestsLessThanLimits(t *testing.T) {
+	ctx := context.Background()
+	identifier := &core.Identifier{
+		ResourceType: core.ResourceType_TASK,
+		Project:      project,
+		Domain:       domain,
+		Name:         name,
+		Version:      version,
+	}
+	t.Run("use_limit", func(t *testing.T) {
+		resources := &core.Resources{
+			Requests: []*core.Resources_ResourceEntry{
+				{
+					Name:  core.Resources_CPU,
+					Value: "1",
+				},
+				{
+					Name:  core.Resources_MEMORY,
+					Value: "2",
+				},
+			},
+			Limits: []*core.Resources_ResourceEntry{
+				{
+					Name:  core.Resources_CPU,
+					Value: "2",
+				},
+				{
+					Name:  core.Resources_MEMORY,
+					Value: "1",
+				},
+			},
+		}
+		checkTaskRequestsLessThanLimits(ctx, identifier, resources)
+		assert.True(t, proto.Equal(&core.Resources{
+			Requests: []*core.Resources_ResourceEntry{
+				{
+					Name:  core.Resources_CPU,
+					Value: "1",
+				},
+				{
+					Name:  core.Resources_MEMORY,
+					Value: "1",
+				},
+			},
+			Limits: []*core.Resources_ResourceEntry{
+				{
+					Name:  core.Resources_CPU,
+					Value: "2",
+				},
+				{
+					Name:  core.Resources_MEMORY,
+					Value: "1",
+				},
+			},
+		}, resources))
+	})
+	t.Run("nothing_to_override", func(t *testing.T) {
+		resources := &core.Resources{
+			Requests: []*core.Resources_ResourceEntry{
+				{
+					Name:  core.Resources_CPU,
+					Value: "2",
+				},
+				{
+					Name:  core.Resources_MEMORY,
+					Value: "1",
+				},
+			},
+			Limits: []*core.Resources_ResourceEntry{
+				{
+					Name:  core.Resources_CPU,
+					Value: "2",
+				},
+				{
+					Name:  core.Resources_MEMORY,
+					Value: "1.5",
+				},
+			},
+		}
+		checkTaskRequestsLessThanLimits(ctx, identifier, resources)
+		assert.True(t, proto.Equal(&core.Resources{
+			Requests: []*core.Resources_ResourceEntry{
+				{
+					Name:  core.Resources_CPU,
+					Value: "2",
+				},
+				{
+					Name:  core.Resources_MEMORY,
+					Value: "1",
+				},
+			},
+			Limits: []*core.Resources_ResourceEntry{
+				{
+					Name:  core.Resources_CPU,
+					Value: "2",
+				},
+				{
+					Name:  core.Resources_MEMORY,
+					Value: "1.5",
+				},
+			},
+		}, resources))
+	})
 }
 
 func TestSetDefaults(t *testing.T) {

@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"github.com/lyft/flyteadmin/pkg/manager/impl/resources"
 
 	"github.com/golang/protobuf/ptypes"
@@ -171,6 +173,27 @@ func (m *ExecutionManager) addLabelsAndAnnotations(requestSpec *admin.ExecutionS
 	return nil
 }
 
+func (m *ExecutionManager) addPluginOverrides(ctx context.Context, executionID *core.WorkflowExecutionIdentifier,
+	workflowName, launchPlanName string, partiallyPopulatedInputs *workflowengineInterfaces.ExecuteWorkflowInput) error {
+	override, err := m.resourceManager.GetResource(ctx, interfaces.ResourceRequest{
+		Project:      executionID.Project,
+		Domain:       executionID.Domain,
+		Workflow:     workflowName,
+		LaunchPlan:   launchPlanName,
+		ResourceType: admin.MatchableResource_PLUGIN_OVERRIDE,
+	})
+	if err != nil {
+		ec, ok := err.(errors.FlyteAdminError)
+		if !ok || ec.Code() != codes.NotFound {
+			return err
+		}
+	}
+	if override != nil && override.Attributes != nil && override.Attributes.GetPluginOverrides() != nil {
+		partiallyPopulatedInputs.TaskPluginOverrides = override.Attributes.GetPluginOverrides().Overrides
+	}
+	return nil
+}
+
 func (m *ExecutionManager) offloadInputs(ctx context.Context, literalMap *core.LiteralMap, identifier *core.WorkflowExecutionIdentifier, key string) (storage.DataReference, error) {
 	if literalMap == nil {
 		literalMap = &core.LiteralMap{}
@@ -263,6 +286,41 @@ func assignResourcesIfUnset(ctx context.Context, identifier *core.Identifier,
 	return resourceEntries
 }
 
+func checkTaskRequestsLessThanLimits(ctx context.Context, identifier *core.Identifier,
+	taskResources *core.Resources) {
+	// We choose the minimum of the platform request defaults or the limit itself for every resource request.
+	// Otherwise we can find ourselves in confusing scenarios where the injected platform request defaults exceed a
+	// user-specified limit
+	resourceLimits := make(map[core.Resources_ResourceName]string)
+	for _, resourceEntry := range taskResources.Limits {
+		resourceLimits[resourceEntry.Name] = resourceEntry.Value
+	}
+
+	finalizedResourceRequests := make([]*core.Resources_ResourceEntry, 0, len(taskResources.Requests))
+	for _, resourceEntry := range taskResources.Requests {
+		value := resourceEntry.Value
+		quantity := resource.MustParse(resourceEntry.Value)
+		limitValue, ok := resourceLimits[resourceEntry.Name]
+		if !ok {
+			// Unexpected - at this stage both requests and limits should be populated.
+			logger.Warningf(ctx, "No limit specified for [%v] resource [%s] although request was set", identifier,
+				resourceEntry.Name)
+			continue
+		}
+		if quantity.Cmp(resource.MustParse(limitValue)) == 1 {
+			// The quantity is greater than the limit! Course correct below.
+			logger.Infof(ctx, "Updating requested value for task [%+v] resource [%s]. Overriding to smaller limit value [%s] from original request [%s]",
+				identifier, resourceEntry.Name, limitValue, value)
+			value = limitValue
+		}
+		finalizedResourceRequests = append(finalizedResourceRequests, &core.Resources_ResourceEntry{
+			Name:  resourceEntry.Name,
+			Value: value,
+		})
+	}
+	taskResources.Requests = finalizedResourceRequests
+}
+
 // Assumes input contains a compiled task with a valid container resource execConfig.
 //
 // Note: The system will assign a system-default value for request but for limit it will deduce it from the request
@@ -305,6 +363,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 	task.Template.GetContainer().Resources.Limits = assignResourcesIfUnset(
 		ctx, task.Template.Id, createTaskDefaultLimits(ctx, task), task.Template.GetContainer().Resources.Limits,
 		taskResourceSpec)
+	checkTaskRequestsLessThanLimits(ctx, task.Template.Id, task.Template.GetContainer().Resources)
 }
 
 func (m *ExecutionManager) launchSingleTaskExecution(
@@ -408,6 +467,11 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	if request.Spec.Labels != nil {
 		executeTaskInputs.Labels = request.Spec.Labels.Values
 	}
+	executeTaskInputs.Labels, err = m.addProjectLabels(ctx, request.Project, executeTaskInputs.Labels)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	if request.Spec.Annotations != nil {
 		executeTaskInputs.Annotations = request.Spec.Annotations.Values
 	}
@@ -570,6 +634,16 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		QueueingBudget: qualityOfService.QueuingBudget,
 	}
 	err = m.addLabelsAndAnnotations(request.Spec, &executeWorkflowInputs)
+	if err != nil {
+		return nil, nil, err
+	}
+	executeWorkflowInputs.Labels, err = m.addProjectLabels(ctx, request.Project, executeWorkflowInputs.Labels)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = m.addPluginOverrides(ctx, &workflowExecutionID, launchPlan.GetSpec().WorkflowId.Name, launchPlan.Id.Name,
+		&executeWorkflowInputs)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1079,11 +1153,16 @@ func (m *ExecutionManager) ListExecutions(
 		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "invalid pagination token %s for ListExecutions",
 			request.Token)
 	}
+	joinTableEntities := make(map[common.Entity]bool)
+	for _, filter := range filters {
+		joinTableEntities[filter.GetEntity()] = true
+	}
 	listExecutionsInput := repositoryInterfaces.ListResourceInput{
-		Limit:         int(request.Limit),
-		Offset:        offset,
-		InlineFilters: filters,
-		SortParameter: sortParameter,
+		Limit:             int(request.Limit),
+		Offset:            offset,
+		InlineFilters:     filters,
+		SortParameter:     sortParameter,
+		JoinTableEntities: joinTableEntities,
 	}
 	output, err := m.db.ExecutionRepo().List(ctx, listExecutionsInput)
 	if err != nil {
@@ -1281,4 +1360,26 @@ func NewExecutionManager(
 		resourceManager:           resourceManager,
 		qualityOfServiceAllocator: executions.NewQualityOfServiceAllocator(config, resourceManager),
 	}
+}
+
+// Adds project labels with higher precedence to workflow labels. Project labels are ignored if a corresponding label is set on the workflow.
+func (m *ExecutionManager) addProjectLabels(ctx context.Context, projectName string, initialLabels map[string]string) (map[string]string, error) {
+	project, err := m.db.ProjectRepo().Get(ctx, projectName)
+	if err != nil {
+		logger.Errorf(ctx, "Failed to get project for [%+v] with error: %v", project, err)
+		return nil, err
+	}
+	// passing nil domain as not needed to retrieve labels
+	projectLabels := transformers.FromProjectModel(project, nil).Labels.GetValues()
+
+	if initialLabels == nil {
+		initialLabels = make(map[string]string)
+	}
+
+	for k, v := range projectLabels {
+		if _, ok := initialLabels[k]; !ok {
+			initialLabels[k] = v
+		}
+	}
+	return initialLabels, nil
 }
