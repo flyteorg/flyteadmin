@@ -114,13 +114,6 @@ func ValidateResourceListRequest(request admin.ResourceListRequest) error {
 	return nil
 }
 
-func ValidateProjectUpdateRequest(request admin.Project) error {
-	if err := ValidateProjectUpdateRequestLabelsAlphanumeric(request); err != nil {
-		return err
-	}
-	return nil
-}
-
 func ValidateActiveLaunchPlanRequest(request admin.ActiveLaunchPlanRequest) error {
 	if err := ValidateEmptyStringField(request.Id.Project, shared.Project); err != nil {
 		return err
@@ -199,24 +192,6 @@ func validateParameterMap(inputMap *core.ParameterMap, fieldName string) error {
 						defaultInput.GetVar().GetType().String(), inputType.String())
 				}
 			}
-		}
-	}
-	return nil
-}
-
-func ValidateProjectUpdateRequestLabelsAlphanumeric(request admin.Project) error {
-	if request.Labels == nil {
-		return nil;
-	}
-	if request.Labels.Values == nil {
-		return nil;
-	}
-	for key, value := range request.Labels.Values {
-		if errs := validation.IsDNS1123Label(key); len(errs) > 0 {
-			return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Invalid label key [%s]: %v", key, errs)
-		}
-		if errs := validation.IsDNS1123Label(value); len(errs) > 0 {
-			return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "invalid project id [%s]: %v", value, errs)
 		}
 	}
 	return nil
