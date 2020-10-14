@@ -24,6 +24,12 @@ func ValidateProjectRegisterRequest(request admin.ProjectRegisterRequest) error 
 	if err := ValidateEmptyStringField(request.Project.Id, projectID); err != nil {
 		return err
 	}
+	// Note: a bit confusingly named; the project that is registered should be the same as a project update
+	// in terms of its properties. Therefore, we can call the same function that is used to validate project
+	// updates on creation.
+	if err := ValidateProjectUpdateRequest(*request.Project); err != nil {
+		return err
+	}
 	if errs := validation.IsDNS1123Label(request.Project.Id); len(errs) > 0 {
 		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "invalid project id [%s]: %v", request.Project.Id, errs)
 	}
@@ -79,7 +85,7 @@ func ValidateProjectUpdateRequestLabelsAlphanumeric(request admin.Project) error
 			return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "invalid label key [%s]: %v", key, errs)
 		}
 		if errs := validation.IsDNS1123Label(value); len(errs) > 0 {
-			return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "invalid project id [%s]: %v", value, errs)
+			return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "invalid label value [%s]: %v", value, errs)
 		}
 	}
 	return nil
