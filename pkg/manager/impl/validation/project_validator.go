@@ -71,10 +71,7 @@ func ValidateProjectAndDomain(
 }
 
 func ValidateProjectUpdateRequestLabelsAlphanumeric(request admin.Project) error {
-	if request.Labels == nil {
-		return nil;
-	}
-	if request.Labels.Values == nil {
+	if request.Labels == nil || len(request.Labels.Values) == 0 {
 		return nil;
 	}
 	for key, value := range request.Labels.Values {
