@@ -24,10 +24,7 @@ func ValidateProjectRegisterRequest(request admin.ProjectRegisterRequest) error 
 	if err := ValidateEmptyStringField(request.Project.Id, projectID); err != nil {
 		return err
 	}
-	// Note: a bit confusingly named; the project that is registered should be the same as a project update
-	// in terms of its properties. Therefore, we can call the same function that is used to validate project
-	// updates on creation.
-	if err := ValidateProjectUpdateRequest(*request.Project); err != nil {
+	if err := ValidateProjectLabels(*request.Project); err != nil {
 		return err
 	}
 	if errs := validation.IsDNS1123Label(request.Project.Id); len(errs) > 0 {
@@ -46,7 +43,7 @@ func ValidateProjectRegisterRequest(request admin.ProjectRegisterRequest) error 
 	return nil
 }
 
-func ValidateProjectUpdateRequest(request admin.Project) error {
+func ValidateProjectLabels(request admin.Project) error {
 	if err := ValidateProjectLabelsAlphanumeric(request); err != nil {
 		return err
 	}

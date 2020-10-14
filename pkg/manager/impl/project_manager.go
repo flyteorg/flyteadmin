@@ -70,8 +70,8 @@ func (m *ProjectManager) UpdateProject(ctx context.Context, projectUpdate admin.
 		return nil, err
 	}
 
-	// Run validation on the request and return err if validation does not succeed
-	err = validation.ValidateProjectUpdateRequest(projectUpdate)
+	// Run validation on the request, specifically checking for labels, and return err if validation does not succeed.
+	err = validation.ValidateProjectLabels(projectUpdate)
 	if err != nil {
 		return nil, err
 	}
