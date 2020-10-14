@@ -80,7 +80,7 @@ func ValidateProjectAndDomain(
 // i.e. alphanumeric + - and _
 func ValidateProjectLabelsAlphanumeric(request admin.Project) error {
 	if request.Labels == nil || len(request.Labels.Values) == 0 {
-		return nil;
+		return nil
 	}
 	for key, value := range request.Labels.Values {
 		if errs := validation.IsDNS1123Label(key); len(errs) > 0 {

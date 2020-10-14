@@ -161,7 +161,6 @@ func TestUpdateProjectLabels(t *testing.T) {
 	assert.Equal(t, barVal, "baz")
 }
 
-
 func TestUpdateProjectLabels_BadLabels(t *testing.T) {
 	ctx := context.Background()
 	client, conn := GetTestAdminServiceClient()
