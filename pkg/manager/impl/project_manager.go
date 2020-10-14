@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/lyft/flyteadmin/pkg/common"
-	"github.com/lyft/flyteadmin/pkg/manager/impl/project_validator"
 	"github.com/lyft/flyteadmin/pkg/manager/impl/validation"
 	"github.com/lyft/flyteadmin/pkg/manager/interfaces"
 	"github.com/lyft/flyteadmin/pkg/repositories"
@@ -72,7 +71,7 @@ func (m *ProjectManager) UpdateProject(ctx context.Context, projectUpdate admin.
 	}
 
 	// Run validation on the request and return err if validation does not succeed
-	err = project_validator.ValidateProjectUpdateRequest(projectUpdate)
+	err = validation.ValidateProjectUpdateRequest(projectUpdate)
 	if err != nil {
 		return nil, err
 	}
