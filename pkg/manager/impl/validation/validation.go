@@ -11,7 +11,6 @@ import (
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytepropeller/pkg/compiler/validators"
 	"google.golang.org/grpc/codes"
-	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 var entityToResourceType = map[common.Entity]core.ResourceType{
