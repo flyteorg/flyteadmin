@@ -47,7 +47,7 @@ func ValidateProjectRegisterRequest(request admin.ProjectRegisterRequest) error 
 }
 
 func ValidateProjectUpdateRequest(request admin.Project) error {
-	if err := ValidateProjectUpdateRequestLabelsAlphanumeric(request); err != nil {
+	if err := ValidateProjectLabelsAlphanumeric(request); err != nil {
 		return err
 	}
 	return nil
@@ -76,7 +76,9 @@ func ValidateProjectAndDomain(
 	return nil
 }
 
-func ValidateProjectUpdateRequestLabelsAlphanumeric(request admin.Project) error {
+// Given an admin.Project, checks if the project has labels and if it does, checks if the labels are K8s compliant,
+// i.e. alphanumeric + - and _
+func ValidateProjectLabelsAlphanumeric(request admin.Project) error {
 	if request.Labels == nil || len(request.Labels.Values) == 0 {
 		return nil;
 	}
