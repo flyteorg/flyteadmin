@@ -76,7 +76,7 @@ func ValidateProjectUpdateRequestLabelsAlphanumeric(request admin.Project) error
 	}
 	for key, value := range request.Labels.Values {
 		if errs := validation.IsDNS1123Label(key); len(errs) > 0 {
-			return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Invalid label key [%s]: %v", key, errs)
+			return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "invalid label key [%s]: %v", key, errs)
 		}
 		if errs := validation.IsDNS1123Label(value); len(errs) > 0 {
 			return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "invalid project id [%s]: %v", value, errs)
