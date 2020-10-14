@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/lyft/flyteadmin/pkg/common"
+	"github.com/lyft/flyteadmin/pkg/manager/impl/project_validator"
 	"github.com/lyft/flyteadmin/pkg/manager/impl/validation"
 	"github.com/lyft/flyteadmin/pkg/manager/interfaces"
 	"github.com/lyft/flyteadmin/pkg/repositories"

@@ -40,6 +40,13 @@ func ValidateProjectRegisterRequest(request admin.ProjectRegisterRequest) error 
 	return nil
 }
 
+func ValidateProjectUpdateRequest(request admin.Project) error {
+	if err := ValidateProjectUpdateRequestLabelsAlphanumeric(request); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Validates that a specified project and domain combination has been registered and exists in the db.
 func ValidateProjectAndDomain(
 	ctx context.Context, db repositories.RepositoryInterface, config runtimeInterfaces.ApplicationConfiguration, projectID, domainID string) error {
@@ -59,6 +66,24 @@ func ValidateProjectAndDomain(
 	}
 	if !validDomain {
 		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "domain [%s] is unrecognized by system", domainID)
+	}
+	return nil
+}
+
+func ValidateProjectUpdateRequestLabelsAlphanumeric(request admin.Project) error {
+	if request.Labels == nil {
+		return nil;
+	}
+	if request.Labels.Values == nil {
+		return nil;
+	}
+	for key, value := range request.Labels.Values {
+		if errs := validation.IsDNS1123Label(key); len(errs) > 0 {
+			return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Invalid label key [%s]: %v", key, errs)
+		}
+		if errs := validation.IsDNS1123Label(value); len(errs) > 0 {
+			return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "invalid project id [%s]: %v", value, errs)
+		}
 	}
 	return nil
 }
