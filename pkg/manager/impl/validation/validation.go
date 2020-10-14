@@ -114,7 +114,7 @@ func ValidateResourceListRequest(request admin.ResourceListRequest) error {
 }
 
 func ValidateProjectUpdateRequest(request admin.Project) error {
-	if err := ValidateProjectUpdateRequestLabelsAlphanumeric(request admin.Project); err != nil {
+	if err := ValidateProjectUpdateRequestLabelsAlphanumeric(request); err != nil {
 		return err
 	}
 	return nil

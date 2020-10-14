@@ -71,7 +71,7 @@ func (m *ProjectManager) UpdateProject(ctx context.Context, projectUpdate admin.
 	}
 
 	// Run validation on the request and return err if validation does not succeed
-	err = validation.ValidateResourceListRequest(projectUpdate)
+	err = validation.ValidateProjectUpdateRequest(projectUpdate)
 	if err != nil {
 		return nil, err
 	}
