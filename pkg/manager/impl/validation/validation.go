@@ -11,6 +11,7 @@ import (
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytepropeller/pkg/compiler/validators"
 	"google.golang.org/grpc/codes"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 var entityToResourceType = map[common.Entity]core.ResourceType{
@@ -204,7 +205,20 @@ func validateParameterMap(inputMap *core.ParameterMap, fieldName string) error {
 }
 
 func ValidateProjectUpdateRequestLabelsAlphanumeric(request admin.Project) error {
-	// TODO(kosigz): implement this
+	if request.Labels == nil {
+		return nil;
+	}
+	if request.Labels.Values == nil {
+		return nil;
+	}
+	for key, value := range request.Labels.Values {
+		if errs := validation.IsDNS1123Label(key); len(errs) > 0 {
+			return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Invalid label key [%s]: %v", key, errs)
+		}
+		if errs := validation.IsDNS1123Label(value); len(errs) > 0 {
+			return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "invalid project id [%s]: %v", value, errs)
+		}
+	}
 	return nil
 }
 
