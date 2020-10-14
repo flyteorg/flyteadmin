@@ -113,6 +113,13 @@ func ValidateResourceListRequest(request admin.ResourceListRequest) error {
 	return nil
 }
 
+func ValidateProjectUpdateRequest(request admin.Project) error {
+	if err := ValidateProjectUpdateRequestLabelsAlphanumeric(request admin.Project); err != nil {
+		return err
+	}
+	return nil
+}
+
 func ValidateActiveLaunchPlanRequest(request admin.ActiveLaunchPlanRequest) error {
 	if err := ValidateEmptyStringField(request.Id.Project, shared.Project); err != nil {
 		return err
@@ -193,6 +200,11 @@ func validateParameterMap(inputMap *core.ParameterMap, fieldName string) error {
 			}
 		}
 	}
+	return nil
+}
+
+func ValidateProjectUpdateRequestLabelsAlphanumeric(request admin.Project) error {
+	// TODO(kosigz): implement this
 	return nil
 }
 
