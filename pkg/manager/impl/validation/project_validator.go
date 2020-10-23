@@ -3,8 +3,9 @@ package validation
 import (
 	"context"
 
-	"github.com/lyft/flyteadmin/pkg/errors"
 	"github.com/lyft/flyteadmin/pkg/manager/impl/shared"
+
+	"github.com/lyft/flyteadmin/pkg/errors"
 	"github.com/lyft/flyteadmin/pkg/repositories"
 	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
@@ -21,29 +22,33 @@ func ValidateProjectRegisterRequest(request admin.ProjectRegisterRequest) error 
 	if request.Project == nil {
 		return shared.GetMissingArgumentError(shared.Project)
 	}
-	if err := ValidateEmptyStringField(request.Project.Id, projectID); err != nil {
+	return ValidateProject(*request.Project)
+}
+
+func ValidateProject(project admin.Project) error {
+	if err := ValidateEmptyStringField(project.Id, projectID); err != nil {
 		return err
 	}
-	if err := ValidateProjectLabels(*request.Project); err != nil {
+	if err := validateProjectLabels(project); err != nil {
 		return err
 	}
-	if errs := validation.IsDNS1123Label(request.Project.Id); len(errs) > 0 {
-		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "invalid project id [%s]: %v", request.Project.Id, errs)
+	if errs := validation.IsDNS1123Label(project.Id); len(errs) > 0 {
+		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "invalid project id [%s]: %v", project.Id, errs)
 	}
-	if err := ValidateEmptyStringField(request.Project.Name, projectName); err != nil {
+	if err := ValidateEmptyStringField(project.Name, projectName); err != nil {
 		return err
 	}
-	if err := ValidateMaxLengthStringField(request.Project.Description, projectDescription, maxDescriptionLength); err != nil {
+	if err := ValidateMaxLengthStringField(project.Description, projectDescription, maxDescriptionLength); err != nil {
 		return err
 	}
-	if request.Project.Domains != nil {
+	if project.Domains != nil {
 		return errors.NewFlyteAdminError(codes.InvalidArgument,
 			"Domains are currently only set system wide. Please retry without domains included in your request.")
 	}
 	return nil
 }
 
-func ValidateProjectLabels(request admin.Project) error {
+func validateProjectLabels(request admin.Project) error {
 	if err := ValidateProjectLabelsAlphanumeric(request); err != nil {
 		return err
 	}
