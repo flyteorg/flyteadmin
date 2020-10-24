@@ -16,7 +16,10 @@ import (
 const projectID = "project_id"
 const projectName = "project_name"
 const projectDescription = "project_description"
+const labels = "labels"
+const maxNameLength = 64
 const maxDescriptionLength = 300
+const maxLabelArrayLength = 16
 
 func ValidateProjectRegisterRequest(request admin.ProjectRegisterRequest) error {
 	if request.Project == nil {
@@ -38,6 +41,9 @@ func ValidateProject(project admin.Project) error {
 	if err := ValidateEmptyStringField(project.Name, projectName); err != nil {
 		return err
 	}
+	if err := ValidateMaxLengthStringField(project.Name, projectName, maxNameLength); err != nil {
+		return err
+	}
 	if err := ValidateMaxLengthStringField(project.Description, projectDescription, maxDescriptionLength); err != nil {
 		return err
 	}
@@ -48,8 +54,14 @@ func ValidateProject(project admin.Project) error {
 	return nil
 }
 
-func validateProjectLabels(request admin.Project) error {
-	if err := ValidateProjectLabelsAlphanumeric(request); err != nil {
+func validateProjectLabels(project admin.Project) error {
+	if project.Labels == nil || len(project.Labels.Values) == 0 {
+		return nil
+	}
+	if err := ValidateMaxMapLengthField(project.Labels.Values, labels, maxLabelArrayLength); err != nil {
+		return err
+	}
+	if err := validateProjectLabelsAlphanumeric(project.Labels); err != nil {
 		return err
 	}
 	return nil
@@ -84,11 +96,8 @@ func ValidateProjectAndDomain(
 
 // Given an admin.Project, checks if the project has labels and if it does, checks if the labels are K8s compliant,
 // i.e. alphanumeric + - and _
-func ValidateProjectLabelsAlphanumeric(request admin.Project) error {
-	if request.Labels == nil || len(request.Labels.Values) == 0 {
-		return nil
-	}
-	for key, value := range request.Labels.Values {
+func validateProjectLabelsAlphanumeric(labels *admin.Labels) error {
+	for key, value := range labels.Values {
 		if errs := validation.IsDNS1123Label(key); len(errs) > 0 {
 			return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "invalid label key [%s]: %v", key, errs)
 		}

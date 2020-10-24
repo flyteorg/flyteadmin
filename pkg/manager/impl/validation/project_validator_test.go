@@ -3,6 +3,7 @@ package validation
 import (
 	"context"
 	"errors"
+	"strconv"
 	"testing"
 
 	"github.com/lyft/flyteadmin/pkg/manager/impl/testutils"
@@ -63,6 +64,15 @@ func TestValidateProjectRegisterRequest(t *testing.T) {
 				},
 			},
 			expectedError: "missing project_name",
+		},
+		{
+			request: admin.ProjectRegisterRequest{
+				Project: &admin.Project{
+					Id:   "proj",
+					Name: "longnamelongnamelongnamelongnamelongnamelongnamelongnamelongnamel",
+				},
+			},
+			expectedError: "project_name cannot exceed 64 characters",
 		},
 		{
 			request: admin.ProjectRegisterRequest{
@@ -181,6 +191,13 @@ func TestValidateProject(t *testing.T) {
 		{
 			project: admin.Project{
 				Id:   "proj",
+				Name: "longnamelongnamelongnamelongnamelongnamelongnamelongnamelongnamel",
+			},
+			expectedError: "project_name cannot exceed 64 characters",
+		},
+		{
+			project: admin.Project{
+				Id:   "proj",
 				Name: "proj",
 				Domains: []*admin.Domain{
 					{
@@ -208,6 +225,16 @@ func TestValidateProject(t *testing.T) {
 				Id:   "proj",
 				Name: "name",
 				Labels: &admin.Labels{
+					Values: createLabelsMap(17),
+				},
+			},
+			expectedError: "labels map cannot exceed 16 entries",
+		},
+		{
+			project: admin.Project{
+				Id:   "proj",
+				Name: "name",
+				Labels: &admin.Labels{
 					Values: map[string]string{
 						"#badkey": "foo",
 						"bar":     "baz",
@@ -223,6 +250,14 @@ func TestValidateProject(t *testing.T) {
 			assert.EqualError(t, ValidateProject(val.project), val.expectedError)
 		})
 	}
+}
+
+func createLabelsMap(size int) map[string]string {
+	result := make(map[string]string, size)
+	for i := 0; i < size; i++ {
+		result["key-"+strconv.Itoa(i)] = "value"
+	}
+	return result
 }
 
 func TestValidateProjectAndDomain(t *testing.T) {
