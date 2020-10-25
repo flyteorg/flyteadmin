@@ -76,6 +76,6 @@ func OpenDbConnection(config DbConnectionConfigProvider) *gorm.DB {
 	if err != nil {
 		panic(err)
 	}
-	db.LogMode(config.IsDebug())
+	db.LogMode(true)
 	return db
 }
