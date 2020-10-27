@@ -139,6 +139,9 @@ func (c *FlytePropeller) ExecuteWorkflow(ctx context.Context, input interfaces.E
 	flyteWf.Labels = labels
 	annotations := addMapValues(input.Annotations, flyteWf.Annotations)
 	flyteWf.Annotations = annotations
+	if flyteWf.WorkflowMeta == nil {
+		flyteWf.WorkflowMeta = &v1alpha1.WorkflowMeta{}
+	}
 	flyteWf.WorkflowMeta.EventVersion = c.eventVersion
 	addExecutionOverrides(input.TaskPluginOverrides, flyteWf)
 
