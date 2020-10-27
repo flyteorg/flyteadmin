@@ -64,7 +64,9 @@ func (b *FlyteWorkflowBuilderTest) BuildFlyteWorkflow(
 	if b.buildCallback != nil {
 		return b.buildCallback(wfClosure, inputs, executionID, namespace)
 	}
-	return &v1alpha1.FlyteWorkflow{}, nil
+	return &v1alpha1.FlyteWorkflow{
+		WorkflowMeta: &v1alpha1.WorkflowMeta{},
+	}, nil
 }
 
 type createCallback func(*v1alpha1.FlyteWorkflow) (*v1alpha1.FlyteWorkflow, error)
