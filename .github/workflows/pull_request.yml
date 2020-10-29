@@ -22,7 +22,7 @@ jobs:
         run: (docker load -i /tmp/tmp/docker-images/snapshot-builder.tar || true) && (docker load -i /tmp/tmp/docker-images/snapshot.tar || true)
       - name: Build dockerfile
         run: |
-          docker build -t lyft/flyteadmin:builder . --target builder --from-cache=lyft/flyteadmin:builder
+          docker build -t lyft/flyteadmin:builder . --target builder --cache-from=lyft/flyteadmin:builder
           docker build -t lyft/flyteadmin:${{ github.sha }} .
 
       - name: Tag and cache docker image
