@@ -16,7 +16,7 @@ jobs:
           path: /tmp//tmp/docker-images
           key: /tmp/docker-images-${{ hashFiles('Dockerfile') }}
       - name: Prime docker cache
-        run: docker load -i /tmp//tmp/docker-images/snapshot-builder.tar || true
+        run: docker load -i /tmp/tmp/docker-images/snapshot-builder.tar || true
         if: steps.load-docker-cache.outputs.cache-hit == 'true'
       - name: Build dockerfile
         run: |
@@ -24,7 +24,7 @@ jobs:
           docker build -t lyft/flyteadmin:${{ github.sha }} .
 
       - name: Tag and cache docker image
-        run: docker tag lyft/flyteadmin:${{ github.sha }} flyteadmin-cache && mkdir -p /tmp//tmp/docker-images && docker save flyteadmin-cache -o /tmp//tmp/docker-images/snapshot.tar && ls -lh /tmp//tmp/docker-images || true
+        run: docker tag lyft/flyteadmin:${{ github.sha }} flyteadmin-cache && mkdir -p /tmp/tmp/docker-images && docker save flyteadmin-cache -o /tmp/tmp/docker-images/snapshot.tar && ls -lh /tmp/tmp/docker-images || true
         if: always() && steps.load-docker-cache.outputs.cache-hit != 'true'
 
   endtoend:
@@ -40,7 +40,7 @@ jobs:
           path: /tmp//tmp/docker-images
           key: /tmp/docker-images-${{ hashFiles('Dockerfile') }}
       - name: Prime docker cache
-        run: docker load -i /tmp//tmp/docker-images/snapshot-builder.tar || true
+        run: docker load -i /tmp/tmp/docker-images/snapshot-builder.tar || true
       - uses: engineerd/setup-kind@v0.4.0
       - name: End2End
         run: |
