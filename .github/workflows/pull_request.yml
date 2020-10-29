@@ -4,68 +4,67 @@ on:
   pull_request
 
 jobs:
-  build-and-end2end:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Push Docker Image to Github Registry
-        uses: whoan/docker-build-with-cache-action@v5
+      - name: Checkout
+        uses: actions/checkout@v2
+      - id: load-docker-cache
+        uses: actions/cache@v1
         with:
-          username: "${{ github.actor }}"
-          password: "${{ secrets.GITHUB_TOKEN }}"
-          image_name: ${{ secrets.flytegithub_repo }}/flyteadmin
-          image_tag: ${{ github.sha }}
-          push_git_tag: true
-          registry: docker.pkg.github.com
+          path: /tmp//tmp/docker-images
+          key: /tmp/docker-images-${{ hashFiles('Dockerfile') }}
+      - run: docker load -i /tmp//tmp/docker-images/snapshot-builder.tar || true
+        if: steps.load-docker-cache.outputs.cache-hit == 'true'
+      - run: |
+          docker build -t lyft/flyteadmin:${{ github.sha }} . --target builder --cache-from=flyteadmin-cache
+          docker build -t lyft/flyteadmin:${{ github.sha }} .
+
+      - run: docker tag lyft/flyteadmin:${{ github.sha }} flyteadmin-cache && mkdir -p /tmp//tmp/docker-images && docker save flyteadmin-cache -o /tmp//tmp/docker-images/snapshot.tar && ls -lh /tmp//tmp/docker-images || true
+        if: always() && steps.load-docker-cache.outputs.cache-hit != 'true'
+
+  endtoend:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - id: load-docker-cache
+        uses: actions/cache@v1
+        with:
+          path: /tmp//tmp/docker-images
+          key: /tmp/docker-images-${{ hashFiles('Dockerfile') }}
+      - run: docker load -i /tmp//tmp/docker-images/snapshot-builder.tar || true
       - uses: engineerd/setup-kind@v0.4.0
       - name: End2End
-        env:
-          DOCKER_USERNAME: ${{ github.actor }}
-          DOCKER_PASSWORD: "${{ secrets.GITHUB_TOKEN }}"
         run: |
           kubectl cluster-info
           kubectl get pods -n kube-system
           echo "current-context:" $(kubectl config current-context)
           echo "environment-kubeconfig:" ${KUBECONFIG}
-          ADMIN=${{ secrets.flytegithub_repo }}/flyteadmin:${{ github.sha }} make end2end_execute
+          ADMIN=lyft/flyteadmin:${{ github.sha }} make end2end_execute
+
   integration:
     runs-on: ubuntu-latest
+    needs: [build]
     steps:
-      - uses: actions/checkout@v2
-      - name: Push Docker Image to Github Registry
-        uses: whoan/docker-build-with-cache-action@v5
+      - name: Checkout
+        uses: actions/checkout@v2
+      - id: load-docker-cache
+        uses: actions/cache@v1
         with:
-          username: "${{ github.actor }}"
-          password: "${{ secrets.GITHUB_TOKEN }}"
-          image_name: ${{ secrets.flytegithub_repo }}/flyteadmin
-          image_tag: ${{ github.sha }}-builder
-          push_git_tag: true
-          registry: docker.pkg.github.com
-          build_extra_args: "--target=builder"
+          path: /tmp//tmp/docker-images
+          key: /tmp/docker-images-${{ hashFiles('Dockerfile') }}
+      - run: docker load -i /tmp//tmp/docker-images/snapshot-builder.tar || true
       - uses: engineerd/setup-kind@v0.4.0
       - name: Integration
-        env:
-          DOCKER_USERNAME: ${{ github.actor }}
-          DOCKER_PASSWORD: "${{ secrets.GITHUB_TOKEN }}"
         run: |
           kubectl cluster-info
           kubectl get pods -n kube-system
           echo "current-context:" $(kubectl config current-context)
           echo "environment-kubeconfig:" ${KUBECONFIG}
-          make k8s_integration_execute
-  push-dockerhub:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Push Docker Image to Dockerhub
-        uses: whoan/docker-build-with-cache-action@v5
-        with:
-          username: "${{ secrets.DOCKERHUB_USERNAME }}"
-          password: "${{ secrets.DOCKERHUB_PASSWORD }}"
-          image_name: ${{ secrets.DOCKERHUB_IMAGE_NAME }}
-          image_tag: ${{ github.sha }}
-          push_git_tag: true
-          build_extra_args: "--compress=true"
+          ADMIN=lyft/flyteadmin:${{ github.sha }} make k8s_integration_execute
+
   tests-lint:
     runs-on: ubuntu-latest
     steps:
