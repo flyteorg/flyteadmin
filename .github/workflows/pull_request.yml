@@ -18,7 +18,7 @@ jobs:
         with:
           path: /tmp//tmp/docker-images
           key: /tmp/docker-images-${{ github.sha }}
-          restore-keys: /tmp/docker-images-${{ github.event.pull_request.head.sha }}
+          restore-keys: /tmp/docker-images-${{ github.event.before }}
       - name: Prime docker cache
         run: (docker load -i /tmp/tmp/docker-images/snapshot-builder.tar || true) && (docker load -i /tmp/tmp/docker-images/snapshot.tar || true)
         if: steps.load-docker-cache.outputs.cache-hit == 'true'
