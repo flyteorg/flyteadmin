@@ -28,6 +28,7 @@ jobs:
         run: mkdir -p /tmp/tmp/docker-images && docker save lyft/flyteadmin:builder -o /tmp/tmp/docker-images/snapshot-builder.tar && docker save lyft/flyteadmin:${{ github.sha }} -o /tmp/tmp/docker-images/snapshot.tar
 
   endtoend:
+    name: End to End tests
     runs-on: ubuntu-latest
     needs: [build-docker]
     steps:
