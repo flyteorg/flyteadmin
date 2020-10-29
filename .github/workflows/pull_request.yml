@@ -14,7 +14,8 @@ jobs:
         uses: actions/cache@v1
         with:
           path: /tmp//tmp/docker-images
-          key: /tmp/docker-images-${{ hashFiles('Dockerfile') }}
+          key: /tmp/docker-images-${{ github.sha }}
+          restore-keys: /tmp/docker-images-${{ github.event.head.sha }}
       - name: Prime docker cache
         run: (docker load -i /tmp/tmp/docker-images/snapshot-builder.tar || true) && (docker load -i /tmp/tmp/docker-images/snapshot.tar || true)
         if: steps.load-docker-cache.outputs.cache-hit == 'true'
