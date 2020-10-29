@@ -23,7 +23,6 @@ jobs:
             /tmp/docker-images-${{ github.event.pull_request.base.sha }}
       - name: Prime docker cache
         run: (docker load -i /tmp/tmp/docker-images/snapshot-builder.tar || true) && (docker load -i /tmp/tmp/docker-images/snapshot.tar || true)
-        if: steps.load-docker-cache.outputs.cache-hit == 'true'
       - name: Build dockerfile
         run: |
           docker build -t lyft/flyteadmin:builder . --target builder
