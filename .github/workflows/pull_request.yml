@@ -25,7 +25,6 @@ jobs:
 
       - name: Tag and cache docker image
         run: mkdir -p /tmp/tmp/docker-images && docker save lyft/flyteadmin:builder -o /tmp/tmp/docker-images/snapshot-builder.tar && docker save lyft/flyteadmin:${{ github.sha }} -o /tmp/tmp/docker-images/snapshot.tar
-        if: always() && steps.load-docker-cache.outputs.cache-hit != 'true'
 
   endtoend:
     runs-on: ubuntu-latest
