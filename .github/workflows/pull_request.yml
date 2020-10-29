@@ -65,7 +65,7 @@ jobs:
           path: /tmp/tmp/docker-images
           key: /tmp/docker-images-${{ github.event.after }}
       - name: Prime docker cache
-        run: docker load -i /tmp/tmp/docker-images/snapshot.tar || true
+        run: docker load -i /tmp/tmp/docker-images/snapshot-builder.tar || true
       - uses: engineerd/setup-kind@v0.4.0
       - name: Integration
         run: |
@@ -73,7 +73,7 @@ jobs:
           kubectl get pods -n kube-system
           echo "current-context:" $(kubectl config current-context)
           echo "environment-kubeconfig:" ${KUBECONFIG}
-          ADMIN=lyft/flyteadmin:${{ github.sha }} make k8s_integration_execute
+          ADMIN=lyft/flyteadmin:builder make k8s_integration_execute
 
   tests-lint:
     runs-on: ubuntu-latest
