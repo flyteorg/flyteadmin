@@ -16,9 +16,11 @@ jobs:
         name: Load Docker Cache
         uses: actions/cache@v1
         with:
-          path: /tmp//tmp/docker-images
-          key: /tmp/docker-images-${{ github.sha }}
-          restore-keys: /tmp/docker-images-${{ github.event.before }}
+          path: /tmp/tmp/docker-images
+          key: /tmp/docker-images-${{ github.event.after }}
+          restore-keys: |
+            /tmp/docker-images-${{ github.event.before }}
+            /tmp/docker-images-${{ github.event.pull_request.base.sha }}
       - name: Prime docker cache
         run: (docker load -i /tmp/tmp/docker-images/snapshot-builder.tar || true) && (docker load -i /tmp/tmp/docker-images/snapshot.tar || true)
         if: steps.load-docker-cache.outputs.cache-hit == 'true'
@@ -41,8 +43,8 @@ jobs:
         name: Load Docker Cache
         uses: actions/cache@v1
         with:
-          path: /tmp//tmp/docker-images
-          key: /tmp/docker-images-${{ github.sha }}
+          path: /tmp/tmp/docker-images
+          key: /tmp/docker-images-${{ github.event.after }}
       - name: Prime docker cache
         run: docker load -i /tmp/tmp/docker-images/snapshot.tar || true
       - uses: engineerd/setup-kind@v0.4.0
@@ -64,8 +66,8 @@ jobs:
         name: Load Docker Cache
         uses: actions/cache@v1
         with:
-          path: /tmp//tmp/docker-images
-          key: /tmp/docker-images-${{ github.sha }}
+          path: /tmp/tmp/docker-images
+          key: /tmp/docker-images-${{ github.event.after }}
       - name: Prime docker cache
         run: docker load -i /tmp/tmp/docker-images/snapshot.tar || true
       - uses: engineerd/setup-kind@v0.4.0
