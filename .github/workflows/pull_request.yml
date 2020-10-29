@@ -7,9 +7,6 @@ jobs:
   build-docker:
     runs-on: ubuntu-latest
     steps:
-      - env:
-          GITHUB_CONTEXT: ${{ toJson(github) }}
-        run: echo "$GITHUB_CONTEXT"
       - name: Checkout
         uses: actions/checkout@v2
       - id: load-docker-cache
@@ -25,7 +22,7 @@ jobs:
         run: (docker load -i /tmp/tmp/docker-images/snapshot-builder.tar || true) && (docker load -i /tmp/tmp/docker-images/snapshot.tar || true)
       - name: Build dockerfile
         run: |
-          docker build -t lyft/flyteadmin:builder . --target builder
+          docker build -t lyft/flyteadmin:builder . --target builder --from-cache=lyft/flyteadmin:builder
           docker build -t lyft/flyteadmin:${{ github.sha }} .
 
       - name: Tag and cache docker image
