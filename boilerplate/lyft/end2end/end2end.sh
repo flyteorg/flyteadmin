@@ -15,15 +15,13 @@ git clone https://github.com/lyft/flyte.git "${OUT}"
 
 pushd ${OUT}
 
-# TODO: load all images
-if [ ! -z "$PROPELLER" ]; then
-  kind load docker-image ${PROPELLER}
-  sed -i.bak -e "s_flytepropeller:.*_${PROPELLER}_g" ${OUT}/kustomize/base/propeller/deployment.yaml
-fi
-
-if [ ! -z "$ADMIN" ]; then
-  kind load docker-image ${ADMIN}
-  sed -i.bak -e "s_flyteadmin:.*_${ADMIN}_g" ${OUT}/kustomize/base/admindeployment/deployment.yaml
+if [ ! -z "$IMAGE" ]; then
+  kind load docker-image ${${IMAGE}}
+  if [ ${IMAGE} -eq "flytepropeller" ] then
+    sed -i.bak -e "s_${IMAGE}:.*_${${IMAGE}}_g" ${OUT}/kustomize/base/propeller/deployment.yaml
+  elif [ ${IMAGE} -eq "flyteadmin" ] then
+    sed -i.bak -e "s_${IMAGE}:.*_${${IMAGE}}_g" ${OUT}/kustomize/base/admindeployment/deployment.yaml
+  fi
 fi
 
 make kustomize
