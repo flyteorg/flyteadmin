@@ -20,15 +20,16 @@ jobs:
           key: /tmp/docker-images-${{ github.event.after }}
           restore-keys: |
             /tmp/docker-images-${{ github.event.before }}
+            /tmp/docker-images-${{ github.event.pull_request.base.sha }}
       - name: Prime docker cache
         run: (docker load -i /tmp/tmp/docker-images/snapshot-builder.tar || true) && (docker load -i /tmp/tmp/docker-images/snapshot.tar || true)
       - name: Build dockerfile
         run: |
-          docker build -t lyft/flyteadmin:builder --target builder --cache-from=lyft/flyteadmin:builder .
-          docker build -t lyft/flyteadmin:latest --cache-from=lyft/flyteadmin:builder .
+          docker build -t lyft/${{ github.event.repository.name }}:builder --target builder --cache-from=lyft/${{ github.event.repository.name }}:builder .
+          docker build -t lyft/${{ github.event.repository.name }}:latest --cache-from=lyft/${{ github.event.repository.name }}:builder .
 
       - name: Tag and cache docker image
-        run: mkdir -p /tmp/tmp/docker-images && docker save lyft/flyteadmin:builder -o /tmp/tmp/docker-images/snapshot-builder.tar && docker save lyft/flyteadmin:latest -o /tmp/tmp/docker-images/snapshot.tar
+        run: mkdir -p /tmp/tmp/docker-images && docker save lyft/${{ github.event.repository.name }}:builder -o /tmp/tmp/docker-images/snapshot-builder.tar && docker save lyft/${{ github.event.repository.name }}:latest -o /tmp/tmp/docker-images/snapshot.tar
 
   # Duplicated from pull request workflow because sharing is not yet supported
   endtoend:
@@ -53,7 +54,7 @@ jobs:
           kubectl get pods -n kube-system
           echo "current-context:" $(kubectl config current-context)
           echo "environment-kubeconfig:" ${KUBECONFIG}
-          ADMIN=lyft/flyteadmin:latest make end2end_execute
+          IMAGE_NAME=${{ github.event.repository.name }} IMAGE=lyft/${{ github.event.repository.name }}:latest make end2end_execute
 
   bump-version:
     runs-on: ubuntu-latest
