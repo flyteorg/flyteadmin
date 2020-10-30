@@ -22,11 +22,11 @@ jobs:
         run: (docker load -i /tmp/tmp/docker-images/snapshot-builder.tar || true) && (docker load -i /tmp/tmp/docker-images/snapshot.tar || true)
       - name: Build dockerfile
         run: |
-          docker build -t lyft/flyteadmin:builder . --target builder --cache-from=lyft/flyteadmin:builder
-          docker build -t lyft/flyteadmin:${{ github.sha }} .
+          docker build -t lyft/flyteadmin:builder --target builder --cache-from=lyft/flyteadmin:builder --build-arg BUILDKIT_INLINE_CACHE=1 .
+          docker build -t lyft/flyteadmin:latest --cache-from=lyft/flyteadmin:latest --build-arg BUILDKIT_INLINE_CACHE=1 .
 
       - name: Tag and cache docker image
-        run: mkdir -p /tmp/tmp/docker-images && docker save lyft/flyteadmin:builder -o /tmp/tmp/docker-images/snapshot-builder.tar && docker save lyft/flyteadmin:${{ github.sha }} -o /tmp/tmp/docker-images/snapshot.tar
+        run: mkdir -p /tmp/tmp/docker-images && docker save lyft/flyteadmin:builder -o /tmp/tmp/docker-images/snapshot-builder.tar && docker save lyft/flyteadmin:latest -o /tmp/tmp/docker-images/snapshot.tar
 
   endtoend:
     name: End to End tests
@@ -50,7 +50,7 @@ jobs:
           kubectl get pods -n kube-system
           echo "current-context:" $(kubectl config current-context)
           echo "environment-kubeconfig:" ${KUBECONFIG}
-          ADMIN=lyft/flyteadmin:${{ github.sha }} make end2end_execute
+          ADMIN=lyft/flyteadmin:latest make end2end_execute
 
   integration:
     runs-on: ubuntu-latest
