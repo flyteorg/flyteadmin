@@ -23,7 +23,7 @@ jobs:
       - name: Build dockerfile
         run: |
           docker build -t lyft/flyteadmin:builder --target builder --cache-from=lyft/flyteadmin:builder .
-          docker build -t lyft/flyteadmin:latest --cache-from=lyft/flyteadmin:latest .
+          docker build -t lyft/flyteadmin:latest --cache-from=lyft/flyteadmin:builder .
 
       - name: Tag and cache docker image
         run: mkdir -p /tmp/tmp/docker-images && docker save lyft/flyteadmin:builder -o /tmp/tmp/docker-images/snapshot-builder.tar && docker save lyft/flyteadmin:latest -o /tmp/tmp/docker-images/snapshot.tar
