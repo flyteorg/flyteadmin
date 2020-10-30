@@ -10,7 +10,7 @@ set -e
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 
 # TODO: load all images
-docker tag ${ADMIN} "flyteadmin:test"
+docker tag ${IMAGE} "flyteadmin:test"
 kind load docker-image flyteadmin:test
 
 # start flyteadmin and dependencies
