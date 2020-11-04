@@ -59,7 +59,7 @@ func ValidateProjectAndDomain(
 			"failed to validate that project [%s] and domain [%s] are registered, err: [%+v]",
 			projectID, domainID, err)
 	}
-	if *project.State != int32(admin.ProjectState_PROJECT_ACTIVE) {
+	if *project.State != int32(admin.Project_ACTIVE) {
 		return errors.NewFlyteAdminErrorf(codes.InvalidArgument,
 			"project [%s] is not active", projectID)
 	}

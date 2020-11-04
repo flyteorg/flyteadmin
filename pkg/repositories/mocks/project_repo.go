@@ -32,7 +32,7 @@ func (r *MockProjectRepo) Get(ctx context.Context, projectID string) (models.Pro
 	if r.GetFunction != nil {
 		return r.GetFunction(ctx, projectID)
 	}
-	activeState := int32(admin.ProjectState_PROJECT_ACTIVE)
+	activeState := int32(admin.Project_ACTIVE)
 	return models.Project{
 		Identifier: projectID,
 		State:      &activeState,

@@ -21,7 +21,7 @@ func TestCreateProject(t *testing.T) {
 	query.WithQuery(
 		`INSERT INTO "projects" ("created_at","updated_at","deleted_at","identifier","name","description","labels","state") VALUES (?,?,?,?,?,?,?,?)`)
 
-	activeState := int32(admin.ProjectState_PROJECT_ACTIVE)
+	activeState := int32(admin.Project_ACTIVE)
 	err := projectRepo.Create(context.Background(), models.Project{
 		Identifier:  "proj",
 		Name:        "proj",
@@ -40,7 +40,7 @@ func TestGetProject(t *testing.T) {
 	response["identifier"] = "project_id"
 	response["name"] = "project_name"
 	response["description"] = "project_description"
-	response["state"] = admin.ProjectState_PROJECT_ACTIVE
+	response["state"] = admin.Project_ACTIVE
 
 	query := GlobalMock.NewMock()
 	query.WithQuery(`SELECT * FROM "projects"  WHERE "projects"."deleted_at" IS NULL AND ` +
@@ -54,7 +54,7 @@ func TestGetProject(t *testing.T) {
 	assert.Equal(t, "project_id", output.Identifier)
 	assert.Equal(t, "project_name", output.Name)
 	assert.Equal(t, "project_description", output.Description)
-	assert.Equal(t, int32(admin.ProjectState_PROJECT_ACTIVE), *output.State)
+	assert.Equal(t, int32(admin.Project_ACTIVE), *output.State)
 }
 
 func TestListProjects(t *testing.T) {
@@ -64,19 +64,19 @@ func TestListProjects(t *testing.T) {
 	fooProject["identifier"] = "foo"
 	fooProject["name"] = "foo =)"
 	fooProject["description"] = "foo description"
-	fooProject["state"] = admin.ProjectState_PROJECT_ACTIVE
+	fooProject["state"] = admin.Project_ACTIVE
 	projects[0] = fooProject
 
 	barProject := make(map[string]interface{})
 	barProject["identifier"] = "bar"
 	barProject["name"] = "Bar"
 	barProject["description"] = "Bar description"
-	barProject["state"] = admin.ProjectState_PROJECT_ACTIVE
+	barProject["state"] = admin.Project_ACTIVE
 	projects[1] = barProject
 
 	GlobalMock := mocket.Catcher.Reset()
 	GlobalMock.Logging = true
-	GlobalMock.NewMock().WithQuery(`SELECT * FROM "projects"  WHERE "projects"."deleted_at" IS NULL AND ((state != 1)) ORDER BY identifier asc`).
+	GlobalMock.NewMock().WithQuery(`SELECT * FROM "projects"  WHERE "projects"."deleted_at" IS NULL AND ((state != 0)) ORDER BY identifier asc`).
 		WithReply(projects)
 
 	var alphabeticalSortParam, _ = common.NewSortParameter(admin.Sort{
@@ -89,11 +89,11 @@ func TestListProjects(t *testing.T) {
 	assert.Equal(t, "foo", output[0].Identifier)
 	assert.Equal(t, "foo =)", output[0].Name)
 	assert.Equal(t, "foo description", output[0].Description)
-	assert.Equal(t, int32(admin.ProjectState_PROJECT_ACTIVE), *output[0].State)
+	assert.Equal(t, int32(admin.Project_ACTIVE), *output[0].State)
 	assert.Equal(t, "bar", output[1].Identifier)
 	assert.Equal(t, "Bar", output[1].Name)
 	assert.Equal(t, "Bar description", output[1].Description)
-	assert.Equal(t, int32(admin.ProjectState_PROJECT_ACTIVE), *output[1].State)
+	assert.Equal(t, int32(admin.Project_ACTIVE), *output[1].State)
 }
 
 func TestUpdateProject(t *testing.T) {
@@ -103,7 +103,7 @@ func TestUpdateProject(t *testing.T) {
 	query := GlobalMock.NewMock()
 	query.WithQuery(`UPDATE "projects" SET "description" = ?, "identifier" = ?, "name" = ?, "state" = ?, "updated_at" = ?  WHERE "projects"."deleted_at" IS NULL AND "projects"."identifier" = ?`)
 
-	activeState := int32(admin.ProjectState_PROJECT_ACTIVE)
+	activeState := int32(admin.Project_ACTIVE)
 	err := projectRepo.UpdateProject(context.Background(), models.Project{
 		Identifier:  "project_id",
 		Name:        "project_name",

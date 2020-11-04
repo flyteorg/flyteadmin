@@ -38,7 +38,7 @@ func FromProjectModel(projectModel models.Project, domains []*admin.Domain) admi
 		Name:        projectModel.Name,
 		Description: projectModel.Description,
 		Labels:      projectDeserialized.Labels,
-		State:       admin.ProjectState(*projectModel.State),
+		State:       admin.Project_ProjectState(*projectModel.State),
 	}
 	project.Domains = domains
 	return project

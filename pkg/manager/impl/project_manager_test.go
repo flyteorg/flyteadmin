@@ -47,7 +47,7 @@ func TestListProjects(t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
 	repository.ProjectRepo().(*repositoryMocks.MockProjectRepo).ListProjectsFunction = func(
 		ctx context.Context, parameter common.SortParameter) ([]models.Project, error) {
-		activeState := int32(admin.ProjectState_PROJECT_ACTIVE)
+		activeState := int32(admin.Project_ACTIVE)
 		return []models.Project{
 			{
 				Identifier:  "project",

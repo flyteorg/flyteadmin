@@ -16,10 +16,10 @@ func TestCreateProjectModel(t *testing.T) {
 		Id:          "project_id",
 		Name:        "project_name",
 		Description: "project_description",
-		State:       admin.ProjectState_PROJECT_ACTIVE,
+		State:       admin.Project_ACTIVE,
 	})
 
-	activeState := int32(admin.ProjectState_PROJECT_ACTIVE)
+	activeState := int32(admin.Project_ACTIVE)
 	assert.Equal(t, models.Project{
 		Identifier:  "project_id",
 		Name:        "project_name",
@@ -34,7 +34,7 @@ func TestCreateProjectModel(t *testing.T) {
 }
 
 func TestFromProjectModel(t *testing.T) {
-	activeState := int32(admin.ProjectState_PROJECT_ACTIVE)
+	activeState := int32(admin.Project_ACTIVE)
 	projectModel := models.Project{
 		Identifier:  "proj_id",
 		Name:        "proj_name",
@@ -57,12 +57,12 @@ func TestFromProjectModel(t *testing.T) {
 		Name:        "proj_name",
 		Description: "proj_description",
 		Domains:     domains,
-		State:       admin.ProjectState_PROJECT_ACTIVE,
+		State:       admin.Project_ACTIVE,
 	}, &project))
 }
 
 func TestFromProjectModels(t *testing.T) {
-	activeState := int32(admin.ProjectState_PROJECT_ACTIVE)
+	activeState := int32(admin.Project_ACTIVE)
 	projectModels := []models.Project{
 		{
 			Identifier:  "proj1_id",
@@ -93,7 +93,7 @@ func TestFromProjectModels(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("proj%v_id", index+1), project.Id)
 		assert.Equal(t, fmt.Sprintf("proj%v_name", index+1), project.Name)
 		assert.Equal(t, fmt.Sprintf("proj%v_description", index+1), project.Description)
-		assert.Equal(t, admin.ProjectState_PROJECT_ACTIVE, project.State)
+		assert.Equal(t, admin.Project_ACTIVE, project.State)
 		assert.EqualValues(t, domains, project.Domains)
 	}
 }

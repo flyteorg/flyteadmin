@@ -107,7 +107,7 @@ func TestValidateProjectAndDomain(t *testing.T) {
 	mockRepo.ProjectRepo().(*repositoryMocks.MockProjectRepo).GetFunction = func(
 		ctx context.Context, projectID string) (models.Project, error) {
 		assert.Equal(t, projectID, "flyte-project-id")
-		activeState := int32(admin.ProjectState_PROJECT_ACTIVE)
+		activeState := int32(admin.Project_ACTIVE)
 		return models.Project{State: &activeState}, nil
 	}
 	err := ValidateProjectAndDomain(context.Background(), mockRepo, testutils.GetApplicationConfigWithDefaultDomains(),
@@ -119,7 +119,7 @@ func TestValidateProjectAndDomainArchivedProject(t *testing.T) {
 	mockRepo := repositoryMocks.NewMockRepository()
 	mockRepo.ProjectRepo().(*repositoryMocks.MockProjectRepo).GetFunction = func(
 		ctx context.Context, projectID string) (models.Project, error) {
-		archivedState := int32(admin.ProjectState_PROJECT_ARCHIVED)
+		archivedState := int32(admin.Project_ARCHIVED)
 		return models.Project{State: &archivedState}, nil
 	}
 
