@@ -51,7 +51,7 @@ func (r *ProjectRepo) Get(ctx context.Context, projectID string) (models.Project
 
 func (r *ProjectRepo) ListAll(ctx context.Context, sortParameter common.SortParameter) ([]models.Project, error) {
 	var projects []models.Project
-	var tx = r.db.Where("state != ?", int32(admin.Project_ACTIVE))
+	var tx = r.db.Where("state != ?", int32(admin.Project_ARCHIVED))
 	if sortParameter != nil {
 		tx = tx.Order(sortParameter.GetGormOrderExpr())
 	}

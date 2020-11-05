@@ -76,7 +76,7 @@ func TestListProjects(t *testing.T) {
 
 	GlobalMock := mocket.Catcher.Reset()
 	GlobalMock.Logging = true
-	GlobalMock.NewMock().WithQuery(`SELECT * FROM "projects"  WHERE "projects"."deleted_at" IS NULL AND ((state != 0)) ORDER BY identifier asc`).
+	GlobalMock.NewMock().WithQuery(`SELECT * FROM "projects"  WHERE "projects"."deleted_at" IS NULL AND ((state != 1)) ORDER BY identifier asc`).
 		WithReply(projects)
 
 	var alphabeticalSortParam, _ = common.NewSortParameter(admin.Sort{
