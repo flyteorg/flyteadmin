@@ -199,7 +199,7 @@ var Migrations = []*gormigrate.Migration{
 			return tx.Exec("ALTER TABLE workflows ADD COLUMN IF NOT EXISTS state integer;").Error
 		},
 	},
-	// Modify the executions & node_executison table, if necessary
+	// Modify the executions & node_execution table, if necessary
 	{
 		ID: "2020-04-29-executions",
 		Migrate: func(tx *gorm.DB) error {
@@ -267,6 +267,24 @@ var Migrations = []*gormigrate.Migration{
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return tx.Model(&TaskExecution{}).RemoveIndex("idx_task_executions_exec").Error
+		},
+	},
+	{
+		ID: "2020-11-03-project-state-addition",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&models.Project{}).Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Model(&models.Project{}).DropColumn("state").Error
+		},
+	},
+	{
+		ID: "2020-11-03-project-state-default",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.Exec("UPDATE projects set state = 0").Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Exec("UPDATE projects set state = NULL").Error
 		},
 	},
 }

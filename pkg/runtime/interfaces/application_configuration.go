@@ -18,6 +18,8 @@ type DbConfigSection struct {
 	PasswordPath string `json:"passwordPath"`
 	// See http://gorm.io/docs/connecting_to_the_database.html for available options passed, in addition to the above.
 	ExtraOptions string `json:"options"`
+	// Whether or not to start the database connection with debug mode enabled.
+	Debug bool `json:"debug"`
 }
 
 // This represents a configuration used for initiating database connections much like DbConfigSection, however the
@@ -30,6 +32,7 @@ type DbConfig struct {
 	User         string `json:"username"`
 	Password     string `json:"password"`
 	ExtraOptions string `json:"options"`
+	Debug        bool   `json:"debug"`
 }
 
 // This configuration is the base configuration to start admin
@@ -45,6 +48,8 @@ type ApplicationConfig struct {
 	// This defines the nested path on the configured external storage provider where workflow closures are remotely
 	// offloaded.
 	MetadataStoragePrefix []string `json:"metadataStoragePrefix"`
+	// Event version to be used for Flyte workflows
+	EventVersion int `json:"eventVersion"`
 }
 
 // This section holds common config for AWS
