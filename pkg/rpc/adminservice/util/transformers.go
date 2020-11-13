@@ -5,7 +5,6 @@ import (
 	"github.com/lyft/flyteadmin/pkg/errors"
 
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 // Transforms errors to grpc-compatible error types and optionally truncates it if necessary.
@@ -17,7 +16,7 @@ func TransformAndRecordError(err error, metrics *RequestMetrics) error {
 		concatenateErrMessage = true
 	}
 	if flyteAdminError, ok := err.(errors.FlyteAdminError); !ok {
-		err = status.Error(codes.Internal, errorMessage)
+		err = errors.NewFlyteAdminError(codes.Internal, errorMessage)
 	} else if concatenateErrMessage {
 		err = errors.NewFlyteAdminError(flyteAdminError.Code(), errorMessage)
 	}
