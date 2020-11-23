@@ -62,6 +62,42 @@ func (r *ProjectRepo) ListAll(ctx context.Context, sortParameter common.SortPara
 	return projects, nil
 }
 
+func (r *ProjectRepo) List(ctx context.Context, input interfaces.ListResourceInput) ([]models.Project, error) {
+	// First validate input
+	if input.Limit == 0 {
+		return nil, errors.GetInvalidInputError(limit)
+	}
+
+	var projects []models.Project
+	tx := r.db.Limit(input.Limit).Offset(input.Offset)
+
+	// Apply filters
+	// If no filter provided, default to filtering out archived projects
+	if len(input.InlineFilters) == 0 && len(input.MapFilters) == 0 {
+		tx = tx.Where("state != ?", int32(admin.Project_ARCHIVED))
+	} else {
+		var err error
+		tx, err = applyFilters(tx, input.InlineFilters, input.MapFilters)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Apply sort ordering
+	if input.SortParameter != nil {
+		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
+	}
+
+	timer := r.metrics.ListDuration.Start()
+	tx.Find(&projects)
+	timer.Stop()
+
+	if tx.Error != nil {
+		return nil, r.errorTransformer.ToFlyteAdminError(tx.Error)
+	}
+	return projects, nil
+}
+
 func NewProjectRepo(db *gorm.DB, errorTransformer errors.ErrorTransformer,
 	scope promutils.Scope) interfaces.ProjectRepoInterface {
 	metrics := newMetrics(scope)

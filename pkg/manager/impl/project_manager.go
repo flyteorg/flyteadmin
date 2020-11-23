@@ -2,14 +2,20 @@ package impl
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/lyft/flyteadmin/pkg/common"
+	"github.com/lyft/flyteadmin/pkg/errors"
+	"github.com/lyft/flyteadmin/pkg/manager/impl/util"
 	"github.com/lyft/flyteadmin/pkg/manager/impl/validation"
 	"github.com/lyft/flyteadmin/pkg/manager/interfaces"
 	"github.com/lyft/flyteadmin/pkg/repositories"
+	repoInterfaces "github.com/lyft/flyteadmin/pkg/repositories/interfaces"
 	"github.com/lyft/flyteadmin/pkg/repositories/transformers"
 	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/lyft/flytestdlib/logger"
+	"google.golang.org/grpc/codes"
 )
 
 type ProjectManager struct {
@@ -49,14 +55,57 @@ func (m *ProjectManager) getDomains() []*admin.Domain {
 }
 
 func (m *ProjectManager) ListProjects(ctx context.Context, request admin.ProjectListRequest) (*admin.Projects, error) {
-	projectModels, err := m.db.ProjectRepo().ListAll(ctx, alphabeticalSortParam)
+	if err := validation.ValidateLimit(request.Limit); err != nil {
+		logger.Debugf(ctx, "Invalid limit in request [%+v]: %v", request, err)
+		return nil, err
+	}
+
+	spec := util.FilterSpec{
+		RequestFilters: request.Filters,
+	}
+
+	filters, err := util.GetDbFilters(spec, common.Project)
 	if err != nil {
 		return nil, err
 	}
 
+	var sortParameter common.SortParameter
+	if request.SortBy != nil {
+		sortParameter, err = common.NewSortParameter(*request.SortBy)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		sortParameter = alphabeticalSortParam
+	}
+
+	offset, err := validation.ValidateToken(request.Token)
+	if err != nil {
+		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
+			"invalid pagination token %s for ListProjects", request.Token)
+	}
+
+	// And finally, query the database
+	listProjectsInput := repoInterfaces.ListResourceInput{
+		Limit:         int(request.Limit),
+		Offset:        offset,
+		InlineFilters: filters,
+		SortParameter: sortParameter,
+	}
+	projectModels, err := m.db.ProjectRepo().List(ctx, listProjectsInput)
+	if err != nil {
+		return nil, err
+	}
 	projects := transformers.FromProjectModels(projectModels, m.getDomains())
+
+	var token string
+	if len(projects) == int(request.Limit) {
+		token = strconv.Itoa(offset + len(projects))
+	}
+
 	return &admin.Projects{
 		Projects: projects,
+		Token:    token,
 	}, nil
 }
 
