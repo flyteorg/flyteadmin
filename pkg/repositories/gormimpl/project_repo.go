@@ -63,13 +63,12 @@ func (r *ProjectRepo) ListAll(ctx context.Context, sortParameter common.SortPara
 }
 
 func (r *ProjectRepo) List(ctx context.Context, input interfaces.ListResourceInput) ([]models.Project, error) {
-	// First validate input
-	if input.Limit == 0 {
-		return nil, errors.GetInvalidInputError(limit)
-	}
-
 	var projects []models.Project
-	tx := r.db.Limit(input.Limit).Offset(input.Offset)
+
+	tx := r.db.Offset(input.Offset)
+	if input.Limit != 0 {
+		tx = tx.Limit(input.Limit)
+	}
 
 	// Apply filters
 	// If no filter provided, default to filtering out archived projects

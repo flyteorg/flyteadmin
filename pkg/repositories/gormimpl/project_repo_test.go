@@ -14,6 +14,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var alphabeticalSortParam, _ = common.NewSortParameter(admin.Sort{
+	Direction: admin.Sort_ASCENDING,
+	Key:       "identifier",
+})
+
 func TestCreateProject(t *testing.T) {
 	projectRepo := NewProjectRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
 	GlobalMock := mocket.Catcher.Reset()
@@ -80,10 +85,6 @@ func TestListAllProjects(t *testing.T) {
 	GlobalMock.NewMock().WithQuery(`SELECT * FROM "projects"  WHERE "projects"."deleted_at" IS NULL AND ((state != 1)) ORDER BY identifier asc`).
 		WithReply(projects)
 
-	var alphabeticalSortParam, _ = common.NewSortParameter(admin.Sort{
-		Direction: admin.Sort_ASCENDING,
-		Key:       "identifier",
-	})
 	output, err := projectRepo.ListAll(context.Background(), alphabeticalSortParam)
 	assert.Nil(t, err)
 	assert.Len(t, output, 2)
@@ -97,7 +98,7 @@ func TestListAllProjects(t *testing.T) {
 	assert.Equal(t, int32(admin.Project_ACTIVE), *output[1].State)
 }
 
-func TestListProjects(t *testing.T) {
+func testListProjects(input interfaces.ListResourceInput, sql string, t *testing.T) {
 	projectRepo := NewProjectRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
 	projects := make([]map[string]interface{}, 1)
 	fooProject := make(map[string]interface{})
@@ -109,72 +110,42 @@ func TestListProjects(t *testing.T) {
 
 	GlobalMock := mocket.Catcher.Reset()
 	GlobalMock.Logging = true
-	GlobalMock.NewMock().WithQuery(`SELECT * FROM "projects"  WHERE "projects"."deleted_at" IS NULL AND ((name = foo)) ORDER BY identifier asc LIMIT 1 OFFSET 0`).
+	GlobalMock.NewMock().WithQuery(sql).
 		WithReply(projects)
 
-	var alphabeticalSortParam, _ = common.NewSortParameter(admin.Sort{
-		Direction: admin.Sort_ASCENDING,
-		Key:       "identifier",
-	})
+	output, err := projectRepo.List(context.Background(), input)
+	assert.Nil(t, err)
+	assert.Len(t, output, 1)
+	assert.Equal(t, "foo", output[0].Identifier)
+	assert.Equal(t, "foo =)", output[0].Name)
+	assert.Equal(t, "foo description", output[0].Description)
+	assert.Equal(t, int32(admin.Project_ACTIVE), *output[0].State)
+}
+
+func TestListProjects(t *testing.T) {
 	filter, err := common.NewSingleValueFilter(common.Project, common.Equal, "name", "foo")
 	assert.Nil(t, err)
-	output, err := projectRepo.List(context.Background(), interfaces.ListResourceInput{
+	testListProjects(interfaces.ListResourceInput{
 		Offset:        0,
 		Limit:         1,
 		InlineFilters: []common.InlineFilter{filter},
 		SortParameter: alphabeticalSortParam,
-	})
-	assert.Nil(t, err)
-	assert.Len(t, output, 1)
-	assert.Equal(t, "foo", output[0].Identifier)
-	assert.Equal(t, "foo =)", output[0].Name)
-	assert.Equal(t, "foo description", output[0].Description)
-	assert.Equal(t, int32(admin.Project_ACTIVE), *output[0].State)
+	}, `SELECT * FROM "projects"  WHERE "projects"."deleted_at" IS NULL AND ((name = foo)) ORDER BY identifier asc LIMIT 1 OFFSET 0`, t)
 }
 
 func TestListProjects_NoFilters(t *testing.T) {
-	projectRepo := NewProjectRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
-	projects := make([]map[string]interface{}, 1)
-	fooProject := make(map[string]interface{})
-	fooProject["identifier"] = "foo"
-	fooProject["name"] = "foo =)"
-	fooProject["description"] = "foo description"
-	fooProject["state"] = admin.Project_ACTIVE
-	projects[0] = fooProject
-
-	GlobalMock := mocket.Catcher.Reset()
-	GlobalMock.Logging = true
-	GlobalMock.NewMock().WithQuery(`SELECT * FROM "projects"  WHERE "projects"."deleted_at" IS NULL AND ((state != 1)) ORDER BY identifier asc LIMIT 1 OFFSET 0`).
-		WithReply(projects)
-
-	var alphabeticalSortParam, _ = common.NewSortParameter(admin.Sort{
-		Direction: admin.Sort_ASCENDING,
-		Key:       "identifier",
-	})
-	output, err := projectRepo.List(context.Background(), interfaces.ListResourceInput{
+	testListProjects(interfaces.ListResourceInput{
 		Offset:        0,
 		Limit:         1,
 		SortParameter: alphabeticalSortParam,
-	})
-	assert.Nil(t, err)
-	assert.Len(t, output, 1)
-	assert.Equal(t, "foo", output[0].Identifier)
-	assert.Equal(t, "foo =)", output[0].Name)
-	assert.Equal(t, "foo description", output[0].Description)
-	assert.Equal(t, int32(admin.Project_ACTIVE), *output[0].State)
+	}, `SELECT * FROM "projects"  WHERE "projects"."deleted_at" IS NULL AND ((state != 1)) ORDER BY identifier asc LIMIT 1 OFFSET 0`, t)
 }
 
 func TestListProjects_NoLimit(t *testing.T) {
-	projectRepo := NewProjectRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
-	var alphabeticalSortParam, _ = common.NewSortParameter(admin.Sort{
-		Direction: admin.Sort_ASCENDING,
-		Key:       "identifier",
-	})
-	_, err := projectRepo.List(context.Background(), interfaces.ListResourceInput{
-		Limit:         0,
+	testListProjects(interfaces.ListResourceInput{
+		Offset:        0,
 		SortParameter: alphabeticalSortParam,
-	})
-	assert.NotNil(t, err)
+	}, `SELECT * FROM "projects"  WHERE "projects"."deleted_at" IS NULL AND ((state != 1)) ORDER BY identifier asc OFFSET 0`, t)
 }
 
 func TestUpdateProject(t *testing.T) {

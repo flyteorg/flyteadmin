@@ -14,7 +14,6 @@ import (
 	"github.com/lyft/flyteadmin/pkg/repositories/transformers"
 	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flytestdlib/logger"
 	"google.golang.org/grpc/codes"
 )
 
@@ -55,11 +54,6 @@ func (m *ProjectManager) getDomains() []*admin.Domain {
 }
 
 func (m *ProjectManager) ListProjects(ctx context.Context, request admin.ProjectListRequest) (*admin.Projects, error) {
-	if err := validation.ValidateLimit(request.Limit); err != nil {
-		logger.Debugf(ctx, "Invalid limit in request [%+v]: %v", request, err)
-		return nil, err
-	}
-
 	spec := util.FilterSpec{
 		RequestFilters: request.Filters,
 	}

@@ -100,11 +100,8 @@ func TestListProjects_HighLimit_SortBy_Filter(t *testing.T) {
 	}, t)
 }
 
-func TestListProjects_NoLimit(t *testing.T) {
-	repository := repositoryMocks.NewMockRepository()
-	projectManager := NewProjectManager(repository, mockProjectConfigProvider)
-	_, err := projectManager.ListProjects(context.Background(), admin.ProjectListRequest{})
-	assert.NotNil(t, err)
+func TestListProjects_NoToken_NoLimit(t *testing.T) {
+	testListProjects(admin.ProjectListRequest{}, "", "identifier asc", nil, t)
 }
 
 func TestProjectManager_CreateProject(t *testing.T) {
