@@ -57,7 +57,6 @@ func (m *ProjectManager) ListProjects(ctx context.Context, request admin.Project
 	spec := util.FilterSpec{
 		RequestFilters: request.Filters,
 	}
-
 	filters, err := util.GetDbFilters(spec, common.Project)
 	if err != nil {
 		return nil, err
