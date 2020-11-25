@@ -10,7 +10,6 @@ import (
 
 	"github.com/jinzhu/gorm"
 
-	"github.com/lyft/flyteadmin/pkg/common"
 	flyteAdminErrors "github.com/lyft/flyteadmin/pkg/errors"
 	"github.com/lyft/flyteadmin/pkg/repositories/errors"
 	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
@@ -47,19 +46,6 @@ func (r *ProjectRepo) Get(ctx context.Context, projectID string) (models.Project
 		return models.Project{}, flyteAdminErrors.NewFlyteAdminErrorf(codes.NotFound, "project [%s] not found", projectID)
 	}
 	return project, nil
-}
-
-func (r *ProjectRepo) ListAll(ctx context.Context, sortParameter common.SortParameter) ([]models.Project, error) {
-	var projects []models.Project
-	var tx = r.db.Where("state != ?", int32(admin.Project_ARCHIVED))
-	if sortParameter != nil {
-		tx = tx.Order(sortParameter.GetGormOrderExpr())
-	}
-	tx = tx.Find(&projects)
-	if tx.Error != nil {
-		return nil, r.errorTransformer.ToFlyteAdminError(tx.Error)
-	}
-	return projects, nil
 }
 
 func (r *ProjectRepo) List(ctx context.Context, input interfaces.ListResourceInput) ([]models.Project, error) {

@@ -3,7 +3,6 @@ package mocks
 import (
 	"context"
 
-	"github.com/lyft/flyteadmin/pkg/common"
 	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
 	"github.com/lyft/flyteadmin/pkg/repositories/models"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
@@ -11,16 +10,14 @@ import (
 
 type CreateProjectFunction func(ctx context.Context, project models.Project) error
 type GetProjectFunction func(ctx context.Context, projectID string) (models.Project, error)
-type ListAllProjectsFunction func(ctx context.Context, sortParameter common.SortParameter) ([]models.Project, error)
 type ListProjectsFunction func(ctx context.Context, input interfaces.ListResourceInput) ([]models.Project, error)
 type UpdateProjectFunction func(ctx context.Context, projectUpdate models.Project) error
 
 type MockProjectRepo struct {
-	CreateFunction          CreateProjectFunction
-	GetFunction             GetProjectFunction
-	ListProjectsFunction    ListProjectsFunction
-	ListAllProjectsFunction ListAllProjectsFunction
-	UpdateProjectFunction   UpdateProjectFunction
+	CreateFunction        CreateProjectFunction
+	GetFunction           GetProjectFunction
+	ListProjectsFunction  ListProjectsFunction
+	UpdateProjectFunction UpdateProjectFunction
 }
 
 func (r *MockProjectRepo) Create(ctx context.Context, project models.Project) error {
@@ -39,13 +36,6 @@ func (r *MockProjectRepo) Get(ctx context.Context, projectID string) (models.Pro
 		Identifier: projectID,
 		State:      &activeState,
 	}, nil
-}
-
-func (r *MockProjectRepo) ListAll(ctx context.Context, sortParameter common.SortParameter) ([]models.Project, error) {
-	if r.ListAllProjectsFunction != nil {
-		return r.ListAllProjectsFunction(ctx, sortParameter)
-	}
-	return make([]models.Project, 0), nil
 }
 
 func (r *MockProjectRepo) List(ctx context.Context, input interfaces.ListResourceInput) ([]models.Project, error) {
