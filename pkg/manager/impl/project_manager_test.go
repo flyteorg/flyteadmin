@@ -208,6 +208,7 @@ func TestProjectManager_UpdateProject(t *testing.T) {
 		assert.Equal(t, "project-id", projectUpdate.Identifier)
 		assert.Equal(t, "new-project-name", projectUpdate.Name)
 		assert.Equal(t, "new-project-description", projectUpdate.Description)
+		assert.Equal(t, int32(admin.Project_ACTIVE), *projectUpdate.State)
 		return nil
 	}
 	projectManager := NewProjectManager(mockRepository,
@@ -217,6 +218,7 @@ func TestProjectManager_UpdateProject(t *testing.T) {
 		Id:          "project-id",
 		Name:        "new-project-name",
 		Description: "new-project-description",
+		State:       admin.Project_ACTIVE,
 	})
 	assert.Nil(t, err)
 	assert.True(t, updateFuncCalled)
