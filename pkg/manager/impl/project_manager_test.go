@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/lyft/flyteadmin/pkg/common"
-	"github.com/lyft/flyteadmin/pkg/manager/impl/shared"
 
 	"github.com/lyft/flyteadmin/pkg/manager/impl/testutils"
 	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
@@ -260,8 +259,8 @@ func TestProjectManager_UpdateProject_ErrorDueToInvalidProjectName(t *testing.T)
 		runtimeMocks.NewMockConfigurationProvider(
 			getMockApplicationConfigForProjectManagerTest(), nil, nil, nil, nil, nil))
 	_, err := projectManager.UpdateProject(context.Background(), admin.Project{
-		Id: "project-id",
-		// No project name
+		Id:   "project-id",
+		Name: "longnamelongnamelongnamelongnamelongnamelongnamelongnamelongnamel",
 	})
-	assert.Equal(t, shared.GetMissingArgumentError("project_name"), err)
+	assert.EqualError(t, err, "project_name cannot exceed 64 characters")
 }
