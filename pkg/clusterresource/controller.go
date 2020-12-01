@@ -358,7 +358,7 @@ func (c *controller) Sync(ctx context.Context) error {
 	logger.Debugf(ctx, "Running an invocation of ClusterResource Sync")
 
 	// Prefer to sync projects most newly created to ensure their resources get created first when other resources exist.
-	filter, err := common.NewSingleValueFilter(common.Project, common.NotEqual, "state", 1)
+	filter, err := common.NewSingleValueFilter(common.Project, common.NotEqual, "state", int32(admin.Project_ARCHIVED))
 	if err != nil {
 		return err
 	}
