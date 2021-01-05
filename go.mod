@@ -7,6 +7,7 @@ require (
 	cloud.google.com/go/storage v1.6.0
 	github.com/NYTimes/gizmo v1.3.5
 	github.com/Selvatico/go-mocket v1.0.7
+	github.com/alvaroloes/enumer v1.1.2 // indirect
 	github.com/aws/aws-sdk-go v1.29.23
 	github.com/benbjohnson/clock v1.0.0
 	github.com/bradfitz/gomemcache v0.0.0-20190913173617-a41fca850d0b // indirect
