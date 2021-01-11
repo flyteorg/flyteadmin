@@ -47,7 +47,7 @@ func RefreshTokensIfExists(ctx context.Context, authContext interfaces.Authentic
 				newToken, e := GetRefreshedToken(ctx, authContext.OAuth2Config(), accessToken, refreshToken)
 				err = e
 				if err == nil {
-					logger.Debugf(ctx, "Tokens're refreshed. Saving new tokens into cookies.")
+					logger.Debugf(ctx, "Tokens are refreshed. Saving new tokens into cookies.")
 					err = authContext.CookieManager().SetTokenCookies(ctx, writer, newToken)
 				}
 			}
