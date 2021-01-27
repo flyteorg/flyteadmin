@@ -146,6 +146,14 @@ type NotificationsEmailerConfig struct {
 	Body string `json:"body"`
 }
 
+// This section handles configuration for the workflow notifications pipeline.
+type EventsPublisherConfig struct {
+	// The topic which events should be published, e.g. node, task, workflow
+	TopicName string `json:"topicName"`
+	// Event types: task, node, workflow executions
+	EventTypes string `json:"eventTypes"`
+}
+
 // Configuration specific to notifications handling
 type NotificationsConfig struct {
 	// Defines the cloud provider that backs the scheduler. In the absence of a specification the no-op, 'local'
@@ -162,6 +170,8 @@ type NotificationsConfig struct {
 	ReconnectAttempts int `json:"reconnectAttempts"`
 	// Specifies the time interval to wait before attempting to reconnect the notifications processor client.
 	ReconnectDelaySeconds int `json:"reconnectDelaySeconds"`
+	// Publish events to a pubsub tops
+	EventPublisherConfig EventsPublisherConfig `json:"eventPublisher"`
 }
 
 // Domains are always globally set in the application config, whereas individual projects can be individually registered.

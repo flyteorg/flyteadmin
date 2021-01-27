@@ -3,6 +3,8 @@ package impl
 import (
 	"context"
 	"fmt"
+	"github.com/golang/protobuf/proto"
+	notificationInterfaces "github.com/lyft/flyteadmin/pkg/async/notifications/interfaces"
 	"strconv"
 
 	"github.com/lyft/flytestdlib/storage"
@@ -43,11 +45,12 @@ type taskExecutionMetrics struct {
 }
 
 type TaskExecutionManager struct {
-	db            repositories.RepositoryInterface
-	config        runtimeInterfaces.Configuration
-	storageClient *storage.DataStore
-	metrics       taskExecutionMetrics
-	urlData       dataInterfaces.RemoteURLInterface
+	db                 repositories.RepositoryInterface
+	config             runtimeInterfaces.Configuration
+	storageClient      *storage.DataStore
+	metrics            taskExecutionMetrics
+	urlData            dataInterfaces.RemoteURLInterface
+	notificationClient notificationInterfaces.Publisher
 }
 
 func getTaskExecutionContext(ctx context.Context, identifier *core.TaskExecutionIdentifier) context.Context {
@@ -172,6 +175,8 @@ func (m *TaskExecutionManager) CreateTaskExecutionEvent(ctx context.Context, req
 		m.metrics.ActiveTaskExecutions.Dec()
 		m.metrics.TaskExecutionsTerminated.Inc()
 	}
+
+	m.notificationClient.Publish(ctx, proto.MessageName(&request), &request)
 
 	m.metrics.TaskExecutionEventsCreated.Inc()
 	logger.Debugf(ctx, "Successfully recorded task execution event [%v]", request.Event)
@@ -310,9 +315,7 @@ func (m *TaskExecutionManager) GetTaskExecutionData(
 	return response, nil
 }
 
-func NewTaskExecutionManager(
-	db repositories.RepositoryInterface, config runtimeInterfaces.Configuration, storageClient *storage.DataStore,
-	scope promutils.Scope, urlData dataInterfaces.RemoteURLInterface) interfaces.TaskExecutionInterface {
+func NewTaskExecutionManager(db repositories.RepositoryInterface, config runtimeInterfaces.Configuration, storageClient *storage.DataStore, scope promutils.Scope, urlData dataInterfaces.RemoteURLInterface, publisher notificationInterfaces.Publisher) interfaces.TaskExecutionInterface {
 	metrics := taskExecutionMetrics{
 		Scope: scope,
 		ActiveTaskExecutions: scope.MustNewGauge("active_executions",
@@ -335,10 +338,11 @@ func NewTaskExecutionManager(
 			"size in bytes of serialized node execution outputs"),
 	}
 	return &TaskExecutionManager{
-		db:            db,
-		config:        config,
-		storageClient: storageClient,
-		metrics:       metrics,
-		urlData:       urlData,
+		db:                 db,
+		config:             config,
+		storageClient:      storageClient,
+		metrics:            metrics,
+		urlData:            urlData,
+		notificationClient: publisher,
 	}
 }

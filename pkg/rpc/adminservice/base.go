@@ -99,6 +99,7 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 
 	publisher := notifications.NewNotificationsPublisher(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope)
 	processor := notifications.NewNotificationsProcessor(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope)
+	eventPublisher := notifications.NewEventsPublisher(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope)
 	go func() {
 		logger.Info(context.Background(), "Started processing notifications.")
 		processor.StartProcessing()
@@ -162,8 +163,8 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 		NamedEntityManager: namedEntityManager,
 		NodeExecutionManager: manager.NewNodeExecutionManager(
 			db, configuration, dataStorageClient, adminScope.NewSubScope("node_execution_manager"), urlData),
-		TaskExecutionManager: manager.NewTaskExecutionManager(
-			db, configuration, dataStorageClient, adminScope.NewSubScope("task_execution_manager"), urlData),
+		TaskExecutionManager: manager.NewTaskExecutionManager(db, configuration, dataStorageClient,
+			adminScope.NewSubScope("task_execution_manager"), urlData, eventPublisher),
 		ProjectManager:  manager.NewProjectManager(db, configuration),
 		ResourceManager: resources.NewResourceManager(db, configuration.ApplicationConfiguration()),
 		Metrics:         InitMetrics(adminScope),
