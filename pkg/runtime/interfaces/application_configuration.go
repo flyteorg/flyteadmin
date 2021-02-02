@@ -154,6 +154,10 @@ type EventsPublisherConfig struct {
 	EventTypes string `json:"eventTypes"`
 }
 
+type ExternalEvent struct {
+	EventPublisherConfig EventsPublisherConfig `json:"eventPublisher"`
+}
+
 // Configuration specific to notifications handling
 type NotificationsConfig struct {
 	// Defines the cloud provider that backs the scheduler. In the absence of a specification the no-op, 'local'
@@ -171,7 +175,7 @@ type NotificationsConfig struct {
 	// Specifies the time interval to wait before attempting to reconnect the notifications processor client.
 	ReconnectDelaySeconds int `json:"reconnectDelaySeconds"`
 	// Publish events to a pubsub tops
-	EventPublisherConfig EventsPublisherConfig `json:"eventPublisher"`
+	ExternalEvent ExternalEvent `json:"externalEvent"`
 }
 
 // Domains are always globally set in the application config, whereas individual projects can be individually registered.

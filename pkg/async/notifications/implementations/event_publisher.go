@@ -27,6 +27,17 @@ type EventPublisher struct {
 	events        []string
 }
 
+func getSupportedEvents() map[string]string {
+	supportedEvents := make(map[string]string)
+	var taskExecutionReq admin.TaskExecutionEventRequest
+	supportedEvents["task"] = proto.MessageName(&taskExecutionReq)
+	var nodeExecutionReq admin.NodeExecutionEventRequest
+	supportedEvents["node"] = proto.MessageName(&nodeExecutionReq)
+	var workflowExecutionReq admin.WorkflowExecutionEventRequest
+	supportedEvents["workflow"] = proto.MessageName(&workflowExecutionReq)
+	return supportedEvents
+}
+
 // The key is the notification type as defined as an enum.
 func (p *EventPublisher) Publish(ctx context.Context, notificationType string, msg proto.Message) error {
 	p.systemMetrics.PublishTotal.Inc()
@@ -62,20 +73,19 @@ func newEventPublisherSystemMetrics(scope promutils.Scope) eventPublisherSystemM
 }
 
 func NewEventsPublisher(pub pubsub.Publisher, scope promutils.Scope, eventTypes string) interfaces.Publisher {
-	events := strings.Split(eventTypes, ",")
-	var eventList = make([]string, 0)
+	supportedEvents := getSupportedEvents()
 
-	for _, event := range events {
-		switch event {
-		case "task":
-			var taskExecutionReq admin.TaskExecutionEventRequest
-			eventList = append(eventList, proto.MessageName(&taskExecutionReq))
-		case "node":
-			var nodeExecutionReq admin.NodeExecutionEventRequest
-			eventList = append(eventList, proto.MessageName(&nodeExecutionReq))
-		case "workflow":
-			var workflowExecutionReq admin.WorkflowExecutionEventRequest
-			eventList = append(eventList, proto.MessageName(&workflowExecutionReq))
+	var eventList = make([]string, 0)
+	if strings.Contains(eventTypes, "*") || strings.Contains(eventTypes, "all") {
+		for _, e := range supportedEvents {
+			eventList = append(eventList, e)
+		}
+	} else {
+		events := strings.Split(eventTypes, ",")
+		for _, event := range events {
+			if e, found := supportedEvents[event]; found {
+				eventList = append(eventList, e)
+			}
 		}
 	}
 

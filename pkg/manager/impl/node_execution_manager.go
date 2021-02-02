@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+	notificationInterfaces "github.com/lyft/flyteadmin/pkg/async/notifications/interfaces"
 	"strconv"
 
 	"github.com/lyft/flytestdlib/storage"
@@ -46,11 +47,12 @@ type nodeExecutionMetrics struct {
 }
 
 type NodeExecutionManager struct {
-	db            repositories.RepositoryInterface
-	config        runtimeInterfaces.Configuration
-	storageClient *storage.DataStore
-	metrics       nodeExecutionMetrics
-	urlData       dataInterfaces.RemoteURLInterface
+	db             repositories.RepositoryInterface
+	config         runtimeInterfaces.Configuration
+	storageClient  *storage.DataStore
+	metrics        nodeExecutionMetrics
+	urlData        dataInterfaces.RemoteURLInterface
+	eventPublisher notificationInterfaces.Publisher
 }
 
 type updateNodeExecutionStatus int
@@ -427,9 +429,7 @@ func (m *NodeExecutionManager) GetNodeExecutionData(
 	return response, nil
 }
 
-func NewNodeExecutionManager(
-	db repositories.RepositoryInterface, config runtimeInterfaces.Configuration, storageClient *storage.DataStore,
-	scope promutils.Scope, urlData dataInterfaces.RemoteURLInterface) interfaces.NodeExecutionInterface {
+func NewNodeExecutionManager(db repositories.RepositoryInterface, config runtimeInterfaces.Configuration, storageClient *storage.DataStore, scope promutils.Scope, urlData dataInterfaces.RemoteURLInterface, eventPublisher notificationInterfaces.Publisher) interfaces.NodeExecutionInterface {
 	metrics := nodeExecutionMetrics{
 		Scope: scope,
 		ActiveNodeExecutions: scope.MustNewGauge("active_node_executions",
@@ -450,10 +450,11 @@ func NewNodeExecutionManager(
 			"size in bytes of serialized node execution outputs"),
 	}
 	return &NodeExecutionManager{
-		db:            db,
-		config:        config,
-		storageClient: storageClient,
-		metrics:       metrics,
-		urlData:       urlData,
+		db:             db,
+		config:         config,
+		storageClient:  storageClient,
+		metrics:        metrics,
+		urlData:        urlData,
+		eventPublisher: eventPublisher,
 	}
 }

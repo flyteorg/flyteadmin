@@ -89,6 +89,7 @@ type ExecutionManager struct {
 	namedEntityManager        interfaces.NamedEntityInterface
 	resourceManager           interfaces.ResourceInterface
 	qualityOfServiceAllocator executions.QualityOfServiceAllocator
+	eventPublisher            notificationInterfaces.Publisher
 }
 
 func getExecutionContext(ctx context.Context, id *core.WorkflowExecutionIdentifier) context.Context {
@@ -1004,6 +1005,7 @@ func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admi
 			return nil, err
 		}
 	}
+	m.eventPublisher.Publish(ctx, proto.MessageName(&request), &request)
 
 	m.systemMetrics.ExecutionEventsCreated.Inc()
 	return &admin.WorkflowExecutionEventResponse{}, nil
@@ -1329,17 +1331,7 @@ func newExecutionSystemMetrics(scope promutils.Scope) executionSystemMetrics {
 	}
 }
 
-func NewExecutionManager(
-	db repositories.RepositoryInterface,
-	config runtimeInterfaces.Configuration,
-	storageClient *storage.DataStore,
-	workflowExecutor workflowengineInterfaces.Executor,
-	systemScope promutils.Scope,
-	userScope promutils.Scope,
-	publisher notificationInterfaces.Publisher,
-	urlData dataInterfaces.RemoteURLInterface,
-	workflowManager interfaces.WorkflowInterface,
-	namedEntityManager interfaces.NamedEntityInterface) interfaces.ExecutionInterface {
+func NewExecutionManager(db repositories.RepositoryInterface, config runtimeInterfaces.Configuration, storageClient *storage.DataStore, workflowExecutor workflowengineInterfaces.Executor, systemScope promutils.Scope, userScope promutils.Scope, publisher notificationInterfaces.Publisher, urlData dataInterfaces.RemoteURLInterface, workflowManager interfaces.WorkflowInterface, namedEntityManager interfaces.NamedEntityInterface, eventPublisher notificationInterfaces.Publisher) interfaces.ExecutionInterface {
 	queueAllocator := executions.NewQueueAllocator(config, db)
 	systemMetrics := newExecutionSystemMetrics(systemScope)
 
@@ -1369,6 +1361,7 @@ func NewExecutionManager(
 		namedEntityManager:        namedEntityManager,
 		resourceManager:           resourceManager,
 		qualityOfServiceAllocator: executions.NewQualityOfServiceAllocator(config, resourceManager),
+		eventPublisher:            eventPublisher,
 	}
 }
 

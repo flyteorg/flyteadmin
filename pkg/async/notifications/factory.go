@@ -150,12 +150,15 @@ func NewNotificationsPublisher(config runtimeInterfaces.NotificationsConfig, sco
 }
 
 func NewEventsPublisher(config runtimeInterfaces.NotificationsConfig, scope promutils.Scope) interfaces.Publisher {
+	if config.ExternalEvent.EventPublisherConfig.TopicName == "" {
+		return implementations.NewNoopPublish()
+	}
 	reconnectAttempts := config.ReconnectAttempts
 	reconnectDelay := time.Duration(config.ReconnectDelaySeconds) * time.Second
 	switch config.Type {
 	case common.AWS:
 		snsConfig := gizmoAWS.SNSConfig{
-			Topic: config.NotificationsPublisherConfig.TopicName,
+			Topic: config.ExternalEvent.EventPublisherConfig.TopicName,
 		}
 		if config.AWSConfig.Region != "" {
 			snsConfig.Region = config.AWSConfig.Region
@@ -174,10 +177,10 @@ func NewEventsPublisher(config runtimeInterfaces.NotificationsConfig, scope prom
 		if err != nil {
 			panic(err)
 		}
-		return implementations.NewEventsPublisher(publisher, scope, config.EventPublisherConfig.EventTypes)
+		return implementations.NewEventsPublisher(publisher, scope, config.ExternalEvent.EventPublisherConfig.EventTypes)
 	case common.GCP:
 		pubsubConfig := gizmoGCP.Config{
-			Topic: config.EventPublisherConfig.TopicName,
+			Topic: config.ExternalEvent.EventPublisherConfig.TopicName,
 		}
 		pubsubConfig.ProjectID = config.GCPConfig.ProjectID
 		var publisher pubsub.MultiPublisher
@@ -190,7 +193,7 @@ func NewEventsPublisher(config runtimeInterfaces.NotificationsConfig, scope prom
 		if err != nil {
 			panic(err)
 		}
-		return implementations.NewEventsPublisher(publisher, scope, config.EventPublisherConfig.EventTypes)
+		return implementations.NewEventsPublisher(publisher, scope, config.ExternalEvent.EventPublisherConfig.EventTypes)
 	case common.Local:
 		fallthrough
 	default:
