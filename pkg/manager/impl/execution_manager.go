@@ -64,6 +64,7 @@ type executionSystemMetrics struct {
 	SpecSizeBytes            prometheus.Summary
 	ClosureSizeBytes         prometheus.Summary
 	AcceptanceDelay          prometheus.Summary
+	PublishEventError        prometheus.Counter
 }
 
 type executionUserMetrics struct {
@@ -1005,7 +1006,10 @@ func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admi
 			return nil, err
 		}
 	}
-	m.eventPublisher.Publish(ctx, proto.MessageName(&request), &request)
+	if err := m.eventPublisher.Publish(ctx, proto.MessageName(&request), &request); err != nil {
+		m.systemMetrics.PublishEventError.Inc()
+		logger.Infof(ctx, "error publishing event [%+v] with err: [%v]", request.RequestId, err)
+	}
 
 	m.systemMetrics.ExecutionEventsCreated.Inc()
 	return &admin.WorkflowExecutionEventResponse{}, nil
@@ -1328,6 +1332,8 @@ func newExecutionSystemMetrics(scope promutils.Scope) executionSystemMetrics {
 		ClosureSizeBytes: scope.MustNewSummary("closure_size_bytes", "size in bytes of serialized execution closure"),
 		AcceptanceDelay: scope.MustNewSummary("acceptance_delay",
 			"delay in seconds from when an execution was requested to be created and when it actually was"),
+		PublishEventError: scope.MustNewCounter("publish_event_error",
+			"overall count of publish event errors when invoking publish()"),
 	}
 }
 

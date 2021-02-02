@@ -288,7 +288,7 @@ func TestCreateTaskEvent_Update(t *testing.T) {
 		OutputUri: expectedOutputResult.OutputUri,
 	}
 
-	taskExecManager := NewTaskExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockTaskExecutionRemoteURL, nil)
+	taskExecManager := NewTaskExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockTaskExecutionRemoteURL, &mockPublisher)
 	resp, err := taskExecManager.CreateTaskExecutionEvent(context.Background(), taskEventRequest)
 	assert.True(t, getTaskCalled)
 	assert.True(t, updateTaskCalled)
@@ -463,7 +463,7 @@ func TestCreateTaskEvent_PhaseVersionChange(t *testing.T) {
 	taskEventRequest.Event.PhaseVersion = uint32(1)
 	taskEventRequest.Event.OccurredAt = taskEventUpdatedAtProto
 
-	taskExecManager := NewTaskExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockTaskExecutionRemoteURL, nil)
+	taskExecManager := NewTaskExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockTaskExecutionRemoteURL, &mockPublisher)
 	resp, err := taskExecManager.CreateTaskExecutionEvent(context.Background(), taskEventRequest)
 	assert.True(t, getTaskCalled)
 	assert.True(t, updateTaskCalled)

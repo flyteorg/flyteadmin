@@ -3,9 +3,10 @@ package impl
 import (
 	"context"
 	"fmt"
+	"strconv"
+
 	"github.com/golang/protobuf/proto"
 	notificationInterfaces "github.com/lyft/flyteadmin/pkg/async/notifications/interfaces"
-	"strconv"
 
 	"github.com/lyft/flytestdlib/storage"
 
@@ -42,6 +43,7 @@ type taskExecutionMetrics struct {
 	ClosureSizeBytes           prometheus.Summary
 	TaskExecutionInputBytes    prometheus.Summary
 	TaskExecutionOutputBytes   prometheus.Summary
+	PublishEventError          prometheus.Counter
 }
 
 type TaskExecutionManager struct {
@@ -176,7 +178,10 @@ func (m *TaskExecutionManager) CreateTaskExecutionEvent(ctx context.Context, req
 		m.metrics.TaskExecutionsTerminated.Inc()
 	}
 
-	m.notificationClient.Publish(ctx, proto.MessageName(&request), &request)
+	if err = m.notificationClient.Publish(ctx, proto.MessageName(&request), &request); err != nil {
+		m.metrics.PublishEventError.Inc()
+		logger.Infof(ctx, "error publishing event [%+v] with err: [%v]", request.RequestId, err)
+	}
 
 	m.metrics.TaskExecutionEventsCreated.Inc()
 	logger.Debugf(ctx, "Successfully recorded task execution event [%v]", request.Event)
@@ -336,6 +341,8 @@ func NewTaskExecutionManager(db repositories.RepositoryInterface, config runtime
 			"size in bytes of serialized node execution inputs"),
 		TaskExecutionOutputBytes: scope.MustNewSummary("output_size_bytes",
 			"size in bytes of serialized node execution outputs"),
+		PublishEventError: scope.MustNewCounter("publish_event_error",
+			"overall count of publish event errors when invoking publish()"),
 	}
 	return &TaskExecutionManager{
 		db:                 db,

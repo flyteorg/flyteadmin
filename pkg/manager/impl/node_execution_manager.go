@@ -2,8 +2,10 @@ package impl
 
 import (
 	"context"
-	notificationInterfaces "github.com/lyft/flyteadmin/pkg/async/notifications/interfaces"
 	"strconv"
+
+	"github.com/gogo/protobuf/proto"
+	notificationInterfaces "github.com/lyft/flyteadmin/pkg/async/notifications/interfaces"
 
 	"github.com/lyft/flytestdlib/storage"
 
@@ -44,6 +46,7 @@ type nodeExecutionMetrics struct {
 	ClosureSizeBytes           prometheus.Summary
 	NodeExecutionInputBytes    prometheus.Summary
 	NodeExecutionOutputBytes   prometheus.Summary
+	PublishEventError          prometheus.Counter
 }
 
 type NodeExecutionManager struct {
@@ -233,6 +236,11 @@ func (m *NodeExecutionManager) CreateNodeEvent(ctx context.Context, request admi
 		m.metrics.NodeExecutionsTerminated.Inc()
 	}
 	m.metrics.NodeExecutionEventsCreated.Inc()
+
+	if err := m.eventPublisher.Publish(ctx, proto.MessageName(&request), &request); err != nil {
+		m.metrics.PublishEventError.Inc()
+		logger.Infof(ctx, "error publishing event [%+v] with err: [%v]", request.RequestId, err)
+	}
 
 	return &admin.NodeExecutionEventResponse{}, nil
 }
@@ -448,6 +456,8 @@ func NewNodeExecutionManager(db repositories.RepositoryInterface, config runtime
 			"size in bytes of serialized node execution inputs"),
 		NodeExecutionOutputBytes: scope.MustNewSummary("output_size_bytes",
 			"size in bytes of serialized node execution outputs"),
+		PublishEventError: scope.MustNewCounter("publish_event_error",
+			"overall count of publish event errors when invoking publish()"),
 	}
 	return &NodeExecutionManager{
 		db:             db,
