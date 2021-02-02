@@ -134,7 +134,9 @@ func TestCreateNodeEvent(t *testing.T) {
 			}, *input)
 			return nil
 		})
-	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL, nil)
+	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(),
+		getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL,
+		&mockPublisher)
 	resp, err := nodeExecManager.CreateNodeEvent(context.Background(), request)
 	assert.Nil(t, err)
 	assert.NotNil(t, resp)
@@ -189,7 +191,8 @@ func TestCreateNodeEvent_Update(t *testing.T) {
 
 			return nil
 		})
-	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL, nil)
+	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(),
+		getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL, &mockPublisher)
 	resp, err := nodeExecManager.CreateNodeEvent(context.Background(), request)
 	assert.Nil(t, err)
 	assert.NotNil(t, resp)
@@ -202,7 +205,7 @@ func TestCreateNodeEvent_MissingExecution(t *testing.T) {
 		func(ctx context.Context, input interfaces.GetResourceInput) (models.Execution, error) {
 			return models.Execution{}, expectedErr
 		})
-	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL, nil)
+	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL, &mockPublisher)
 	resp, err := nodeExecManager.CreateNodeEvent(context.Background(), request)
 	assert.EqualError(t, err, "failed to get existing execution id: [project:\"project\""+
 		" domain:\"domain\" name:\"name\" ] with err: expected error")
@@ -334,7 +337,7 @@ func TestCreateNodeEvent_FirstEventIsTerminal(t *testing.T) {
 		func(ctx context.Context, input interfaces.GetNodeExecutionInput) (models.NodeExecution, error) {
 			return models.NodeExecution{}, flyteAdminErrors.NewFlyteAdminError(codes.NotFound, "foo")
 		})
-	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL, nil)
+	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL, &mockPublisher)
 	succeededRequest := admin.NodeExecutionEventRequest{
 		RequestId: "request id",
 		Event: &event.NodeExecutionEvent{
