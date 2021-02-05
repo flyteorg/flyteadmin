@@ -150,7 +150,7 @@ func NewNotificationsPublisher(config runtimeInterfaces.NotificationsConfig, sco
 }
 
 func NewEventsPublisher(config runtimeInterfaces.ExternalEventsConfig, scope promutils.Scope) interfaces.Publisher {
-	if config.Enable == false {
+	if !config.Enable {
 		return implementations.NewNoopPublish()
 	}
 	reconnectAttempts := config.ReconnectAttempts

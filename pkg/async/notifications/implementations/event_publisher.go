@@ -2,8 +2,9 @@ package implementations
 
 import (
 	"context"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"strings"
+
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 
@@ -67,7 +68,7 @@ func newEventPublisherSystemMetrics(scope promutils.Scope) eventPublisherSystemM
 	return eventPublisherSystemMetrics{
 		Scope:          scope,
 		PublishTotal:   scope.MustNewCounter("event_publish_total", "overall count of publish messages"),
-		PublishSuccess: scope.MustNewCounter("event_publish_success", "sucess count of publish messages"),
+		PublishSuccess: scope.MustNewCounter("event_publish_success", "success count of publish messages"),
 		PublishError:   scope.MustNewCounter("event_publish_errors", "count of publish errors"),
 	}
 }
