@@ -99,7 +99,7 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 
 	publisher := notifications.NewNotificationsPublisher(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope)
 	processor := notifications.NewNotificationsProcessor(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope)
-	eventPublisher := notifications.NewEventsPublisher(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope)
+	eventPublisher := notifications.NewEventsPublisher(*configuration.ApplicationConfiguration().GetExternalEventsConfig(), adminScope)
 	go func() {
 		logger.Info(context.Background(), "Started processing notifications.")
 		processor.StartProcessing()

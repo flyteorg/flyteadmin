@@ -149,8 +149,8 @@ func NewNotificationsPublisher(config runtimeInterfaces.NotificationsConfig, sco
 	}
 }
 
-func NewEventsPublisher(config runtimeInterfaces.NotificationsConfig, scope promutils.Scope) interfaces.Publisher {
-	if config.ExternalEvent.EventPublisherConfig.TopicName == "" {
+func NewEventsPublisher(config runtimeInterfaces.ExternalEventsConfig, scope promutils.Scope) interfaces.Publisher {
+	if config.Enable == false {
 		return implementations.NewNoopPublish()
 	}
 	reconnectAttempts := config.ReconnectAttempts
@@ -158,13 +158,9 @@ func NewEventsPublisher(config runtimeInterfaces.NotificationsConfig, scope prom
 	switch config.Type {
 	case common.AWS:
 		snsConfig := gizmoAWS.SNSConfig{
-			Topic: config.ExternalEvent.EventPublisherConfig.TopicName,
+			Topic: config.EventsPublisherConfig.TopicName,
 		}
-		if config.AWSConfig.Region != "" {
-			snsConfig.Region = config.AWSConfig.Region
-		} else {
-			snsConfig.Region = config.Region
-		}
+		snsConfig.Region = config.AWSConfig.Region
 
 		var publisher pubsub.Publisher
 		var err error
@@ -177,10 +173,10 @@ func NewEventsPublisher(config runtimeInterfaces.NotificationsConfig, scope prom
 		if err != nil {
 			panic(err)
 		}
-		return implementations.NewEventsPublisher(publisher, scope, config.ExternalEvent.EventPublisherConfig.EventTypes)
+		return implementations.NewEventsPublisher(publisher, scope, config.EventsPublisherConfig.EventTypes)
 	case common.GCP:
 		pubsubConfig := gizmoGCP.Config{
-			Topic: config.ExternalEvent.EventPublisherConfig.TopicName,
+			Topic: config.EventsPublisherConfig.TopicName,
 		}
 		pubsubConfig.ProjectID = config.GCPConfig.ProjectID
 		var publisher pubsub.MultiPublisher
@@ -193,7 +189,7 @@ func NewEventsPublisher(config runtimeInterfaces.NotificationsConfig, scope prom
 		if err != nil {
 			panic(err)
 		}
-		return implementations.NewEventsPublisher(publisher, scope, config.ExternalEvent.EventPublisherConfig.EventTypes)
+		return implementations.NewEventsPublisher(publisher, scope, config.EventsPublisherConfig.EventTypes)
 	case common.Local:
 		fallthrough
 	default:
