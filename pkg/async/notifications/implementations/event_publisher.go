@@ -74,7 +74,6 @@ func newEventPublisherSystemMetrics(scope promutils.Scope) eventPublisherSystemM
 }
 
 func NewEventsPublisher(pub pubsub.Publisher, scope promutils.Scope, eventTypes string) interfaces.Publisher {
-
 	eventSet := sets.NewString()
 	if strings.Contains(eventTypes, "*") || strings.Contains(eventTypes, "all") {
 		for _, e := range supportedEvents {
