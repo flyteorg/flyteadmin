@@ -151,7 +151,7 @@ type EventsPublisherConfig struct {
 	// The topic which events should be published, e.g. node, task, workflow
 	TopicName string `json:"topicName"`
 	// Event types: task, node, workflow executions
-	EventTypes string `json:"eventTypes"`
+	EventTypes []string `json:"eventTypes"`
 }
 
 type ExternalEventsConfig struct {

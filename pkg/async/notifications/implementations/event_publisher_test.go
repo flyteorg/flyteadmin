@@ -91,52 +91,52 @@ func TestNewEventsPublisher_EventTypes(t *testing.T) {
 	{
 		tests := []struct {
 			name            string
-			eventTypes      string
+			eventTypes      []string
 			events          []proto.Message
 			shouldSendEvent []bool
 			expectedSendCnt int
 		}{
-			{"eventTypes as workflow,node", "workflow,node",
+			{"eventTypes as workflow,node", []string{"workflow", "node"},
 				[]proto.Message{workflowRequest, nodeRequest, taskRequest},
 				[]bool{true, true, false},
 				2},
-			{"eventTypes as workflow,task", "workflow,task",
+			{"eventTypes as workflow,task", []string{"workflow", "task"},
 				[]proto.Message{workflowRequest, nodeRequest, taskRequest},
 				[]bool{true, false, true},
 				2},
-			{"eventTypes as workflow,task", "node,task",
+			{"eventTypes as workflow,task", []string{"node", "task"},
 				[]proto.Message{workflowRequest, nodeRequest, taskRequest},
 				[]bool{false, true, true},
 				2},
-			{"eventTypes as task", "task",
+			{"eventTypes as task", []string{"task"},
 				[]proto.Message{taskRequest},
 				[]bool{true},
 				1},
-			{"eventTypes as node", "node",
+			{"eventTypes as node", []string{"node"},
 				[]proto.Message{nodeRequest},
 				[]bool{true},
 				1},
-			{"eventTypes as workflow", "workflow",
+			{"eventTypes as workflow", []string{"workflow"},
 				[]proto.Message{workflowRequest},
 				[]bool{true},
 				1},
-			{"eventTypes as workflow", "workflow",
+			{"eventTypes as workflow", []string{"workflow"},
 				[]proto.Message{nodeRequest, taskRequest},
 				[]bool{false, false},
 				0},
-			{"eventTypes as task", "task",
+			{"eventTypes as task", []string{"task"},
 				[]proto.Message{workflowRequest, nodeRequest},
 				[]bool{false, false},
 				0},
-			{"eventTypes as node", "node",
+			{"eventTypes as node", []string{"node"},
 				[]proto.Message{workflowRequest, taskRequest},
 				[]bool{false, false},
 				0},
-			{"eventTypes as all", "all",
+			{"eventTypes as all", []string{"all"},
 				[]proto.Message{workflowRequest, nodeRequest, taskRequest},
 				[]bool{true, true, true},
 				3},
-			{"eventTypes as *", "*",
+			{"eventTypes as *", []string{"*"},
 				[]proto.Message{workflowRequest, nodeRequest, taskRequest},
 				[]bool{true, true, true},
 				3},
@@ -165,7 +165,7 @@ func TestNewEventsPublisher_EventTypes(t *testing.T) {
 
 func TestEventPublisher_PublishError(t *testing.T) {
 	initializeEventPublisher()
-	currentEventPublisher := NewEventsPublisher(mockEventPublisher, promutils.NewTestScope(), "*")
+	currentEventPublisher := NewEventsPublisher(mockEventPublisher, promutils.NewTestScope(), []string{"*"})
 	var publishError = errors.New("publish() returns an error")
 	testEventPublisher.GivenError = publishError
 	assert.Equal(t, publishError, currentEventPublisher.Publish(context.Background(),

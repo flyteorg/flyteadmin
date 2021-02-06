@@ -4,7 +4,7 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	notificationInterfaces "github.com/lyft/flyteadmin/pkg/async/notifications/interfaces"
 
 	"github.com/lyft/flytestdlib/storage"

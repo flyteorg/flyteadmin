@@ -2,7 +2,6 @@ package implementations
 
 import (
 	"context"
-	"strings"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -35,20 +34,28 @@ var taskExecutionReq admin.TaskExecutionEventRequest
 var nodeExecutionReq admin.NodeExecutionEventRequest
 var workflowExecutionReq admin.WorkflowExecutionEventRequest
 
+const (
+	Task          = "task"
+	Node          = "node"
+	Workflow      = "workflow"
+	AllTypes      = "all"
+	AllTypesShort = "*"
+)
+
 var supportedEvents = map[string]string{
-	"task":     proto.MessageName(&taskExecutionReq),
-	"node":     proto.MessageName(&nodeExecutionReq),
-	"workflow": proto.MessageName(&workflowExecutionReq),
+	Task:     proto.MessageName(&taskExecutionReq),
+	Node:     proto.MessageName(&nodeExecutionReq),
+	Workflow: proto.MessageName(&workflowExecutionReq),
 }
 
 // The key is the notification type as defined as an enum.
 func (p *EventPublisher) Publish(ctx context.Context, notificationType string, msg proto.Message) error {
 	p.systemMetrics.PublishTotal.Inc()
-	logger.Debugf(ctx, "Publishing the following message [%+v]", msg)
 
 	if !p.shouldPublishEvent(notificationType) {
 		return nil
 	}
+	logger.Debugf(ctx, "Publishing the following message [%+v]", msg)
 
 	err := p.pub.Publish(ctx, notificationType, msg)
 	if err != nil {
@@ -73,20 +80,20 @@ func newEventPublisherSystemMetrics(scope promutils.Scope) eventPublisherSystemM
 	}
 }
 
-func NewEventsPublisher(pub pubsub.Publisher, scope promutils.Scope, eventTypes string) interfaces.Publisher {
+func NewEventsPublisher(pub pubsub.Publisher, scope promutils.Scope, eventTypes []string) interfaces.Publisher {
 	eventSet := sets.NewString()
-	if strings.Contains(eventTypes, "*") || strings.Contains(eventTypes, "all") {
-		for _, e := range supportedEvents {
-			eventSet = eventSet.Insert(e)
-		}
-	} else {
-		events := strings.Split(eventTypes, ",")
-		for _, event := range events {
-			if e, found := supportedEvents[event]; found {
+
+	for _, event := range eventTypes {
+		if event == AllTypes || event == AllTypesShort {
+			for _, e := range supportedEvents {
 				eventSet = eventSet.Insert(e)
-			} else {
-				logger.Errorf(context.Background(), "Unsupported event type [%s] in the config")
 			}
+			break
+		}
+		if e, found := supportedEvents[event]; found {
+			eventSet = eventSet.Insert(e)
+		} else {
+			logger.Errorf(context.Background(), "Unsupported event type [%s] in the config")
 		}
 	}
 
