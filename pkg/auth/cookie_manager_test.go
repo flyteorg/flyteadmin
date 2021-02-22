@@ -59,7 +59,7 @@ func TestCookieManager_RetrieveTokenValues(t *testing.T) {
 	req.AddCookie(cookies[0])
 	req.AddCookie(cookies[1])
 
-	access, refresh, err := manager.RetrieveTokenValues(ctx, req)
+	_, access, refresh, err := manager.RetrieveTokenValues(ctx, req)
 	assert.NoError(t, err)
 	assert.Equal(t, "access", access)
 	assert.Equal(t, "refresh", refresh)
