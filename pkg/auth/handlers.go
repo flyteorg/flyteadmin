@@ -54,7 +54,7 @@ func RefreshTokensIfExists(ctx context.Context, authContext interfaces.Authentic
 		}
 
 		if err != nil {
-			logger.Errorf(ctx, "Non-expiration error in refresh token handler %s, redirecting to login handler", err)
+			logger.Errorf(ctx, "Non-expiration error in refresh token handler, redirecting to login handler. Error: %s", err)
 			handlerFunc(writer, request)
 			return
 		}
@@ -208,8 +208,8 @@ func WithAuditFields(ctx context.Context, clientIds []string, tokenIssuedAt time
 func GetHTTPRequestCookieToMetadataHandler(authContext interfaces.AuthenticationContext) HTTPRequestToMetadataAnnotator {
 	return func(ctx context.Context, request *http.Request) metadata.MD {
 		// TODO: Improve error handling
-		_, accessToken, _, _ := authContext.CookieManager().RetrieveTokenValues(ctx, request)
-		if accessToken == "" {
+		idToken, _, _, _ := authContext.CookieManager().RetrieveTokenValues(ctx, request)
+		if len(idToken) == 0 {
 			// If no token was found in the cookies, look for an authorization header, starting with a potentially
 			// custom header set in the Config object
 			if authContext.Options().HTTPAuthorizationHeader != "" {
@@ -226,7 +226,7 @@ func GetHTTPRequestCookieToMetadataHandler(authContext interfaces.Authentication
 			return nil
 		}
 		return metadata.MD{
-			DefaultAuthorizationHeader: []string{fmt.Sprintf("%s %s", BearerScheme, accessToken)},
+			DefaultAuthorizationHeader: []string{fmt.Sprintf("%s %s", BearerScheme, idToken)},
 		}
 	}
 }
