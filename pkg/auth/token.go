@@ -38,14 +38,14 @@ func GetRefreshedToken(ctx context.Context, oauth *oauth2.Config, accessToken, r
 	return newToken, nil
 }
 
-func ParseAndValidate(ctx context.Context, claims config.Claims, rawIdToken string,
+func ParseAndValidate(ctx context.Context, claims config.Claims, rawIDToken string,
 	provider *oidc.Provider) (*oidc.IDToken, error) {
 
 	var verifier = provider.Verifier(&oidc.Config{
 		ClientID: claims.Audience,
 	})
 
-	idToken, err := verifier.Verify(ctx, rawIdToken)
+	idToken, err := verifier.Verify(ctx, rawIDToken)
 	if err != nil {
 		logger.Debugf(ctx, "JWT parsing with claims failed %s", err)
 		flyteErr := errors.Wrapf(ErrJwtValidation, err, "jwt parse with claims failed")

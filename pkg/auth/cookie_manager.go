@@ -43,7 +43,7 @@ func NewCookieManager(ctx context.Context, hashKeyEncoded, blockKeyEncoded strin
 }
 
 // TODO: Separate refresh token from access token, remove named returns, and use stdlib errors.
-// RetrieveTokenValues retrieves id, access and refresh tokens from cookies if they exist. The existance of a refresh token
+// RetrieveTokenValues retrieves id, access and refresh tokens from cookies if they exist. The existence of a refresh token
 // in a cookie is optional and hence failure to find or read that cookie is tolerated. An error is returned in case of failure
 // to retrieve and read either the id or the access tokens.
 func (c CookieManager) RetrieveTokenValues(ctx context.Context, request *http.Request) (idToken, accessToken,
