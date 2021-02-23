@@ -26,6 +26,9 @@ const (
 	csrfStateCookieName = "flyte_csrf_state"
 	// #nosec
 	redirectURLCookieName = "flyte_redirect_location"
+
+	// #nosec
+	idTokenExtra = "id_token"
 )
 
 const (

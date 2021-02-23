@@ -83,7 +83,7 @@ func (c CookieManager) SetTokenCookies(ctx context.Context, writer http.Response
 
 	http.SetCookie(writer, &atCookie)
 
-	if idTokenRaw, converted := token.Extra("id_token").(string); converted {
+	if idTokenRaw, converted := token.Extra(idTokenExtra).(string); converted {
 		idCookie, err := NewSecureCookie(idTokenCookieName, idTokenRaw, c.hashKey, c.blockKey)
 		if err != nil {
 			logger.Errorf(ctx, "Error generating encrypted id token cookie %s", err)
