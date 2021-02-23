@@ -9,7 +9,7 @@ server:
   kube-config: "/Users/haythamabuelfutuh/.kube/config"
   security:
     secure: false
-    useAuth: true
+    useAuth: false
     allowCors: true
     allowedOrigins:
       # Accepting all domains for Sandbox installation
@@ -17,21 +17,18 @@ server:
     allowedHeaders:
       - "Content-Type"
     oauth:
-      scopes:
-        - profile
-        - openid
-        - email
-      claims:
-        iss: https://accounts.google.com
-        aud: 657465813211-6eog7ek7li5k7i7fvgv2921075063hpe.apps.googleusercontent.com
-      clientId: 657465813211-6eog7ek7li5k7i7fvgv2921075063hpe.apps.googleusercontent.com
-      clientSecretFile: "/Users/haythamabuelfutuh/etc/secrets/oauth/secret"
-      authorizeUrl: "https://accounts.google.com/o/oauth2/v2/auth?access_type=offline"
-      tokenUrl: "https://oauth2.googleapis.com/token"
-      callbackUrl: "http://localhost:8088/callback"
-      cookieHashKeyFile: "/Users/haythamabuelfutuh/etc/secrets/hashkey/hashkey"
-      cookieBlockKeyFile: "/Users/haythamabuelfutuh/etc/secrets/blockkey/blockkey"
+      clientId: yourclientid
+      clientSecretFile: "/path/to/oauth/secret"
+      authorizeUrl: "https://idp.com/oauth2/authorize"
+      tokenUrl: "https://idp.com/oauth2/token"
+      callbackUrl: "https://localhost:8088/callback"
+      cookieHashKeyFile: "/path/to/admin_cookie_hash_key"
+      cookieBlockKeyFile: "/path/to/admin_cookie_block_key"
       redirectUrl: "/api/v1/projects"
+      claims:
+        iss: "https://idp.com"
+        aud: "api://default"
+      idpUserInfoEndpoint: "/v1/userinfo"
   thirdPartyConfig:
     flyteClient:
       clientId: yourPublicAppClientId
