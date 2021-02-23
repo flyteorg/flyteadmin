@@ -17,11 +17,11 @@ import (
 
 const (
 	// #nosec
-	accessTokenCookieName = "flyte_jwt"
+	accessTokenCookieName = "flyte_at"
 	// #nosec
-	idTokenCookieName = "flyte_id"
+	idTokenCookieName = "flyte_idt"
 	// #nosec
-	refreshTokenCookieName = "flyte_refresh"
+	refreshTokenCookieName = "flyte_rt"
 	// #nosec
 	csrfStateCookieName = "flyte_csrf_state"
 	// #nosec

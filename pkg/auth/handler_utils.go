@@ -42,13 +42,13 @@ type UserInfoResponse struct {
 	Picture           string `json:"picture"`
 }
 
-func postToIdp(ctx context.Context, client *http.Client, userInfoURL, accessToken string) (UserInfoResponse, error) {
+func postToIdp(ctx context.Context, client *http.Client, userInfoURL, idToken string) (UserInfoResponse, error) {
 	request, err := http.NewRequest(http.MethodPost, userInfoURL, nil)
 	if err != nil {
 		logger.Errorf(ctx, "Error creating user info request to IDP %s", err)
 		return UserInfoResponse{}, errors.Wrapf(ErrIdpClient, err, "Error creating user info request to IDP")
 	}
-	request.Header.Set(DefaultAuthorizationHeader, fmt.Sprintf("%s %s", BearerScheme, accessToken))
+	request.Header.Set(DefaultAuthorizationHeader, fmt.Sprintf("%s %s", BearerScheme, idToken))
 	request.Header.Set("Content-Type", "application/json")
 	response, err := client.Do(request)
 	if err != nil {

@@ -6,25 +6,32 @@ server:
   httpPort: 8088
   grpcPort: 8089
   grpcServerReflection: true
+  kube-config: "/Users/haythamabuelfutuh/.kube/config"
   security:
     secure: false
-    ssl:
-      certificateFile: "/path/to/server.pem"
-      keyFile: "/path/to/server.key"
-    useAuth: false
+    useAuth: true
+    allowCors: true
+    allowedOrigins:
+      # Accepting all domains for Sandbox installation
+      - "*"
+    allowedHeaders:
+      - "Content-Type"
     oauth:
-      clientId: yourclientid
-      clientSecretFile: "/path/to/oauth/secret"
-      authorizeUrl: "https://idp.com/oauth2/authorize"
-      tokenUrl: "https://idp.com/oauth2/token"
-      callbackUrl: "https://localhost:8088/callback"
-      cookieHashKeyFile: "/path/to/admin_cookie_hash_key"
-      cookieBlockKeyFile: "/path/to/admin_cookie_block_key"
-      redirectUrl: "/api/v1/projects"
+      scopes:
+        - profile
+        - openid
+        - email
       claims:
-        iss: "https://idp.com"
-        aud: "api://default"
-      idpUserInfoEndpoint: "/v1/userinfo"
+        iss: https://accounts.google.com
+        aud: 657465813211-6eog7ek7li5k7i7fvgv2921075063hpe.apps.googleusercontent.com
+      clientId: 657465813211-6eog7ek7li5k7i7fvgv2921075063hpe.apps.googleusercontent.com
+      clientSecretFile: "/Users/haythamabuelfutuh/etc/secrets/oauth/secret"
+      authorizeUrl: "https://accounts.google.com/o/oauth2/v2/auth?access_type=offline"
+      tokenUrl: "https://oauth2.googleapis.com/token"
+      callbackUrl: "http://localhost:8088/callback"
+      cookieHashKeyFile: "/Users/haythamabuelfutuh/etc/secrets/hashkey/hashkey"
+      cookieBlockKeyFile: "/Users/haythamabuelfutuh/etc/secrets/blockkey/blockkey"
+      redirectUrl: "/api/v1/projects"
   thirdPartyConfig:
     flyteClient:
       clientId: yourPublicAppClientId
@@ -73,7 +80,7 @@ notifications:
     accountId: "bar"
   emailer:
     subject: "Notice: Execution \"{{ name }}\" has {{ phase }} in \"{{ domain }}\"."
-    sender:  "flyte-notifications@example.com"
+    sender: "flyte-notifications@example.com"
     body: >
       Execution \"{{ name }}\" has {{ phase }} in \"{{ domain }}\". View details at
       <a href=\http://example.com/projects/{{ project }}/domains/{{ domain }}/executions/{{ name }}>

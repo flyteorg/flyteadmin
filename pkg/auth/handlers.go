@@ -247,14 +247,14 @@ func GetHTTPMetadataTaggingHandler(authContext interfaces.AuthenticationContext)
 func GetMeEndpointHandler(ctx context.Context, authCtx interfaces.AuthenticationContext) http.HandlerFunc {
 	idpUserInfoEndpoint := authCtx.GetUserInfoURL().String()
 	return func(writer http.ResponseWriter, request *http.Request) {
-		_, accessToken, _, err := authCtx.CookieManager().RetrieveTokenValues(ctx, request)
+		idToken, _, _, err := authCtx.CookieManager().RetrieveTokenValues(ctx, request)
 		if err != nil {
 			http.Error(writer, "Error decoding identify token, try /login in again", http.StatusUnauthorized)
 			return
 		}
 		// TODO: Investigate improving transparency of errors. The errors from this call may be just a local error, or may
 		//       be an error from the HTTP request to the IDP. In the latter case, consider passing along the error code/msg.
-		userInfo, err := postToIdp(ctx, authCtx.GetHTTPClient(), idpUserInfoEndpoint, accessToken)
+		userInfo, err := postToIdp(ctx, authCtx.GetHTTPClient(), idpUserInfoEndpoint, idToken)
 		if err != nil {
 			logger.Errorf(ctx, "Error getting user info from IDP %s", err)
 			http.Error(writer, "Error getting user info from IDP", http.StatusFailedDependency)
