@@ -31,6 +31,7 @@ func NewCookieManager(ctx context.Context, hashKeyEncoded, blockKeyEncoded strin
 	if err != nil {
 		return CookieManager{}, errors.Wrapf(ErrB64Decoding, err, "Error decoding hash key bytes")
 	}
+
 	blockKey, err := base64.RawStdEncoding.DecodeString(blockKeyEncoded)
 	if err != nil {
 		return CookieManager{}, errors.Wrapf(ErrB64Decoding, err, "Error decoding block key bytes")

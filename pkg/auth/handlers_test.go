@@ -49,12 +49,19 @@ func TestGetHTTPRequestCookieToMetadataHandler(t *testing.T) {
 	assert.NoError(t, err)
 	mockAuthCtx := mocks.AuthenticationContext{}
 	mockAuthCtx.On("CookieManager").Return(&cookieManager)
+	mockAuthCtx.OnOptions().Return(config.OAuthOptions{})
 	handler := GetHTTPRequestCookieToMetadataHandler(&mockAuthCtx)
 	req, err := http.NewRequest("GET", "/api/v1/projects", nil)
 	assert.NoError(t, err)
-	jwtCookie, err := NewSecureCookie(accessTokenCookieName, "a.b.c", cookieManager.hashKey, cookieManager.blockKey)
+
+	accessTokenCookie, err := NewSecureCookie(accessTokenCookieName, "a.b.c", cookieManager.hashKey, cookieManager.blockKey)
 	assert.NoError(t, err)
-	req.AddCookie(&jwtCookie)
+	req.AddCookie(&accessTokenCookie)
+
+	idCookie, err := NewSecureCookie(idTokenCookieName, "a.b.c", cookieManager.hashKey, cookieManager.blockKey)
+	assert.NoError(t, err)
+	req.AddCookie(&idCookie)
+
 	assert.Equal(t, "Bearer a.b.c", handler(ctx, req)["authorization"][0])
 }
 
