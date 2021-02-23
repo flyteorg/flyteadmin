@@ -64,6 +64,7 @@ func (c CookieManager) RetrieveTokenValues(ctx context.Context, request *http.Re
 		// Refresh tokens are optional. Depending on the auth url (IdP specific) we might or might not receive a refresh
 		// token. In case we do not, we will just have to redirect to IdP whenever access/id tokens expire.
 		logger.Infof(ctx, "Refresh token doesn't exist or failed to read it. Ignoring this error. Error: %v", err)
+		err = nil
 	}
 
 	return
