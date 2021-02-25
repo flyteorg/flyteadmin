@@ -277,9 +277,18 @@ func GetMeEndpointHandler(ctx context.Context, authCtx interfaces.Authentication
 
 // This returns a handler that will redirect (303) to the well-known metadata endpoint for the OAuth2 authorization server
 // See https://tools.ietf.org/html/rfc8414 for more information.
-func GetMetadataEndpointRedirectHandler(ctx context.Context, authCtx interfaces.AuthenticationContext) http.HandlerFunc {
+func GetOAuth2MetadataEndpointRedirectHandler(ctx context.Context, authCtx interfaces.AuthenticationContext) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		metadataURL := authCtx.GetBaseURL().ResolveReference(authCtx.GetMetadataURL())
+		metadataURL := authCtx.GetBaseURL().ResolveReference(authCtx.GetOAuth2MetadataURL())
+		http.Redirect(writer, request, metadataURL.String(), http.StatusSeeOther)
+	}
+}
+
+// This returns a handler that will redirect (303) to the well-known metadata endpoint for the OAuth2 authorization server
+// See https://tools.ietf.org/html/rfc8414 for more information.
+func GetOIdCMetadataEndpointRedirectHandler(ctx context.Context, authCtx interfaces.AuthenticationContext) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		metadataURL := authCtx.GetBaseURL().ResolveReference(authCtx.GetOIdCMetadataURL())
 		http.Redirect(writer, request, metadataURL.String(), http.StatusSeeOther)
 	}
 }

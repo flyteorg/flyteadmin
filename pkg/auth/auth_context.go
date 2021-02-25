@@ -22,15 +22,16 @@ const (
 
 // Please see the comment on the corresponding AuthenticationContext for more information.
 type Context struct {
-	oauth2        *oauth2.Config
-	claims        config.Claims
-	cookieManager interfaces.CookieHandler
-	oidcProvider  *oidc.Provider
-	options       config.OAuthOptions
-	userInfoURL   *url.URL
-	baseURL       *url.URL
-	metadataURL   *url.URL
-	httpClient    *http.Client
+	oauth2            *oauth2.Config
+	claims            config.Claims
+	cookieManager     interfaces.CookieHandler
+	oidcProvider      *oidc.Provider
+	options           config.OAuthOptions
+	userInfoURL       *url.URL
+	baseURL           *url.URL
+	oauth2MetadataURL *url.URL
+	oidcMetadataURL   *url.URL
+	httpClient        *http.Client
 }
 
 func (c Context) OAuth2Config() *oauth2.Config {
@@ -65,8 +66,12 @@ func (c Context) GetBaseURL() *url.URL {
 	return c.baseURL
 }
 
-func (c Context) GetMetadataURL() *url.URL {
-	return c.metadataURL
+func (c Context) GetOAuth2MetadataURL() *url.URL {
+	return c.oauth2MetadataURL
+}
+
+func (c Context) GetOIdCMetadataURL() *url.URL {
+	return c.oidcMetadataURL
 }
 
 const (
@@ -129,14 +134,21 @@ func NewAuthenticationContext(ctx context.Context, options config.OAuthOptions) 
 	logger.Infof(ctx, "Base IDP URL is %s", base)
 	result.baseURL = base
 
-	metadataURL, err := url.Parse(MetadataEndpoint)
+	result.oauth2MetadataURL, err = url.Parse(OAuth2MetadataEndpoint)
 	if err != nil {
-		logger.Errorf(ctx, "Error parsing metadata URL %s", err)
+		logger.Errorf(ctx, "Error parsing oauth2 metadata URL %s", err)
 		return Context{}, errors.Wrapf(ErrAuthContext, err, "Error parsing metadata URL")
 	}
 
-	logger.Infof(ctx, "Metadata endpoint is %s", metadataURL)
-	result.metadataURL = metadataURL
+	logger.Infof(ctx, "Metadata endpoint is %s", result.oauth2MetadataURL)
+
+	result.oidcMetadataURL, err = url.Parse(OIdCMetadataEndpoint)
+	if err != nil {
+		logger.Errorf(ctx, "Error parsing oidc metadata URL %s", err)
+		return Context{}, errors.Wrapf(ErrAuthContext, err, "Error parsing metadata URL")
+	}
+
+	logger.Infof(ctx, "Metadata endpoint is %s", result.oidcMetadataURL)
 
 	// Construct the URL object for the user info endpoint if applicable
 	if options.IdpUserInfoEndpoint != "" {
