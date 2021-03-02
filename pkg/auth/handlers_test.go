@@ -99,7 +99,7 @@ func TestGetMetadataEndpointRedirectHandler(t *testing.T) {
 	ctx := context.Background()
 	baseURL, err := url.Parse("http://www.google.com")
 	assert.NoError(t, err)
-	metadataPath, err := url.Parse(OIdCMetadataEndpoint)
+	metadataPath, err := url.Parse(OAuth2MetadataEndpoint)
 	assert.NoError(t, err)
 	mockAuthCtx := mocks.AuthenticationContext{}
 	mockAuthCtx.OnGetBaseURL().Return(baseURL)
