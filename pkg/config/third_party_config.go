@@ -7,6 +7,6 @@ type ThirdPartyConfigOptions struct {
 }
 
 type FlyteClientConfig struct {
-	ClientID    string   `json:"clientId" pflag:",public identifier for the app which handles authorization for a Flyte deployment"`
-	RedirectURI string   `json:"redirectUri" pflag:",This is the callback uri registered with the app which handles authorization for a Flyte deployment"`
+	ClientID    string `json:"clientId" pflag:",public identifier for the app which handles authorization for a Flyte deployment"`
+	RedirectURI string `json:"redirectUri" pflag:",This is the callback uri registered with the app which handles authorization for a Flyte deployment"`
 }

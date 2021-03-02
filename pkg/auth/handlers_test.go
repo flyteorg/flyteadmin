@@ -102,9 +102,9 @@ func TestGetMetadataEndpointRedirectHandler(t *testing.T) {
 	metadataPath, err := url.Parse(OIdCMetadataEndpoint)
 	assert.NoError(t, err)
 	mockAuthCtx := mocks.AuthenticationContext{}
-	mockAuthCtx.On("GetBaseURL").Return(baseURL)
-	mockAuthCtx.On("GetMetadataURL").Return(metadataPath)
-	handler := GetMetadataEndpointRedirectHandler(ctx, &mockAuthCtx)
+	mockAuthCtx.OnGetBaseURL().Return(baseURL)
+	mockAuthCtx.OnGetOAuth2MetadataURL().Return(metadataPath)
+	handler := GetOAuth2MetadataEndpointRedirectHandler(ctx, &mockAuthCtx)
 	req, err := http.NewRequest("GET", "/xyz", nil)
 	assert.NoError(t, err)
 	w := httptest.NewRecorder()
