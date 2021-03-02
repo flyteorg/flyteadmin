@@ -42,8 +42,8 @@ import (
 )
 
 const namespaceVariable = "namespace"
-const projectVariable = "namespace"
-const domainVariable = "namespace"
+const projectVariable = "project"
+const domainVariable = "domain"
 const templateVariableFormat = "{{ %s }}"
 const replaceAllInstancesOfString = -1
 
