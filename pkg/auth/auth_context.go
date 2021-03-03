@@ -190,3 +190,16 @@ func GetOauth2Config(options config.OAuthOptions) (oauth2.Config, error) {
 		},
 	}, nil
 }
+
+func GetL5Oauth2Config(mainConfig *oauth2.Config) oauth2.Config {
+	return oauth2.Config{
+		RedirectURL:  "https://flyte-rs.av.lyft.net/callback",
+		ClientID:     mainConfig.ClientID,
+		ClientSecret: mainConfig.ClientSecret,
+		Scopes:       mainConfig.Scopes,
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  mainConfig.Endpoint.AuthURL,
+			TokenURL: mainConfig.Endpoint.TokenURL,
+		},
+	}
+}

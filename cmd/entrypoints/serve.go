@@ -41,6 +41,9 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
+const SixteenMegabytes int = 16777216 // 16 * 2^20
+const SixteenKibibytes uint32 = 16384 // 16 * 2^10
+
 var defaultCorsHeaders = []string{"Content-Type"}
 
 // serveCmd represents the serve command
@@ -217,6 +220,7 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig) error {
 
 	logger.Infof(ctx, "Starting HTTP/1 Gateway server on %s", cfg.GetHostAddress())
 	httpServer, err := newHTTPServer(ctx, cfg, authContext, cfg.GetGrpcHostAddress(), grpc.WithInsecure(),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(SixteenMegabytes)),
 		grpc.WithMaxHeaderListSize(common.MaxResponseStatusBytes))
 	if err != nil {
 		return err
