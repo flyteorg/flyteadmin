@@ -18,6 +18,7 @@ import (
 	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/errors"
 	"github.com/lyft/flytestdlib/logger"
+	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
