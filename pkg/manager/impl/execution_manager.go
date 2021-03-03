@@ -64,6 +64,7 @@ type executionSystemMetrics struct {
 	SpecSizeBytes            prometheus.Summary
 	ClosureSizeBytes         prometheus.Summary
 	AcceptanceDelay          prometheus.Summary
+	PublishEventError        prometheus.Counter
 }
 
 type executionUserMetrics struct {
@@ -89,6 +90,7 @@ type ExecutionManager struct {
 	namedEntityManager        interfaces.NamedEntityInterface
 	resourceManager           interfaces.ResourceInterface
 	qualityOfServiceAllocator executions.QualityOfServiceAllocator
+	eventPublisher            notificationInterfaces.Publisher
 }
 
 func getExecutionContext(ctx context.Context, id *core.WorkflowExecutionIdentifier) context.Context {
@@ -174,7 +176,7 @@ func (m *ExecutionManager) addLabelsAndAnnotations(requestSpec *admin.ExecutionS
 }
 
 func (m *ExecutionManager) addPluginOverrides(ctx context.Context, executionID *core.WorkflowExecutionIdentifier,
-	workflowName, launchPlanName string, partiallyPopulatedInputs *workflowengineInterfaces.ExecuteWorkflowInput) error {
+	workflowName, launchPlanName string) ([]*admin.PluginOverride, error) {
 	override, err := m.resourceManager.GetResource(ctx, interfaces.ResourceRequest{
 		Project:      executionID.Project,
 		Domain:       executionID.Domain,
@@ -185,13 +187,13 @@ func (m *ExecutionManager) addPluginOverrides(ctx context.Context, executionID *
 	if err != nil {
 		ec, ok := err.(errors.FlyteAdminError)
 		if !ok || ec.Code() != codes.NotFound {
-			return err
+			return nil, err
 		}
 	}
 	if override != nil && override.Attributes != nil && override.Attributes.GetPluginOverrides() != nil {
-		partiallyPopulatedInputs.TaskPluginOverrides = override.Attributes.GetPluginOverrides().Overrides
+		return override.Attributes.GetPluginOverrides().Overrides, nil
 	}
-	return nil
+	return nil, nil
 }
 
 func (m *ExecutionManager) offloadInputs(ctx context.Context, literalMap *core.LiteralMap, identifier *core.WorkflowExecutionIdentifier, key string) (storage.DataReference, error) {
@@ -476,6 +478,14 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		executeTaskInputs.Annotations = request.Spec.Annotations.Values
 	}
 
+	overrides, err := m.addPluginOverrides(ctx, &workflowExecutionID, workflowExecutionID.Name, "")
+	if err != nil {
+		return nil, nil, err
+	}
+	if overrides != nil {
+		executeTaskInputs.TaskPluginOverrides = overrides
+	}
+
 	execInfo, err := m.workflowExecutor.ExecuteTask(ctx, executeTaskInputs)
 	if err != nil {
 		m.systemMetrics.PropellerFailures.Inc()
@@ -642,10 +652,12 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		return nil, nil, err
 	}
 
-	err = m.addPluginOverrides(ctx, &workflowExecutionID, launchPlan.GetSpec().WorkflowId.Name, launchPlan.Id.Name,
-		&executeWorkflowInputs)
+	overrides, err := m.addPluginOverrides(ctx, &workflowExecutionID, launchPlan.GetSpec().WorkflowId.Name, launchPlan.Id.Name)
 	if err != nil {
 		return nil, nil, err
+	}
+	if overrides != nil {
+		executeWorkflowInputs.TaskPluginOverrides = overrides
 	}
 
 	execInfo, err := m.workflowExecutor.ExecuteWorkflow(ctx, executeWorkflowInputs)
@@ -994,6 +1006,10 @@ func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admi
 			return nil, err
 		}
 	}
+	if err := m.eventPublisher.Publish(ctx, proto.MessageName(&request), &request); err != nil {
+		m.systemMetrics.PublishEventError.Inc()
+		logger.Infof(ctx, "error publishing event [%+v] with err: [%v]", request.RequestId, err)
+	}
 
 	m.systemMetrics.ExecutionEventsCreated.Inc()
 	return &admin.WorkflowExecutionEventResponse{}, nil
@@ -1316,20 +1332,12 @@ func newExecutionSystemMetrics(scope promutils.Scope) executionSystemMetrics {
 		ClosureSizeBytes: scope.MustNewSummary("closure_size_bytes", "size in bytes of serialized execution closure"),
 		AcceptanceDelay: scope.MustNewSummary("acceptance_delay",
 			"delay in seconds from when an execution was requested to be created and when it actually was"),
+		PublishEventError: scope.MustNewCounter("publish_event_error",
+			"overall count of publish event errors when invoking publish()"),
 	}
 }
 
-func NewExecutionManager(
-	db repositories.RepositoryInterface,
-	config runtimeInterfaces.Configuration,
-	storageClient *storage.DataStore,
-	workflowExecutor workflowengineInterfaces.Executor,
-	systemScope promutils.Scope,
-	userScope promutils.Scope,
-	publisher notificationInterfaces.Publisher,
-	urlData dataInterfaces.RemoteURLInterface,
-	workflowManager interfaces.WorkflowInterface,
-	namedEntityManager interfaces.NamedEntityInterface) interfaces.ExecutionInterface {
+func NewExecutionManager(db repositories.RepositoryInterface, config runtimeInterfaces.Configuration, storageClient *storage.DataStore, workflowExecutor workflowengineInterfaces.Executor, systemScope promutils.Scope, userScope promutils.Scope, publisher notificationInterfaces.Publisher, urlData dataInterfaces.RemoteURLInterface, workflowManager interfaces.WorkflowInterface, namedEntityManager interfaces.NamedEntityInterface, eventPublisher notificationInterfaces.Publisher) interfaces.ExecutionInterface {
 	queueAllocator := executions.NewQueueAllocator(config, db)
 	systemMetrics := newExecutionSystemMetrics(systemScope)
 
@@ -1359,6 +1367,7 @@ func NewExecutionManager(
 		namedEntityManager:        namedEntityManager,
 		resourceManager:           resourceManager,
 		qualityOfServiceAllocator: executions.NewQualityOfServiceAllocator(config, resourceManager),
+		eventPublisher:            eventPublisher,
 	}
 }
 

@@ -5,10 +5,10 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/lyft/flyteadmin/pkg/manager/impl/shared"
-
 	"github.com/lyft/flyteadmin/pkg/common"
+
 	"github.com/lyft/flyteadmin/pkg/manager/impl/testutils"
+	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
 	repositoryMocks "github.com/lyft/flyteadmin/pkg/repositories/mocks"
 	"github.com/lyft/flyteadmin/pkg/repositories/models"
 	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
@@ -45,10 +45,15 @@ func getMockApplicationConfigForProjectManagerTest() runtimeInterfaces.Applicati
 	return &mockApplicationConfig
 }
 
-func TestListProjects(t *testing.T) {
+func testListProjects(request admin.ProjectListRequest, token string, orderExpr string, queryExpr *common.GormQueryExpr, t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
 	repository.ProjectRepo().(*repositoryMocks.MockProjectRepo).ListProjectsFunction = func(
-		ctx context.Context, parameter common.SortParameter) ([]models.Project, error) {
+		ctx context.Context, input interfaces.ListResourceInput) ([]models.Project, error) {
+		if len(input.InlineFilters) != 0 {
+			q, _ := input.InlineFilters[0].GetGormQueryExpr()
+			assert.Equal(t, *queryExpr, q)
+		}
+		assert.Equal(t, orderExpr, input.SortParameter.GetGormOrderExpr())
 		activeState := int32(admin.Project_ACTIVE)
 		return []models.Project{
 			{
@@ -61,14 +66,41 @@ func TestListProjects(t *testing.T) {
 	}
 
 	projectManager := NewProjectManager(repository, mockProjectConfigProvider)
-	resp, err := projectManager.ListProjects(context.Background(), admin.ProjectListRequest{})
+	resp, err := projectManager.ListProjects(context.Background(), request)
 	assert.NoError(t, err)
 
 	assert.Len(t, resp.Projects, 1)
+	assert.Equal(t, token, resp.GetToken())
 	assert.Len(t, resp.Projects[0].Domains, 4)
 	for _, domain := range resp.Projects[0].Domains {
 		assert.Contains(t, testDomainsForProjManager, domain.Id)
 	}
+}
+
+func TestListProjects_NoFilters_LimitOne(t *testing.T) {
+	testListProjects(admin.ProjectListRequest{
+		Token: "1",
+		Limit: 1,
+	}, "2", "identifier asc", nil, t)
+}
+
+func TestListProjects_HighLimit_SortBy_Filter(t *testing.T) {
+	testListProjects(admin.ProjectListRequest{
+		Token:   "1",
+		Limit:   999,
+		Filters: "eq(project.name,foo)",
+		SortBy: &admin.Sort{
+			Key:       "name",
+			Direction: admin.Sort_DESCENDING,
+		},
+	}, "", "name desc", &common.GormQueryExpr{
+		Query: "name = ?",
+		Args:  "foo",
+	}, t)
+}
+
+func TestListProjects_NoToken_NoLimit(t *testing.T) {
+	testListProjects(admin.ProjectListRequest{}, "", "identifier asc", nil, t)
 }
 
 func TestProjectManager_CreateProject(t *testing.T) {
@@ -176,6 +208,7 @@ func TestProjectManager_UpdateProject(t *testing.T) {
 		assert.Equal(t, "project-id", projectUpdate.Identifier)
 		assert.Equal(t, "new-project-name", projectUpdate.Name)
 		assert.Equal(t, "new-project-description", projectUpdate.Description)
+		assert.Equal(t, int32(admin.Project_ACTIVE), *projectUpdate.State)
 		return nil
 	}
 	projectManager := NewProjectManager(mockRepository,
@@ -185,6 +218,7 @@ func TestProjectManager_UpdateProject(t *testing.T) {
 		Id:          "project-id",
 		Name:        "new-project-name",
 		Description: "new-project-description",
+		State:       admin.Project_ACTIVE,
 	})
 	assert.Nil(t, err)
 	assert.True(t, updateFuncCalled)
@@ -227,8 +261,8 @@ func TestProjectManager_UpdateProject_ErrorDueToInvalidProjectName(t *testing.T)
 		runtimeMocks.NewMockConfigurationProvider(
 			getMockApplicationConfigForProjectManagerTest(), nil, nil, nil, nil, nil))
 	_, err := projectManager.UpdateProject(context.Background(), admin.Project{
-		Id: "project-id",
-		// No project name
+		Id:   "project-id",
+		Name: "longnamelongnamelongnamelongnamelongnamelongnamelongnamelongnamel",
 	})
-	assert.Equal(t, shared.GetMissingArgumentError("project_name"), err)
+	assert.EqualError(t, err, "project_name cannot exceed 64 characters")
 }

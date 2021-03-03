@@ -25,8 +25,8 @@ require (
 	github.com/jinzhu/gorm v1.9.12
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
 	github.com/lib/pq v1.3.0
-	github.com/lyft/flyteidl v0.18.10
-	github.com/lyft/flytepropeller v0.3.17
+	github.com/lyft/flyteidl v0.18.14
+	github.com/lyft/flytepropeller v0.5.14
 	github.com/lyft/flytestdlib v0.3.9
 	github.com/magiconair/properties v1.8.1
 	github.com/mitchellh/mapstructure v1.1.2
@@ -36,7 +36,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
-	golang.org/x/tools v0.0.0-20200818005847-188abfa75333 // indirect
+	golang.org/x/tools v0.1.0 // indirect
 	google.golang.org/api v0.20.0
 	google.golang.org/genproto v0.0.0-20200331122359-1ee6d9798940
 	google.golang.org/grpc v1.28.0
@@ -58,5 +58,4 @@ replace (
 	k8s.io/api => github.com/lyft/api v0.0.0-20191031200350-b49a72c274e0
 	k8s.io/apimachinery => github.com/lyft/apimachinery v0.0.0-20191031200210-047e3ea32d7f
 	k8s.io/client-go => k8s.io/client-go v0.0.0-20191016111102-bec269661e48
-
 )
