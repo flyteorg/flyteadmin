@@ -6,24 +6,24 @@ import (
 	"testing"
 	"time"
 
-	interfaces2 "github.com/lyft/flyteadmin/pkg/executioncluster/interfaces"
+	interfaces2 "github.com/flyteorg/flyteadmin/pkg/executioncluster/interfaces"
 
-	"github.com/lyft/flyteadmin/pkg/executioncluster"
-	cluster_mock "github.com/lyft/flyteadmin/pkg/executioncluster/mocks"
-	"github.com/lyft/flyteadmin/pkg/runtime"
+	"github.com/flyteorg/flyteadmin/pkg/executioncluster"
+	cluster_mock "github.com/flyteorg/flyteadmin/pkg/executioncluster/mocks"
+	"github.com/flyteorg/flyteadmin/pkg/runtime"
 
-	"github.com/lyft/flyteadmin/pkg/workflowengine/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
 
-	"github.com/lyft/flytestdlib/promutils"
+	"github.com/flyteorg/flytestdlib/promutils"
 
 	"errors"
 
-	flyte_admin_error "github.com/lyft/flyteadmin/pkg/errors"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	flyteclient "github.com/lyft/flytepropeller/pkg/client/clientset/versioned"
-	v1alpha12 "github.com/lyft/flytepropeller/pkg/client/clientset/versioned/typed/flyteworkflow/v1alpha1"
+	flyte_admin_error "github.com/flyteorg/flyteadmin/pkg/errors"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	flyteclient "github.com/flyteorg/flytepropeller/pkg/client/clientset/versioned"
+	v1alpha12 "github.com/flyteorg/flytepropeller/pkg/client/clientset/versioned/typed/flyteworkflow/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 	k8_api_err "k8s.io/apimachinery/pkg/api/errors"
@@ -75,16 +75,16 @@ type FakeFlyteWorkflow struct {
 	deleteCallback deleteCallback
 }
 
-func (b *FakeFlyteWorkflow) Create(wf *v1alpha1.FlyteWorkflow) (*v1alpha1.FlyteWorkflow, error) {
+func (b *FakeFlyteWorkflow) Create(ctx context.Context, wf *v1alpha1.FlyteWorkflow, opts v1.CreateOptions) (*v1alpha1.FlyteWorkflow, error) {
 	if b.createCallback != nil {
 		return b.createCallback(wf)
 	}
 	return nil, nil
 }
 
-func (b *FakeFlyteWorkflow) Delete(name string, options *v1.DeleteOptions) error {
+func (b *FakeFlyteWorkflow) Delete(ctx context.Context, name string, options v1.DeleteOptions) error {
 	if b.deleteCallback != nil {
-		return b.deleteCallback(name, options)
+		return b.deleteCallback(name, &options)
 	}
 	return nil
 }

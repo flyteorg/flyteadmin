@@ -2,6 +2,7 @@ package clusterresource
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -11,17 +12,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	apiMachineryRuntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 
 	v1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/lyft/flyteadmin/pkg/manager/impl/resources"
-	managerinterfaces "github.com/lyft/flyteadmin/pkg/manager/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/resources"
+	managerinterfaces "github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 
-	"github.com/lyft/flyteadmin/pkg/executioncluster/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/executioncluster/interfaces"
 
-	"github.com/lyft/flyteadmin/pkg/common"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
@@ -29,15 +35,15 @@ import (
 
 	"k8s.io/client-go/kubernetes/scheme"
 
-	"github.com/lyft/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/logger"
 	"google.golang.org/grpc/codes"
 
-	"github.com/lyft/flyteadmin/pkg/errors"
-	"github.com/lyft/flyteadmin/pkg/repositories"
-	repositoriesInterfaces "github.com/lyft/flyteadmin/pkg/repositories/interfaces"
-	"github.com/lyft/flyteadmin/pkg/runtime"
-	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
-	"github.com/lyft/flytestdlib/promutils"
+	"github.com/flyteorg/flyteadmin/pkg/errors"
+	"github.com/flyteorg/flyteadmin/pkg/repositories"
+	repositoriesInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/runtime"
+	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	"github.com/flyteorg/flytestdlib/promutils"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
@@ -218,6 +224,46 @@ func (c *controller) getCustomTemplateValues(
 	return customTemplateValues, nil
 }
 
+/*
+func createObject(kubeClientset kubernetes.Interface, restConfig rest.Config, obj apiMachineryRuntime.Object) (apiMachineryRuntime.Object, error) {
+	// Create a REST mapper that tracks information about the available resources in the cluster.
+	groupResources, err := restmapper.GetAPIGroupResources(kubeClientset.Discovery())
+	if err != nil {
+		return nil, err
+	}
+	rm := restmapper.NewDiscoveryRESTMapper(groupResources)
+
+	// Get some metadata needed to make the REST request.
+	gvk := obj.GetObjectKind().GroupVersionKind()
+	gk := schema.GroupKind{Group: gvk.Group, Kind: gvk.Kind}
+	mapping, err := rm.RESTMapping(gk, gvk.Version)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a client specifically for creating the object.
+	restClient, err := newRestClient(restConfig, mapping.GroupVersionKind.GroupVersion())
+	if err != nil {
+		return nil, err
+	}
+
+	// Use the REST helper to create the object in the "default" namespace.
+	restHelper := cliResource.NewHelper(restClient, mapping)
+	return restHelper.Create("default", true, obj)
+}
+
+func newRestClient(restConfig rest.Config, gv schema.GroupVersion) (rest.Interface, error) {
+	restConfig.GroupVersion = &gv
+	if len(gv.Group) == 0 {
+		restConfig.APIPath = "/api"
+	} else {
+		restConfig.APIPath = "/apis"
+	}
+
+	return rest.RESTClientFor(&restConfig)
+}
+*/
+
 // This function loops through the kubernetes resource template files in the configured template directory.
 // For each unapplied template file (wrt the namespace) this func attempts to
 //   1) read the template file
@@ -308,7 +354,20 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 			k8sObjCopy := k8sObj.DeepCopyObject()
 			logger.Debugf(ctx, "Attempting to create resource [%+v] in cluster [%v] for namespace [%s]",
 				k8sObj.GetObjectKind().GroupVersionKind().Kind, target.ID, namespace)
-			err = target.Client.Create(ctx, k8sObjCopy)
+			groupVersionResource := schema.GroupVersionResource{
+				Resource: k8sObjCopy.GetObjectKind().GroupVersionKind().Kind,
+				Version:  k8sObjCopy.GetObjectKind().GroupVersionKind().Version,
+			}
+			unstructuredObj, err := apiMachineryRuntime.DefaultUnstructuredConverter.ToUnstructured(k8sObjCopy)
+			if err != nil {
+				logger.Debugf(ctx, "Failed to create unstructuredObj from [%+v] in namespace [%s] skipping",
+					k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace)
+				collectedErrs = append(collectedErrs, err)
+				continue
+			}
+			_, err = target.DynamicClient.Resource(groupVersionResource).Namespace(namespace).Create(ctx, &unstructured.Unstructured{
+				Object: unstructuredObj,
+			}, metav1.CreateOptions{})
 			if err != nil {
 				if k8serrors.IsAlreadyExists(err) {
 					logger.Debugf(ctx, "Type [%+v] in namespace [%s] already exists - attempting update instead",
@@ -316,9 +375,31 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 					c.metrics.AppliedTemplateExists.Inc()
 
 					if ok := strategicPatchTypes[k8sObjCopy.GetObjectKind().GroupVersionKind().Kind]; ok {
-						err = target.Client.Patch(ctx, k8sObjCopy, StrategicMergeFrom(k8sObjCopy))
+						data, err := json.Marshal(k8sObjCopy)
+						if err != nil {
+							c.metrics.TemplateUpdateErrors.Inc()
+							logger.Warningf(ctx, "Failed to marshal resource [%+v] in namespace [%s] with to json with err :%v",
+								k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace, err)
+							collectedErrs = append(collectedErrs, err)
+						}
+						_, err = target.DynamicClient.Resource(groupVersionResource).Namespace(namespace).Patch(ctx, "",
+							types.StrategicMergePatchType, data, metav1.PatchOptions{})
+						if err != nil {
+							c.metrics.TemplateUpdateErrors.Inc()
+							logger.Warningf(ctx, "Failed to merge patch resource [%+v] in namespace [%s] with to json with err :%v",
+								k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace, err)
+							collectedErrs = append(collectedErrs, err)
+						}
 					} else {
-						err = target.Client.Update(ctx, k8sObjCopy)
+						_, err = target.DynamicClient.Resource(groupVersionResource).Namespace(namespace).Update(ctx, &unstructured.Unstructured{
+							Object: unstructuredObj,
+						}, metav1.UpdateOptions{})
+						if err != nil {
+							c.metrics.TemplateUpdateErrors.Inc()
+							logger.Warningf(ctx, "Failed to update resource [%+v] in namespace [%s] with to json with err :%v",
+								k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace, err)
+							collectedErrs = append(collectedErrs, err)
+						}
 					}
 
 					if err != nil {

@@ -4,17 +4,17 @@ import (
 	"context"
 	"math/rand"
 
-	"github.com/lyft/flyteadmin/pkg/manager/impl/resources"
-	"github.com/lyft/flyteadmin/pkg/manager/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/resources"
+	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 
-	"github.com/lyft/flyteadmin/pkg/repositories"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteadmin/pkg/repositories"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 
-	"github.com/lyft/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/logger"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
-	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
+	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 )
 
 type tag = string
