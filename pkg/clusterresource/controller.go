@@ -397,7 +397,7 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 			// 7. Create or Update the object with SSA
 			//     types.ApplyPatchType indicates SSA.
 			//     FieldManager specifies the field owner ID.
-			_, err = dr.Patch(ctx, obj.GetName(), types.ApplyPatchType, data, metav1.PatchOptions{})
+			_, err = dr.Create(ctx, obj, metav1.CreateOptions{})
 
 			if err != nil {
 				if k8serrors.IsAlreadyExists(err) {
