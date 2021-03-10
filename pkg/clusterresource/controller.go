@@ -2,7 +2,7 @@ package clusterresource
 
 import (
 	"context"
-	"encoding/json"
+	//"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -20,7 +20,7 @@ import (
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/types"
+	//"k8s.io/apimachinery/pkg/types"
 
 	v1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -389,10 +389,10 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 			}
 
 			// 6. Marshal object into JSON
-			data, err := json.Marshal(obj)
+			/*data, err := json.Marshal(obj)
 			if err != nil {
 				return err
-			}
+			}*/
 
 			// 7. Create or Update the object with SSA
 			//     types.ApplyPatchType indicates SSA.
