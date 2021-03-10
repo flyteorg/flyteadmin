@@ -14,7 +14,7 @@ require (
 	github.com/evanphx/json-patch v4.9.0+incompatible
 	github.com/flyteorg/flyteidl v0.18.15
 	github.com/flyteorg/flytepropeller v0.7.0
-	github.com/flyteorg/flytestdlib v0.3.13
+	github.com/flyteorg/flytestdlib v0.3.14
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
@@ -43,14 +43,8 @@ require (
 	gopkg.in/gormigrate.v1 v1.6.0
 	k8s.io/api v0.20.4
 	k8s.io/apimachinery v0.20.4
-	k8s.io/cli-runtime v0.20.4
 	k8s.io/client-go v0.20.4
 	sigs.k8s.io/controller-runtime v0.8.2
 )
-
-// Pin the version of client-go to something that's compatible with katrogan's fork of api and apimachinery
-// Type the following
-//   replace k8s.io/client-go => k8s.io/client-go kubernetes-1.16.2
-// and it will be replaced with the 'sha' variant of the version
 
 replace github.com/GoogleCloudPlatform/spark-on-k8s-operator => github.com/lyft/spark-on-k8s-operator v0.1.3
