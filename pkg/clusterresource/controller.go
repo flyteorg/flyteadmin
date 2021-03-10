@@ -2,6 +2,9 @@ package clusterresource
 
 import (
 	"context"
+	"encoding/json"
+	"k8s.io/apimachinery/pkg/types"
+
 	//"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -388,15 +391,6 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 				dr = target.DynamicClient.Resource(mapping.Resource)
 			}
 
-			// 6. Marshal object into JSON
-			/*data, err := json.Marshal(obj)
-			if err != nil {
-				return err
-			}*/
-
-			// 7. Create or Update the object with SSA
-			//     types.ApplyPatchType indicates SSA.
-			//     FieldManager specifies the field owner ID.
 			_, err = dr.Create(ctx, obj, metav1.CreateOptions{})
 
 			if err != nil {
@@ -407,27 +401,29 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 					c.metrics.AppliedTemplateExists.Inc()
 
 					if ok := strategicPatchTypes[k8sObjCopy.GetObjectKind().GroupVersionKind().Kind]; ok {
-						/*data, err := json.Marshal(k8sObjCopy)
+						data, err := json.Marshal(obj)
 						if err != nil {
 							c.metrics.TemplateUpdateErrors.Inc()
-							logger.Warningf(ctx, "Failed to marshal resource [%+v] in namespace [%s] with to json with err :%v",
+							logger.Warningf(ctx, "Failed to marshal resource [%+v] in namespace [%s] to json with err: %v",
 								k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace, err)
 							collectedErrs = append(collectedErrs, err)
 						}
-						_, err = target.DynamicClient.Resource(groupVersionResource).Namespace(namespace).Patch(ctx, "",
+						_, err = target.DynamicClient.Resource(mapping.Resource).Namespace(namespace).Patch(ctx, obj.GetName(),
 							types.StrategicMergePatchType, data, metav1.PatchOptions{})
 						if err != nil {
 							c.metrics.TemplateUpdateErrors.Inc()
-							logger.Warningf(ctx, "Failed to merge patch resource [%+v] in namespace [%s] with to json with err :%v",
+							logger.Warningf(ctx, "Failed to merge patch resource [%+v] in namespace [%s] with err: %v",
 								k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace, err)
 							collectedErrs = append(collectedErrs, err)
-						}*/
+						}
 					} else {
 						var dr dynamic.ResourceInterface
-						if k8sObj.GetObjectKind().GroupVersionKind().Kind == "Namespace"{
-							dr = target.DynamicClient.Resource(mapping.Resource)
-						} else {
+						if mapping.Scope.Name() == meta.RESTScopeNameNamespace {
+							// namespaced resources should specify the namespace
 							dr = target.DynamicClient.Resource(mapping.Resource).Namespace(namespace)
+						} else {
+							// for cluster-wide resources
+							dr = target.DynamicClient.Resource(mapping.Resource)
 						}
 						_, err = dr.Update(ctx, obj, metav1.UpdateOptions{})
 						if err != nil && !k8serrors.IsAlreadyExists(err) {
