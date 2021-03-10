@@ -424,7 +424,7 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 					} else {
 						dr = target.DynamicClient.Resource(mapping.Resource).Namespace(namespace)
 						dr.Update(ctx, obj, metav1.UpdateOptions{})
-						if err != nil {
+						if err != nil && !k8serrors.IsAlreadyExists(err) {
 							c.metrics.TemplateUpdateErrors.Inc()
 							logger.Warningf(ctx, "Failed to update resource [%+v] in namespace [%s] with to json with err :%v",
 								k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace, err)
