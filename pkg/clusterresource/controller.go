@@ -245,7 +245,7 @@ func getDynamicResourceInterface(mapping *meta.RESTMapping, dynamicClient dynami
 	return dynamicClient.Resource(mapping.Resource)
 }
 
-// This represents the minimum closure of objects generated from a template file for an individual k8s cluster that
+// This represents the minimum closure of objects generated from a template file that
 // allows for dynamically creating (or updating) the resource using server side apply.
 type dynamicResource struct {
 	obj     *unstructured.Unstructured
@@ -255,7 +255,7 @@ type dynamicResource struct {
 // This function borrows heavily from the excellent example code here:
 // https://ymmt2005.hatenablog.com/entry/2020/04/14/An_example_of_using_dynamic_client_of_k8s.io/client-go#Background-Server-Side-Apply
 // to dynamically discover the GroupVersionResource for the templatized k8s object from the cluster resource config files
-// for which a dynamic client can use to create or mutate the resource.
+// which a dynamic client can use to create or mutate the resource.
 func prepareDynamicCreate(target executioncluster.ExecutionTarget, config string) (dynamicResource, error) {
 	dc, err := discovery.NewDiscoveryClientForConfig(&target.Config)
 	if err != nil {
