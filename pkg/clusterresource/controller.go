@@ -3,17 +3,13 @@ package clusterresource
 import (
 	"context"
 	"encoding/json"
+
+	"github.com/flyteorg/flyteadmin/pkg/executioncluster"
 	"k8s.io/apimachinery/pkg/types"
 
 	//"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
-	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/discovery/cached/memory"
-	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/restmapper"
 	"os"
 	"path"
 	"path/filepath"
@@ -21,8 +17,16 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/discovery/cached/memory"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/restmapper"
+
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
 	//"k8s.io/apimachinery/pkg/types"
 
 	v1 "k8s.io/api/rbac/v1"
@@ -231,45 +235,52 @@ func (c *controller) getCustomTemplateValues(
 	return customTemplateValues, nil
 }
 
-/*
-func createObject(kubeClientset kubernetes.Interface, restConfig rest.Config, obj apiMachineryRuntime.Object) (apiMachineryRuntime.Object, error) {
-	// Create a REST mapper that tracks information about the available resources in the cluster.
-	groupResources, err := restmapper.GetAPIGroupResources(kubeClientset.Discovery())
-	if err != nil {
-		return nil, err
+// Obtains the REST interface for a GroupVersionResource
+func getDynamicResourceInterface(mapping *meta.RESTMapping, dynamicClient dynamic.Interface, namespace NamespaceName) dynamic.ResourceInterface {
+	if mapping.Scope.Name() == meta.RESTScopeNameNamespace {
+		// namespaced resources should specify the namespace
+		return dynamicClient.Resource(mapping.Resource).Namespace(namespace)
 	}
-	rm := restmapper.NewDiscoveryRESTMapper(groupResources)
-
-	// Get some metadata needed to make the REST request.
-	gvk := obj.GetObjectKind().GroupVersionKind()
-	gk := schema.GroupKind{Group: gvk.Group, Kind: gvk.Kind}
-	mapping, err := rm.RESTMapping(gk, gvk.Version)
-	if err != nil {
-		return nil, err
-	}
-
-	// Create a client specifically for creating the object.
-	restClient, err := newRestClient(restConfig, mapping.GroupVersionKind.GroupVersion())
-	if err != nil {
-		return nil, err
-	}
-
-	// Use the REST helper to create the object in the "default" namespace.
-	restHelper := cliResource.NewHelper(restClient, mapping)
-	return restHelper.Create("default", true, obj)
+	// for cluster-wide resources (e.g. namespaces)
+	return dynamicClient.Resource(mapping.Resource)
 }
 
-func newRestClient(restConfig rest.Config, gv schema.GroupVersion) (rest.Interface, error) {
-	restConfig.GroupVersion = &gv
-	if len(gv.Group) == 0 {
-		restConfig.APIPath = "/api"
-	} else {
-		restConfig.APIPath = "/apis"
+// This represents the minimum closure of objects generated from a template file for an individual k8s cluster that
+// allows for dynamically creating (or updating) the resource using server side apply.
+type dynamicResource struct {
+	obj     *unstructured.Unstructured
+	mapping *meta.RESTMapping
+}
+
+// This function borrows heavily from the excellent example code here:
+// https://ymmt2005.hatenablog.com/entry/2020/04/14/An_example_of_using_dynamic_client_of_k8s.io/client-go#Background-Server-Side-Apply
+// to dynamically discover the GroupVersionResource for the templatized k8s object from the cluster resource config files
+// for which a dynamic client can use to create or mutate the resource.
+func prepareDynamicCreate(target executioncluster.ExecutionTarget, config string) (dynamicResource, error) {
+	dc, err := discovery.NewDiscoveryClientForConfig(&target.Config)
+	if err != nil {
+		return dynamicResource{}, err
+	}
+	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(dc))
+
+	decUnstructured := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
+	obj := &unstructured.Unstructured{}
+	_, gvk, err := decUnstructured.Decode([]byte(config), nil, obj)
+	if err != nil {
+		return dynamicResource{}, err
 	}
 
-	return rest.RESTClientFor(&restConfig)
+	// Find GVR
+	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+	if err != nil {
+		return dynamicResource{}, err
+	}
+
+	return dynamicResource{
+		obj:     obj,
+		mapping: mapping,
+	}, nil
 }
-*/
 
 // This function loops through the kubernetes resource template files in the configured template directory.
 // For each unapplied template file (wrt the namespace) this func attempts to
@@ -361,90 +372,64 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 			k8sObjCopy := k8sObj.DeepCopyObject()
 			logger.Debugf(ctx, "Attempting to create resource [%+v] in cluster [%v] for namespace [%s]",
 				k8sObj.GetObjectKind().GroupVersionKind().Kind, target.ID, namespace)
-			//err = target.Client.Create(ctx, k8sObjCopy)
-			dc, err := discovery.NewDiscoveryClientForConfig(&target.Config)
+
+			dynamicObj, err := prepareDynamicCreate(target, config)
 			if err != nil {
-				return err
-			}
-			mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(dc))
-
-			decUnstructured := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
-			obj := &unstructured.Unstructured{}
-			_, gvk, err := decUnstructured.Decode([]byte(config), nil, obj)
-			if err != nil {
-				return err
+				logger.Warningf(ctx, "Failed to transform kubernetes template file for [%+v] for namespace [%s] "+
+					"into a dynamic unstructured mapping with err: %v", k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace, err)
+				collectedErrs = append(collectedErrs, err)
+				c.metrics.KubernetesResourcesCreateErrors.Inc()
+				continue
 			}
 
-			// 4. Find GVR
-			mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
-			if err != nil {
-				return err
-			}
-
-			// 5. Obtain REST interface for the GVR
-			var dr dynamic.ResourceInterface
-			if mapping.Scope.Name() == meta.RESTScopeNameNamespace {
-				// namespaced resources should specify the namespace
-				dr = target.DynamicClient.Resource(mapping.Resource).Namespace(namespace)
-			} else {
-				// for cluster-wide resources
-				dr = target.DynamicClient.Resource(mapping.Resource)
-			}
-
-			_, err = dr.Create(ctx, obj, metav1.CreateOptions{})
+			dr := getDynamicResourceInterface(dynamicObj.mapping, target.DynamicClient, namespace)
+			_, err = dr.Create(ctx, dynamicObj.obj, metav1.CreateOptions{})
 
 			if err != nil {
 				if k8serrors.IsAlreadyExists(err) {
-					err = nil
 					logger.Debugf(ctx, "Type [%+v] in namespace [%s] already exists - attempting update instead",
 						k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace)
 					c.metrics.AppliedTemplateExists.Inc()
 
+					// Update can be performed in 1 of 2 ways. For specific kinds, like ServiceAccount, we use merge-patch.
+					// For all other kinds we use a simple update.
 					if ok := strategicPatchTypes[k8sObjCopy.GetObjectKind().GroupVersionKind().Kind]; ok {
-						data, err := json.Marshal(obj)
+						data, err := json.Marshal(dynamicObj.obj)
 						if err != nil {
 							c.metrics.TemplateUpdateErrors.Inc()
 							logger.Warningf(ctx, "Failed to marshal resource [%+v] in namespace [%s] to json with err: %v",
 								k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace, err)
 							collectedErrs = append(collectedErrs, err)
+							continue
 						}
-						_, err = target.DynamicClient.Resource(mapping.Resource).Namespace(namespace).Patch(ctx, obj.GetName(),
+
+						dr := getDynamicResourceInterface(dynamicObj.mapping, target.DynamicClient, namespace)
+						_, err = dr.Patch(ctx, dynamicObj.obj.GetName(),
 							types.StrategicMergePatchType, data, metav1.PatchOptions{})
 						if err != nil {
 							c.metrics.TemplateUpdateErrors.Inc()
 							logger.Warningf(ctx, "Failed to merge patch resource [%+v] in namespace [%s] with err: %v",
 								k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace, err)
 							collectedErrs = append(collectedErrs, err)
+							continue
 						}
 					} else {
-						var dr dynamic.ResourceInterface
-						if mapping.Scope.Name() == meta.RESTScopeNameNamespace {
-							// namespaced resources should specify the namespace
-							dr = target.DynamicClient.Resource(mapping.Resource).Namespace(namespace)
-						} else {
-							// for cluster-wide resources
-							dr = target.DynamicClient.Resource(mapping.Resource)
-						}
-						_, err = dr.Update(ctx, obj, metav1.UpdateOptions{})
+						dr := getDynamicResourceInterface(dynamicObj.mapping, target.DynamicClient, namespace)
+						_, err = dr.Update(ctx, dynamicObj.obj, metav1.UpdateOptions{})
 						if err != nil && !k8serrors.IsAlreadyExists(err) {
 							c.metrics.TemplateUpdateErrors.Inc()
 							logger.Warningf(ctx, "Failed to dynamically update resource [%+v] in namespace [%s] with err :%v",
 								k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace, err)
 							collectedErrs = append(collectedErrs, err)
+							continue
 						}
 					}
 
-					if err != nil && !k8serrors.IsAlreadyExists(err) {
-						c.metrics.TemplateUpdateErrors.Inc()
-						logger.Warningf(ctx, "Failed to update resource [%+v] in namespace [%s] with err :%v",
-							k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace, err)
-						collectedErrs = append(collectedErrs, err)
-					} else {
-						logger.Debugf(ctx, "Successfully updated resource [%+v] in namespace [%s]",
-							k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace)
-					}
+					logger.Debugf(ctx, "Successfully updated resource [%+v] in namespace [%s]",
+						k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace)
 					c.appliedTemplates[namespace][templateFile.Name()] = templateFile.ModTime()
 				} else {
+					// Some error other than AlreadyExists was raised when we tried to Create the k8s object.
 					c.metrics.KubernetesResourcesCreateErrors.Inc()
 					logger.Warningf(ctx, "Failed to create kubernetes object from config template [%s] for namespace [%s] with err: %v",
 						templateFileName, namespace, err)
