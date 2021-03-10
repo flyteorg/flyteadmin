@@ -423,7 +423,12 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 							collectedErrs = append(collectedErrs, err)
 						}*/
 					} else {
-						dr = target.DynamicClient.Resource(mapping.Resource).Namespace(namespace)
+						var dr dynamic.ResourceInterface
+						if k8sObj.GetObjectKind().GroupVersionKind().Kind == "Namespace"{
+							dr = target.DynamicClient.Resource(mapping.Resource)
+						} else {
+							dr = target.DynamicClient.Resource(mapping.Resource).Namespace(namespace)
+						}
 						_, err = dr.Update(ctx, obj, metav1.UpdateOptions{})
 						if err != nil && !k8serrors.IsAlreadyExists(err) {
 							c.metrics.TemplateUpdateErrors.Inc()
