@@ -5,6 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/discovery/cached/memory"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/restmapper"
 	"os"
 	"path"
 	"path/filepath"
@@ -14,8 +20,6 @@ import (
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	apiMachineryRuntime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 
 	v1 "k8s.io/api/rbac/v1"
@@ -354,20 +358,47 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 			k8sObjCopy := k8sObj.DeepCopyObject()
 			logger.Debugf(ctx, "Attempting to create resource [%+v] in cluster [%v] for namespace [%s]",
 				k8sObj.GetObjectKind().GroupVersionKind().Kind, target.ID, namespace)
-			groupVersionResource := schema.GroupVersionResource{
-				Resource: k8sObjCopy.GetObjectKind().GroupVersionKind().Kind,
-				Version:  k8sObjCopy.GetObjectKind().GroupVersionKind().Version,
-			}
-			unstructuredObj, err := apiMachineryRuntime.DefaultUnstructuredConverter.ToUnstructured(k8sObjCopy)
+			//err = target.Client.Create(ctx, k8sObjCopy)
+			dc, err := discovery.NewDiscoveryClientForConfig(&target.Config)
 			if err != nil {
-				logger.Debugf(ctx, "Failed to create unstructuredObj from [%+v] in namespace [%s] skipping",
-					k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace)
-				collectedErrs = append(collectedErrs, err)
-				continue
+				return err
 			}
-			_, err = target.DynamicClient.Resource(groupVersionResource).Namespace(namespace).Create(ctx, &unstructured.Unstructured{
-				Object: unstructuredObj,
-			}, metav1.CreateOptions{})
+			mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(dc))
+
+			decUnstructured := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
+			obj := &unstructured.Unstructured{}
+			_, gvk, err := decUnstructured.Decode([]byte(config), nil, obj)
+			if err != nil {
+				return err
+			}
+
+			// 4. Find GVR
+			mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+			if err != nil {
+				return err
+			}
+
+			// 5. Obtain REST interface for the GVR
+			var dr dynamic.ResourceInterface
+			if mapping.Scope.Name() == meta.RESTScopeNameNamespace {
+				// namespaced resources should specify the namespace
+				dr = target.DynamicClient.Resource(mapping.Resource).Namespace(namespace)
+			} else {
+				// for cluster-wide resources
+				dr = target.DynamicClient.Resource(mapping.Resource)
+			}
+
+			// 6. Marshal object into JSON
+			data, err := json.Marshal(obj)
+			if err != nil {
+				return err
+			}
+
+			// 7. Create or Update the object with SSA
+			//     types.ApplyPatchType indicates SSA.
+			//     FieldManager specifies the field owner ID.
+			_, err = dr.Patch(ctx, obj.GetName(), types.ApplyPatchType, data, metav1.PatchOptions{})
+
 			if err != nil {
 				if k8serrors.IsAlreadyExists(err) {
 					logger.Debugf(ctx, "Type [%+v] in namespace [%s] already exists - attempting update instead",
@@ -375,7 +406,7 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 					c.metrics.AppliedTemplateExists.Inc()
 
 					if ok := strategicPatchTypes[k8sObjCopy.GetObjectKind().GroupVersionKind().Kind]; ok {
-						data, err := json.Marshal(k8sObjCopy)
+						/*data, err := json.Marshal(k8sObjCopy)
 						if err != nil {
 							c.metrics.TemplateUpdateErrors.Inc()
 							logger.Warningf(ctx, "Failed to marshal resource [%+v] in namespace [%s] with to json with err :%v",
@@ -389,11 +420,10 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 							logger.Warningf(ctx, "Failed to merge patch resource [%+v] in namespace [%s] with to json with err :%v",
 								k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace, err)
 							collectedErrs = append(collectedErrs, err)
-						}
+						}*/
 					} else {
-						_, err = target.DynamicClient.Resource(groupVersionResource).Namespace(namespace).Update(ctx, &unstructured.Unstructured{
-							Object: unstructuredObj,
-						}, metav1.UpdateOptions{})
+						dr = target.DynamicClient.Resource(mapping.Resource).Namespace(namespace)
+						dr.Update(ctx, obj, metav1.UpdateOptions{})
 						if err != nil {
 							c.metrics.TemplateUpdateErrors.Inc()
 							logger.Warningf(ctx, "Failed to update resource [%+v] in namespace [%s] with to json with err :%v",
