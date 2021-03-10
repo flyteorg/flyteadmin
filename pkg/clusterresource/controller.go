@@ -400,6 +400,8 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 			_, err = dr.Create(ctx, obj, metav1.CreateOptions{})
 
 			if err != nil {
+				logger.Debugf(ctx, "Failed to create [%+v] in namespace [%s] with err %+v",
+					k8serrors.ReasonForError(err))
 				if k8serrors.IsAlreadyExists(err) {
 					logger.Debugf(ctx, "Type [%+v] in namespace [%s] already exists - attempting update instead",
 						k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace)
