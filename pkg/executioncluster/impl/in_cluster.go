@@ -52,6 +52,7 @@ func NewInCluster(scope promutils.Scope, kubeConfig, master string) (interfaces.
 			Client:        client,
 			FlyteClient:   flyteClient,
 			DynamicClient: dynamicClient,
+			Config: *clientConfig,
 		},
 	}, nil
 }
