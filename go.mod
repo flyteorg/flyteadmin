@@ -13,7 +13,7 @@ require (
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/evanphx/json-patch v4.9.0+incompatible
 	github.com/flyteorg/flyteidl v0.18.15
-	github.com/flyteorg/flytepropeller v0.6.3-0.20210308215259-090a69297310
+	github.com/flyteorg/flytepropeller v0.7.0
 	github.com/flyteorg/flytestdlib v0.3.13
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/gogo/protobuf v1.3.2
