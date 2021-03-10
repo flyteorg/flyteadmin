@@ -427,13 +427,13 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 						_, err = dr.Update(ctx, obj, metav1.UpdateOptions{})
 						if err != nil && !k8serrors.IsAlreadyExists(err) {
 							c.metrics.TemplateUpdateErrors.Inc()
-							logger.Warningf(ctx, "Failed to update resource [%+v] in namespace [%s] with to json with err :%v",
+							logger.Warningf(ctx, "Failed to dynamically update resource [%+v] in namespace [%s] with err :%v",
 								k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace, err)
 							collectedErrs = append(collectedErrs, err)
 						}
 					}
 
-					if err != nil {
+					if err != nil && !k8serrors.IsAlreadyExists(err) {
 						c.metrics.TemplateUpdateErrors.Inc()
 						logger.Warningf(ctx, "Failed to update resource [%+v] in namespace [%s] with err :%v",
 							k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace, err)
