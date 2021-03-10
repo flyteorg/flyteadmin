@@ -400,9 +400,8 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 			_, err = dr.Create(ctx, obj, metav1.CreateOptions{})
 
 			if err != nil {
-				logger.Debugf(ctx, "Failed to create [%+v] in namespace [%s] with err %+v",
-					k8serrors.ReasonForError(err))
 				if k8serrors.IsAlreadyExists(err) {
+					err = nil
 					logger.Debugf(ctx, "Type [%+v] in namespace [%s] already exists - attempting update instead",
 						k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace)
 					c.metrics.AppliedTemplateExists.Inc()
@@ -425,7 +424,7 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 						}*/
 					} else {
 						dr = target.DynamicClient.Resource(mapping.Resource).Namespace(namespace)
-						dr.Update(ctx, obj, metav1.UpdateOptions{})
+						_, err = dr.Update(ctx, obj, metav1.UpdateOptions{})
 						if err != nil && !k8serrors.IsAlreadyExists(err) {
 							c.metrics.TemplateUpdateErrors.Inc()
 							logger.Warningf(ctx, "Failed to update resource [%+v] in namespace [%s] with to json with err :%v",
