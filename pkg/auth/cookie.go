@@ -101,6 +101,7 @@ func NewCsrfToken(seed int64) string {
 	rand.Seed(seed)
 	csrfToken := [10]rune{}
 	for i := 0; i < len(csrfToken); i++ {
+		/* #nosec */
 		csrfToken[i] = AllowedChars[rand.Intn(len(AllowedChars))]
 	}
 	return string(csrfToken[:])

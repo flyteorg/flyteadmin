@@ -79,6 +79,7 @@ func (q *queueAllocatorImpl) GetQueue(ctx context.Context, identifier core.Ident
 			if !ok {
 				continue
 			}
+			/* #nosec */
 			return matches[rand.Intn(len(matches))]
 		}
 	}
@@ -101,6 +102,7 @@ func (q *queueAllocatorImpl) GetQueue(ctx context.Context, identifier core.Ident
 		if !ok {
 			continue
 		}
+		/* #nosec */
 		return matches[rand.Intn(len(matches))]
 	}
 	logger.Infof(ctx, "found no matching queue for [%+v]", identifier)

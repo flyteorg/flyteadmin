@@ -15,6 +15,7 @@ const AllowedExecutionIDStr = "abcdefghijklmnopqrstuvwxyz1234567890"
 var AllowedExecutionIDStartChars = []rune(AllowedExecutionIDStartCharStr)
 var AllowedExecutionIDChars = []rune(AllowedExecutionIDStr)
 
+/* #nosec */
 func GetExecutionName(seed int64) string {
 	executionName := make([]rune, ExecutionIDLength)
 	rand.Seed(seed)
