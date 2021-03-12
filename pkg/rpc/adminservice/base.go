@@ -37,7 +37,7 @@ type AdminService struct {
 	ProjectManager       interfaces.ProjectInterface
 	ResourceManager      interfaces.ResourceInterface
 	NamedEntityManager   interfaces.NamedEntityInterface
-	VersionManager   interfaces.VersionInterface
+	VersionManager       interfaces.VersionInterface
 	Metrics              AdminMetrics
 }
 
@@ -137,7 +137,7 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 		adminScope.NewSubScope("workflow_manager"))
 	namedEntityManager := manager.NewNamedEntityManager(db, configuration, adminScope.NewSubScope("named_entity_manager"))
 	executionManager := manager.NewExecutionManager(db, configuration, dataStorageClient, workflowExecutor, adminScope.NewSubScope("execution_manager"), adminScope.NewSubScope("user_execution_metrics"), publisher, urlData, workflowManager, namedEntityManager, eventPublisher)
-	versionManager := manager.NewVersionManager();
+	versionManager := manager.NewVersionManager()
 
 	scheduledWorkflowExecutor := workflowScheduler.GetWorkflowExecutor(executionManager, launchPlanManager)
 	logger.Info(context.Background(), "Successfully initialized a new scheduled workflow executor")
@@ -163,7 +163,7 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 		LaunchPlanManager:  launchPlanManager,
 		ExecutionManager:   executionManager,
 		NamedEntityManager: namedEntityManager,
-		VersionManager: versionManager,
+		VersionManager:     versionManager,
 		NodeExecutionManager: manager.NewNodeExecutionManager(db, configuration, dataStorageClient,
 			adminScope.NewSubScope("node_execution_manager"), urlData, eventPublisher),
 		TaskExecutionManager: manager.NewTaskExecutionManager(db, configuration, dataStorageClient,
