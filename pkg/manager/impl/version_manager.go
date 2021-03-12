@@ -15,16 +15,16 @@ type VersionManager struct {
 
 func (v *VersionManager) GetVersion(_ context.Context) (*admin.Version, error) {
 	return &admin.Version{
-		Version : v.Version,
-		Build: v.Build,
+		Version:   v.Version,
+		Build:     v.Build,
 		BuildTime: v.BuildTime,
 	}, nil
 }
 
 func NewVersionManager() interfaces.VersionInterface {
 	return &VersionManager{
-		Version : adminversion.Version,
 		Build: adminversion.Build,
+		Version: adminversion.Version,
 		BuildTime: adminversion.BuildTime,
 	}
 }

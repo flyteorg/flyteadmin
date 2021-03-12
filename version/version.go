@@ -8,6 +8,7 @@ import (
 
 // This module provides the ability to inject Build (git sha) and Version information at compile time.
 // To set these values invoke go build as follows
+
 // go build -ldflags “-X github.com/flyteorg/flyteadmin/version.Build=xyz -X github.com/flyteorg/flyteadmin/version.Version=1.2.3"
 // will provide the build and version information
 var (
@@ -26,4 +27,3 @@ func LogBuildInformation(appName string) {
 	logrus.Infof("App [%s], Version [%s], BuildSHA [%s], BuildTS [%s]", appName, Version, Build, BuildTime)
 	logrus.Info("------------------------------------------------------------------------")
 }
-
