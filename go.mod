@@ -12,7 +12,7 @@ require (
 	github.com/bradfitz/gomemcache v0.0.0-20190913173617-a41fca850d0b // indirect
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/evanphx/json-patch v4.9.0+incompatible
-	github.com/flyteorg/flyteidl v0.18.15
+	github.com/flyteorg/flyteidl v0.18.20
 	github.com/flyteorg/flytepropeller v0.7.0
 	github.com/flyteorg/flytestdlib v0.3.14
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
