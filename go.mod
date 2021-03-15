@@ -47,4 +47,7 @@ require (
 	sigs.k8s.io/controller-runtime v0.8.2
 )
 
-replace github.com/GoogleCloudPlatform/spark-on-k8s-operator => github.com/lyft/spark-on-k8s-operator v0.1.3
+replace (
+	github.com/GoogleCloudPlatform/spark-on-k8s-operator => github.com/lyft/spark-on-k8s-operator v0.1.3
+	github.com/flyteorg/flytepropeller => github.com/flyteorg/flytepropeller v0.7.1-0.20210312020915-63d07ebc19fb
+)
