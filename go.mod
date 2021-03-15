@@ -13,7 +13,7 @@ require (
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/evanphx/json-patch v4.9.0+incompatible
 	github.com/flyteorg/flyteidl v0.18.20
-	github.com/flyteorg/flytepropeller v0.7.0
+	github.com/flyteorg/flytepropeller v0.7.1
 	github.com/flyteorg/flytestdlib v0.3.14
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/gogo/protobuf v1.3.2
@@ -45,9 +45,4 @@ require (
 	k8s.io/apimachinery v0.20.4
 	k8s.io/client-go v0.20.4
 	sigs.k8s.io/controller-runtime v0.8.2
-)
-
-replace (
-	github.com/GoogleCloudPlatform/spark-on-k8s-operator => github.com/lyft/spark-on-k8s-operator v0.1.3
-	github.com/flyteorg/flytepropeller => github.com/flyteorg/flytepropeller v0.7.1-0.20210312020915-63d07ebc19fb
 )
