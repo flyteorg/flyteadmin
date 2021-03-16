@@ -89,6 +89,7 @@ func (c *FlytePropeller) addPermissions(launchPlan admin.LaunchPlan, flyteWf *v1
 			flyteWf.Annotations = map[string]string{}
 		}
 		flyteWf.Annotations[c.roleNameKey] = role
+		flyteWf.Annotations["lyft.net/iamwait-inject"]= "required"
 	}
 }
 
