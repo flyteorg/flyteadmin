@@ -3,9 +3,7 @@ package transformers
 import (
 	"context"
 
-	"github.com/golang/protobuf/jsonpb"
-
-	"encoding/json"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/flyteorg/flyteadmin/pkg/common"
@@ -21,10 +19,8 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-var marshaler jsonpb.Marshaler
-
 var empty _struct.Struct
-var jsonEmpty, _ = marshaler.MarshalToString(&empty)
+var jsonEmpty, _ = protojson.Marshal(&empty)
 
 type CreateTaskExecutionModelInput struct {
 	Request *admin.TaskExecutionEventRequest
@@ -175,25 +171,25 @@ func mergeCustom(existing, latest *_struct.Struct) (*_struct.Struct, error) {
 	// To merge latest into existing we first create a patch object that consists of applying changes from latest to
 	// an empty struct. Then we apply this patch to existing so that the values changed in latest take precedence but
 	// barring conflicts/overwrites the values in existing stay the same.
-	jsonExisting, err := marshaler.MarshalToString(existing)
+	jsonExisting, err := protojson.Marshal(existing)
 	if err != nil {
 		return nil, err
 	}
-	jsonLatest, err := marshaler.MarshalToString(latest)
+	jsonLatest, err := protojson.Marshal(latest)
 	if err != nil {
 		return nil, err
 	}
-	patch, err := jsonpatch.CreateMergePatch([]byte(jsonEmpty), []byte(jsonLatest))
+	patch, err := jsonpatch.CreateMergePatch(jsonEmpty, jsonLatest)
 	if err != nil {
 		return nil, err
 	}
-	custom, err := jsonpatch.MergePatch([]byte(jsonExisting), patch)
+	custom, err := jsonpatch.MergePatch(jsonExisting, patch)
 	if err != nil {
 		return nil, err
 	}
 	var response _struct.Struct
 
-	err = json.Unmarshal(custom, &response)
+	err = protojson.Unmarshal(custom, &response)
 	if err != nil {
 		return nil, err
 	}
