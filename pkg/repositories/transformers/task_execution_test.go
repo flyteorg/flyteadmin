@@ -52,6 +52,19 @@ var customInfo = ptypesStruct.Struct{
 	},
 }
 
+func transformMapToStructPB(t *testing.T, thing map[string]string) *structpb.Struct {
+	b, err := json.Marshal(thing)
+	if err != nil {
+		t.Fatal(t, err)
+	}
+
+	thingAsCustom := &structpb.Struct{}
+	if err := jsonpb.UnmarshalString(string(b), thingAsCustom); err != nil {
+		t.Fatal(t, err)
+	}
+	return thingAsCustom
+}
+
 func TestAddTaskStartedState(t *testing.T) {
 	var startedAt = time.Now().UTC()
 	var startedAtProto, _ = ptypes.TimestampProto(startedAt)
@@ -273,6 +286,10 @@ func TestUpdateTaskExecutionModelRunningToFailed(t *testing.T) {
 				Uri: "uri_b",
 			},
 		},
+		CustomInfo: transformMapToStructPB(t, map[string]string{
+			"key1": "value1",
+			"key2": "value2",
+		}),
 	}
 
 	closureBytes, err := proto.Marshal(existingClosure)
@@ -331,7 +348,10 @@ func TestUpdateTaskExecutionModelRunningToFailed(t *testing.T) {
 					Uri: "uri_c",
 				},
 			},
-			CustomInfo: &customInfo,
+			CustomInfo: transformMapToStructPB(t, map[string]string{
+				"key1": "value1 updated",
+				"key3": "value3",
+			}),
 		},
 	}
 
@@ -358,7 +378,11 @@ func TestUpdateTaskExecutionModelRunningToFailed(t *testing.T) {
 				Uri: "uri_a",
 			},
 		},
-		CustomInfo: &customInfo,
+		CustomInfo: transformMapToStructPB(t, map[string]string{
+			"key1": "value1 updated",
+			"key2": "value2",
+			"key3": "value3",
+		}),
 	}
 
 	expectedClosureBytes, err := proto.Marshal(expectedClosure)
@@ -617,37 +641,16 @@ func TestMergeCustoms(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Nil(t, custom)
 	})
-	existingCustomMap := map[string]string{
+
+	// Turn JSON into a protobuf struct
+	existingCustom := transformMapToStructPB(t, map[string]string{
 		"foo": "bar",
 		"1":   "value1",
-	}
-
-	b, err := json.Marshal(existingCustomMap)
-	if err != nil {
-		t.Fatal(t, err)
-	}
-
-	// Turn JSON into a protobuf struct
-	existingCustom := &structpb.Struct{}
-	if err := jsonpb.UnmarshalString(string(b), existingCustom); err != nil {
-		t.Fatal(t, err)
-	}
-
-	latestCustomMap := map[string]string{
+	})
+	latestCustom := transformMapToStructPB(t, map[string]string{
 		"foo": "something different",
 		"2":   "value2",
-	}
-
-	b, err = json.Marshal(latestCustomMap)
-	if err != nil {
-		t.Fatal(t, err)
-	}
-
-	// Turn JSON into a protobuf struct
-	latestCustom := &structpb.Struct{}
-	if err := jsonpb.UnmarshalString(string(b), latestCustom); err != nil {
-		t.Fatal(t, err)
-	}
+	})
 
 	t.Run("use existing", func(t *testing.T) {
 		mergedCustom, err := mergeCustom(existingCustom, nil)

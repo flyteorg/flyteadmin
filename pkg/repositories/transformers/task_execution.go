@@ -224,7 +224,10 @@ func UpdateTaskExecutionModel(request *admin.TaskExecutionEventRequest, taskExec
 			return err
 		}
 	}
-	taskExecutionClosure.CustomInfo = request.Event.CustomInfo
+	taskExecutionClosure.CustomInfo, err = mergeCustom(taskExecutionClosure.CustomInfo, request.Event.CustomInfo)
+	if err != nil {
+		return errors.NewFlyteAdminErrorf(codes.Internal, "failed to merge task even custom_info with error: %v", err)
+	}
 	marshaledClosure, err := proto.Marshal(&taskExecutionClosure)
 	if err != nil {
 		return errors.NewFlyteAdminErrorf(
