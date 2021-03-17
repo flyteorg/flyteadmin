@@ -23,6 +23,9 @@ import (
 
 var marshaler jsonpb.Marshaler
 
+var empty _struct.Struct
+var jsonEmpty, _ = marshaler.MarshalToString(&empty)
+
 type CreateTaskExecutionModelInput struct {
 	Request *admin.TaskExecutionEventRequest
 }
@@ -172,11 +175,6 @@ func mergeCustom(existing, latest *_struct.Struct) (*_struct.Struct, error) {
 	// To merge latest into existing we first create a patch object that consists of applying changes from latest to
 	// an empty struct. Then we apply this patch to existing so that the values changed in latest take precedence but
 	// barring conflicts/overwrites the values in existing stay the same.
-	var empty _struct.Struct
-	jsonEmpty, err := marshaler.MarshalToString(&empty)
-	if err != nil {
-		return nil, err
-	}
 	jsonExisting, err := marshaler.MarshalToString(existing)
 	if err != nil {
 		return nil, err

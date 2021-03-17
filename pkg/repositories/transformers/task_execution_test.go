@@ -288,7 +288,6 @@ func TestUpdateTaskExecutionModelRunningToFailed(t *testing.T) {
 		},
 		CustomInfo: transformMapToStructPB(t, map[string]string{
 			"key1": "value1",
-			"key2": "value2",
 		}),
 	}
 
@@ -350,7 +349,6 @@ func TestUpdateTaskExecutionModelRunningToFailed(t *testing.T) {
 			},
 			CustomInfo: transformMapToStructPB(t, map[string]string{
 				"key1": "value1 updated",
-				"key3": "value3",
 			}),
 		},
 	}
@@ -380,8 +378,6 @@ func TestUpdateTaskExecutionModelRunningToFailed(t *testing.T) {
 		},
 		CustomInfo: transformMapToStructPB(t, map[string]string{
 			"key1": "value1 updated",
-			"key2": "value2",
-			"key3": "value3",
 		}),
 	}
 
