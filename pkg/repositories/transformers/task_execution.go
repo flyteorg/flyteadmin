@@ -3,6 +3,8 @@ package transformers
 import (
 	"context"
 
+	"github.com/golang/protobuf/jsonpb"
+
 	"encoding/json"
 
 	jsonpatch "github.com/evanphx/json-patch"
@@ -18,6 +20,8 @@ import (
 
 	"google.golang.org/grpc/codes"
 )
+
+var marshaler jsonpb.Marshaler
 
 type CreateTaskExecutionModelInput struct {
 	Request *admin.TaskExecutionEventRequest
@@ -169,23 +173,23 @@ func mergeCustom(existing, latest *_struct.Struct) (*_struct.Struct, error) {
 	// an empty struct. Then we apply this patch to existing so that the values changed in latest take precedence but
 	// barring conflicts/overwrites the values in existing stay the same.
 	var empty _struct.Struct
-	jsonEmpty, err := json.Marshal(&empty)
+	jsonEmpty, err := marshaler.MarshalToString(&empty)
 	if err != nil {
 		return nil, err
 	}
-	jsonExisting, err := json.Marshal(existing)
+	jsonExisting, err := marshaler.MarshalToString(existing)
 	if err != nil {
 		return nil, err
 	}
-	jsonLatest, err := json.Marshal(latest)
+	jsonLatest, err := marshaler.MarshalToString(latest)
 	if err != nil {
 		return nil, err
 	}
-	patch, err := jsonpatch.CreateMergePatch(jsonEmpty, jsonLatest)
+	patch, err := jsonpatch.CreateMergePatch([]byte(jsonEmpty), []byte(jsonLatest))
 	if err != nil {
 		return nil, err
 	}
-	custom, err := jsonpatch.MergePatch(jsonExisting, patch)
+	custom, err := jsonpatch.MergePatch([]byte(jsonExisting), patch)
 	if err != nil {
 		return nil, err
 	}
