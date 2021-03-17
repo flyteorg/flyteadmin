@@ -1,9 +1,13 @@
 package transformers
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/golang/protobuf/jsonpb"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
@@ -605,4 +609,72 @@ func TestMergeLogs(t *testing.T) {
 			assert.True(t, proto.Equal(expectedLog, actual[idx]), fmt.Sprintf("%s failed", mergeTestCase.name))
 		}
 	}
+}
+
+func TestMergeCustoms(t *testing.T) {
+	t.Run("nothing to do", func(t *testing.T) {
+		custom, err := mergeCustom(nil, nil)
+		assert.NoError(t, err)
+		assert.Nil(t, custom)
+	})
+	existingCustomMap := map[string]string{
+		"foo": "bar",
+		"1":   "value1",
+	}
+
+	b, err := json.Marshal(existingCustomMap)
+	if err != nil {
+		t.Fatal(t, err)
+	}
+
+	// Turn JSON into a protobuf struct
+	existingCustom := &structpb.Struct{}
+	if err := jsonpb.UnmarshalString(string(b), existingCustom); err != nil {
+		t.Fatal(t, err)
+	}
+
+	latestCustomMap := map[string]string{
+		"foo": "something different",
+		"2":   "value2",
+	}
+
+	b, err = json.Marshal(latestCustomMap)
+	if err != nil {
+		t.Fatal(t, err)
+	}
+
+	// Turn JSON into a protobuf struct
+	latestCustom := &structpb.Struct{}
+	if err := jsonpb.UnmarshalString(string(b), latestCustom); err != nil {
+		t.Fatal(t, err)
+	}
+
+	t.Run("use existing", func(t *testing.T) {
+		mergedCustom, err := mergeCustom(existingCustom, nil)
+		assert.Nil(t, err)
+		assert.True(t, proto.Equal(mergedCustom, existingCustom))
+	})
+	t.Run("use latest", func(t *testing.T) {
+		mergedCustom, err := mergeCustom(nil, latestCustom)
+		assert.Nil(t, err)
+		assert.True(t, proto.Equal(mergedCustom, latestCustom))
+	})
+	t.Run("merge", func(t *testing.T) {
+		mergedCustom, err := mergeCustom(existingCustom, latestCustom)
+		assert.Nil(t, err)
+
+		var marshaler jsonpb.Marshaler
+		mergedJSON, err := marshaler.MarshalToString(mergedCustom)
+		assert.Nil(t, err)
+
+		var mergedMap map[string]string
+		err = json.Unmarshal([]byte(mergedJSON), &mergedMap)
+		assert.Nil(t, err)
+		assert.EqualValues(t, map[string]string{
+			"1":   "value1",
+			"foo": "something different",
+			"2":   "value2",
+		}, mergedMap)
+
+	})
 }

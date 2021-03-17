@@ -3,6 +3,9 @@ package transformers
 import (
 	"context"
 
+	"encoding/json"
+
+	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
@@ -11,6 +14,8 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	_struct "github.com/golang/protobuf/ptypes/struct"
+
 	"google.golang.org/grpc/codes"
 )
 
@@ -150,6 +155,47 @@ func mergeLogs(existing, latest []*core.TaskLog) []*core.TaskLog {
 		}
 	}
 	return logs
+}
+
+func mergeCustom(existing, latest *_struct.Struct) (*_struct.Struct, error) {
+	if existing == nil {
+		return latest, nil
+	}
+	if latest == nil {
+		return existing, nil
+	}
+
+	// To merge latest into existing we first create a patch object that consists of applying changes from latest to
+	// an empty struct. Then we apply this patch to existing so that the values changed in latest take precedence but
+	// barring conflicts/overwrites the values in existing stay the same.
+	var empty _struct.Struct
+	jsonEmpty, err := json.Marshal(&empty)
+	if err != nil {
+		return nil, err
+	}
+	jsonExisting, err := json.Marshal(existing)
+	if err != nil {
+		return nil, err
+	}
+	jsonLatest, err := json.Marshal(latest)
+	if err != nil {
+		return nil, err
+	}
+	patch, err := jsonpatch.CreateMergePatch(jsonEmpty, jsonLatest)
+	if err != nil {
+		return nil, err
+	}
+	custom, err := jsonpatch.MergePatch(jsonExisting, patch)
+	if err != nil {
+		return nil, err
+	}
+	var response _struct.Struct
+
+	err = json.Unmarshal(custom, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response, nil
 }
 
 func UpdateTaskExecutionModel(request *admin.TaskExecutionEventRequest, taskExecutionModel *models.TaskExecution) error {
