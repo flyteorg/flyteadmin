@@ -143,8 +143,9 @@ func TestExecuteWorkflowHappyCase(t *testing.T) {
 				"customlabel": "labelval",
 			}, workflow.Labels)
 			expectedAnnotations := map[string]string{
-				"iam.amazonaws.com/role": "role-1",
-				"customannotation":       "annotationval",
+				"iam.amazonaws.com/role":  "role-1",
+				"customannotation":        "annotationval",
+				"lyft.net/iamwait-inject": "required",
 			}
 			assert.EqualValues(t, expectedAnnotations, workflow.Annotations)
 
@@ -209,7 +210,8 @@ func TestExecuteWorkflowCallFailed(t *testing.T) {
 	fakeFlyteWorkflow := FakeFlyteWorkflow{
 		createCallback: func(workflow *v1alpha1.FlyteWorkflow) (*v1alpha1.FlyteWorkflow, error) {
 			expectedAnnotations := map[string]string{
-				"iam.amazonaws.com/role": "role-1",
+				"iam.amazonaws.com/role":  "role-1",
+				"lyft.net/iamwait-inject": "required",
 			}
 			assert.EqualValues(t, expectedAnnotations, workflow.Annotations)
 			return nil, errors.New("call failed")
@@ -261,7 +263,8 @@ func TestExecuteWorkflowAlreadyExistsNoError(t *testing.T) {
 	fakeFlyteWorkflow := FakeFlyteWorkflow{
 		createCallback: func(workflow *v1alpha1.FlyteWorkflow) (*v1alpha1.FlyteWorkflow, error) {
 			expectedAnnotations := map[string]string{
-				"iam.amazonaws.com/role": "role-1",
+				"iam.amazonaws.com/role":  "role-1",
+				"lyft.net/iamwait-inject": "required",
 			}
 			assert.EqualValues(t, expectedAnnotations, workflow.Annotations)
 			return nil, k8_api_err.NewAlreadyExists(schema.GroupResource{}, "")
@@ -440,7 +443,8 @@ func TestAddPermissions(t *testing.T) {
 		},
 	}, &flyteWf)
 	assert.EqualValues(t, flyteWf.Annotations, map[string]string{
-		roleNameKey: "rollie-pollie",
+		roleNameKey:               "rollie-pollie",
+		"lyft.net/iamwait-inject": "required",
 	})
 
 	flyteWf = v1alpha1.FlyteWorkflow{}
@@ -450,11 +454,17 @@ func TestAddPermissions(t *testing.T) {
 		},
 	}, &flyteWf)
 	assert.EqualValues(t, flyteWf.Annotations, map[string]string{
-		roleNameKey: "rollie-pollie",
+		roleNameKey:               "rollie-pollie",
+		"lyft.net/iamwait-inject": "required",
 	})
 
 	flyteWf = v1alpha1.FlyteWorkflow{}
 	propeller.addPermissions(admin.LaunchPlan{
+		Id: &core.Identifier{
+			Name:    "lp",
+			Project: "flyte",
+			Domain:  "staging",
+		},
 		Spec: &admin.LaunchPlanSpec{
 			Auth: &admin.Auth{
 				Method: &admin.Auth_KubernetesServiceAccount{
@@ -464,5 +474,9 @@ func TestAddPermissions(t *testing.T) {
 		},
 	}, &flyteWf)
 	assert.Equal(t, "service-account", flyteWf.ServiceAccountName)
-	assert.Empty(t, flyteWf.Annotations)
+	expectedAnnotations := map[string]string{
+		"iam.amazonaws.com/role": "flytebatchworker-staging-iad",
+	}
+	assert.EqualValues(t, expectedAnnotations, flyteWf.Annotations)
+	assert.NotEmpty(t, flyteWf.Annotations)
 }

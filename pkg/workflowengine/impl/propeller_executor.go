@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+	"fmt"
 
 	interfaces2 "github.com/lyft/flyteadmin/pkg/executioncluster/interfaces"
 
@@ -72,6 +73,7 @@ func (c *FlytePropeller) addPermissions(launchPlan admin.LaunchPlan, flyteWf *v1
 	// Set role permissions based on launch plan Auth values.
 	// The branched-ness of this check is due to the presence numerous deprecated fields
 	var role string
+	var serviceAccountName string
 	if launchPlan.Spec.GetAuthRole() != nil && len(launchPlan.GetSpec().GetAuthRole().GetAssumableIamRole()) > 0 {
 		role = launchPlan.GetSpec().GetAuthRole().GetAssumableIamRole()
 	} else if launchPlan.GetSpec().GetAuth() != nil && len(launchPlan.GetSpec().GetAuth().GetAssumableIamRole()) > 0 {
@@ -80,16 +82,24 @@ func (c *FlytePropeller) addPermissions(launchPlan admin.LaunchPlan, flyteWf *v1
 		// Although deprecated, older launch plans may reference the role field instead of the Auth AssumableIamRole.
 		role = launchPlan.GetSpec().GetRole()
 	} else if launchPlan.GetSpec().GetAuthRole() != nil && len(launchPlan.GetSpec().GetAuthRole().GetKubernetesServiceAccount()) > 0 {
-		flyteWf.ServiceAccountName = launchPlan.GetSpec().GetAuthRole().GetKubernetesServiceAccount()
+		serviceAccountName = launchPlan.GetSpec().GetAuthRole().GetKubernetesServiceAccount()
 	} else if launchPlan.GetSpec().GetAuth() != nil && len(launchPlan.GetSpec().GetAuth().GetKubernetesServiceAccount()) > 0 {
-		flyteWf.ServiceAccountName = launchPlan.GetSpec().GetAuth().GetKubernetesServiceAccount()
+		serviceAccountName = launchPlan.GetSpec().GetAuth().GetKubernetesServiceAccount()
 	}
 	if len(role) > 0 {
 		if flyteWf.Annotations == nil {
 			flyteWf.Annotations = map[string]string{}
 		}
 		flyteWf.Annotations[c.roleNameKey] = role
-		flyteWf.Annotations["lyft.net/iamwait-inject"]= "required"
+		flyteWf.Annotations["lyft.net/iamwait-inject"] = "required"
+	}
+	if len(serviceAccountName) > 0 {
+		flyteWf.ServiceAccountName = serviceAccountName
+		if flyteWf.Annotations == nil {
+			flyteWf.Annotations = map[string]string{}
+		}
+		// This is a hack for AWS Batch plugin. We can kill once securityContext is plumbed and flytekit is upgraded for all.
+		flyteWf.Annotations[c.roleNameKey] = fmt.Sprintf("%sbatchworker-%s-iad", launchPlan.GetId().GetProject(), launchPlan.GetId().GetDomain())
 	}
 }
 

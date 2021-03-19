@@ -55,6 +55,7 @@ func (q *queueAllocatorImpl) refreshExecutionQueues(executionQueues []runtimeInt
 	q.queueConfigMap = queueConfigMap
 }
 
+/* #nosec */
 func (q *queueAllocatorImpl) GetQueue(ctx context.Context, identifier core.Identifier) singleQueueConfiguration {
 	// NOTE: If refreshing the execution queues & workflow configs on every call to GetQueue becomes too slow we should
 	// investigate caching the computed queue assignments.

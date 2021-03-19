@@ -97,6 +97,7 @@ func ReadSecureCookie(ctx context.Context, cookie http.Cookie, hashKey, blockKey
 	return "", errors.Wrapf(ErrSecureCookie, err, "Error reading secure cookie %s", cookie.Name)
 }
 
+/* #nosec */
 func NewCsrfToken(seed int64) string {
 	rand.Seed(seed)
 	csrfToken := [10]rune{}
