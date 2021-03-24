@@ -339,7 +339,7 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 		// rather than fetched via a user-specified source.
 		templateValues[fmt.Sprintf(templateVariableFormat, namespaceVariable)] = namespace
 		templateValues[fmt.Sprintf(templateVariableFormat, projectVariable)] = project.Identifier
-		templateValues[fmt.Sprintf(templateVariableFormat, domainVariable)] = domain.Name
+		templateValues[fmt.Sprintf(templateVariableFormat, domainVariable)] = domain.ID
 
 		var config = string(template)
 		for templateKey, templateValue := range templateValues {
