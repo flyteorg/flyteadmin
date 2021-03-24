@@ -13,9 +13,10 @@ func TestGetNamespaceName(t *testing.T) {
 		domain  string
 		want    string
 	}{
-		{ProjectDomain, "project", "production", "project-production"},
+		{NmProjectDomain, "project", "production", "project-production"},
 		{20 /*Dummy enum value that is not supported*/, "project", "development", "project-development"},
-		{Domain, "project", "production", "production"},
+		{NmDomain, "project", "production", "production"},
+		{NmProject, "project", "production", "project"},
 	}
 
 	for _, tc := range testCases {
