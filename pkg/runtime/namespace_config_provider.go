@@ -28,14 +28,14 @@ func (p *NamespaceMappingConfigurationProvider) GetNamespaceMappingConfig() comm
 
 	switch mapping {
 	case domainVariable:
-		return common.NmDomain
+		return common.NamespaceMappingDomain
 	case projectVariable:
-		return common.NmProject
+		return common.NamespaceMappingProject
 	case projectDomainVariable:
-		return common.NmProjectDomain
+		return common.NamespaceMappingProjectDomain
 	default:
 		logger.Warningf(context.Background(), "Unsupported value for namespace_mapping in config, defaulting to <project>-<domain>")
-		return common.NmProjectDomain
+		return common.NamespaceMappingProjectDomain
 	}
 }
 

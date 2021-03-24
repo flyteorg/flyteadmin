@@ -7,19 +7,19 @@ type NamespaceMapping int
 const namespaceFormat = "%s-%s"
 
 const (
-	NmProjectDomain NamespaceMapping = iota
-	NmDomain        NamespaceMapping = iota
-	NmProject       NamespaceMapping = iota
+	NamespaceMappingProjectDomain NamespaceMapping = iota
+	NamespaceMappingDomain        NamespaceMapping = iota
+	NamespaceMappingProject       NamespaceMapping = iota
 )
 
 // GetNamespaceName returns kubernetes namespace name
 func GetNamespaceName(mapping NamespaceMapping, project, domain string) string {
 	switch mapping {
-	case NmDomain:
+	case NamespaceMappingDomain:
 		return domain
-	case NmProject:
+	case NamespaceMappingProject:
 		return project
-	case NmProjectDomain:
+	case NamespaceMappingProjectDomain:
 		fallthrough
 	default:
 		return fmt.Sprintf(namespaceFormat, project, domain)
