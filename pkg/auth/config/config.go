@@ -1,6 +1,6 @@
 package config
 
-type OAuthOptions struct {
+type OpenIDOptions struct {
 	// The client ID for Admin in your IDP
 	// See https://tools.ietf.org/html/rfc6749#section-2.2 for more information
 	ClientID string `json:"clientId"`

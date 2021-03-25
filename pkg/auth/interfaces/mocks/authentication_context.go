@@ -331,7 +331,7 @@ type AuthenticationContext_Options struct {
 	*mock.Call
 }
 
-func (_m AuthenticationContext_Options) Return(_a0 config.OAuthOptions) *AuthenticationContext_Options {
+func (_m AuthenticationContext_Options) Return(_a0 config.OpenIDOptions) *AuthenticationContext_Options {
 	return &AuthenticationContext_Options{Call: _m.Call.Return(_a0)}
 }
 
@@ -346,14 +346,14 @@ func (_m *AuthenticationContext) OnOptionsMatch(matchers ...interface{}) *Authen
 }
 
 // Options provides a mock function with given fields:
-func (_m *AuthenticationContext) Options() config.OAuthOptions {
+func (_m *AuthenticationContext) Options() config.OpenIDOptions {
 	ret := _m.Called()
 
-	var r0 config.OAuthOptions
-	if rf, ok := ret.Get(0).(func() config.OAuthOptions); ok {
+	var r0 config.OpenIDOptions
+	if rf, ok := ret.Get(0).(func() config.OpenIDOptions); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(config.OAuthOptions)
+		r0 = ret.Get(0).(config.OpenIDOptions)
 	}
 
 	return r0

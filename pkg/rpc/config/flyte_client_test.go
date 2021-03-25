@@ -19,7 +19,7 @@ func TestHandleFlyteCliConfigFunc(t *testing.T) {
 
 	handleFlyteCliConfigFunc := HandleFlyteCliConfigFunc(context.Background(), &config.ServerConfig{
 		Security: config.ServerSecurityOptions{
-			Oauth: authConfig.OAuthOptions{
+			OpenID: authConfig.OpenIDOptions{
 				GrpcAuthorizationHeader: testAuthMetadataKey,
 			},
 		},

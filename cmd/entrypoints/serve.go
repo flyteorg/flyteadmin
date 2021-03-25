@@ -5,6 +5,8 @@ import (
 	"crypto/tls"
 	"fmt"
 
+	"github.com/flyteorg/flyteadmin/pkg/auth/oauthserver"
+
 	"github.com/gorilla/handlers"
 
 	"github.com/flyteorg/flyteadmin/pkg/auth"
@@ -154,6 +156,8 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authContext in
 			mux.HandleFunc("/me", auth.GetMeEndpointHandler(ctx, authContext))
 		}
 
+		oauthserver.RegisterHandlers(mux, auth.GetAuthenticationInterceptor(authContext), authContext)
+
 		// The metadata endpoint is an RFC-defined constant, but we need a leading / for the handler to pattern match correctly.
 		mux.HandleFunc(fmt.Sprintf("/%s", auth.OIdCMetadataEndpoint), auth.GetOIdCMetadataEndpointRedirectHandler(ctx, authContext))
 
@@ -192,7 +196,7 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig) error {
 	// Warning: Running authentication without SSL in any other topology is a severe security flaw.
 	// See the auth.Config object for additional settings as well.
 	if cfg.Security.UseAuth {
-		authContext, err = auth.NewAuthenticationContext(ctx, cfg.Security.Oauth)
+		authContext, err = auth.NewAuthenticationContext(ctx, cfg.Security.OpenID)
 		if err != nil {
 			logger.Errorf(ctx, "Error creating auth context %s", err)
 			return err
@@ -264,7 +268,7 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig) error {
 	// This will parse configuration and create the necessary objects for dealing with auth
 	var authContext interfaces.AuthenticationContext
 	if cfg.Security.UseAuth {
-		authContext, err = auth.NewAuthenticationContext(ctx, cfg.Security.Oauth)
+		authContext, err = auth.NewAuthenticationContext(ctx, cfg.Security.OpenID)
 		if err != nil {
 			logger.Errorf(ctx, "Error creating auth context %s", err)
 			return err

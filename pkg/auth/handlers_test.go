@@ -49,7 +49,7 @@ func TestGetHTTPRequestCookieToMetadataHandler(t *testing.T) {
 	assert.NoError(t, err)
 	mockAuthCtx := mocks.AuthenticationContext{}
 	mockAuthCtx.On("CookieManager").Return(&cookieManager)
-	mockAuthCtx.OnOptions().Return(config.OAuthOptions{})
+	mockAuthCtx.OnOptions().Return(config.OpenIDOptions{})
 	handler := GetHTTPRequestCookieToMetadataHandler(&mockAuthCtx)
 	req, err := http.NewRequest("GET", "/api/v1/projects", nil)
 	assert.NoError(t, err)
@@ -84,7 +84,7 @@ func TestGetHTTPRequestCookieToMetadataHandler_CustomHeader(t *testing.T) {
 	assert.NoError(t, err)
 	mockAuthCtx := mocks.AuthenticationContext{}
 	mockAuthCtx.On("CookieManager").Return(&cookieManager)
-	mockConfig := config.OAuthOptions{
+	mockConfig := config.OpenIDOptions{
 		HTTPAuthorizationHeader: "Custom-Header",
 	}
 	mockAuthCtx.On("Options").Return(mockConfig)

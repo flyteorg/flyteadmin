@@ -3,6 +3,8 @@ package config
 import (
 	"fmt"
 
+	"github.com/flyteorg/flyteadmin/pkg/auth/oauthserver"
+
 	config2 "github.com/flyteorg/flyteadmin/pkg/auth/config"
 	"github.com/flyteorg/flytestdlib/config"
 )
@@ -22,11 +24,12 @@ type ServerConfig struct {
 }
 
 type ServerSecurityOptions struct {
-	Secure      bool                 `json:"secure"`
-	Ssl         SslOptions           `json:"ssl"`
-	UseAuth     bool                 `json:"useAuth"`
-	Oauth       config2.OAuthOptions `json:"oauth"`
-	AuditAccess bool                 `json:"auditAccess"`
+	Secure      bool                      `json:"secure"`
+	Ssl         SslOptions                `json:"ssl"`
+	UseAuth     bool                      `json:"useAuth"`
+	OpenID      config2.OpenIDOptions     `json:"openid"`
+	OAuth2      oauthserver.OAuth2Options `json:"oauth2"`
+	AuditAccess bool                      `json:"auditAccess"`
 
 	// These options are here to allow deployments where the Flyte UI (Console) is served from a different domain/port.
 	// Note that CORS only applies to Admin's API endpoints. The health check endpoint for instance is unaffected.
@@ -48,7 +51,7 @@ type SslOptions struct {
 
 var defaultServerConfig = &ServerConfig{
 	Security: ServerSecurityOptions{
-		Oauth: config2.OAuthOptions{
+		OpenID: config2.OpenIDOptions{
 			// Please see the comments in this struct's definition for more information
 			HTTPAuthorizationHeader: "flyte-authorization",
 			GrpcAuthorizationHeader: "flyte-authorization",

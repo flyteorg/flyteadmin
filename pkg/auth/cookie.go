@@ -29,6 +29,9 @@ const (
 
 	// #nosec
 	idTokenExtra = "id_token"
+
+	// #nosec
+	authCodeCookieName = "flyte_auth_code"
 )
 
 const (
