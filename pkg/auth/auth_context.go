@@ -26,7 +26,7 @@ type Context struct {
 	claims            config.Claims
 	cookieManager     interfaces.CookieHandler
 	oidcProvider      *oidc.Provider
-	options           config.OAuthOptions
+	options           config.OpenIDOptions
 	userInfoURL       *url.URL
 	baseURL           *url.URL
 	oauth2MetadataURL *url.URL
@@ -50,7 +50,7 @@ func (c Context) CookieManager() interfaces.CookieHandler {
 	return c.cookieManager
 }
 
-func (c Context) Options() config.OAuthOptions {
+func (c Context) Options() config.OpenIDOptions {
 	return c.options
 }
 
@@ -79,7 +79,7 @@ const (
 	ErrConfigFileRead errors.ErrorCode = "CONFIG_OPTION_FILE_READ_FAILED"
 )
 
-func NewAuthenticationContext(ctx context.Context, options config.OAuthOptions) (Context, error) {
+func NewAuthenticationContext(ctx context.Context, options config.OpenIDOptions) (Context, error) {
 	result := Context{
 		claims:  options.Claims,
 		options: options,
@@ -172,7 +172,7 @@ func NewAuthenticationContext(ctx context.Context, options config.OAuthOptions) 
 }
 
 // This creates a oauth2 library config object, with values from the Flyte Admin config
-func GetOauth2Config(options config.OAuthOptions) (oauth2.Config, error) {
+func GetOauth2Config(options config.OpenIDOptions) (oauth2.Config, error) {
 	secretBytes, err := ioutil.ReadFile(options.ClientSecretFile)
 	if err != nil {
 		return oauth2.Config{}, err

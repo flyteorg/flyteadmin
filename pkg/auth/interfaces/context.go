@@ -18,7 +18,7 @@ type AuthenticationContext interface {
 	Claims() config.Claims
 	OidcProvider() *oidc.Provider
 	CookieManager() CookieHandler
-	Options() config.OAuthOptions
+	Options() config.OpenIDOptions
 	GetUserInfoURL() *url.URL
 	GetBaseURL() *url.URL
 	GetOAuth2MetadataURL() *url.URL

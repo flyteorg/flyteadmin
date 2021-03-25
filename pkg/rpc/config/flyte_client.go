@@ -21,8 +21,8 @@ func HandleFlyteCliConfigFunc(ctx context.Context, cfg *config.ServerConfig) htt
 		configValues := map[string]interface{}{
 			clientID:        cfg.ThirdPartyConfig.FlyteClientConfig.ClientID,
 			redirectURI:     cfg.ThirdPartyConfig.FlyteClientConfig.RedirectURI,
-			scopes:          cfg.Security.Oauth.Scopes,
-			authMetadataKey: cfg.Security.Oauth.GrpcAuthorizationHeader,
+			scopes:          cfg.Security.OpenID.Scopes,
+			authMetadataKey: cfg.Security.OpenID.GrpcAuthorizationHeader,
 		}
 
 		configJSON, err := json.Marshal(configValues)

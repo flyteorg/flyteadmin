@@ -71,6 +71,27 @@ func (c CookieManager) RetrieveTokenValues(ctx context.Context, request *http.Re
 	return
 }
 
+func (c CookieManager) RetrieveAuthCodeRequest(ctx context.Context, request *http.Request) (authRequestUrl string, err error) {
+	authCodeCookie, err := retrieveSecureCookie(ctx, request, authCodeCookieName, c.hashKey, c.blockKey)
+	if err != nil {
+		return "", err
+	}
+
+	return authCodeCookie, nil
+}
+
+func (c CookieManager) SetAuthCodeCookie(ctx context.Context, writer http.ResponseWriter, authRequestUrl string) error {
+	authCodeCookie, err := NewSecureCookie(authCodeCookieName, authRequestUrl, c.hashKey, c.blockKey)
+	if err != nil {
+		logger.Errorf(ctx, "Error generating encrypted accesstoken cookie %s", err)
+		return err
+	}
+
+	http.SetCookie(writer, &authCodeCookie)
+
+	return nil
+}
+
 func (c CookieManager) SetTokenCookies(ctx context.Context, writer http.ResponseWriter, token *oauth2.Token) error {
 	if token == nil {
 		logger.Errorf(ctx, "Attempting to set cookies with nil token")
