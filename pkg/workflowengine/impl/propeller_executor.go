@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	interfaces2 "github.com/lyft/flyteadmin/pkg/executioncluster/interfaces"
 
@@ -99,7 +100,11 @@ func (c *FlytePropeller) addPermissions(launchPlan admin.LaunchPlan, flyteWf *v1
 			flyteWf.Annotations = map[string]string{}
 		}
 		// This is a hack for AWS Batch plugin. We can kill once securityContext is plumbed and flytekit is upgraded for all.
-		flyteWf.Annotations[c.roleNameKey] = fmt.Sprintf("%sbatchworker-%s-iad", launchPlan.GetId().GetProject(), launchPlan.GetId().GetDomain())
+		if strings.Contains(serviceAccountName, "iad") {
+			flyteWf.Annotations[c.roleNameKey] = fmt.Sprintf("%sbatchworker-%s-iad", launchPlan.GetId().GetProject(), launchPlan.GetId().GetDomain())
+		} else {
+			flyteWf.Annotations[c.roleNameKey] = fmt.Sprintf("%sbatchworker-%s", launchPlan.GetId().GetProject(), launchPlan.GetId().GetDomain())
+		}
 	}
 }
 

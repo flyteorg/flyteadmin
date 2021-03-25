@@ -475,6 +475,28 @@ func TestAddPermissions(t *testing.T) {
 	}, &flyteWf)
 	assert.Equal(t, "service-account", flyteWf.ServiceAccountName)
 	expectedAnnotations := map[string]string{
+		"iam.amazonaws.com/role": "flytebatchworker-staging",
+	}
+	assert.EqualValues(t, expectedAnnotations, flyteWf.Annotations)
+	assert.NotEmpty(t, flyteWf.Annotations)
+
+	flyteWf = v1alpha1.FlyteWorkflow{}
+	propeller.addPermissions(admin.LaunchPlan{
+		Id: &core.Identifier{
+			Name:    "lp",
+			Project: "flyte",
+			Domain:  "staging",
+		},
+		Spec: &admin.LaunchPlanSpec{
+			Auth: &admin.Auth{
+				Method: &admin.Auth_KubernetesServiceAccount{
+					KubernetesServiceAccount: "service-account-iad",
+				},
+			},
+		},
+	}, &flyteWf)
+	assert.Equal(t, "service-account-iad", flyteWf.ServiceAccountName)
+	expectedAnnotations = map[string]string{
 		"iam.amazonaws.com/role": "flytebatchworker-staging-iad",
 	}
 	assert.EqualValues(t, expectedAnnotations, flyteWf.Annotations)
