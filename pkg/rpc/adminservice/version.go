@@ -6,9 +6,10 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 )
 
-func (m *AdminService) GetVersion(ctx context.Context, versionRequest *admin.GetVersionRequest) (*admin.GetVersionResponse, error) {
+func (m *AdminService) GetVersion(ctx context.Context, request *admin.GetVersionRequest) (*admin.GetVersionResponse, error) {
 
-	response, err := m.VersionManager.GetVersion(ctx, versionRequest)
+	defer m.interceptPanic(ctx, request)
+	response, err := m.VersionManager.GetVersion(ctx, request)
 	if err != nil {
 		return nil, err
 	}
