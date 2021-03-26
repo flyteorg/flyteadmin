@@ -405,7 +405,7 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 
 						dr := getDynamicResourceInterface(dynamicObj.mapping, target.DynamicClient, namespace)
 						_, err = dr.Patch(ctx, dynamicObj.obj.GetName(),
-							types.JSONPatchType, data, metav1.PatchOptions{})
+							types.ApplyPatchType, data, metav1.PatchOptions{})
 						if err != nil {
 							c.metrics.TemplateUpdateErrors.Inc()
 							logger.Warningf(ctx, "Failed to merge patch resource [%+v] in namespace [%s] with err: %v",
