@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/flyteorg/flyteadmin/pkg/auth"
+
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/resources"
@@ -100,11 +102,8 @@ func getExecutionContext(ctx context.Context, id *core.WorkflowExecutionIdentifi
 
 // Returns the unique string which identifies the authenticated end user (if any).
 func getUser(ctx context.Context) string {
-	principalContextUser := ctx.Value(common.PrincipalContextKey)
-	if principalContextUser != nil {
-		return fmt.Sprintf(principalContextKeyFormat, principalContextUser)
-	}
-	return ""
+	identityContext := auth.IdentityContextFromContext(ctx)
+	return identityContext.UserID()
 }
 
 func (m *ExecutionManager) populateExecutionQueue(

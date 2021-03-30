@@ -1,19 +1,6 @@
 package auth
 
-import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"net/http"
-
-	"github.com/flyteorg/flytestdlib/errors"
-	"github.com/flyteorg/flytestdlib/logger"
-)
-
-const (
-	ErrIdpClient errors.ErrorCode = "IDP_REQUEST_FAILED"
-)
+import "encoding/json"
 
 /*
 This struct represents what should be returned by an IDP according to the specification at
@@ -33,51 +20,43 @@ response object returned from Okta for instance
 	}
 */
 type UserInfoResponse struct {
-	Sub               string `json:"sub"`
-	Name              string `json:"name"`
-	PreferredUsername string `json:"preferred_username"`
-	GivenName         string `json:"given_name"`
-	FamilyName        string `json:"family_name"`
-	Email             string `json:"email"`
-	Picture           string `json:"picture"`
+	Sub                  string `json:"sub"`
+	NameRaw              string `json:"name"`
+	PreferredUsernameRaw string `json:"preferred_username"`
+	GivenNameRaw         string `json:"given_name"`
+	FamilyNameRaw        string `json:"family_name"`
+	EmailRaw             string `json:"email"`
+	PictureRaw           string `json:"picture"`
 }
 
-func postToIdp(ctx context.Context, client *http.Client, userInfoURL, accessToken string) (UserInfoResponse, error) {
-	request, err := http.NewRequest(http.MethodPost, userInfoURL, nil)
-	if err != nil {
-		logger.Errorf(ctx, "Error creating user info request to IDP %s", err)
-		return UserInfoResponse{}, errors.Wrapf(ErrIdpClient, err, "Error creating user info request to IDP")
-	}
-	request.Header.Set(DefaultAuthorizationHeader, fmt.Sprintf("%s %s", BearerScheme, accessToken))
-	request.Header.Set("Content-Type", "application/json")
-	response, err := client.Do(request)
-	if err != nil {
-		logger.Errorf(ctx, "Error while requesting user info from IDP %s", err)
-		return UserInfoResponse{}, errors.Wrapf(ErrIdpClient, err, "Error while requesting user info from IDP")
-	}
-	defer func() {
-		err := response.Body.Close()
-		if err != nil {
-			logger.Errorf(ctx, "Error closing response body %s", err)
-		}
-	}()
+func (r UserInfoResponse) MarshalToJSON() ([]byte, error) {
+	return json.Marshal(r)
+}
 
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		logger.Errorf(ctx, "Error reading user info response error %s", response.StatusCode, err)
-		return UserInfoResponse{}, errors.Wrapf(ErrIdpClient, err, "Error reading user info response")
-	}
-	if response.StatusCode < 200 || response.StatusCode > 299 {
-		logger.Errorf(ctx, "Bad response code from IDP %d", response.StatusCode)
-		return UserInfoResponse{}, errors.Errorf(ErrIdpClient,
-			"Error reading user info response, code %d body %v", response.StatusCode, body)
-	}
+func (r UserInfoResponse) Subject() string {
+	return r.Sub
+}
 
-	responseObject := &UserInfoResponse{}
-	err = json.Unmarshal(body, responseObject)
-	if err != nil {
-		return UserInfoResponse{}, errors.Wrapf(ErrIdpClient, err, "Could not unmarshal IDP response")
-	}
+func (r UserInfoResponse) Name() string {
+	return r.NameRaw
+}
 
-	return *responseObject, nil
+func (r UserInfoResponse) PreferredUsername() string {
+	return r.PreferredUsernameRaw
+}
+
+func (r UserInfoResponse) GivenName() string {
+	return r.GivenNameRaw
+}
+
+func (r UserInfoResponse) FamilyName() string {
+	return r.FamilyNameRaw
+}
+
+func (r UserInfoResponse) Email() string {
+	return r.EmailRaw
+}
+
+func (r UserInfoResponse) Picture() string {
+	return r.PictureRaw
 }

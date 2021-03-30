@@ -23,38 +23,6 @@ type AuthenticationContext struct {
 	mock.Mock
 }
 
-type AuthenticationContext_Claims struct {
-	*mock.Call
-}
-
-func (_m AuthenticationContext_Claims) Return(_a0 config.Claims) *AuthenticationContext_Claims {
-	return &AuthenticationContext_Claims{Call: _m.Call.Return(_a0)}
-}
-
-func (_m *AuthenticationContext) OnClaims() *AuthenticationContext_Claims {
-	c := _m.On("Claims")
-	return &AuthenticationContext_Claims{Call: c}
-}
-
-func (_m *AuthenticationContext) OnClaimsMatch(matchers ...interface{}) *AuthenticationContext_Claims {
-	c := _m.On("Claims", matchers...)
-	return &AuthenticationContext_Claims{Call: c}
-}
-
-// Claims provides a mock function with given fields:
-func (_m *AuthenticationContext) Claims() config.Claims {
-	ret := _m.Called()
-
-	var r0 config.Claims
-	if rf, ok := ret.Get(0).(func() config.Claims); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(config.Claims)
-	}
-
-	return r0
-}
-
 type AuthenticationContext_CookieManager struct {
 	*mock.Call
 }
@@ -83,40 +51,6 @@ func (_m *AuthenticationContext) CookieManager() interfaces.CookieHandler {
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(interfaces.CookieHandler)
-		}
-	}
-
-	return r0
-}
-
-type AuthenticationContext_GetBaseURL struct {
-	*mock.Call
-}
-
-func (_m AuthenticationContext_GetBaseURL) Return(_a0 *url.URL) *AuthenticationContext_GetBaseURL {
-	return &AuthenticationContext_GetBaseURL{Call: _m.Call.Return(_a0)}
-}
-
-func (_m *AuthenticationContext) OnGetBaseURL() *AuthenticationContext_GetBaseURL {
-	c := _m.On("GetBaseURL")
-	return &AuthenticationContext_GetBaseURL{Call: c}
-}
-
-func (_m *AuthenticationContext) OnGetBaseURLMatch(matchers ...interface{}) *AuthenticationContext_GetBaseURL {
-	c := _m.On("GetBaseURL", matchers...)
-	return &AuthenticationContext_GetBaseURL{Call: c}
-}
-
-// GetBaseURL provides a mock function with given fields:
-func (_m *AuthenticationContext) GetBaseURL() *url.URL {
-	ret := _m.Called()
-
-	var r0 *url.URL
-	if rf, ok := ret.Get(0).(func() *url.URL); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*url.URL)
 		}
 	}
 
@@ -225,60 +159,26 @@ func (_m *AuthenticationContext) GetOIdCMetadataURL() *url.URL {
 	return r0
 }
 
-type AuthenticationContext_GetUserInfoURL struct {
+type AuthenticationContext_OAuth2ClientConfig struct {
 	*mock.Call
 }
 
-func (_m AuthenticationContext_GetUserInfoURL) Return(_a0 *url.URL) *AuthenticationContext_GetUserInfoURL {
-	return &AuthenticationContext_GetUserInfoURL{Call: _m.Call.Return(_a0)}
+func (_m AuthenticationContext_OAuth2ClientConfig) Return(_a0 *oauth2.Config) *AuthenticationContext_OAuth2ClientConfig {
+	return &AuthenticationContext_OAuth2ClientConfig{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *AuthenticationContext) OnGetUserInfoURL() *AuthenticationContext_GetUserInfoURL {
-	c := _m.On("GetUserInfoURL")
-	return &AuthenticationContext_GetUserInfoURL{Call: c}
+func (_m *AuthenticationContext) OnOAuth2ClientConfig() *AuthenticationContext_OAuth2ClientConfig {
+	c := _m.On("OAuth2ClientConfig")
+	return &AuthenticationContext_OAuth2ClientConfig{Call: c}
 }
 
-func (_m *AuthenticationContext) OnGetUserInfoURLMatch(matchers ...interface{}) *AuthenticationContext_GetUserInfoURL {
-	c := _m.On("GetUserInfoURL", matchers...)
-	return &AuthenticationContext_GetUserInfoURL{Call: c}
+func (_m *AuthenticationContext) OnOAuth2ClientConfigMatch(matchers ...interface{}) *AuthenticationContext_OAuth2ClientConfig {
+	c := _m.On("OAuth2ClientConfig", matchers...)
+	return &AuthenticationContext_OAuth2ClientConfig{Call: c}
 }
 
-// GetUserInfoURL provides a mock function with given fields:
-func (_m *AuthenticationContext) GetUserInfoURL() *url.URL {
-	ret := _m.Called()
-
-	var r0 *url.URL
-	if rf, ok := ret.Get(0).(func() *url.URL); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*url.URL)
-		}
-	}
-
-	return r0
-}
-
-type AuthenticationContext_OAuth2Config struct {
-	*mock.Call
-}
-
-func (_m AuthenticationContext_OAuth2Config) Return(_a0 *oauth2.Config) *AuthenticationContext_OAuth2Config {
-	return &AuthenticationContext_OAuth2Config{Call: _m.Call.Return(_a0)}
-}
-
-func (_m *AuthenticationContext) OnOAuth2Config() *AuthenticationContext_OAuth2Config {
-	c := _m.On("OAuth2Config")
-	return &AuthenticationContext_OAuth2Config{Call: c}
-}
-
-func (_m *AuthenticationContext) OnOAuth2ConfigMatch(matchers ...interface{}) *AuthenticationContext_OAuth2Config {
-	c := _m.On("OAuth2Config", matchers...)
-	return &AuthenticationContext_OAuth2Config{Call: c}
-}
-
-// OAuth2Config provides a mock function with given fields:
-func (_m *AuthenticationContext) OAuth2Config() *oauth2.Config {
+// OAuth2ClientConfig provides a mock function with given fields:
+func (_m *AuthenticationContext) OAuth2ClientConfig() *oauth2.Config {
 	ret := _m.Called()
 
 	var r0 *oauth2.Config
@@ -287,6 +187,40 @@ func (_m *AuthenticationContext) OAuth2Config() *oauth2.Config {
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*oauth2.Config)
+		}
+	}
+
+	return r0
+}
+
+type AuthenticationContext_OAuth2Provider struct {
+	*mock.Call
+}
+
+func (_m AuthenticationContext_OAuth2Provider) Return(_a0 interfaces.OAuth2Provider) *AuthenticationContext_OAuth2Provider {
+	return &AuthenticationContext_OAuth2Provider{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *AuthenticationContext) OnOAuth2Provider() *AuthenticationContext_OAuth2Provider {
+	c := _m.On("OAuth2Provider")
+	return &AuthenticationContext_OAuth2Provider{Call: c}
+}
+
+func (_m *AuthenticationContext) OnOAuth2ProviderMatch(matchers ...interface{}) *AuthenticationContext_OAuth2Provider {
+	c := _m.On("OAuth2Provider", matchers...)
+	return &AuthenticationContext_OAuth2Provider{Call: c}
+}
+
+// OAuth2Provider provides a mock function with given fields:
+func (_m *AuthenticationContext) OAuth2Provider() interfaces.OAuth2Provider {
+	ret := _m.Called()
+
+	var r0 interfaces.OAuth2Provider
+	if rf, ok := ret.Get(0).(func() interfaces.OAuth2Provider); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(interfaces.OAuth2Provider)
 		}
 	}
 
@@ -331,7 +265,7 @@ type AuthenticationContext_Options struct {
 	*mock.Call
 }
 
-func (_m AuthenticationContext_Options) Return(_a0 config.OpenIDOptions) *AuthenticationContext_Options {
+func (_m AuthenticationContext_Options) Return(_a0 *config.Config) *AuthenticationContext_Options {
 	return &AuthenticationContext_Options{Call: _m.Call.Return(_a0)}
 }
 
@@ -346,14 +280,16 @@ func (_m *AuthenticationContext) OnOptionsMatch(matchers ...interface{}) *Authen
 }
 
 // Options provides a mock function with given fields:
-func (_m *AuthenticationContext) Options() config.OpenIDOptions {
+func (_m *AuthenticationContext) Options() *config.Config {
 	ret := _m.Called()
 
-	var r0 config.OpenIDOptions
-	if rf, ok := ret.Get(0).(func() config.OpenIDOptions); ok {
+	var r0 *config.Config
+	if rf, ok := ret.Get(0).(func() *config.Config); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(config.OpenIDOptions)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*config.Config)
+		}
 	}
 
 	return r0

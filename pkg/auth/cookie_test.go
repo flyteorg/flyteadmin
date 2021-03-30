@@ -11,9 +11,19 @@ import (
 
 	"github.com/flyteorg/flyteadmin/pkg/auth/config"
 	"github.com/flyteorg/flyteadmin/pkg/auth/interfaces/mocks"
+	stdConfig "github.com/flyteorg/flytestdlib/config"
 	"github.com/gorilla/securecookie"
 	"github.com/stretchr/testify/assert"
 )
+
+func mustParseURL(t testing.TB, u string) url.URL {
+	res, err := url.Parse(u)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	return *res
+}
 
 // This function can also be called locally to generate new keys
 func TestSecureCookieLifecycle(t *testing.T) {
@@ -130,8 +140,10 @@ func TestGetAuthFlowEndRedirect(t *testing.T) {
 		request, err := http.NewRequest(http.MethodGet, "/test", nil)
 		assert.NoError(t, err)
 		mockAuthCtx := &mocks.AuthenticationContext{}
-		mockAuthCtx.On("Options").Return(config.OpenIDOptions{
-			RedirectURL: "/api/v1/projects",
+		mockAuthCtx.OnOptions().Return(&config.Config{
+			UserAuth: config.UserAuthConfig{
+				RedirectURL: stdConfig.URL{URL: mustParseURL(t, "/api/v2/projects")},
+			},
 		})
 		redirect := getAuthFlowEndRedirect(ctx, mockAuthCtx, request)
 		assert.Equal(t, "/api/v1/projects", redirect)

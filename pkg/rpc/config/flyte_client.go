@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	authConfig "github.com/flyteorg/flyteadmin/pkg/auth/config"
+
 	"github.com/flyteorg/flyteadmin/pkg/config"
 	"github.com/flyteorg/flytestdlib/logger"
 )
@@ -16,13 +18,13 @@ const (
 	authMetadataKey = "authorization_metadata_key"
 )
 
-func HandleFlyteCliConfigFunc(ctx context.Context, cfg *config.ServerConfig) http.HandlerFunc {
+func HandleFlyteCliConfigFunc(ctx context.Context, cfg *config.ServerConfig, authConfig *authConfig.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		configValues := map[string]interface{}{
 			clientID:        cfg.ThirdPartyConfig.FlyteClientConfig.ClientID,
 			redirectURI:     cfg.ThirdPartyConfig.FlyteClientConfig.RedirectURI,
-			scopes:          cfg.Security.OpenID.Scopes,
-			authMetadataKey: cfg.Security.OpenID.GrpcAuthorizationHeader,
+			scopes:          authConfig.UserAuth.OpenID.Scopes,
+			authMetadataKey: authConfig.GrpcAuthorizationHeader,
 		}
 
 		configJSON, err := json.Marshal(configValues)

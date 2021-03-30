@@ -5,8 +5,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/flyteorg/flyteadmin/pkg/auth/interfaces"
+
 	"github.com/coreos/go-oidc"
-	"github.com/flyteorg/flyteadmin/pkg/auth/config"
 	"github.com/flyteorg/flytestdlib/errors"
 	"github.com/flyteorg/flytestdlib/logger"
 	grpcauth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
@@ -38,11 +39,9 @@ func GetRefreshedToken(ctx context.Context, oauth *oauth2.Config, accessToken, r
 	return newToken, nil
 }
 
-func ParseAndValidate(ctx context.Context, claims config.Claims, rawIDToken string,
-	provider *oidc.Provider) (*oidc.IDToken, error) {
-
+func ParseIDTokenAndValidate(ctx context.Context, clientID, rawIDToken string, provider *oidc.Provider) (*oidc.IDToken, error) {
 	var verifier = provider.Verifier(&oidc.Config{
-		ClientID: claims.Audience,
+		ClientID: clientID,
 	})
 
 	idToken, err := verifier.Verify(ctx, rawIDToken)
@@ -62,8 +61,8 @@ func ParseAndValidate(ctx context.Context, claims config.Claims, rawIDToken stri
 
 // This function attempts to extract a token from the context, and will then call the validation function, passing up
 // any errors.
-func GetAndValidateTokenObjectFromContext(ctx context.Context, claims config.Claims,
-	provider *oidc.Provider) (*oidc.IDToken, error) {
+func GRPCGetIdentityFromAccessToken(ctx context.Context, authCtx interfaces.AuthenticationContext) (
+	interfaces.IdentityContext, error) {
 
 	tokenStr, err := grpcauth.AuthFromMD(ctx, BearerScheme)
 	if err != nil {
@@ -73,8 +72,37 @@ func GetAndValidateTokenObjectFromContext(ctx context.Context, claims config.Cla
 
 	if tokenStr == "" {
 		logger.Debugf(ctx, "Found Bearer scheme but token was blank")
-		return nil, errors.Errorf(ErrJwtValidation, "Bearer token is blank")
+		return nil, errors.Errorf(ErrJwtValidation, "%v token is blank", IDTokenScheme)
 	}
 
-	return ParseAndValidate(ctx, claims, tokenStr, provider)
+	return authCtx.OAuth2Provider().ValidateAccessToken(ctx, tokenStr)
+}
+
+// This function attempts to extract a token from the context, and will then call the validation function, passing up
+// any errors.
+func GRPCGetIdentityFromIDToken(ctx context.Context, clientID string, provider *oidc.Provider) (
+	interfaces.IdentityContext, error) {
+
+	tokenStr, err := grpcauth.AuthFromMD(ctx, IDTokenScheme)
+	if err != nil {
+		logger.Debugf(ctx, "Could not retrieve bearer token from metadata %v", err)
+		return nil, errors.Wrapf(ErrJwtValidation, err, "Could not retrieve bearer token from metadata")
+	}
+
+	if tokenStr == "" {
+		logger.Debugf(ctx, "Found Bearer scheme but token was blank")
+		return nil, errors.Errorf(ErrJwtValidation, "%v token is blank", IDTokenScheme)
+	}
+
+	return IdentityContextFromIDTokenToken(ctx, tokenStr, clientID, provider)
+}
+
+func IdentityContextFromIDTokenToken(ctx context.Context, tokenStr, clientID string, provider *oidc.Provider) (
+	interfaces.IdentityContext, error) {
+	idToken, err := ParseIDTokenAndValidate(ctx, clientID, tokenStr, provider)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewIdentityContext(idToken.Audience[0], idToken.Subject, "", idToken.IssuedAt, UserInfoResponse{}), nil
 }

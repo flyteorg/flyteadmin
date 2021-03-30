@@ -17,7 +17,7 @@ func TestMarshalAuthorizeRequest(t *testing.T) {
 	assert.NoError(t, err)
 
 	ctx := context.Background()
-	ar, err := oauth2.NewAuthorizeRequest(ctx, req)
+	ar, err := oauth2Provider.NewAuthorizeRequest(ctx, req)
 	assert.NoError(t, err)
 
 	raw, err := json.Marshal(ar)
