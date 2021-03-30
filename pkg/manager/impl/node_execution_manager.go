@@ -190,18 +190,24 @@ func (m *NodeExecutionManager) CreateNodeEvent(ctx context.Context, request admi
 	logger.Debugf(ctx, "Received node execution event for Node Exec Id [%+v] transitioning to phase [%v], w/ Metadata [%v]",
 		request.Event.Id, request.Event.Phase, request.Event.ParentTaskMetadata)
 
-	_, err := util.GetExecutionModel(ctx, m.db, *executionID)
-	if err != nil {
+	exists, err := m.db.ExecutionRepo().Exists(ctx, repoInterfaces.IndividualResourceIdentifier{
+		Project: executionID.Project,
+		Domain:  executionID.Domain,
+		Name:    executionID.Name,
+	})
+	if err != nil || !exists {
 		m.metrics.MissingWorkflowExecution.Inc()
 		logger.Debugf(ctx, "Failed to find existing execution with id [%+v] with err: %v", executionID, err)
-		if ferr, ok := err.(errors.FlyteAdminError); ok {
-			return nil, errors.NewFlyteAdminErrorf(ferr.Code(),
-				"Failed to get existing execution id:[%+v] with err: %v", executionID, err)
+		if err != nil {
+			if ferr, ok := err.(errors.FlyteAdminError); ok {
+				return nil, errors.NewFlyteAdminErrorf(ferr.Code(),
+					"Failed to get existing execution id: [%+v] with err: %v", executionID, err)
+			}
 		}
-		return nil, fmt.Errorf("failed to get existing execution id: [%+v] with err: %v", executionID, err)
+		return nil, fmt.Errorf("failed to get existing execution id: [%+v]", executionID)
 	}
 
-	nodeExecutionModel, err := m.db.NodeExecutionRepo().Get(ctx, repoInterfaces.GetNodeExecutionInput{
+	nodeExecutionModel, err := m.db.NodeExecutionRepo().Get(ctx, repoInterfaces.NodeExecutionResource{
 		NodeExecutionIdentifier: *request.Event.Id,
 	})
 	if err != nil {

@@ -5,7 +5,7 @@ import (
 )
 
 // Parameters for getting an individual resource.
-type GetResourceInput struct {
+type IndividualResourceIdentifier struct {
 	Project string
 	Domain  string
 	Name    string

@@ -61,7 +61,7 @@ func getTaskExecutionContext(ctx context.Context, identifier *core.TaskExecution
 }
 
 func (m *TaskExecutionManager) createTaskExecution(
-	ctx context.Context, nodeExecutionModel *models.NodeExecution, request *admin.TaskExecutionEventRequest) (
+	ctx context.Context, request *admin.TaskExecutionEventRequest) (
 	models.TaskExecution, error) {
 
 	taskExecutionModel, err := transformers.CreateTaskExecutionModel(
@@ -73,13 +73,13 @@ func (m *TaskExecutionManager) createTaskExecution(
 		return models.TaskExecution{}, err
 	}
 	if err := m.db.TaskExecutionRepo().Create(ctx, *taskExecutionModel); err != nil {
-		logger.Debugf(ctx, "Failed to create task execution with task id [%+v] and node execution model [%+v] with err %v",
-			request.Event.TaskId, nodeExecutionModel, err)
+		logger.Debugf(ctx, "Failed to create task execution with task id [%+v] with err %v",
+			request.Event.TaskId, err)
 		return models.TaskExecution{}, err
 	}
 
 	m.metrics.TaskExecutionsCreated.Inc()
-	m.metrics.ClosureSizeBytes.Observe(float64(len(nodeExecutionModel.Closure)))
+	m.metrics.ClosureSizeBytes.Observe(float64(len(taskExecutionModel.Closure)))
 	logger.Debugf(ctx, "created task execution: %+v", request.Event.TaskId)
 	return *taskExecutionModel, nil
 }
@@ -116,15 +116,19 @@ func (m *TaskExecutionManager) CreateTaskExecutionEvent(ctx context.Context, req
 	ctx = getTaskExecutionContext(ctx, &taskExecutionID)
 	logger.Debugf(ctx, "Received task execution event for [%+v] transitioning to phase [%v]",
 		taskExecutionID, request.Event.Phase)
-	nodeExecutionModel, err := util.GetNodeExecutionModel(ctx, m.db, nodeExecutionID)
-	if err != nil {
+	exists, err := m.db.NodeExecutionRepo().Exists(ctx, repoInterfaces.NodeExecutionResource{
+		NodeExecutionIdentifier: *nodeExecutionID,
+	})
+	if err != nil || !exists {
 		m.metrics.MissingTaskExecution.Inc()
 		logger.Debugf(ctx, "Failed to get existing node execution [%+v] with err %v", nodeExecutionID, err)
-		if ferr, ok := err.(errors.FlyteAdminError); ok {
-			return nil, errors.NewFlyteAdminErrorf(ferr.Code(),
-				"Failed to get existing execution node id:[%+v] with err: %v", nodeExecutionID, err)
+		if err != nil {
+			if ferr, ok := err.(errors.FlyteAdminError); ok {
+				return nil, errors.NewFlyteAdminErrorf(ferr.Code(),
+					"Failed to get existing node execution id: [%+v] with err: %v", nodeExecutionID, err)
+			}
 		}
-		return nil, fmt.Errorf("failed to get existing node execution id: [%+v] with err: %v", nodeExecutionID, err)
+		return nil, fmt.Errorf("failed to get existing node execution id: [%+v]", nodeExecutionID)
 	}
 
 	// See if the task execution exists
@@ -139,7 +143,7 @@ func (m *TaskExecutionManager) CreateTaskExecutionEvent(ctx context.Context, req
 			logger.Debugf(ctx, "Failed to find existing task execution [%+v] with err %v", taskExecutionID, err)
 			return nil, err
 		}
-		_, err := m.createTaskExecution(ctx, nodeExecutionModel, &request)
+		_, err := m.createTaskExecution(ctx, &request)
 		if err != nil {
 			return nil, err
 		}
