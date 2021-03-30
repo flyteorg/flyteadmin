@@ -4,8 +4,9 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
+
+	stdConfig "github.com/flyteorg/flytestdlib/config"
 
 	"github.com/flyteorg/flyteadmin/pkg/auth/config"
 	"github.com/flyteorg/flyteadmin/pkg/common"
@@ -49,7 +50,7 @@ func TestGetHTTPRequestCookieToMetadataHandler(t *testing.T) {
 	assert.NoError(t, err)
 	mockAuthCtx := mocks.AuthenticationContext{}
 	mockAuthCtx.On("CookieManager").Return(&cookieManager)
-	mockAuthCtx.OnOptions().Return(config.OpenIDOptions{})
+	mockAuthCtx.OnOptions().Return(&config.Config{})
 	handler := GetHTTPRequestCookieToMetadataHandler(&mockAuthCtx)
 	req, err := http.NewRequest("GET", "/api/v1/projects", nil)
 	assert.NoError(t, err)
@@ -84,10 +85,10 @@ func TestGetHTTPRequestCookieToMetadataHandler_CustomHeader(t *testing.T) {
 	assert.NoError(t, err)
 	mockAuthCtx := mocks.AuthenticationContext{}
 	mockAuthCtx.On("CookieManager").Return(&cookieManager)
-	mockConfig := config.OpenIDOptions{
+	mockConfig := &config.Config{
 		HTTPAuthorizationHeader: "Custom-Header",
 	}
-	mockAuthCtx.On("Options").Return(mockConfig)
+	mockAuthCtx.OnOptions().Return(mockConfig)
 	handler := GetHTTPRequestCookieToMetadataHandler(&mockAuthCtx)
 	req, err := http.NewRequest("GET", "/api/v1/projects", nil)
 	assert.NoError(t, err)
@@ -95,16 +96,19 @@ func TestGetHTTPRequestCookieToMetadataHandler_CustomHeader(t *testing.T) {
 	assert.Equal(t, "Bearer a.b.c", handler(ctx, req)["authorization"][0])
 }
 
-func TestGetMetadataEndpointRedirectHandler(t *testing.T) {
+func TestGetOIdCMetadataEndpointRedirectHandler(t *testing.T) {
 	ctx := context.Background()
-	baseURL, err := url.Parse("http://www.google.com")
-	assert.NoError(t, err)
-	metadataPath, err := url.Parse(OAuth2MetadataEndpoint)
-	assert.NoError(t, err)
+	metadataPath := mustParseURL(t, OIdCMetadataEndpoint)
 	mockAuthCtx := mocks.AuthenticationContext{}
-	mockAuthCtx.OnGetBaseURL().Return(baseURL)
-	mockAuthCtx.OnGetOAuth2MetadataURL().Return(metadataPath)
-	handler := GetOAuth2MetadataEndpointRedirectHandler(ctx, &mockAuthCtx)
+	mockAuthCtx.OnOptions().Return(&config.Config{
+		UserAuth: config.UserAuthConfig{
+			OpenID: config.OpenIDOptions{
+				BaseURL: stdConfig.URL{URL: mustParseURL(t, "http://www.google.com")},
+			},
+		},
+	})
+	mockAuthCtx.OnGetOAuth2MetadataURL().Return(&metadataPath)
+	handler := GetOIdCMetadataEndpointRedirectHandler(ctx, &mockAuthCtx)
 	req, err := http.NewRequest("GET", "/xyz", nil)
 	assert.NoError(t, err)
 	w := httptest.NewRecorder()

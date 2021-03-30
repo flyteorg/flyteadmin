@@ -1,47 +1,40 @@
 package config
 
-type OpenIDOptions struct {
-	// The client ID for Admin in your IDP
-	// See https://tools.ietf.org/html/rfc6749#section-2.2 for more information
-	ClientID string `json:"clientId"`
+import (
+	"time"
 
-	// The client secret used in the exchange of the authorization code for the token.
-	// https://tools.ietf.org/html/rfc6749#section-2.3
-	ClientSecretFile string `json:"clientSecretFile"`
+	"github.com/flyteorg/flytestdlib/config"
+)
 
-	// This should be the base url of the authorization server that you are trying to hit. With Okta for instance, it
-	// will look something like https://company.okta.com/oauth2/abcdef123456789/
-	// TODO: Convert all the URLs in this config to the config.URL type
-	BaseURL string `json:"baseUrl"`
+//go:generate pflags Config --default-var=defaultConfig
 
-	// These two config elements currently need the entire path, including the already specified baseUrl
-	// TODO: Refactor to ascertain the paths using discovery (see https://tools.ietf.org/html/rfc8414)
-	//       Also refactor to use relative paths when discovery is not available
-	AuthorizeURL string `json:"authorizeUrl"`
-	TokenURL     string `json:"tokenUrl"`
+var (
+	defaultConfig = &Config{
+		// Please see the comments in this struct's definition for more information
+		HTTPAuthorizationHeader: "flyte-authorization",
+		GrpcAuthorizationHeader: "flyte-authorization",
+		UserAuth: UserAuthConfig{
+			OpenID: OpenIDOptions{
+				// Default claims that should be supported by any OIdC server. Refer to https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims
+				// for a complete list.
+				Scopes: []string{
+					"openid",
+					"profile",
+				},
+			},
+		},
+		AppAuth: OAuth2Options{
+			Issuer: OAuth2Issuer{
+				Issuer:              "https://localhost:8088",
+				AccessTokenLifespan: config.Duration{Duration: 30 * time.Minute},
+			},
+		},
+	}
 
-	// This is the callback URL that will be sent to the IDP authorize endpoint. It is likely that your IDP application
-	// needs to have this URL whitelisted before using.
-	CallbackURL string `json:"callbackUrl"`
-	Claims      Claims `json:"claims"`
+	cfgSection = config.MustRegisterSection("auth", defaultConfig)
+)
 
-	// This is the relative path of the user info endpoint, if there is one, for the given IDP. This will be appended to
-	// the base URL of the IDP. This is used to support the /me endpoint that Admin will serve when running with authentication
-	// See https://developer.okta.com/docs/reference/api/oidc/#userinfo as an example.
-	IdpUserInfoEndpoint string `json:"idpUserInfoEndpoint"`
-
-	// These should point to files that contain base64 encoded secrets.
-	// You can run `go test -v github.com/flyteorg/flyteadmin/pkg/auth -run TestSecureCookieLifecycle` to generate new ones.
-	// See https://github.com/gorilla/securecookie#examples for more information
-	CookieHashKeyFile  string `json:"cookieHashKeyFile"`
-	CookieBlockKeyFile string `json:"cookieBlockKeyFile"`
-
-	// This is where the user will be redirected to at the end of the flow, but you should not use it. Instead,
-	// the initial /login handler should be called with a redirect_url parameter, which will get saved to a cookie.
-	// This setting will only be used when that cookie is missing.
-	// See the login handler code for more comments.
-	RedirectURL string `json:"redirectUrl"`
-
+type Config struct {
 	// These settings are for non-SSL authentication modes, where Envoy is handling SSL termination
 	// This is not yet used, but this is the HTTP variant of the setting below.
 	HTTPAuthorizationHeader string `json:"httpAuthorizationHeader"`
@@ -59,13 +52,58 @@ type OpenIDOptions struct {
 	DisableForHTTP bool `json:"disableForHttp"`
 	DisableForGrpc bool `json:"disableForGrpc"`
 
+	UserAuth UserAuthConfig `json:"userAuth" pflag:",Defines Auth options for users."`
+	AppAuth  OAuth2Options  `json:"appAuth" pflag:",Defines Auth options for apps. UserAuth must be enabled for AppAuth to work."`
+}
+
+type OAuth2Issuer struct {
+	Issuer              string          `json:"issuer" pflag:",Defines the issuer to use when issuing and validating tokens. The default value is https://<requestUri.HostAndPort>/"`
+	AccessTokenLifespan config.Duration `json:"accessTokenLifespan" pflag:",Defines the lifespan of issued access tokens."`
+}
+
+type OAuth2Options struct {
+	Issuer OAuth2Issuer `json:"issuer"`
+}
+
+type UserAuthConfig struct {
+	// This is where the user will be redirected to at the end of the flow, but you should not use it. Instead,
+	// the initial /login handler should be called with a redirect_url parameter, which will get saved to a cookie.
+	// This setting will only be used when that cookie is missing.
+	// See the login handler code for more comments.
+	RedirectURL config.URL `json:"redirectUrl"`
+
+	OpenID OpenIDOptions `json:"openId" pflag:",OpenID Configuration for User Auth"`
+	// Possibly add basicAuth & SAML/p support.
+}
+
+type OpenIDOptions struct {
+	// The client ID for Admin in your IDP
+	// See https://tools.ietf.org/html/rfc6749#section-2.2 for more information
+	ClientID string `json:"clientId"`
+
+	// The client secret used in the exchange of the authorization code for the token.
+	// https://tools.ietf.org/html/rfc6749#section-2.3
+	ClientSecretFile string `json:"clientSecretFile"`
+
+	// This should be the base url of the authorization server that you are trying to hit. With Okta for instance, it
+	// will look something like https://company.okta.com/oauth2/abcdef123456789/
+	// TODO: Convert all the URLs in this config to the config.URL type
+	BaseURL config.URL `json:"baseUrl"`
+
+	// This is the callback URL that will be sent to the IDP authorize endpoint. It is likely that your IDP application
+	// needs to have this URL whitelisted before using.
+	CallbackURL config.URL `json:"callbackUrl"`
+
 	// Provides a list of scopes to request from the IDP when authenticating. Default value requests claims that should
 	// be supported by any OIdC server. Refer to https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims for
 	// a complete list. Other providers might support additional scopes that you can define in a config.
 	Scopes []string `json:"scopes"`
+
+	// The list of audiences to allow when doing token validation. This should typically be the public endpoint that
+	// Admin Service is accessed as (e.g. https://admin.mycompany.com)
+	AcceptedAudiences []string `json:"aud"`
 }
 
-type Claims struct {
-	Audience string `json:"aud"`
-	Issuer   string `json:"iss"`
+func GetConfig() *Config {
+	return cfgSection.GetConfig().(*Config)
 }

@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
+
+	"golang.org/x/oauth2"
 
 	"github.com/flyteorg/flyteadmin/pkg/audit"
 	"github.com/flyteorg/flyteadmin/pkg/common"
@@ -28,27 +31,47 @@ const (
 	FromHTTPKey                            = "from_http"
 	FromHTTPVal                            = "true"
 	bearerTokenContextKey contextutils.Key = "bearer"
+	idTokenContextKey     contextutils.Key = "idtoken"
 	PrincipalContextKey   contextutils.Key = "principal"
 )
 
 type HTTPRequestToMetadataAnnotator func(ctx context.Context, request *http.Request) metadata.MD
 
+func RegisterAnonymousHandlers(ctx context.Context, handler interfaces.HandlerRegisterer, authCtx interfaces.AuthenticationContext) {
+	// Add HTTP handlers for OAuth2 endpoints
+	handler.HandleFunc("/login", RefreshTokensIfExists(ctx, authCtx,
+		GetLoginHandler(ctx, authCtx)))
+	handler.HandleFunc("/callback", GetCallbackHandler(ctx, authCtx))
+
+	// The metadata endpoint is an RFC-defined constant, but we need a leading / for the handler to pattern match correctly.
+	handler.HandleFunc(fmt.Sprintf("/%s", OIdCMetadataEndpoint), GetOIdCMetadataEndpointRedirectHandler(ctx, authCtx))
+
+	// These endpoints require authentication
+	handler.HandleFunc("/logout", GetLogoutEndpointHandler(ctx, authCtx))
+	handler.HandleFunc("/me", GetMeEndpointHandler(ctx, authCtx))
+}
+
+type authCtxSetter func(ctx context.Context) (context.Context, error)
+
+func RegisterAuthenticatedHandlers(ctx context.Context, handler interfaces.HandlerRegisterer, authSetter authCtxSetter, authCtx interfaces.AuthenticationContext) {
+}
+
 // Look for access token and refresh token, if both are present and the access token is expired, then attempt to
 // refresh. Otherwise do nothing and proceed to the next handler. If successfully refreshed, proceed to the landing page.
-func RefreshTokensIfExists(ctx context.Context, authContext interfaces.AuthenticationContext, handlerFunc http.HandlerFunc) http.HandlerFunc {
+func RefreshTokensIfExists(ctx context.Context, authCtx interfaces.AuthenticationContext, handlerFunc http.HandlerFunc) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		// Since we only do one thing if there are no errors anywhere along the chain, we can save code by just
 		// using one variable and checking for errors at the end.
-		idToken, accessToken, refreshToken, err := authContext.CookieManager().RetrieveTokenValues(ctx, request)
+		idToken, accessToken, refreshToken, err := authCtx.CookieManager().RetrieveTokenValues(ctx, request)
 		if err == nil {
-			_, err = ParseAndValidate(ctx, authContext.Claims(), idToken, authContext.OidcProvider())
+			_, err = ParseIDTokenAndValidate(ctx, authCtx.Options().UserAuth.OpenID.ClientID, idToken, authCtx.OidcProvider())
 			if err != nil && errors.IsCausedBy(err, ErrTokenExpired) && len(refreshToken) > 0 {
 				logger.Debugf(ctx, "Expired id token found, attempting to refresh")
-				newToken, e := GetRefreshedToken(ctx, authContext.OAuth2Config(), accessToken, refreshToken)
+				newToken, e := GetRefreshedToken(ctx, authCtx.OAuth2ClientConfig(), accessToken, refreshToken)
 				err = e
 				if err == nil {
 					logger.Debugf(ctx, "Tokens are refreshed. Saving new tokens into cookies.")
-					err = authContext.CookieManager().SetTokenCookies(ctx, writer, newToken)
+					err = authCtx.CookieManager().SetTokenCookies(ctx, writer, newToken)
 				}
 			}
 		}
@@ -59,12 +82,12 @@ func RefreshTokensIfExists(ctx context.Context, authContext interfaces.Authentic
 			return
 		}
 
-		redirectURL := getAuthFlowEndRedirect(ctx, authContext, request)
+		redirectURL := getAuthFlowEndRedirect(ctx, authCtx, request)
 		http.Redirect(writer, request, redirectURL, http.StatusTemporaryRedirect)
 	}
 }
 
-func GetLoginHandler(ctx context.Context, authContext interfaces.AuthenticationContext) http.HandlerFunc {
+func GetLoginHandler(ctx context.Context, authCtx interfaces.AuthenticationContext) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		csrfCookie := NewCsrfCookie()
 		csrfToken := csrfCookie.Value
@@ -72,7 +95,7 @@ func GetLoginHandler(ctx context.Context, authContext interfaces.AuthenticationC
 
 		state := HashCsrfState(csrfToken)
 		logger.Debugf(ctx, "Setting CSRF state cookie to %s and state to %s\n", csrfToken, state)
-		url := authContext.OAuth2Config().AuthCodeURL(state)
+		url := authCtx.OAuth2ClientConfig().AuthCodeURL(state)
 		queryParams := request.URL.Query()
 		if flowEndRedirectURL := queryParams.Get(RedirectURLParameter); flowEndRedirectURL != "" {
 			redirectCookie := NewRedirectCookie(ctx, flowEndRedirectURL)
@@ -86,7 +109,7 @@ func GetLoginHandler(ctx context.Context, authContext interfaces.AuthenticationC
 	}
 }
 
-func GetCallbackHandler(ctx context.Context, authContext interfaces.AuthenticationContext) http.HandlerFunc {
+func GetCallbackHandler(ctx context.Context, authCtx interfaces.AuthenticationContext) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		logger.Debugf(ctx, "Running callback handler...")
 		authorizationCode := request.FormValue(AuthorizationResponseCodeType)
@@ -98,21 +121,21 @@ func GetCallbackHandler(ctx context.Context, authContext interfaces.Authenticati
 			return
 		}
 
-		token, err := authContext.OAuth2Config().Exchange(ctx, authorizationCode)
+		token, err := authCtx.OAuth2ClientConfig().Exchange(ctx, authorizationCode)
 		if err != nil {
 			logger.Errorf(ctx, "Error when exchanging code %s", err)
 			writer.WriteHeader(http.StatusForbidden)
 			return
 		}
 
-		err = authContext.CookieManager().SetTokenCookies(ctx, writer, token)
+		err = authCtx.CookieManager().SetTokenCookies(ctx, writer, token)
 		if err != nil {
 			logger.Errorf(ctx, "Error setting encrypted JWT cookie %s", err)
 			writer.WriteHeader(http.StatusForbidden)
 			return
 		}
 
-		redirectURL := getAuthFlowEndRedirect(ctx, authContext, request)
+		redirectURL := getAuthFlowEndRedirect(ctx, authCtx, request)
 		http.Redirect(writer, request, redirectURL, http.StatusTemporaryRedirect)
 	}
 }
@@ -120,7 +143,8 @@ func GetCallbackHandler(ctx context.Context, authContext interfaces.Authenticati
 func AuthenticationLoggingInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	// Invoke 'handler' to use your gRPC server implementation and get
 	// the response.
-	logger.Debugf(ctx, "gRPC server info in logging interceptor email %s method %s\n", ctx.Value(common.PrincipalContextKey), info.FullMethod)
+	identityContext := IdentityContextFromContext(ctx)
+	logger.Debugf(ctx, "gRPC server info in logging interceptor email %s method %s\n", identityContext.UserID(), info.FullMethod)
 	return handler(ctx, req)
 }
 
@@ -150,35 +174,54 @@ func GetAuthenticationCustomMetadataInterceptor(authCtx interfaces.Authenticatio
 	}
 }
 
+func SetContextForIdentity(ctx context.Context, identityContext interfaces.IdentityContext) context.Context {
+	email := identityContext.UserInfo().Email()
+	newCtx := identityContext.WithContext(ctx)
+	if len(email) > 0 {
+		newCtx = WithUserEmail(context.WithValue(newCtx, bearerTokenContextKey, identityContext), identityContext.UserID())
+	}
+
+	return WithAuditFields(newCtx, identityContext.UserID(), []string{identityContext.AppID()}, identityContext.AuthenticatedAt())
+}
+
 // This is the function that chooses to enforce or not enforce authentication. It will attempt to get the token
 // from the incoming context, validate it, and decide whether or not to let the request through.
-func GetAuthenticationInterceptor(authContext interfaces.AuthenticationContext) func(context.Context) (context.Context, error) {
+func GetAuthenticationInterceptor(authCtx interfaces.AuthenticationContext) func(context.Context) (context.Context, error) {
 	return func(ctx context.Context) (context.Context, error) {
 		logger.Debugf(ctx, "Running authentication gRPC interceptor")
 
 		fromHTTP := metautils.ExtractIncoming(ctx).Get(FromHTTPKey)
 		isFromHTTP := fromHTTP == FromHTTPVal
 
-		token, err := GetAndValidateTokenObjectFromContext(ctx, authContext.Claims(), authContext.OidcProvider())
+		identityContext, err := GRPCGetIdentityFromAccessToken(ctx, authCtx)
+		if err == nil {
+			return SetContextForIdentity(ctx, identityContext), nil
+		}
+
+		logger.Infof(ctx, "Failed to parse Access Token from context. Will attempt to find IDToken. Error: %v", err)
+
+		identityContext, err = GRPCGetIdentityFromIDToken(ctx, authCtx.Options().UserAuth.OpenID.ClientID,
+			authCtx.OidcProvider())
 
 		// Only enforcement logic is present. The default case is to let things through.
-		if (isFromHTTP && !authContext.Options().DisableForHTTP) ||
-			(!isFromHTTP && !authContext.Options().DisableForGrpc) {
+		if (isFromHTTP && !authCtx.Options().DisableForHTTP) ||
+			(!isFromHTTP && !authCtx.Options().DisableForGrpc) {
+
 			if err != nil {
 				return ctx, status.Errorf(codes.Unauthenticated, "token parse error %s", err)
 			}
-			if token == nil {
+
+			if identityContext == nil {
 				return ctx, status.Errorf(codes.Unauthenticated, "Token was nil after parsing")
-			} else if token.Subject == "" {
-				return ctx, status.Errorf(codes.Unauthenticated, "no email or empty email found")
+			} else if len(identityContext.UserID()) == 0 {
+				return ctx, status.Errorf(codes.Unauthenticated, "no user id or empty user id was found")
 			}
 		}
 
-		if token != nil {
-			newCtx := WithUserEmail(context.WithValue(ctx, bearerTokenContextKey, token), token.Subject)
-			newCtx = WithAuditFields(newCtx, token.Audience, token.IssuedAt)
-			return newCtx, nil
+		if err == nil {
+			return SetContextForIdentity(ctx, identityContext), nil
 		}
+
 		return ctx, nil
 	}
 }
@@ -187,16 +230,17 @@ func WithUserEmail(ctx context.Context, email string) context.Context {
 	return context.WithValue(ctx, common.PrincipalContextKey, email)
 }
 
-func WithAuditFields(ctx context.Context, clientIds []string, tokenIssuedAt time.Time) context.Context {
+func WithAuditFields(ctx context.Context, subject string, clientIds []string, tokenIssuedAt time.Time) context.Context {
 	var clientIP string
-	peer, ok := peer.FromContext(ctx)
+	peerInfo, ok := peer.FromContext(ctx)
 	if ok {
-		clientIP = peer.Addr.String()
+		clientIP = peerInfo.Addr.String()
 	}
 	return context.WithValue(ctx, common.AuditFieldsContextKey, audit.AuthenticatedClientMeta{
 		ClientIds:     clientIds,
 		TokenIssuedAt: tokenIssuedAt,
 		ClientIP:      clientIP,
+		Subject:       subject,
 	})
 }
 
@@ -205,15 +249,15 @@ func WithAuditFields(ctx context.Context, clientIds []string, tokenIssuedAt time
 // yet implemented), or encrypted cookies. Note that when deploying behind Envoy, you have the option to look for a
 // configurable, non-standard header name. The token is extracted and turned into a metadata object which is then
 // attached to the request, from which the token is extracted later for verification.
-func GetHTTPRequestCookieToMetadataHandler(authContext interfaces.AuthenticationContext) HTTPRequestToMetadataAnnotator {
+func GetHTTPRequestCookieToMetadataHandler(authCtx interfaces.AuthenticationContext) HTTPRequestToMetadataAnnotator {
 	return func(ctx context.Context, request *http.Request) metadata.MD {
 		// TODO: Improve error handling
-		idToken, _, _, _ := authContext.CookieManager().RetrieveTokenValues(ctx, request)
+		idToken, _, _, _ := authCtx.CookieManager().RetrieveTokenValues(ctx, request)
 		if len(idToken) == 0 {
 			// If no token was found in the cookies, look for an authorization header, starting with a potentially
 			// custom header set in the Config object
-			if authContext.Options().HTTPAuthorizationHeader != "" {
-				header := authContext.Options().HTTPAuthorizationHeader
+			if len(authCtx.Options().HTTPAuthorizationHeader) > 0 {
+				header := authCtx.Options().HTTPAuthorizationHeader
 				// TODO: There may be a potential issue here when running behind a service mesh that uses the default Authorization
 				//       header. The grpc-gateway code will automatically translate the 'Authorization' header into the appropriate
 				//       metadata object so if two different tokens are presented, one with the default name and one with the
@@ -222,18 +266,19 @@ func GetHTTPRequestCookieToMetadataHandler(authContext interfaces.Authentication
 					DefaultAuthorizationHeader: []string{request.Header.Get(header)},
 				}
 			}
+
 			logger.Infof(ctx, "Could not find access token cookie while requesting %s", request.RequestURI)
 			return nil
 		}
 		return metadata.MD{
-			DefaultAuthorizationHeader: []string{fmt.Sprintf("%s %s", BearerScheme, idToken)},
+			DefaultAuthorizationHeader: []string{fmt.Sprintf("%s %s", IDTokenScheme, idToken)},
 		}
 	}
 }
 
 // Intercepts the incoming HTTP requests and marks it as such so that the downstream code can use it to enforce auth.
 // See the enforceHTTP/Grpc options for more information.
-func GetHTTPMetadataTaggingHandler(authContext interfaces.AuthenticationContext) HTTPRequestToMetadataAnnotator {
+func GetHTTPMetadataTaggingHandler(authCtx interfaces.AuthenticationContext) HTTPRequestToMetadataAnnotator {
 	return func(ctx context.Context, request *http.Request) metadata.MD {
 		return metadata.MD{
 			FromHTTPKey: []string{FromHTTPVal},
@@ -241,34 +286,98 @@ func GetHTTPMetadataTaggingHandler(authContext interfaces.AuthenticationContext)
 	}
 }
 
+func IdentityContextFromRequest(ctx context.Context, req *http.Request, authCtx interfaces.AuthenticationContext) (
+	interfaces.IdentityContext, error) {
+
+	authHeader := DefaultAuthorizationHeader
+	if len(authCtx.Options().HTTPAuthorizationHeader) > 0 {
+		authHeader = authCtx.Options().HTTPAuthorizationHeader
+	}
+
+	headerValue := req.Header.Get(authHeader)
+	if len(headerValue) == 0 {
+		headerValue = req.Header.Get(DefaultAuthorizationHeader)
+	}
+
+	if len(headerValue) > 0 {
+		logger.Debugf(ctx, "Found authorization header at [%v] header. Validating.", authHeader)
+		if strings.HasPrefix(headerValue, BearerScheme+" ") {
+			return authCtx.OAuth2Provider().ValidateAccessToken(ctx, strings.TrimPrefix(headerValue, BearerScheme+" "))
+		}
+	}
+
+	idToken, _, _, _ := authCtx.CookieManager().RetrieveTokenValues(ctx, req)
+	if len(idToken) > 0 {
+		return IdentityContextFromIDTokenToken(ctx, idToken, authCtx.Options().UserAuth.OpenID.ClientID,
+			authCtx.OidcProvider())
+	}
+
+	return nil, fmt.Errorf("unauthenticated request")
+}
+
 // TODO: Add this to the Admin service IDL in Flyte IDL so that this can be exposed from gRPC as well.
 // This returns a handler that will retrieve user info, from the OAuth2 authorization server.
 // See the OpenID Connect spec at https://openid.net/specs/openid-connect-core-1_0.html#UserInfoResponse for more information.
 func GetMeEndpointHandler(ctx context.Context, authCtx interfaces.AuthenticationContext) http.HandlerFunc {
-	idpUserInfoEndpoint := authCtx.GetUserInfoURL().String()
 	return func(writer http.ResponseWriter, request *http.Request) {
-		_, accessToken, _, err := authCtx.CookieManager().RetrieveTokenValues(ctx, request)
+		identityContext, err := IdentityContextFromRequest(ctx, request, authCtx)
 		if err != nil {
-			http.Error(writer, "Error decoding identify token, try /login in again", http.StatusUnauthorized)
-			return
-		}
-		// TODO: Investigate improving transparency of errors. The errors from this call may be just a local error, or may
-		//       be an error from the HTTP request to the IDP. In the latter case, consider passing along the error code/msg.
-		userInfo, err := postToIdp(ctx, authCtx.GetHTTPClient(), idpUserInfoEndpoint, accessToken)
-		if err != nil {
-			logger.Errorf(ctx, "Error getting user info from IDP %s", err)
-			http.Error(writer, "Error getting user info from IDP", http.StatusFailedDependency)
+			http.Error(writer, "Request is unauthenticated, try /login in again", http.StatusUnauthorized)
 			return
 		}
 
-		bytes, err := json.Marshal(userInfo)
-		if err != nil {
-			logger.Errorf(ctx, "Error marshaling response into JSON %s", err)
-			http.Error(writer, "Error marshaling response into JSON", http.StatusInternalServerError)
+		if identityContext.IsEmpty() {
+			http.Error(writer, "Request is unauthenticated, try /login in again", http.StatusUnauthorized)
 			return
 		}
+
+		var raw []byte
+		if len(identityContext.UserInfo().Name()) > 0 {
+			raw, err = identityContext.UserInfo().MarshalToJSON()
+			if err != nil {
+				http.Error(writer, "Request is unauthenticated, try /login in again", http.StatusUnauthorized)
+				return
+			}
+		} else {
+			_, accessToken, _, err := authCtx.CookieManager().RetrieveTokenValues(ctx, request)
+			if err != nil {
+				http.Error(writer, "Error decoding identify token, try /login in again", http.StatusUnauthorized)
+				return
+			}
+
+			originalToken := oauth2.Token{
+				AccessToken: accessToken,
+			}
+
+			tokenSource := authCtx.OAuth2ClientConfig().TokenSource(ctx, &originalToken)
+
+			// TODO: Investigate improving transparency of errors. The errors from this call may be just a local error, or may
+			//       be an error from the HTTP request to the IDP. In the latter case, consider passing along the error code/msg.
+			userInfo, err := authCtx.OidcProvider().UserInfo(ctx, tokenSource)
+			if err != nil {
+				logger.Errorf(ctx, "Error getting user info from IDP %s", err)
+				http.Error(writer, "Error getting user info from IDP", http.StatusFailedDependency)
+				return
+			}
+
+			resp := UserInfoResponse{}
+			err = userInfo.Claims(&resp)
+			if err != nil {
+				logger.Errorf(ctx, "Error getting user info from IDP %s", err)
+				http.Error(writer, "Error getting user info from IDP", http.StatusFailedDependency)
+				return
+			}
+
+			raw, err = json.Marshal(resp)
+			if err != nil {
+				logger.Errorf(ctx, "Error marshaling response into JSON %s", err)
+				http.Error(writer, "Error marshaling response into JSON", http.StatusInternalServerError)
+				return
+			}
+		}
+
 		writer.Header().Set("Content-Type", "application/json")
-		size, err := writer.Write(bytes)
+		size, err := writer.Write(raw)
 		if err != nil {
 			logger.Errorf(ctx, "Wrote user info response size %d, err %s", size, err)
 		}
@@ -277,18 +386,9 @@ func GetMeEndpointHandler(ctx context.Context, authCtx interfaces.Authentication
 
 // This returns a handler that will redirect (303) to the well-known metadata endpoint for the OAuth2 authorization server
 // See https://tools.ietf.org/html/rfc8414 for more information.
-func GetOAuth2MetadataEndpointRedirectHandler(ctx context.Context, authCtx interfaces.AuthenticationContext) http.HandlerFunc {
-	return func(writer http.ResponseWriter, request *http.Request) {
-		metadataURL := authCtx.GetBaseURL().ResolveReference(authCtx.GetOAuth2MetadataURL())
-		http.Redirect(writer, request, metadataURL.String(), http.StatusSeeOther)
-	}
-}
-
-// This returns a handler that will redirect (303) to the well-known metadata endpoint for the OAuth2 authorization server
-// See https://tools.ietf.org/html/rfc8414 for more information.
 func GetOIdCMetadataEndpointRedirectHandler(ctx context.Context, authCtx interfaces.AuthenticationContext) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		metadataURL := authCtx.GetBaseURL().ResolveReference(authCtx.GetOIdCMetadataURL())
+		metadataURL := authCtx.Options().UserAuth.OpenID.BaseURL.ResolveReference(authCtx.GetOIdCMetadataURL())
 		http.Redirect(writer, request, metadataURL.String(), http.StatusSeeOther)
 	}
 }

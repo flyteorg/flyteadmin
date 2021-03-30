@@ -3,7 +3,10 @@ package entrypoints
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
+
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/secretmanager"
+
+	authConfig "github.com/flyteorg/flyteadmin/pkg/auth/config"
 
 	"github.com/flyteorg/flyteadmin/pkg/auth/oauthserver"
 
@@ -63,6 +66,7 @@ var serveCmd = &cobra.Command{
 func init() {
 	// Command information
 	RootCmd.AddCommand(serveCmd)
+	RootCmd.AddCommand(auth.GetInitSecretsCommand())
 
 	// Set Keys
 	labeled.SetMetricKeys(contextutils.AppNameKey, contextutils.ProjectKey, contextutils.DomainKey,
@@ -71,15 +75,15 @@ func init() {
 }
 
 // Creates a new gRPC Server with all the configuration
-func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authContext interfaces.AuthenticationContext,
+func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authCtx interfaces.AuthenticationContext,
 	opts ...grpc.ServerOption) (*grpc.Server, error) {
 	// Not yet implemented for streaming
 	var chainedUnaryInterceptors grpc.UnaryServerInterceptor
 	if cfg.Security.UseAuth {
 		logger.Infof(ctx, "Creating gRPC server with authentication")
 		chainedUnaryInterceptors = grpc_middleware.ChainUnaryServer(grpc_prometheus.UnaryServerInterceptor,
-			auth.GetAuthenticationCustomMetadataInterceptor(authContext),
-			grpcauth.UnaryServerInterceptor(auth.GetAuthenticationInterceptor(authContext)),
+			auth.GetAuthenticationCustomMetadataInterceptor(authCtx),
+			grpcauth.UnaryServerInterceptor(auth.GetAuthenticationInterceptor(authCtx)),
 			auth.AuthenticationLoggingInterceptor,
 		)
 	} else {
@@ -125,7 +129,7 @@ func healthCheckFunc(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authContext interfaces.AuthenticationContext,
+func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authCtx interfaces.AuthenticationContext,
 	grpcAddress string, grpcConnectionOpts ...grpc.DialOption) (*http.ServeMux, error) {
 
 	// Register the server that will serve HTTP/REST Traffic
@@ -139,37 +143,26 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authContext in
 	mux.HandleFunc("/api/v1/openapi", GetHandleOpenapiSpec(ctx))
 
 	// Handles serving config values required to initialize a flyte-client config
-	mux.HandleFunc("/config/v1/flyte_client", rpcConfig.HandleFlyteCliConfigFunc(ctx, cfg))
+	mux.HandleFunc("/config/v1/flyte_client", rpcConfig.HandleFlyteCliConfigFunc(ctx, cfg, authConfig.GetConfig()))
 
 	var gwmuxOptions = make([]runtime.ServeMuxOption, 0)
 	// This option means that http requests are served with protobufs, instead of json. We always want this.
 	gwmuxOptions = append(gwmuxOptions, runtime.WithMarshalerOption("application/octet-stream", &runtime.ProtoMarshaller{}))
 
 	if cfg.Security.UseAuth {
+		// Add HTTP handlers for OIDC endpoints
+		auth.RegisterAnonymousHandlers(ctx, mux, authCtx)
+		auth.RegisterAuthenticatedHandlers(ctx, mux, auth.GetAuthenticationInterceptor(authCtx), authCtx)
+
 		// Add HTTP handlers for OAuth2 endpoints
-		mux.HandleFunc("/login", auth.RefreshTokensIfExists(ctx, authContext,
-			auth.GetLoginHandler(ctx, authContext)))
-		mux.HandleFunc("/logout", auth.GetLogoutEndpointHandler(ctx, authContext))
-		mux.HandleFunc("/callback", auth.GetCallbackHandler(ctx, authContext))
-		// Install the user info endpoint if there is a user info url configured.
-		if authContext.GetUserInfoURL() != nil && authContext.GetUserInfoURL().String() != "" {
-			mux.HandleFunc("/me", auth.GetMeEndpointHandler(ctx, authContext))
-		}
-
-		oauthserver.RegisterHandlers(mux, auth.GetAuthenticationInterceptor(authContext), authContext)
-
-		// The metadata endpoint is an RFC-defined constant, but we need a leading / for the handler to pattern match correctly.
-		mux.HandleFunc(fmt.Sprintf("/%s", auth.OIdCMetadataEndpoint), auth.GetOIdCMetadataEndpointRedirectHandler(ctx, authContext))
-
-		// The metadata endpoint is an RFC-defined constant, but we need a leading / for the handler to pattern match correctly.
-		mux.HandleFunc(fmt.Sprintf("/%s", auth.OAuth2MetadataEndpoint), auth.GetOAuth2MetadataEndpointRedirectHandler(ctx, authContext))
+		oauthserver.RegisterHandlers(mux, authCtx)
 
 		// This option translates HTTP authorization data (cookies) into a gRPC metadata field
-		gwmuxOptions = append(gwmuxOptions, runtime.WithMetadata(auth.GetHTTPRequestCookieToMetadataHandler(authContext)))
+		gwmuxOptions = append(gwmuxOptions, runtime.WithMetadata(auth.GetHTTPRequestCookieToMetadataHandler(authCtx)))
 
 		// In an attempt to be able to selectively enforce whether or not authentication is required, we're going to tag
 		// the requests that come from the HTTP gateway. See the enforceHttp/Grpc options for more information.
-		gwmuxOptions = append(gwmuxOptions, runtime.WithMetadata(auth.GetHTTPMetadataTaggingHandler(authContext)))
+		gwmuxOptions = append(gwmuxOptions, runtime.WithMetadata(auth.GetHTTPMetadataTaggingHandler(authCtx)))
 	}
 
 	// Create the grpc-gateway server with the options specified
@@ -189,21 +182,28 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig) error {
 	logger.Infof(ctx, "Serving Flyte Admin Insecure")
 
 	// This will parse configuration and create the necessary objects for dealing with auth
-	var authContext interfaces.AuthenticationContext
+	var authCtx interfaces.AuthenticationContext
 	var err error
 	// This code is here to support authentication without SSL. This setup supports a network topology where
 	// Envoy does the SSL termination. The final hop is made over localhost only on a trusted machine.
 	// Warning: Running authentication without SSL in any other topology is a severe security flaw.
 	// See the auth.Config object for additional settings as well.
 	if cfg.Security.UseAuth {
-		authContext, err = auth.NewAuthenticationContext(ctx, cfg.Security.OpenID)
+		sm := secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig())
+		oauth2Provider, err := oauthserver.NewProvider(ctx, authConfig.GetConfig(), sm)
+		if err != nil {
+			logger.Errorf(ctx, "Error creating auth context %s", err)
+			return err
+		}
+
+		authCtx, err = auth.NewAuthenticationContext(ctx, sm, oauth2Provider, authConfig.GetConfig())
 		if err != nil {
 			logger.Errorf(ctx, "Error creating auth context %s", err)
 			return err
 		}
 	}
 
-	grpcServer, err := newGRPCServer(ctx, cfg, authContext)
+	grpcServer, err := newGRPCServer(ctx, cfg, authCtx)
 	if err != nil {
 		return errors.Wrap(err, "failed to create GRPC server")
 	}
@@ -220,7 +220,7 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig) error {
 	}()
 
 	logger.Infof(ctx, "Starting HTTP/1 Gateway server on %s", cfg.GetHostAddress())
-	httpServer, err := newHTTPServer(ctx, cfg, authContext, cfg.GetGrpcHostAddress(), grpc.WithInsecure(),
+	httpServer, err := newHTTPServer(ctx, cfg, authCtx, cfg.GetGrpcHostAddress(), grpc.WithInsecure(),
 		grpc.WithMaxHeaderListSize(common.MaxResponseStatusBytes))
 	if err != nil {
 		return err
@@ -266,16 +266,18 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig) error {
 		return err
 	}
 	// This will parse configuration and create the necessary objects for dealing with auth
-	var authContext interfaces.AuthenticationContext
+	var authCtx interfaces.AuthenticationContext
 	if cfg.Security.UseAuth {
-		authContext, err = auth.NewAuthenticationContext(ctx, cfg.Security.OpenID)
+		sm := secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig())
+		oauth2Provider, err := oauthserver.NewProvider(ctx, authConfig.GetConfig(), sm)
+		authCtx, err = auth.NewAuthenticationContext(ctx, sm, oauth2Provider, authConfig.GetConfig())
 		if err != nil {
 			logger.Errorf(ctx, "Error creating auth context %s", err)
 			return err
 		}
 	}
 
-	grpcServer, err := newGRPCServer(ctx, cfg, authContext,
+	grpcServer, err := newGRPCServer(ctx, cfg, authCtx,
 		grpc.Creds(credentials.NewServerTLSFromCert(cert)))
 	if err != nil {
 		return errors.Wrap(err, "failed to create GRPC server")
@@ -286,7 +288,7 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig) error {
 		ServerName: cfg.GetHostAddress(),
 		RootCAs:    certPool,
 	})
-	httpServer, err := newHTTPServer(ctx, cfg, authContext, cfg.GetHostAddress(), grpc.WithTransportCredentials(dialCreds))
+	httpServer, err := newHTTPServer(ctx, cfg, authCtx, cfg.GetHostAddress(), grpc.WithTransportCredentials(dialCreds))
 	if err != nil {
 		return err
 	}

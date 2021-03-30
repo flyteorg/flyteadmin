@@ -16,11 +16,15 @@ server:
       - "*"
     allowedHeaders:
       - "Content-Type"
+auth:
+  disableForGrpc: true
+  appAuth:
     oauth2:
       issuer:
         issuer: https://fosite.my-application.com
-    openid:
-      disableForGrpc: true
+  userAuth:
+    openId:
+      baseUrl: https://accounts.google.com
       scopes:
         - profile
         - openid

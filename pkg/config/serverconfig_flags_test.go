@@ -297,11 +297,11 @@ func TestServerConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
-	t.Run("Test_security.oauth.clientId", func(t *testing.T) {
+	t.Run("Test_security.auth.httpAuthorizationHeader", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("security.oauth.clientId"); err == nil {
-				assert.Equal(t, string(defaultServerConfig.Security.Oauth.ClientID), vString)
+			if vString, err := cmdFlags.GetString("security.auth.httpAuthorizationHeader"); err == nil {
+				assert.Equal(t, string(defaultServerConfig.Security.Auth.HTTPAuthorizationHeader), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -310,20 +310,20 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("security.oauth.clientId", testValue)
-			if vString, err := cmdFlags.GetString("security.oauth.clientId"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.ClientID)
+			cmdFlags.Set("security.auth.httpAuthorizationHeader", testValue)
+			if vString, err := cmdFlags.GetString("security.auth.httpAuthorizationHeader"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Auth.HTTPAuthorizationHeader)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_security.oauth.clientSecretFile", func(t *testing.T) {
+	t.Run("Test_security.auth.grpcAuthorizationHeader", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("security.oauth.clientSecretFile"); err == nil {
-				assert.Equal(t, string(defaultServerConfig.Security.Oauth.ClientSecretFile), vString)
+			if vString, err := cmdFlags.GetString("security.auth.grpcAuthorizationHeader"); err == nil {
+				assert.Equal(t, string(defaultServerConfig.Security.Auth.GrpcAuthorizationHeader), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -332,20 +332,20 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("security.oauth.clientSecretFile", testValue)
-			if vString, err := cmdFlags.GetString("security.oauth.clientSecretFile"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.ClientSecretFile)
+			cmdFlags.Set("security.auth.grpcAuthorizationHeader", testValue)
+			if vString, err := cmdFlags.GetString("security.auth.grpcAuthorizationHeader"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Auth.GrpcAuthorizationHeader)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_security.oauth.baseUrl", func(t *testing.T) {
+	t.Run("Test_security.auth.disableForHttp", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("security.oauth.baseUrl"); err == nil {
-				assert.Equal(t, string(defaultServerConfig.Security.Oauth.BaseURL), vString)
+			if vBool, err := cmdFlags.GetBool("security.auth.disableForHttp"); err == nil {
+				assert.Equal(t, bool(defaultServerConfig.Security.Auth.DisableForHTTP), vBool)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -354,20 +354,20 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("security.oauth.baseUrl", testValue)
-			if vString, err := cmdFlags.GetString("security.oauth.baseUrl"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.BaseURL)
+			cmdFlags.Set("security.auth.disableForHttp", testValue)
+			if vBool, err := cmdFlags.GetBool("security.auth.disableForHttp"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vBool), &actual.Security.Auth.DisableForHTTP)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_security.oauth.authorizeUrl", func(t *testing.T) {
+	t.Run("Test_security.auth.disableForGrpc", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("security.oauth.authorizeUrl"); err == nil {
-				assert.Equal(t, string(defaultServerConfig.Security.Oauth.AuthorizeURL), vString)
+			if vBool, err := cmdFlags.GetBool("security.auth.disableForGrpc"); err == nil {
+				assert.Equal(t, bool(defaultServerConfig.Security.Auth.DisableForGrpc), vBool)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -376,42 +376,42 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("security.oauth.authorizeUrl", testValue)
-			if vString, err := cmdFlags.GetString("security.oauth.authorizeUrl"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.AuthorizeURL)
+			cmdFlags.Set("security.auth.disableForGrpc", testValue)
+			if vBool, err := cmdFlags.GetBool("security.auth.disableForGrpc"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vBool), &actual.Security.Auth.DisableForGrpc)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_security.oauth.tokenUrl", func(t *testing.T) {
+	t.Run("Test_security.auth.userAuth.redirectUrl", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("security.oauth.tokenUrl"); err == nil {
-				assert.Equal(t, string(defaultServerConfig.Security.Oauth.TokenURL), vString)
+			if vString, err := cmdFlags.GetString("security.auth.userAuth.redirectUrl"); err == nil {
+				assert.Equal(t, string(defaultServerConfig.Security.Auth.UserAuth.RedirectURL.String()), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 
 		t.Run("Override", func(t *testing.T) {
-			testValue := "1"
+			testValue := defaultServerConfig.Security.Auth.UserAuth.RedirectURL.String()
 
-			cmdFlags.Set("security.oauth.tokenUrl", testValue)
-			if vString, err := cmdFlags.GetString("security.oauth.tokenUrl"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.TokenURL)
+			cmdFlags.Set("security.auth.userAuth.redirectUrl", testValue)
+			if vString, err := cmdFlags.GetString("security.auth.userAuth.redirectUrl"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Auth.UserAuth.RedirectURL)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_security.oauth.callbackUrl", func(t *testing.T) {
+	t.Run("Test_security.auth.userAuth.openId.clientId", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("security.oauth.callbackUrl"); err == nil {
-				assert.Equal(t, string(defaultServerConfig.Security.Oauth.CallbackURL), vString)
+			if vString, err := cmdFlags.GetString("security.auth.userAuth.openId.clientId"); err == nil {
+				assert.Equal(t, string(defaultServerConfig.Security.Auth.UserAuth.OpenID.ClientID), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -420,20 +420,20 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("security.oauth.callbackUrl", testValue)
-			if vString, err := cmdFlags.GetString("security.oauth.callbackUrl"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.CallbackURL)
+			cmdFlags.Set("security.auth.userAuth.openId.clientId", testValue)
+			if vString, err := cmdFlags.GetString("security.auth.userAuth.openId.clientId"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Auth.UserAuth.OpenID.ClientID)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_security.oauth.claims.aud", func(t *testing.T) {
+	t.Run("Test_security.auth.userAuth.openId.clientSecretFile", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("security.oauth.claims.aud"); err == nil {
-				assert.Equal(t, string(defaultServerConfig.Security.Oauth.Claims.Audience), vString)
+			if vString, err := cmdFlags.GetString("security.auth.userAuth.openId.clientSecretFile"); err == nil {
+				assert.Equal(t, string(defaultServerConfig.Security.Auth.UserAuth.OpenID.ClientSecretFile), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -442,108 +442,108 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("security.oauth.claims.aud", testValue)
-			if vString, err := cmdFlags.GetString("security.oauth.claims.aud"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.Claims.Audience)
+			cmdFlags.Set("security.auth.userAuth.openId.clientSecretFile", testValue)
+			if vString, err := cmdFlags.GetString("security.auth.userAuth.openId.clientSecretFile"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Auth.UserAuth.OpenID.ClientSecretFile)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_security.oauth.claims.iss", func(t *testing.T) {
+	t.Run("Test_security.auth.userAuth.openId.baseUrl", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("security.oauth.claims.iss"); err == nil {
-				assert.Equal(t, string(defaultServerConfig.Security.Oauth.Claims.Issuer), vString)
+			if vString, err := cmdFlags.GetString("security.auth.userAuth.openId.baseUrl"); err == nil {
+				assert.Equal(t, string(defaultServerConfig.Security.Auth.UserAuth.OpenID.BaseURL.String()), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 
 		t.Run("Override", func(t *testing.T) {
-			testValue := "1"
+			testValue := defaultServerConfig.Security.Auth.UserAuth.OpenID.BaseURL.String()
 
-			cmdFlags.Set("security.oauth.claims.iss", testValue)
-			if vString, err := cmdFlags.GetString("security.oauth.claims.iss"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.Claims.Issuer)
+			cmdFlags.Set("security.auth.userAuth.openId.baseUrl", testValue)
+			if vString, err := cmdFlags.GetString("security.auth.userAuth.openId.baseUrl"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Auth.UserAuth.OpenID.BaseURL)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_security.oauth.idpUserInfoEndpoint", func(t *testing.T) {
+	t.Run("Test_security.auth.userAuth.openId.callbackUrl", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("security.oauth.idpUserInfoEndpoint"); err == nil {
-				assert.Equal(t, string(defaultServerConfig.Security.Oauth.IdpUserInfoEndpoint), vString)
+			if vString, err := cmdFlags.GetString("security.auth.userAuth.openId.callbackUrl"); err == nil {
+				assert.Equal(t, string(defaultServerConfig.Security.Auth.UserAuth.OpenID.CallbackURL.String()), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 
 		t.Run("Override", func(t *testing.T) {
-			testValue := "1"
+			testValue := defaultServerConfig.Security.Auth.UserAuth.OpenID.CallbackURL.String()
 
-			cmdFlags.Set("security.oauth.idpUserInfoEndpoint", testValue)
-			if vString, err := cmdFlags.GetString("security.oauth.idpUserInfoEndpoint"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.IdpUserInfoEndpoint)
+			cmdFlags.Set("security.auth.userAuth.openId.callbackUrl", testValue)
+			if vString, err := cmdFlags.GetString("security.auth.userAuth.openId.callbackUrl"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Auth.UserAuth.OpenID.CallbackURL)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_security.oauth.cookieHashKeyFile", func(t *testing.T) {
+	t.Run("Test_security.auth.userAuth.openId.scopes", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("security.oauth.cookieHashKeyFile"); err == nil {
-				assert.Equal(t, string(defaultServerConfig.Security.Oauth.CookieHashKeyFile), vString)
+			if vStringSlice, err := cmdFlags.GetStringSlice("security.auth.userAuth.openId.scopes"); err == nil {
+				assert.Equal(t, []string([]string{}), vStringSlice)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 
 		t.Run("Override", func(t *testing.T) {
-			testValue := "1"
+			testValue := join_ServerConfig("1,1", ",")
 
-			cmdFlags.Set("security.oauth.cookieHashKeyFile", testValue)
-			if vString, err := cmdFlags.GetString("security.oauth.cookieHashKeyFile"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.CookieHashKeyFile)
+			cmdFlags.Set("security.auth.userAuth.openId.scopes", testValue)
+			if vStringSlice, err := cmdFlags.GetStringSlice("security.auth.userAuth.openId.scopes"); err == nil {
+				testDecodeSlice_ServerConfig(t, join_ServerConfig(vStringSlice, ","), &actual.Security.Auth.UserAuth.OpenID.Scopes)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_security.oauth.cookieBlockKeyFile", func(t *testing.T) {
+	t.Run("Test_security.auth.userAuth.openId.aud", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("security.oauth.cookieBlockKeyFile"); err == nil {
-				assert.Equal(t, string(defaultServerConfig.Security.Oauth.CookieBlockKeyFile), vString)
+			if vStringSlice, err := cmdFlags.GetStringSlice("security.auth.userAuth.openId.aud"); err == nil {
+				assert.Equal(t, []string([]string{}), vStringSlice)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 
 		t.Run("Override", func(t *testing.T) {
-			testValue := "1"
+			testValue := join_ServerConfig("1,1", ",")
 
-			cmdFlags.Set("security.oauth.cookieBlockKeyFile", testValue)
-			if vString, err := cmdFlags.GetString("security.oauth.cookieBlockKeyFile"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.CookieBlockKeyFile)
+			cmdFlags.Set("security.auth.userAuth.openId.aud", testValue)
+			if vStringSlice, err := cmdFlags.GetStringSlice("security.auth.userAuth.openId.aud"); err == nil {
+				testDecodeSlice_ServerConfig(t, join_ServerConfig(vStringSlice, ","), &actual.Security.Auth.UserAuth.OpenID.AcceptedAudiences)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_security.oauth.redirectUrl", func(t *testing.T) {
+	t.Run("Test_security.auth.appAuth.issuer.issuer", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("security.oauth.redirectUrl"); err == nil {
-				assert.Equal(t, string(defaultServerConfig.Security.Oauth.RedirectURL), vString)
+			if vString, err := cmdFlags.GetString("security.auth.appAuth.issuer.issuer"); err == nil {
+				assert.Equal(t, string(defaultServerConfig.Security.Auth.AppAuth.Issuer.Issuer), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -552,97 +552,31 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("security.oauth.redirectUrl", testValue)
-			if vString, err := cmdFlags.GetString("security.oauth.redirectUrl"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.RedirectURL)
+			cmdFlags.Set("security.auth.appAuth.issuer.issuer", testValue)
+			if vString, err := cmdFlags.GetString("security.auth.appAuth.issuer.issuer"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Auth.AppAuth.Issuer.Issuer)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_security.oauth.httpAuthorizationHeader", func(t *testing.T) {
+	t.Run("Test_security.auth.appAuth.issuer.accessTokenLifespan", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("security.oauth.httpAuthorizationHeader"); err == nil {
-				assert.Equal(t, string(defaultServerConfig.Security.Oauth.HTTPAuthorizationHeader), vString)
+			if vString, err := cmdFlags.GetString("security.auth.appAuth.issuer.accessTokenLifespan"); err == nil {
+				assert.Equal(t, string(defaultServerConfig.Security.Auth.AppAuth.Issuer.AccessTokenLifespan.String()), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 
 		t.Run("Override", func(t *testing.T) {
-			testValue := "1"
+			testValue := defaultServerConfig.Security.Auth.AppAuth.Issuer.AccessTokenLifespan.String()
 
-			cmdFlags.Set("security.oauth.httpAuthorizationHeader", testValue)
-			if vString, err := cmdFlags.GetString("security.oauth.httpAuthorizationHeader"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.HTTPAuthorizationHeader)
-
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-	})
-	t.Run("Test_security.oauth.grpcAuthorizationHeader", func(t *testing.T) {
-		t.Run("DefaultValue", func(t *testing.T) {
-			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("security.oauth.grpcAuthorizationHeader"); err == nil {
-				assert.Equal(t, string(defaultServerConfig.Security.Oauth.GrpcAuthorizationHeader), vString)
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-
-		t.Run("Override", func(t *testing.T) {
-			testValue := "1"
-
-			cmdFlags.Set("security.oauth.grpcAuthorizationHeader", testValue)
-			if vString, err := cmdFlags.GetString("security.oauth.grpcAuthorizationHeader"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Oauth.GrpcAuthorizationHeader)
-
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-	})
-	t.Run("Test_security.oauth.disableForHttp", func(t *testing.T) {
-		t.Run("DefaultValue", func(t *testing.T) {
-			// Test that default value is set properly
-			if vBool, err := cmdFlags.GetBool("security.oauth.disableForHttp"); err == nil {
-				assert.Equal(t, bool(defaultServerConfig.Security.Oauth.DisableForHTTP), vBool)
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-
-		t.Run("Override", func(t *testing.T) {
-			testValue := "1"
-
-			cmdFlags.Set("security.oauth.disableForHttp", testValue)
-			if vBool, err := cmdFlags.GetBool("security.oauth.disableForHttp"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vBool), &actual.Security.Oauth.DisableForHTTP)
-
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-	})
-	t.Run("Test_security.oauth.disableForGrpc", func(t *testing.T) {
-		t.Run("DefaultValue", func(t *testing.T) {
-			// Test that default value is set properly
-			if vBool, err := cmdFlags.GetBool("security.oauth.disableForGrpc"); err == nil {
-				assert.Equal(t, bool(defaultServerConfig.Security.Oauth.DisableForGrpc), vBool)
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-
-		t.Run("Override", func(t *testing.T) {
-			testValue := "1"
-
-			cmdFlags.Set("security.oauth.disableForGrpc", testValue)
-			if vBool, err := cmdFlags.GetBool("security.oauth.disableForGrpc"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vBool), &actual.Security.Oauth.DisableForGrpc)
+			cmdFlags.Set("security.auth.appAuth.issuer.accessTokenLifespan", testValue)
+			if vString, err := cmdFlags.GetString("security.auth.appAuth.issuer.accessTokenLifespan"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Auth.AppAuth.Issuer.AccessTokenLifespan)
 
 			} else {
 				assert.FailNow(t, err.Error())
