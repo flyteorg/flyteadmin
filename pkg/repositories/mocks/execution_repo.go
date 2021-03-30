@@ -10,7 +10,7 @@ import (
 type CreateExecutionFunc func(ctx context.Context, input models.Execution) error
 type UpdateFunc func(ctx context.Context, event models.ExecutionEvent, execution models.Execution) error
 type UpdateExecutionFunc func(ctx context.Context, execution models.Execution) error
-type GetExecutionFunc func(ctx context.Context, input interfaces.IndividualResourceIdentifier) (models.Execution, error)
+type GetExecutionFunc func(ctx context.Context, input interfaces.Identifier) (models.Execution, error)
 type ListExecutionFunc func(ctx context.Context, input interfaces.ListResourceInput) (
 	interfaces.ExecutionCollectionOutput, error)
 
@@ -20,7 +20,7 @@ type MockExecutionRepo struct {
 	updateExecutionFunc UpdateExecutionFunc
 	getFunction         GetExecutionFunc
 	listFunction        ListExecutionFunc
-	ExistsFunction      func(ctx context.Context, input interfaces.IndividualResourceIdentifier) (bool, error)
+	ExistsFunction      func(ctx context.Context, input interfaces.Identifier) (bool, error)
 }
 
 func (r *MockExecutionRepo) Create(ctx context.Context, input models.Execution) error {
@@ -56,7 +56,7 @@ func (r *MockExecutionRepo) SetUpdateExecutionCallback(updateExecutionFunc Updat
 	r.updateExecutionFunc = updateExecutionFunc
 }
 
-func (r *MockExecutionRepo) Get(ctx context.Context, input interfaces.IndividualResourceIdentifier) (models.Execution, error) {
+func (r *MockExecutionRepo) Get(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
 	if r.getFunction != nil {
 		return r.getFunction(ctx, input)
 	}
@@ -79,7 +79,7 @@ func (r *MockExecutionRepo) SetListCallback(listFunction ListExecutionFunc) {
 	r.listFunction = listFunction
 }
 
-func (r *MockExecutionRepo) Exists(ctx context.Context, input interfaces.IndividualResourceIdentifier) (bool, error) {
+func (r *MockExecutionRepo) Exists(ctx context.Context, input interfaces.Identifier) (bool, error) {
 	if r.ExistsFunction != nil {
 		return r.ExistsFunction(ctx, input)
 	}

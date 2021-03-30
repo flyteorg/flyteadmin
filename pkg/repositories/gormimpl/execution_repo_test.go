@@ -164,7 +164,7 @@ func TestGetExecution(t *testing.T) {
 	GlobalMock.NewMock().WithQuery(`SELECT * FROM "executions"  WHERE "executions"."deleted_at" IS NULL AND ` +
 		`(("executions"."execution_project" = project) AND ("executions"."execution_domain" = domain) AND ` +
 		`("executions"."execution_name" = 1)) LIMIT 1`).WithReply(executions)
-	output, err := executionRepo.Get(context.Background(), interfaces.IndividualResourceIdentifier{
+	output, err := executionRepo.Get(context.Background(), interfaces.Identifier{
 		Project: "project",
 		Domain:  "domain",
 		Name:    "1",
@@ -407,7 +407,7 @@ func TestExecutionExists(t *testing.T) {
 	GlobalMock.NewMock().WithQuery(`SELECT id FROM "executions"  WHERE "executions"."deleted_at" IS NULL AND ` +
 		`(("executions"."execution_project" = project) AND ("executions"."execution_domain" = domain) AND ` +
 		`("executions"."execution_name" = 1)) LIMIT 1`).WithReply(executions)
-	exists, err := executionRepo.Exists(context.Background(), interfaces.IndividualResourceIdentifier{
+	exists, err := executionRepo.Exists(context.Background(), interfaces.Identifier{
 		Project: "project",
 		Domain:  "domain",
 		Name:    "1",

@@ -68,7 +68,7 @@ var retryAttemptValue = uint32(1)
 
 func addGetWorkflowExecutionCallback(repository repositories.RepositoryInterface) {
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(
-		func(ctx context.Context, input interfaces.IndividualResourceIdentifier) (models.Execution, error) {
+		func(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
 			return models.Execution{
 				ExecutionKey: models.ExecutionKey{
 					Project: sampleNodeExecID.ExecutionId.Project,
@@ -100,7 +100,7 @@ func addGetNodeExecutionCallback(repository repositories.RepositoryInterface) {
 
 func addGetTaskCallback(repository repositories.RepositoryInterface) {
 	repository.TaskRepo().(*repositoryMocks.MockTaskRepo).SetGetCallback(
-		func(input interfaces.IndividualResourceIdentifier) (models.Task, error) {
+		func(input interfaces.Identifier) (models.Task, error) {
 			return models.Task{
 				TaskKey: models.TaskKey{
 					Project: sampleTaskID.Project,
@@ -299,6 +299,10 @@ func TestCreateTaskEvent_Update(t *testing.T) {
 func TestCreateTaskEvent_MissingExecution(t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
 	expectedErr := flyteAdminErrors.NewFlyteAdminErrorf(codes.Internal, "expected error")
+	repository.TaskExecutionRepo().(*repositoryMocks.MockTaskExecutionRepo).SetGetCallback(
+		func(ctx context.Context, input interfaces.GetTaskExecutionInput) (models.TaskExecution, error) {
+			return models.TaskExecution{}, flyteAdminErrors.NewFlyteAdminError(codes.NotFound, "foo")
+		})
 	repository.NodeExecutionRepo().(*repositoryMocks.MockNodeExecutionRepo).ExistsFunction = func(
 		ctx context.Context, input interfaces.NodeExecutionResource) (bool, error) {
 		return false, expectedErr

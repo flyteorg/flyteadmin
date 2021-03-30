@@ -65,7 +65,7 @@ var mockNodeExecutionRemoteURL = dataMocks.NewMockRemoteURL()
 
 func addGetExecutionCallback(t *testing.T, repository repositories.RepositoryInterface) {
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(
-		func(ctx context.Context, input interfaces.IndividualResourceIdentifier) (models.Execution, error) {
+		func(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
 			assert.Equal(t, "project", input.Project)
 			assert.Equal(t, "domain", input.Domain)
 			assert.Equal(t, "name", input.Name)
@@ -201,8 +201,12 @@ func TestCreateNodeEvent_Update(t *testing.T) {
 func TestCreateNodeEvent_MissingExecution(t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
 	expectedErr := flyteAdminErrors.NewFlyteAdminErrorf(codes.Internal, "expected error")
+	repository.NodeExecutionRepo().(*repositoryMocks.MockNodeExecutionRepo).SetGetCallback(
+		func(ctx context.Context, input interfaces.NodeExecutionResource) (models.NodeExecution, error) {
+			return models.NodeExecution{}, flyteAdminErrors.NewFlyteAdminError(codes.NotFound, "foo")
+		})
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).ExistsFunction =
-		func(ctx context.Context, input interfaces.IndividualResourceIdentifier) (bool, error) {
+		func(ctx context.Context, input interfaces.Identifier) (bool, error) {
 			return false, expectedErr
 		}
 	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL, &mockPublisher)
@@ -212,7 +216,7 @@ func TestCreateNodeEvent_MissingExecution(t *testing.T) {
 	assert.Nil(t, resp)
 
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).ExistsFunction =
-		func(ctx context.Context, input interfaces.IndividualResourceIdentifier) (bool, error) {
+		func(ctx context.Context, input interfaces.Identifier) (bool, error) {
 			return false, nil
 		}
 	nodeExecManager = NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL, &mockPublisher)

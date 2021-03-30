@@ -64,6 +64,22 @@ func (m *TaskExecutionManager) createTaskExecution(
 	ctx context.Context, request *admin.TaskExecutionEventRequest) (
 	models.TaskExecution, error) {
 
+	nodeExecutionID := request.Event.ParentNodeExecutionId
+	nodeExecutionExists, err := m.db.NodeExecutionRepo().Exists(ctx, repoInterfaces.NodeExecutionResource{
+		NodeExecutionIdentifier: *nodeExecutionID,
+	})
+	if err != nil || !nodeExecutionExists {
+		m.metrics.MissingTaskExecution.Inc()
+		logger.Debugf(ctx, "Failed to get existing node execution [%+v] with err %v", nodeExecutionID, err)
+		if err != nil {
+			if ferr, ok := err.(errors.FlyteAdminError); ok {
+				return models.TaskExecution{}, errors.NewFlyteAdminErrorf(ferr.Code(),
+					"Failed to get existing node execution id: [%+v] with err: %v", nodeExecutionID, err)
+			}
+		}
+		return models.TaskExecution{}, fmt.Errorf("failed to get existing node execution id: [%+v]", nodeExecutionID)
+	}
+
 	taskExecutionModel, err := transformers.CreateTaskExecutionModel(
 		transformers.CreateTaskExecutionModelInput{
 			Request: request,
@@ -116,20 +132,6 @@ func (m *TaskExecutionManager) CreateTaskExecutionEvent(ctx context.Context, req
 	ctx = getTaskExecutionContext(ctx, &taskExecutionID)
 	logger.Debugf(ctx, "Received task execution event for [%+v] transitioning to phase [%v]",
 		taskExecutionID, request.Event.Phase)
-	exists, err := m.db.NodeExecutionRepo().Exists(ctx, repoInterfaces.NodeExecutionResource{
-		NodeExecutionIdentifier: *nodeExecutionID,
-	})
-	if err != nil || !exists {
-		m.metrics.MissingTaskExecution.Inc()
-		logger.Debugf(ctx, "Failed to get existing node execution [%+v] with err %v", nodeExecutionID, err)
-		if err != nil {
-			if ferr, ok := err.(errors.FlyteAdminError); ok {
-				return nil, errors.NewFlyteAdminErrorf(ferr.Code(),
-					"Failed to get existing node execution id: [%+v] with err: %v", nodeExecutionID, err)
-			}
-		}
-		return nil, fmt.Errorf("failed to get existing node execution id: [%+v]", nodeExecutionID)
-	}
 
 	// See if the task execution exists
 	// - if it does check if the new phase is applicable and then update
