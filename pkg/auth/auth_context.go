@@ -21,7 +21,7 @@ import (
 const (
 	IdpConnectionTimeout = 10 * time.Second
 
-	ErrauthCtx    errors.ErrorCode = "AUTH_CONTEXT_SETUP_FAILED"
+	ErrauthCtx        errors.ErrorCode = "AUTH_CONTEXT_SETUP_FAILED"
 	ErrConfigFileRead errors.ErrorCode = "CONFIG_OPTION_FILE_READ_FAILED"
 )
 
@@ -79,12 +79,12 @@ func NewAuthenticationContext(ctx context.Context, sm core.SecretManager, oauth2
 	options *config.Config) (Context, error) {
 
 	// Construct the cookie manager object.
-	hashKeyBase64, err := sm.Get(ctx, SecretCookieHashKey)
+	hashKeyBase64, err := sm.Get(ctx, options.UserAuth.CookieHashKeySecretName)
 	if err != nil {
 		return Context{}, errors.Wrapf(ErrConfigFileRead, err, "Could not read hash key file")
 	}
 
-	blockKeyBase64, err := sm.Get(ctx, SecretCookieBlockKey)
+	blockKeyBase64, err := sm.Get(ctx, options.UserAuth.CookieBlockKeySecretName)
 	if err != nil {
 		return Context{}, errors.Wrapf(ErrConfigFileRead, err, "Could not read hash key file")
 	}
@@ -109,7 +109,7 @@ func NewAuthenticationContext(ctx context.Context, sm core.SecretManager, oauth2
 	}
 
 	// Construct the golang OAuth2 library's own internal configuration object from this package's config
-	oauth2Config, err := GetOAuth2ClientConfig(options.UserAuth.OpenID, provider.Endpoint())
+	oauth2Config, err := GetOAuth2ClientConfig(ctx, options.UserAuth.OpenID, provider.Endpoint(), sm)
 	if err != nil {
 		return Context{}, errors.Wrapf(ErrauthCtx, err, "Error creating OAuth2 library configuration")
 	}
@@ -145,13 +145,22 @@ func NewAuthenticationContext(ctx context.Context, sm core.SecretManager, oauth2
 }
 
 // This creates a oauth2 library config object, with values from the Flyte Admin config
-func GetOAuth2ClientConfig(options config.OpenIDOptions, endpoint oauth2.Endpoint) (oauth2.Config, error) {
-	secretBytes, err := ioutil.ReadFile(options.ClientSecretFile)
-	if err != nil {
-		return oauth2.Config{}, err
+func GetOAuth2ClientConfig(ctx context.Context, options config.OpenIDOptions, endpoint oauth2.Endpoint, sm core.SecretManager) (cfg oauth2.Config, err error) {
+	var secret string
+	if len(options.DeprecatedClientSecretFile) > 0 {
+		secretBytes, err := ioutil.ReadFile(options.ClientSecretName)
+		if err != nil {
+			return oauth2.Config{}, err
+		}
+
+		secret = strings.TrimSuffix(string(secretBytes), "\n")
+	} else {
+		secret, err = sm.Get(ctx, options.ClientSecretName)
+		if err != nil {
+			return oauth2.Config{}, err
+		}
 	}
 
-	secret := strings.TrimSuffix(string(secretBytes), "\n")
 	return oauth2.Config{
 		RedirectURL:  options.CallbackURL.String(),
 		ClientID:     options.ClientID,

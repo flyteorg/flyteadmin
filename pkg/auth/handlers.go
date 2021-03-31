@@ -37,7 +37,7 @@ const (
 
 type HTTPRequestToMetadataAnnotator func(ctx context.Context, request *http.Request) metadata.MD
 
-func RegisterAnonymousHandlers(ctx context.Context, handler interfaces.HandlerRegisterer, authCtx interfaces.AuthenticationContext) {
+func RegisterHandlers(ctx context.Context, handler interfaces.HandlerRegisterer, authCtx interfaces.AuthenticationContext) {
 	// Add HTTP handlers for OAuth2 endpoints
 	handler.HandleFunc("/login", RefreshTokensIfExists(ctx, authCtx,
 		GetLoginHandler(ctx, authCtx)))
@@ -49,11 +49,6 @@ func RegisterAnonymousHandlers(ctx context.Context, handler interfaces.HandlerRe
 	// These endpoints require authentication
 	handler.HandleFunc("/logout", GetLogoutEndpointHandler(ctx, authCtx))
 	handler.HandleFunc("/me", GetMeEndpointHandler(ctx, authCtx))
-}
-
-type authCtxSetter func(ctx context.Context) (context.Context, error)
-
-func RegisterAuthenticatedHandlers(ctx context.Context, handler interfaces.HandlerRegisterer, authSetter authCtxSetter, authCtx interfaces.AuthenticationContext) {
 }
 
 // Look for access token and refresh token, if both are present and the access token is expired, then attempt to

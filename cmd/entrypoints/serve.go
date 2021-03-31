@@ -151,8 +151,7 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authCtx interf
 
 	if cfg.Security.UseAuth {
 		// Add HTTP handlers for OIDC endpoints
-		auth.RegisterAnonymousHandlers(ctx, mux, authCtx)
-		auth.RegisterAuthenticatedHandlers(ctx, mux, auth.GetAuthenticationInterceptor(authCtx), authCtx)
+		auth.RegisterHandlers(ctx, mux, authCtx)
 
 		// Add HTTP handlers for OAuth2 endpoints
 		oauthserver.RegisterHandlers(mux, authCtx)
