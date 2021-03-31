@@ -2182,8 +2182,6 @@ func TestGetExecution_LegacyClient_OffloadedData(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.True(t, proto.Equal(&executionIdentifier, execution.Id))
-	assert.True(t, proto.Equal(getLegacySpec(), execution.Spec))
-	assert.True(t, proto.Equal(getLegacyClosure(), execution.Closure))
 }
 
 func TestGetExecutionData_LegacyModel(t *testing.T) {
