@@ -59,7 +59,7 @@ func (p Provider) NewJWTSessionToken(subject string, userInfoClaims interface{},
 			Audience:  []string{audience},
 			Issuer:    issuer,
 			Subject:   subject,
-			ExpiresAt: time.Now().Add(p.cfg.Issuer.AccessTokenLifespan.Duration),
+			ExpiresAt: time.Now().Add(p.cfg.AccessTokenLifespan.Duration),
 			IssuedAt:  time.Now(),
 			Extra: map[string]interface{}{
 				ClientIDClaim: appID,
@@ -72,7 +72,7 @@ func (p Provider) NewJWTSessionToken(subject string, userInfoClaims interface{},
 	}
 }
 
-func (p Provider) ValidateAccessToken(ctx context.Context, tokenStr string) (interfaces.IdentityContext, error) {
+func (p Provider) ValidateAccessToken(_ context.Context, tokenStr string) (interfaces.IdentityContext, error) {
 	// Parse and validate the token.
 	parsedToken, err := jwtgo.Parse(tokenStr, func(t *jwtgo.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwtgo.SigningMethodRSA); !ok {
@@ -115,6 +115,15 @@ func (p Provider) ValidateAccessToken(ctx context.Context, tokenStr string) (int
 		claims.IssuedAt, userInfo), nil
 }
 
+func toClientIface(clients map[string]*fosite.DefaultClient) map[string]fosite.Client {
+	res := make(map[string]fosite.Client, len(clients))
+	for clientID, client := range clients {
+		res[clientID] = client
+	}
+
+	return res
+}
+
 // Creates a new OAuth2 Provider that is able to do OAuth 2-legged and 3-legged flows.
 // It'll lookup auth.SecretTokenHash and auth.SecretTokenSigningRSAKey secrets from the secret manager to use to sign
 // and generate hashes for tokens. The RSA Private key is expected to be in PEM format with the public key embedded.
@@ -130,22 +139,29 @@ func NewProvider(ctx context.Context, cfg *config.Config, sm core.SecretManager)
 
 	// Check the api documentation of `compose.Config` for further configuration options.
 	composeConfig := &compose.Config{
-		AccessTokenLifespan: cfg.AppAuth.Issuer.AccessTokenLifespan.Duration,
+		AccessTokenLifespan: cfg.AppAuth.AccessTokenLifespan.Duration,
 	}
 
-	// This is the example storage that contains:
-	// * an OAuth2 Client with id "my-client" and secret "foobar" capable of all oauth2 and open id connect grant and response types.
-	// * a User for the resource owner password credentials grant type with username "peter" and password "secret".
-	//
-	// You will most likely replace this with your own logic once you set up a real world application.
-	store := storage.NewExampleStore()
+	// Build an in-memory store with static clients defined in Config. This gives us the potential to move the clients
+	// storage into DB and allow registration of new clients to users.
+	store := &storage.MemoryStore{
+		IDSessions:             make(map[string]fosite.Requester),
+		Clients:                toClientIface(cfg.AppAuth.StaticClients),
+		AuthorizeCodes:         map[string]storage.StoreAuthorizeCode{},
+		AccessTokens:           map[string]fosite.Requester{},
+		RefreshTokens:          map[string]storage.StoreRefreshToken{},
+		PKCES:                  map[string]fosite.Requester{},
+		AccessTokenRequestIDs:  map[string]string{},
+		RefreshTokenRequestIDs: map[string]string{},
+		IssuerPublicKeys:       map[string]storage.IssuerPublicKeys{},
+	}
 
 	// This secret is used to sign authorize codes, access and refresh tokens.
 	// It has to be 32-bytes long for HMAC signing. This requirement can be configured via `compose.Config` above.
 	// If you require this to key to be stable, for example, when running multiple fosite servers, you can generate the
 	// 32byte random key as above and push it out to a base64 encoded string.
 	// This can then be injected and decoded as the `var secret []byte` on server start.
-	tokenHashBase64, err := sm.Get(ctx, auth.SecretTokenHash)
+	tokenHashBase64, err := sm.Get(ctx, cfg.AppAuth.TokenHashKeySecretName)
 	if err != nil {
 		return Provider{}, fmt.Errorf("failed to read secretTokenHash file. Error: %w", err)
 	}
@@ -156,7 +172,7 @@ func NewProvider(ctx context.Context, cfg *config.Config, sm core.SecretManager)
 	}
 
 	// privateKey is used to sign JWT tokens. The default strategy uses RS256 (RSA Signature with SHA-256)
-	privateKeyPEM, err := sm.Get(ctx, auth.SecretTokenSigningRSAKey)
+	privateKeyPEM, err := sm.Get(ctx, cfg.AppAuth.TokenSigningRSAKeySecretName)
 	if err != nil {
 		return Provider{}, fmt.Errorf("failed to read token signing RSA Key. Error: %w", err)
 	}
@@ -173,7 +189,7 @@ func NewProvider(ctx context.Context, cfg *config.Config, sm core.SecretManager)
 	publicKeys := []rsa.PublicKey{privateKey.PublicKey}
 
 	// Try to load old key to validate tokens using it to support key rotation.
-	privateKeyPEM, err = sm.Get(ctx, auth.SecretOldTokenSigningRSAKey)
+	privateKeyPEM, err = sm.Get(ctx, cfg.AppAuth.OldTokenSigningRSAKeySecretName)
 	if err == nil {
 		block, _ = pem.Decode([]byte(privateKeyPEM))
 		oldPrivateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)

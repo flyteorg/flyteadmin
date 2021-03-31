@@ -11,6 +11,10 @@ var (
 	emptyIdentityContext = IdentityContext{}
 )
 
+// IdentityContext is an abstract entity to enclose the authenticated identity of the user/app. Both gRPC and HTTP
+// servers have interceptors to set the IdentityContext on the context.Context.
+// To retrieve the current IdentityContext call auth.IdentityContextFromContext(ctx).
+// To check whether there is an identity set, call auth.IdentityContextFromContext(ctx).IsEmpty()
 type IdentityContext struct {
 	audience        string
 	userID          string
@@ -32,6 +36,10 @@ func (c IdentityContext) AppID() string {
 }
 
 func (c IdentityContext) UserInfo() interfaces.UserInfo {
+	if c.userInfo == nil {
+		return UserInfoResponse{}
+	}
+
 	return c.userInfo
 }
 
@@ -47,6 +55,7 @@ func (c IdentityContext) AuthenticatedAt() time.Time {
 	return c.authenticatedAt
 }
 
+// NewIdentityContext creates a new IdentityContext.
 func NewIdentityContext(audience, userID, appID string, authenticatedAt time.Time, userInfo interfaces.UserInfo) IdentityContext {
 	return IdentityContext{
 		audience:        audience,
@@ -57,6 +66,7 @@ func NewIdentityContext(audience, userID, appID string, authenticatedAt time.Tim
 	}
 }
 
+// IdentityContextFromContext retrieves the authenticated identity from context.Context.
 func IdentityContextFromContext(ctx context.Context) IdentityContext {
 	existing := ctx.Value(ContextKeyIdentityContext)
 	if existing != nil {

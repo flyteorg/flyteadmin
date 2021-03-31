@@ -12,6 +12,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/flyteorg/flyteadmin/pkg/auth/config"
+
 	"github.com/flyteorg/flytestdlib/logger"
 
 	"github.com/spf13/cobra"
@@ -58,28 +60,28 @@ type SecretsSet struct {
 }
 
 func writeSecrets(ctx context.Context, secrets SecretsSet, path string) error {
-	err := ioutil.WriteFile(filepath.Join(path, SecretTokenHash), []byte(base64.RawStdEncoding.EncodeToString(secrets.TokenHashKey)), os.ModePerm)
+	err := ioutil.WriteFile(filepath.Join(path, config.SecretTokenHash), []byte(base64.RawStdEncoding.EncodeToString(secrets.TokenHashKey)), os.ModePerm)
 	if err != nil {
 		return fmt.Errorf("failed to persist token hash key. Error: %w", err)
 	}
 
-	logger.Infof(ctx, "wrote %v", SecretTokenHash)
+	logger.Infof(ctx, "wrote %v", config.SecretTokenHash)
 
-	err = ioutil.WriteFile(filepath.Join(path, SecretCookieHashKey), []byte(base64.RawStdEncoding.EncodeToString(secrets.CookieHashKey)), os.ModePerm)
+	err = ioutil.WriteFile(filepath.Join(path, config.SecretCookieHashKey), []byte(base64.RawStdEncoding.EncodeToString(secrets.CookieHashKey)), os.ModePerm)
 	if err != nil {
 		return fmt.Errorf("failed to persist cookie hash key. Error: %w", err)
 	}
 
-	logger.Infof(ctx, "wrote %v", SecretCookieHashKey)
+	logger.Infof(ctx, "wrote %v", config.SecretCookieHashKey)
 
-	err = ioutil.WriteFile(filepath.Join(path, SecretCookieBlockKey), []byte(base64.RawStdEncoding.EncodeToString(secrets.CookieBlockKey)), os.ModePerm)
+	err = ioutil.WriteFile(filepath.Join(path, config.SecretCookieBlockKey), []byte(base64.RawStdEncoding.EncodeToString(secrets.CookieBlockKey)), os.ModePerm)
 	if err != nil {
 		return fmt.Errorf("failed to persist cookie block key. Error: %w", err)
 	}
 
-	logger.Infof(ctx, "wrote %v", SecretCookieBlockKey)
+	logger.Infof(ctx, "wrote %v", config.SecretCookieBlockKey)
 
-	keyOut, err := os.OpenFile(SecretTokenSigningRSAKey, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+	keyOut, err := os.OpenFile(config.SecretTokenSigningRSAKey, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	if err != nil {
 		return fmt.Errorf("failed to open key.pem for writing: %w", err)
 	}
@@ -93,7 +95,7 @@ func writeSecrets(ctx context.Context, secrets SecretsSet, path string) error {
 		return fmt.Errorf("error closing key.pem: %w", err)
 	}
 
-	logger.Infof(ctx, "wrote %v", SecretTokenSigningRSAKey)
+	logger.Infof(ctx, "wrote %v", config.SecretTokenSigningRSAKey)
 
 	return nil
 }

@@ -32,13 +32,7 @@ auth:
         iss: https://accounts.google.com
         aud: 657465813211-6eog7ek7li5k7i7fvgv2921075063hpe.apps.googleusercontent.com
       clientId: 657465813211-6eog7ek7li5k7i7fvgv2921075063hpe.apps.googleusercontent.com
-      clientSecretFile: "/etc/secrets/oauth/secret"
-      authorizeUrl: "https://accounts.google.com/o/oauth2/v2/auth?access_type=offline"
-      tokenUrl: "https://oauth2.googleapis.com/token"
       callbackUrl: "http://localhost:8088/callback"
-      idpUserInfoEndpoint: "https://openidconnect.googleapis.com/v1/userinfo"
-      cookieHashKeyFile: "/etc/secrets/hashkey/hashkey"
-      cookieBlockKeyFile: "/etc/secrets/blockkey/blockkey"
       redirectUrl: "/api/v1/projects"
   thirdPartyConfig:
     flyteClient:
