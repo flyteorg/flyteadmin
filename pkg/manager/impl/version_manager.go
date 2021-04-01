@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
-	adminversion "github.com/flyteorg/flyteadmin/version"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	adminversion "github.com/flyteorg/flytestdlib/version"
 )
 
 type VersionManager struct {
