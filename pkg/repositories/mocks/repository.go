@@ -6,17 +6,17 @@ import (
 )
 
 type MockRepository struct {
-	taskRepo               interfaces.TaskRepoInterface
-	workflowRepo           interfaces.WorkflowRepoInterface
-	launchPlanRepo         interfaces.LaunchPlanRepoInterface
-	executionRepo          interfaces.ExecutionRepoInterface
-	executionEventRepo     interfaces.ExecutionEventRepoInterface
-	nodeExecutionRepo      interfaces.NodeExecutionRepoInterface
-	nodeExecutionEventRepo interfaces.NodeExecutionEventRepoInterface
-	projectRepo            interfaces.ProjectRepoInterface
-	resourceRepo           interfaces.ResourceRepoInterface
-	taskExecutionRepo      interfaces.TaskExecutionRepoInterface
-	namedEntityRepo        interfaces.NamedEntityRepoInterface
+	taskRepo                    interfaces.TaskRepoInterface
+	workflowRepo                interfaces.WorkflowRepoInterface
+	launchPlanRepo              interfaces.LaunchPlanRepoInterface
+	executionRepo               interfaces.ExecutionRepoInterface
+	ExecutionEventRepoIface     interfaces.ExecutionEventRepoInterface
+	nodeExecutionRepo           interfaces.NodeExecutionRepoInterface
+	NodeExecutionEventRepoIface interfaces.NodeExecutionEventRepoInterface
+	projectRepo                 interfaces.ProjectRepoInterface
+	resourceRepo                interfaces.ResourceRepoInterface
+	taskExecutionRepo           interfaces.TaskExecutionRepoInterface
+	namedEntityRepo             interfaces.NamedEntityRepoInterface
 }
 
 func (r *MockRepository) TaskRepo() interfaces.TaskRepoInterface {
@@ -36,7 +36,7 @@ func (r *MockRepository) ExecutionRepo() interfaces.ExecutionRepoInterface {
 }
 
 func (r *MockRepository) ExecutionEventRepo() interfaces.ExecutionEventRepoInterface {
-	return r.executionEventRepo
+	return r.ExecutionEventRepoIface
 }
 
 func (r *MockRepository) NodeExecutionRepo() interfaces.NodeExecutionRepoInterface {
@@ -44,7 +44,7 @@ func (r *MockRepository) NodeExecutionRepo() interfaces.NodeExecutionRepoInterfa
 }
 
 func (r *MockRepository) NodeExecutionEventRepo() interfaces.NodeExecutionEventRepoInterface {
-	return r.nodeExecutionEventRepo
+	return r.NodeExecutionEventRepoIface
 }
 
 func (r *MockRepository) ProjectRepo() interfaces.ProjectRepoInterface {
@@ -65,16 +65,16 @@ func (r *MockRepository) NamedEntityRepo() interfaces.NamedEntityRepoInterface {
 
 func NewMockRepository() repositories.RepositoryInterface {
 	return &MockRepository{
-		taskRepo:               NewMockTaskRepo(),
-		workflowRepo:           NewMockWorkflowRepo(),
-		launchPlanRepo:         NewMockLaunchPlanRepo(),
-		executionRepo:          NewMockExecutionRepo(),
-		nodeExecutionRepo:      NewMockNodeExecutionRepo(),
-		projectRepo:            NewMockProjectRepo(),
-		resourceRepo:           NewMockResourceRepo(),
-		taskExecutionRepo:      NewMockTaskExecutionRepo(),
-		namedEntityRepo:        NewMockNamedEntityRepo(),
-		executionEventRepo:     &ExecutionEventRepoInterface{},
-		nodeExecutionEventRepo: &NodeExecutionEventRepoInterface{},
+		taskRepo:                    NewMockTaskRepo(),
+		workflowRepo:                NewMockWorkflowRepo(),
+		launchPlanRepo:              NewMockLaunchPlanRepo(),
+		executionRepo:               NewMockExecutionRepo(),
+		nodeExecutionRepo:           NewMockNodeExecutionRepo(),
+		projectRepo:                 NewMockProjectRepo(),
+		resourceRepo:                NewMockResourceRepo(),
+		taskExecutionRepo:           NewMockTaskExecutionRepo(),
+		namedEntityRepo:             NewMockNamedEntityRepo(),
+		ExecutionEventRepoIface:     &ExecutionEventRepoInterface{},
+		NodeExecutionEventRepoIface: &NodeExecutionEventRepoInterface{},
 	}
 }

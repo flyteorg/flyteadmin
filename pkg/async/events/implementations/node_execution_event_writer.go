@@ -10,6 +10,8 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 )
 
+// This event writer acts to asynchronously persist node execution events. As flytepropeller sends node
+// events, node execution processing doesn't have to wait on these to be committed.
 type nodeExecutionEventWriter struct {
 	db     repositories.RepositoryInterface
 	events chan admin.NodeExecutionEventRequest
@@ -28,6 +30,8 @@ func (w *nodeExecutionEventWriter) Run() {
 		}
 		err = w.db.NodeExecutionEventRepo().Create(context.TODO(), *eventModel)
 		if err != nil {
+			// It's okay to be lossy here. These events aren't used to fetch execution state but rather as a convenience
+			// to replay and understand the event execution timeline.
 			logger.Warnf(context.TODO(), "Failed to write event [%+v] to database with err [%+v]", event, err)
 		}
 	}
@@ -36,6 +40,6 @@ func (w *nodeExecutionEventWriter) Run() {
 func NewNodeExecutionEventWriter(db repositories.RepositoryInterface) interfaces.NodeExecutionEventWriter {
 	return &nodeExecutionEventWriter{
 		db:     db,
-		events: make(chan admin.NodeExecutionEventRequest),
+		events: make(chan admin.NodeExecutionEventRequest, bufferSize),
 	}
 }

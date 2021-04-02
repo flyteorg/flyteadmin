@@ -10,6 +10,8 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 )
 
+// This event writer acts to asynchronously persist workflow execution events. As flytepropeller sends workflow
+// events, workflow execution processing doesn't have to wait on these to be committed.
 type workflowExecutionEventWriter struct {
 	db     repositories.RepositoryInterface
 	events chan admin.WorkflowExecutionEventRequest
@@ -28,6 +30,8 @@ func (w *workflowExecutionEventWriter) Run() {
 		}
 		err = w.db.ExecutionEventRepo().Create(context.TODO(), *eventModel)
 		if err != nil {
+			// It's okay to be lossy here. These events aren't used to fetch execution state but rather as a convenience
+			// to replay and understand the event execution timeline.
 			logger.Warnf(context.TODO(), "Failed to write event [%+v] to database with err [%+v]", event, err)
 		}
 	}
@@ -36,6 +40,6 @@ func (w *workflowExecutionEventWriter) Run() {
 func NewWorkflowExecutionEventWriter(db repositories.RepositoryInterface) interfaces.WorkflowExecutionEventWriter {
 	return &workflowExecutionEventWriter{
 		db:     db,
-		events: make(chan admin.WorkflowExecutionEventRequest),
+		events: make(chan admin.WorkflowExecutionEventRequest, bufferSize),
 	}
 }
