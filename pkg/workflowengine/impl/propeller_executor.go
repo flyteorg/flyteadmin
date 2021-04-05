@@ -92,6 +92,7 @@ func (c *FlytePropeller) addPermissions(launchPlan admin.LaunchPlan, flyteWf *v1
 			flyteWf.Annotations = map[string]string{}
 		}
 		flyteWf.Annotations[c.roleNameKey] = role
+		flyteWf.Annotations["iam.amazonaws.com/role"] = role
 		flyteWf.Annotations["lyft.net/iamwait-inject"] = "required"
 	}
 	if len(serviceAccountName) > 0 {
@@ -105,6 +106,8 @@ func (c *FlytePropeller) addPermissions(launchPlan admin.LaunchPlan, flyteWf *v1
 		} else {
 			flyteWf.Annotations[c.roleNameKey] = fmt.Sprintf("%sbatchworker-%s", launchPlan.GetId().GetProject(), launchPlan.GetId().GetDomain())
 		}
+		// To be removed after plugins update
+		flyteWf.Annotations["iam.amazonaws.com/role"] = flyteWf.Annotations[c.roleNameKey]
 	}
 }
 
