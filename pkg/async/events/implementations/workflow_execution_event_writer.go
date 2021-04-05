@@ -37,7 +37,7 @@ func (w *workflowExecutionEventWriter) Run() {
 	}
 }
 
-func NewWorkflowExecutionEventWriter(db repositories.RepositoryInterface) interfaces.WorkflowExecutionEventWriter {
+func NewWorkflowExecutionEventWriter(db repositories.RepositoryInterface, bufferSize int) interfaces.WorkflowExecutionEventWriter {
 	return &workflowExecutionEventWriter{
 		db:     db,
 		events: make(chan admin.WorkflowExecutionEventRequest, bufferSize),

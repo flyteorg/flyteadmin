@@ -29,7 +29,7 @@ func TestNodeExecutionEventWriter(t *testing.T) {
 	nodeExecEventRepo := mocks.NodeExecutionEventRepoInterface{}
 	nodeExecEventRepo.On("Create", event).Return(nil)
 	db.(*mocks.MockRepository).NodeExecutionEventRepoIface = &nodeExecEventRepo
-	writer := NewNodeExecutionEventWriter(db)
+	writer := NewNodeExecutionEventWriter(db, 100)
 	// Assert we can write an event using the buffered channel without holding up this process.
 	writer.Write(event)
 	go func() { writer.Run() }()

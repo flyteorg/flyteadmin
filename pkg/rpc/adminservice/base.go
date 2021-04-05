@@ -54,6 +54,7 @@ func (m *AdminService) interceptPanic(ctx context.Context, request proto.Message
 }
 
 const defaultRetries = 3
+const eventWriterBufferSize = 100
 
 func NewAdminServer(kubeConfig, master string) *AdminService {
 	configuration := runtime.NewConfigurationProvider()
@@ -138,7 +139,7 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 		adminScope.NewSubScope("workflow_manager"))
 	namedEntityManager := manager.NewNamedEntityManager(db, configuration, adminScope.NewSubScope("named_entity_manager"))
 
-	executionEventWriter := eventWriter.NewWorkflowExecutionEventWriter(db)
+	executionEventWriter := eventWriter.NewWorkflowExecutionEventWriter(db, eventWriterBufferSize)
 	go func() {
 		executionEventWriter.Run()
 	}()
@@ -163,7 +164,7 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 		}
 	}()
 
-	nodeExecutionEventWriter := eventWriter.NewNodeExecutionEventWriter(db)
+	nodeExecutionEventWriter := eventWriter.NewNodeExecutionEventWriter(db, eventWriterBufferSize)
 	go func() {
 		nodeExecutionEventWriter.Run()
 	}()

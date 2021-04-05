@@ -37,7 +37,7 @@ func (w *nodeExecutionEventWriter) Run() {
 	}
 }
 
-func NewNodeExecutionEventWriter(db repositories.RepositoryInterface) interfaces.NodeExecutionEventWriter {
+func NewNodeExecutionEventWriter(db repositories.RepositoryInterface, bufferSize int) interfaces.NodeExecutionEventWriter {
 	return &nodeExecutionEventWriter{
 		db:     db,
 		events: make(chan admin.NodeExecutionEventRequest, bufferSize),
