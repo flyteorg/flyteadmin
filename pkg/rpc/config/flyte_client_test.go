@@ -18,16 +18,17 @@ func TestHandleFlyteCliConfigFunc(t *testing.T) {
 	testAuthMetadataKey := "flyte-authorization"
 
 	handleFlyteCliConfigFunc := HandleFlyteCliConfigFunc(context.Background(), &config.ServerConfig{
-		Security: config.ServerSecurityOptions{
-			OpenID: authConfig.OpenIDOptions{
-				GrpcAuthorizationHeader: testAuthMetadataKey,
-			},
-		},
+		Security: config.ServerSecurityOptions{},
 		ThirdPartyConfig: config.ThirdPartyConfigOptions{
 			FlyteClientConfig: config.FlyteClientConfig{
 				ClientID:    testClientID,
 				RedirectURI: testRedirectURI,
 			},
+		},
+	}, &authConfig.Config{
+		GrpcAuthorizationHeader: testAuthMetadataKey,
+		UserAuth: authConfig.UserAuthConfig{
+			OpenID: authConfig.OpenIDOptions{},
 		},
 	})
 

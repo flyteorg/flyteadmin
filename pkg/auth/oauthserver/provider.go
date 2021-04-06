@@ -10,6 +10,10 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
+	"github.com/lestrrat-go/jwx/jwk"
+
 	"github.com/ory/x/jwtx"
 
 	"github.com/flyteorg/flyteadmin/pkg/auth/interfaces"
@@ -29,18 +33,26 @@ import (
 )
 
 const (
-	ClientIDClaim = "client_id"
-	UserIDClaim   = "user_info"
+	ClientIDClaim         = "client_id"
+	UserIDClaim           = "user_info"
+	ScopeClaim            = "scp"
+	KeyIDClaim            = "key_id"
+	KeyMetadataPublicCert = "original_key"
 )
 
 type Provider struct {
 	fosite.OAuth2Provider
-	cfg       config.OAuth2Options
+	cfg       config.AuthorizationServer
 	publicKey []rsa.PublicKey
+	keySet    jwk.Set
 }
 
 func (p Provider) PublicKeys() []rsa.PublicKey {
 	return p.publicKey
+}
+
+func (p Provider) KeySet() jwk.Set {
+	return p.keySet
 }
 
 // A session is passed from the `/auth` to the `/token` endpoint. You probably want to store data like: "Who made the request",
@@ -54,6 +66,12 @@ func (p Provider) PublicKeys() []rsa.PublicKey {
 //
 //  session = new(fosite.DefaultSession)
 func (p Provider) NewJWTSessionToken(subject string, userInfoClaims interface{}, appID, issuer, audience string) *fositeOAuth2.JWTSession {
+	key, found := p.keySet.Get(0)
+	keyID := ""
+	if found {
+		keyID = key.KeyID()
+	}
+
 	return &fositeOAuth2.JWTSession{
 		JWTClaims: &jwt.JWTClaims{
 			Audience:  []string{audience},
@@ -67,7 +85,9 @@ func (p Provider) NewJWTSessionToken(subject string, userInfoClaims interface{},
 			},
 		},
 		JWTHeader: &jwt.Headers{
-			Extra: make(map[string]interface{}),
+			Extra: map[string]interface{}{
+				KeyIDClaim: keyID,
+			},
 		},
 	}
 }
@@ -79,7 +99,15 @@ func (p Provider) ValidateAccessToken(_ context.Context, tokenStr string) (inter
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
 
-		return &p.publicKey, nil
+		if keyID, found := t.Header[KeyIDClaim]; !found {
+			return &p.PublicKeys()[0], nil
+		} else if key, found := p.keySet.LookupKeyID(keyID.(string)); !found {
+			return &p.PublicKeys()[0], nil
+		} else if publicKey, found := key.Get(KeyMetadataPublicCert); !found {
+			return &p.PublicKeys()[0], nil
+		} else {
+			return publicKey, nil
+		}
 	})
 
 	if err != nil {
@@ -92,7 +120,6 @@ func (p Provider) ValidateAccessToken(_ context.Context, tokenStr string) (inter
 
 	claimsRaw := parsedToken.Claims.(jwtgo.MapClaims)
 	claims := jwtx.ParseMapStringInterfaceClaims(claimsRaw)
-	//claims := parsedToken.Claims.(jwtgo.MapClaims)
 	if len(claims.Audience) != 1 {
 		return nil, fmt.Errorf("expected exactly one granted audience. found [%v]", len(claims.Audience))
 	}
@@ -112,7 +139,7 @@ func (p Provider) ValidateAccessToken(_ context.Context, tokenStr string) (inter
 	}
 
 	return auth.NewIdentityContext(claims.Audience[0], claims.Subject, claimsRaw[ClientIDClaim].(string),
-		claims.IssuedAt, userInfo), nil
+		claims.IssuedAt, sets.NewString(interfaceSliceToStringSlice(claimsRaw[ScopeClaim].([]interface{}))...), userInfo), nil
 }
 
 func toClientIface(clients map[string]*fosite.DefaultClient) map[string]fosite.Client {
@@ -129,7 +156,7 @@ func toClientIface(clients map[string]*fosite.DefaultClient) map[string]fosite.C
 // and generate hashes for tokens. The RSA Private key is expected to be in PEM format with the public key embedded.
 // Use auth.GetInitSecretsCommand() to generate new valid secrets that will be accepted by this provider.
 // The auth.SecretTokenHash must be a 32-bytes long key in Base64Encoding.
-func NewProvider(ctx context.Context, cfg *config.Config, sm core.SecretManager) (Provider, error) {
+func NewProvider(ctx context.Context, cfg config.AuthorizationServer, sm core.SecretManager) (Provider, error) {
 	// fosite requires four parameters for the server to get up and running:
 	// 1. config - for any enforcement you may desire, you can do this using `compose.Config`. You like PKCE, enforce it!
 	// 2. store - no auth service is generally useful unless it can remember clients and users.
@@ -137,23 +164,25 @@ func NewProvider(ctx context.Context, cfg *config.Config, sm core.SecretManager)
 	// 3. secret - required for code, access and refresh token generation.
 	// 4. privateKey - required for id/jwt token generation.
 
-	// Check the api documentation of `compose.Config` for further configuration options.
 	composeConfig := &compose.Config{
-		AccessTokenLifespan: cfg.AppAuth.AccessTokenLifespan.Duration,
+		AccessTokenLifespan: cfg.AccessTokenLifespan.Duration,
+		RefreshTokenScopes:  []string{refreshTokenScope},
 	}
 
 	// Build an in-memory store with static clients defined in Config. This gives us the potential to move the clients
 	// storage into DB and allow registration of new clients to users.
-	store := &storage.MemoryStore{
-		IDSessions:             make(map[string]fosite.Requester),
-		Clients:                toClientIface(cfg.AppAuth.StaticClients),
-		AuthorizeCodes:         map[string]storage.StoreAuthorizeCode{},
-		AccessTokens:           map[string]fosite.Requester{},
-		RefreshTokens:          map[string]storage.StoreRefreshToken{},
-		PKCES:                  map[string]fosite.Requester{},
-		AccessTokenRequestIDs:  map[string]string{},
-		RefreshTokenRequestIDs: map[string]string{},
-		IssuerPublicKeys:       map[string]storage.IssuerPublicKeys{},
+	store := &StatelessTokenStore{
+		MemoryStore: &storage.MemoryStore{
+			IDSessions:             make(map[string]fosite.Requester),
+			Clients:                toClientIface(cfg.StaticClients),
+			AuthorizeCodes:         map[string]storage.StoreAuthorizeCode{},
+			AccessTokens:           map[string]fosite.Requester{},
+			RefreshTokens:          map[string]storage.StoreRefreshToken{},
+			PKCES:                  map[string]fosite.Requester{},
+			AccessTokenRequestIDs:  map[string]string{},
+			RefreshTokenRequestIDs: map[string]string{},
+			IssuerPublicKeys:       map[string]storage.IssuerPublicKeys{},
+		},
 	}
 
 	// This secret is used to sign authorize codes, access and refresh tokens.
@@ -161,7 +190,7 @@ func NewProvider(ctx context.Context, cfg *config.Config, sm core.SecretManager)
 	// If you require this to key to be stable, for example, when running multiple fosite servers, you can generate the
 	// 32byte random key as above and push it out to a base64 encoded string.
 	// This can then be injected and decoded as the `var secret []byte` on server start.
-	tokenHashBase64, err := sm.Get(ctx, cfg.AppAuth.TokenHashKeySecretName)
+	tokenHashBase64, err := sm.Get(ctx, cfg.TokenHashKeySecretName)
 	if err != nil {
 		return Provider{}, fmt.Errorf("failed to read secretTokenHash file. Error: %w", err)
 	}
@@ -172,7 +201,7 @@ func NewProvider(ctx context.Context, cfg *config.Config, sm core.SecretManager)
 	}
 
 	// privateKey is used to sign JWT tokens. The default strategy uses RS256 (RSA Signature with SHA-256)
-	privateKeyPEM, err := sm.Get(ctx, cfg.AppAuth.TokenSigningRSAKeySecretName)
+	privateKeyPEM, err := sm.Get(ctx, cfg.TokenSigningRSAKeySecretName)
 	if err != nil {
 		return Provider{}, fmt.Errorf("failed to read token signing RSA Key. Error: %w", err)
 	}
@@ -184,12 +213,15 @@ func NewProvider(ctx context.Context, cfg *config.Config, sm core.SecretManager)
 	}
 
 	// Build a fosite instance with all OAuth2 and OpenID Connect handlers enabled, plugging in our configurations as specified above.
-	oauth2Provider := composeOAuth2Provider(composeConfig, store, secret, privateKey)
+	oauth2Provider := composeOAuth2Provider(cfg, composeConfig, store, secret, privateKey)
+	store.JWTStrategy = &jwt.RS256JWTStrategy{
+		PrivateKey: privateKey,
+	}
 
 	publicKeys := []rsa.PublicKey{privateKey.PublicKey}
 
 	// Try to load old key to validate tokens using it to support key rotation.
-	privateKeyPEM, err = sm.Get(ctx, cfg.AppAuth.OldTokenSigningRSAKeySecretName)
+	privateKeyPEM, err = sm.Get(ctx, cfg.OldTokenSigningRSAKeySecretName)
 	if err == nil {
 		block, _ = pem.Decode([]byte(privateKeyPEM))
 		oldPrivateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
@@ -200,8 +232,14 @@ func NewProvider(ctx context.Context, cfg *config.Config, sm core.SecretManager)
 		publicKeys = append(publicKeys, oldPrivateKey.PublicKey)
 	}
 
+	keysSet, err := getJSONWebKeys(publicKeys)
+	if err != nil {
+		return Provider{}, err
+	}
+
 	return Provider{
 		OAuth2Provider: oauth2Provider,
 		publicKey:      publicKeys,
+		keySet:         keysSet,
 	}, nil
 }

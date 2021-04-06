@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	"github.com/flyteorg/flyteadmin/pkg/auth/interfaces"
 
 	"github.com/coreos/go-oidc"
@@ -104,5 +106,6 @@ func IdentityContextFromIDTokenToken(ctx context.Context, tokenStr, clientID str
 		return nil, err
 	}
 
-	return NewIdentityContext(idToken.Audience[0], idToken.Subject, "", idToken.IssuedAt, UserInfoResponse{}), nil
+	return NewIdentityContext(idToken.Audience[0], idToken.Subject, "", idToken.IssuedAt,
+		sets.NewString(ScopeAll), UserInfoResponse{}), nil
 }

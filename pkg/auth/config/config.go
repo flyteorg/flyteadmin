@@ -27,6 +27,21 @@ const (
 	SecretOldTokenSigningRSAKey = "token_rsa_key_old.pem"
 )
 
+//go:generate enumer --type=AuthorizationServerType --trimprefix=AuthorizationServerType -json
+
+// AuthorizationServerType defines the type of Authorization Server to use.
+type AuthorizationServerType uint8
+
+const (
+	// AuthorizationServerTypeSelf determines that FlyteAdmin should act as the authorization server to serve
+	// OAuth2 token requests
+	AuthorizationServerTypeSelf AuthorizationServerType = iota
+
+	// AuthorizationServerTypeExternal determines that FlyteAdmin should rely on an external authorization server (e.g.
+	// Okta) to serve OAuth2 token requests
+	AuthorizationServerTypeExternal
+)
+
 var (
 	defaultConfig = &Config{
 		// Please see the comments in this struct's definition for more information
@@ -46,33 +61,39 @@ var (
 			},
 		},
 		AppAuth: OAuth2Options{
-			AccessTokenLifespan:             config.Duration{Duration: 30 * time.Minute},
-			Issuer:                          OAuth2Issuer{},
-			TokenHashKeySecretName:          SecretTokenHash,
-			TokenSigningRSAKeySecretName:    SecretTokenSigningRSAKey,
-			OldTokenSigningRSAKeySecretName: SecretOldTokenSigningRSAKey,
-			StaticClients: map[string]*fosite.DefaultClient{
-				"flyte-cli": {
-					ID:            "flyte-cli",
-					RedirectURIs:  []string{"http://localhost:53593/callback", "http://localhost:12345/callback"},
-					ResponseTypes: []string{"code", "token"},
-					GrantTypes:    []string{"refresh_token", "authorization_code"},
-					Scopes:        []string{"all"},
-				},
-				"flytectl": {
-					ID:            "my-client",
-					RedirectURIs:  []string{"http://localhost:53593/callback", "http://localhost:12345/callback"},
-					ResponseTypes: []string{"code", "token"},
-					GrantTypes:    []string{"refresh_token", "authorization_code"},
-					Scopes:        []string{"all"},
-				},
-				"flytepropeller": {
-					ID:            "my-client",
-					Secret:        []byte(`$2a$10$IxMdI6d.LIRZPpSfEwNoeu4rY3FhDREsxFJXikcgdRRAStxUlsuEO`), // = "foobar"
-					RedirectURIs:  []string{"http://localhost:3846/callback"},
-					ResponseTypes: []string{"token"},
-					GrantTypes:    []string{"refresh_token", "client_credentials"},
-					Scopes:        []string{"all"},
+			AuthServerType: AuthorizationServerTypeSelf,
+			SelfAuthServer: AuthorizationServer{
+				AccessTokenLifespan:             config.Duration{Duration: 30 * time.Minute},
+				RefreshTokenLifespan:            config.Duration{Duration: 60 * time.Minute},
+				AuthorizationCodeLifespan:       config.Duration{Duration: 5 * time.Minute},
+				TokenHashKeySecretName:          SecretTokenHash,
+				TokenSigningRSAKeySecretName:    SecretTokenSigningRSAKey,
+				OldTokenSigningRSAKeySecretName: SecretOldTokenSigningRSAKey,
+				StaticClients: map[string]*fosite.DefaultClient{
+					"flyte-cli": {
+						ID:            "flyte-cli",
+						RedirectURIs:  []string{"http://localhost:53593/callback", "http://localhost:12345/callback"},
+						ResponseTypes: []string{"code", "token"},
+						GrantTypes:    []string{"refresh_token", "authorization_code"},
+						Scopes:        []string{"all", "offline", "access_token"},
+						Public:        true,
+					},
+					"flytectl": {
+						ID:            "flytectl",
+						RedirectURIs:  []string{"http://localhost:53593/callback", "http://localhost:12345/callback"},
+						ResponseTypes: []string{"code", "token"},
+						GrantTypes:    []string{"refresh_token", "authorization_code"},
+						Scopes:        []string{"all", "offline", "access_token"},
+						Public:        true,
+					},
+					"flytepropeller": {
+						ID:            "flytepropeller",
+						Secret:        []byte(`$2a$10$IxMdI6d.LIRZPpSfEwNoeu4rY3FhDREsxFJXikcgdRRAStxUlsuEO`), // = "foobar"
+						RedirectURIs:  []string{"http://localhost:3846/callback"},
+						ResponseTypes: []string{"token"},
+						GrantTypes:    []string{"refresh_token", "client_credentials"},
+						Scopes:        []string{"all", "offline", "access_token"},
+					},
 				},
 			},
 		},
@@ -103,9 +124,11 @@ type Config struct {
 	AppAuth  OAuth2Options  `json:"appAuth" pflag:",Defines Auth options for apps. UserAuth must be enabled for AppAuth to work."`
 }
 
-type OAuth2Options struct {
-	Issuer                          OAuth2Issuer    `json:"issuer"`
+type AuthorizationServer struct {
+	Issuer                          string          `json:"issuer" pflag:",Defines the issuer to use when issuing and validating tokens. The default value is https://<requestUri.HostAndPort>/"`
 	AccessTokenLifespan             config.Duration `json:"accessTokenLifespan" pflag:",Defines the lifespan of issued access tokens."`
+	RefreshTokenLifespan            config.Duration `json:"refreshTokenLifespan" pflag:",Defines the lifespan of issued access tokens."`
+	AuthorizationCodeLifespan       config.Duration `json:"authorizationCodeLifespan" pflag:",Defines the lifespan of issued access tokens."`
 	TokenHashKeySecretName          string          `json:"tokenHashKeySecretName" pflag:",OPTIONAL"`
 	TokenSigningRSAKeySecretName    string          `json:"tokenSigningRSAKeySecretName" pflag:",OPTIONAL: Secret name to use to retrieve RSA Signing Key."`
 	OldTokenSigningRSAKeySecretName string          `json:"oldTokenSigningRSAKeySecretName" pflag:",OPTIONAL: Secret name to use to retrieve Old RSA Signing Key. This can be useful during key rotation to continue to accept older tokens."`
@@ -113,8 +136,16 @@ type OAuth2Options struct {
 	StaticClients map[string]*fosite.DefaultClient `json:"staticClients" pflag:"-,Defines statically defined list of clients to allow."`
 }
 
-type OAuth2Issuer struct {
-	Issuer string `json:"issuer" pflag:",Defines the issuer to use when issuing and validating tokens. The default value is https://<requestUri.HostAndPort>/"`
+type ExternalAuthorizationServer struct {
+	BaseURL config.URL `json:"baseUrl" pflag:",This should be the base url of the authorization server that you are trying to hit. With Okta for instance, it will look something like https://company.okta.com/oauth2/abcdef123456789/"`
+
+	ExpectedAudience string `json:"expectedIssuer" pflag:",Expected Audience to use to validate access tokens."`
+}
+
+type OAuth2Options struct {
+	AuthServerType     AuthorizationServerType     `json:"authServerType" pflag:"-,Determines authorization server type to use. Additional config should be provided for the chosen AuthorizationServer"`
+	SelfAuthServer     AuthorizationServer         `json:"selfAuthServer" pflag:",Authorization Server config to run as a service. Use this when using an IdP that does not offer a custom OAuth2 Authorization Server."`
+	ExternalAuthServer ExternalAuthorizationServer `json:"externalAuthServer" pflag:",External Authorization Server config."`
 }
 
 type UserAuthConfig struct {

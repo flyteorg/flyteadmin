@@ -8,17 +8,19 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/flyteorg/flyteadmin/pkg/auth/config"
-	"golang.org/x/oauth2"
-
-	oauth22 "github.com/ory/fosite/handler/oauth2"
-
 	"github.com/flyteorg/flyteadmin/pkg/auth"
+	"github.com/flyteorg/flyteadmin/pkg/auth/config"
 
 	"github.com/ory/fosite"
 
 	"github.com/flyteorg/flyteadmin/pkg/auth/interfaces"
 	"github.com/flyteorg/flytestdlib/logger"
+)
+
+const (
+	requestedScopePrefix = "f."
+	accessTokenScope     = "access_token"
+	refreshTokenScope    = "offline"
 )
 
 func getAuthEndpoint(authCtx interfaces.AuthenticationContext) http.HandlerFunc {
@@ -33,29 +35,19 @@ func getAuthCallbackEndpoint(authCtx interfaces.AuthenticationContext) http.Hand
 	}
 }
 
-type InCodeAuthorizeCodeProvider struct {
-	oauth22.CoreStrategy
-}
-
-func (p InCodeAuthorizeCodeProvider) AuthorizeCodeSignature(token string) string {
-	return token
-}
-
-func (p InCodeAuthorizeCodeProvider) GenerateAuthorizeCode(ctx context.Context, requester fosite.Requester) (token string, signature string, err error) {
-	token, _, err = p.CoreStrategy.GenerateAccessToken(ctx, requester)
-	return token, token, err
-}
-
-func (p InCodeAuthorizeCodeProvider) ValidateAuthorizeCode(ctx context.Context, requester fosite.Requester, token string) (err error) {
-	return p.CoreStrategy.ValidateAccessToken(ctx, requester, token)
-}
-
 func getIssuer(cfg *config.Config, req *http.Request) string {
-	if configIssuer := cfg.AppAuth.Issuer.Issuer; len(configIssuer) == 0 {
+	if configIssuer := cfg.AppAuth.SelfAuthServer.Issuer; len(configIssuer) > 0 {
 		return configIssuer
 	}
 
-	return "https://" + req.Host + "/"
+	u, err := getRequestBaseUrl(req)
+	if err != nil {
+		// Should never happen
+		logger.Error(context.Background(), err)
+		return ""
+	}
+
+	return u.String()
 }
 
 func getRequestBaseUrl(r *http.Request) (*url.URL, error) {
@@ -75,40 +67,18 @@ func authCallbackEndpoint(authCtx interfaces.AuthenticationContext, rw http.Resp
 	oauth2Provider := authCtx.OAuth2Provider()
 
 	// Get the user's identity
-	idTokenRaw, accessToken, _, err := authCtx.CookieManager().RetrieveTokenValues(ctx, req)
+	identityContext, err := auth.IdentityContextFromRequest(ctx, req, authCtx)
 	if err != nil {
-		http.Error(rw, "Error decoding identify token, try /login in again", http.StatusUnauthorized)
-		return
-	}
-
-	// TODO: Move into a more generic GetUserIdentityContext() method...
-	idToken, err := auth.ParseIDTokenAndValidate(ctx, authCtx.Options().UserAuth.OpenID.ClientID, idTokenRaw, authCtx.OidcProvider())
-	if err != nil {
-		logger.Infof(ctx, "Error occurred in NewAuthorizeRequest: %+v", err)
+		logger.Infof(ctx, "Failed to acquire user identity from request: %+v", err)
 		oauth2Provider.WriteAuthorizeError(rw, fosite.NewAuthorizeRequest(), err)
 		return
 	}
 
-	originalToken := oauth2.Token{
-		AccessToken: accessToken,
-	}
-
-	tokenSource := authCtx.OAuth2ClientConfig().TokenSource(ctx, &originalToken)
-
-	// TODO: Investigate improving transparency of errors. The errors from this call may be just a local error, or may
-	//       be an error from the HTTP request to the IDP. In the latter case, consider passing along the error code/msg.
-	userInfo, err := authCtx.OidcProvider().UserInfo(ctx, tokenSource)
+	// Get latest user's info either from identity or by making a UserInfo() call to the original
+	userInfo, err := auth.QueryUserInfo(ctx, identityContext, req, authCtx)
 	if err != nil {
-		logger.Errorf(ctx, "Error getting user info from IDP %s", err)
-		http.Error(rw, "Error getting user info from IDP", http.StatusFailedDependency)
-		return
-	}
-
-	resp := auth.UserInfoResponse{}
-	err = userInfo.Claims(&resp)
-	if err != nil {
-		logger.Errorf(ctx, "Error getting user info from IDP %s", err)
-		http.Error(rw, "Error getting user info from IDP", http.StatusFailedDependency)
+		err = fmt.Errorf("failed to query user info. Error: %w", err)
+		http.Error(rw, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
@@ -141,21 +111,8 @@ func authCallbackEndpoint(authCtx interfaces.AuthenticationContext, rw http.Resp
 	}
 
 	// Now that the user is authorized, we set up a session:
-	mySessionData := oauth2Provider.NewJWTSessionToken(idToken.Subject, resp, ar.GetClient().GetID(), issuer, issuer)
+	mySessionData := oauth2Provider.NewJWTSessionToken(userInfo.Subject(), userInfo, ar.GetClient().GetID(), issuer, issuer)
 
-	// When using the HMACSHA strategy you must use something that implements the HMACSessionContainer.
-	// It brings you the power of overriding the default values.
-	//
-	// mySessionData.HMACSession = &strategy.HMACSession{
-	//	AccessTokenExpiry: time.Now().Add(time.Day),
-	//	AuthorizeCodeExpiry: time.Now().Add(time.Day),
-	// }
-	//
-
-	// If you're using the JWT strategy, there's currently no distinction between access token and authorize code claims.
-	// Therefore, you both access token and authorize code will have the same "exp" claim. If this is something you
-	// need let us know on github.
-	//
 	mySessionData.JWTClaims.ExpiresAt = time.Now().Add(time.Hour * 24)
 	mySessionData.SetExpiresAt(fosite.AuthorizeCode, time.Now().Add(time.Hour*24))
 	mySessionData.SetExpiresAt(fosite.AccessToken, time.Now().Add(time.Hour*24))

@@ -153,13 +153,15 @@ func GetOAuth2ClientConfig(ctx context.Context, options config.OpenIDOptions, en
 			return oauth2.Config{}, err
 		}
 
-		secret = strings.TrimSuffix(string(secretBytes), "\n")
+		secret = string(secretBytes)
 	} else {
 		secret, err = sm.Get(ctx, options.ClientSecretName)
 		if err != nil {
 			return oauth2.Config{}, err
 		}
 	}
+
+	secret = strings.TrimSuffix(secret, "\n")
 
 	return oauth2.Config{
 		RedirectURL:  options.CallbackURL.String(),
