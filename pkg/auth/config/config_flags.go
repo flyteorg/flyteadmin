@@ -55,10 +55,12 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.StringSlice(fmt.Sprintf("%v%v", prefix, "userAuth.openId.aud"), []string{}, "")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "userAuth.cookie_hash_key_secret_name"), defaultConfig.UserAuth.CookieHashKeySecretName, "OPTIONAL: Secret name to use for cookie hash key.")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "userAuth.cookie_block_key_secret_name"), defaultConfig.UserAuth.CookieBlockKeySecretName, "OPTIONAL: Secret name to use for cookie block key.")
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "appAuth.issuer.issuer"), defaultConfig.AppAuth.Issuer.Issuer, "Defines the issuer to use when issuing and validating tokens. The default value is https://<requestUri.HostAndPort>/")
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "appAuth.accessTokenLifespan"), defaultConfig.AppAuth.AccessTokenLifespan.String(), "Defines the lifespan of issued access tokens.")
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "appAuth.tokenHashKeySecretName"), defaultConfig.AppAuth.TokenHashKeySecretName, "OPTIONAL")
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "appAuth.tokenSigningRSAKeySecretName"), defaultConfig.AppAuth.TokenSigningRSAKeySecretName, "OPTIONAL: Secret name to use to retrieve RSA Signing Key.")
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "appAuth.oldTokenSigningRSAKeySecretName"), defaultConfig.AppAuth.OldTokenSigningRSAKeySecretName, "OPTIONAL: Secret name to use to retrieve Old RSA Signing Key. This can be useful during key rotation to continue to accept older tokens.")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "appAuth.selfAuthServer.issuer"), defaultConfig.AppAuth.SelfAuthServer.Issuer, "Defines the issuer to use when issuing and validating tokens. The default value is https://<requestUri.HostAndPort>/")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "appAuth.selfAuthServer.accessTokenLifespan"), defaultConfig.AppAuth.SelfAuthServer.AccessTokenLifespan.String(), "Defines the lifespan of issued access tokens.")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "appAuth.selfAuthServer.tokenHashKeySecretName"), defaultConfig.AppAuth.SelfAuthServer.TokenHashKeySecretName, "OPTIONAL")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "appAuth.selfAuthServer.tokenSigningRSAKeySecretName"), defaultConfig.AppAuth.SelfAuthServer.TokenSigningRSAKeySecretName, "OPTIONAL: Secret name to use to retrieve RSA Signing Key.")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "appAuth.selfAuthServer.oldTokenSigningRSAKeySecretName"), defaultConfig.AppAuth.SelfAuthServer.OldTokenSigningRSAKeySecretName, "OPTIONAL: Secret name to use to retrieve Old RSA Signing Key. This can be useful during key rotation to continue to accept older tokens.")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "appAuth.externalAuthServer.baseUrl"), defaultConfig.AppAuth.ExternalAuthServer.BaseURL.String(), "This should be the base url of the authorization server that you are trying to hit. With Okta for instance,  it will look something like https://company.okta.com/oauth2/abcdef123456789/")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "appAuth.externalAuthServer.expectedIssuer"), defaultConfig.AppAuth.ExternalAuthServer.ExpectedAudience, "Expected Audience to use to validate access tokens.")
 	return cmdFlags
 }

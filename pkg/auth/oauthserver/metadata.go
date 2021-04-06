@@ -2,10 +2,13 @@ package oauthserver
 
 import (
 	"context"
+	"crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
+
+	"github.com/flyteorg/flyteadmin/pkg/auth"
 
 	"github.com/lestrrat-go/jwx/jwk"
 
@@ -44,25 +47,11 @@ type DiscoveryDocument struct {
 	GrantTypesSupported []string `json:"grant_types_supported"`
 }
 
+// GetJSONWebKeysEndpoint serves requests to the jwks endpoint.
+// ref: https://tools.ietf.org/html/rfc7517
 func GetJSONWebKeysEndpoint(authCtx interfaces.AuthenticationContext) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		s := jwk.NewSet()
-		for _, publicKey := range authCtx.OAuth2Provider().PublicKeys() {
-			key, err := jwk.New(publicKey)
-			if err != nil {
-				http.Error(writer, fmt.Errorf("failed to write public key. Error: %w", err).Error(), http.StatusInternalServerError)
-				return
-			}
-
-			err = jwk.AssignKeyID(key)
-			if err != nil {
-				http.Error(writer, fmt.Errorf("failed to write public key. Error: %w", err).Error(), http.StatusInternalServerError)
-				return
-			}
-
-			s.Add(key)
-		}
-
+		s := authCtx.OAuth2Provider().KeySet()
 		raw, err := json.Marshal(s)
 		if err != nil {
 			http.Error(writer, fmt.Errorf("failed to write public key. Error: %w", err).Error(), http.StatusInternalServerError)
@@ -77,6 +66,32 @@ func GetJSONWebKeysEndpoint(authCtx interfaces.AuthenticationContext) http.Handl
 	}
 }
 
+func getJSONWebKeys(publicKeys []rsa.PublicKey) (jwk.Set, error) {
+	s := jwk.NewSet()
+	for _, publicKey := range publicKeys {
+		key, err := jwk.New(publicKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to write public key. Error: %w", err)
+		}
+
+		err = jwk.AssignKeyID(key)
+		if err != nil {
+			return nil, fmt.Errorf("failed to write public key. Error: %w", err)
+		}
+
+		err = key.Set(KeyMetadataPublicCert, &publicKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to write public key. Error: %w", err)
+		}
+
+		s.Add(key)
+	}
+
+	return s, nil
+}
+
+// GetMetadataEndpoint serves auth.OAuth2MetadataEndpoint requests with an RFC Compliant json object.
+// ref: https://tools.ietf.org/html/rfc8414
 func GetMetadataEndpoint(authCtx interfaces.AuthenticationContext) http.HandlerFunc {
 	return func(rw http.ResponseWriter, request *http.Request) {
 		requestUrl, err := getRequestBaseUrl(request)
@@ -96,12 +111,8 @@ func GetMetadataEndpoint(authCtx interfaces.AuthenticationContext) http.HandlerF
 				"token",
 				"code token",
 			},
-			GrantTypesSupported: []string{
-				"authorization_code",
-				"refresh_token",
-				"client_credentials",
-			},
-			ScopesSupported: []string{"all"},
+			GrantTypesSupported: supportedGrantTypes,
+			ScopesSupported:     []string{auth.ScopeAll},
 			TokenEndpointAuthMethodsSupported: []string{
 				"client_secret_basic",
 			},
@@ -118,5 +129,13 @@ func GetMetadataEndpoint(authCtx interfaces.AuthenticationContext) http.HandlerF
 		if err != nil {
 			logger.Errorf(context.TODO(), "Wrote user info response size %d, err %s", size, err)
 		}
+	}
+}
+
+// GetMetadataRedirect redirects auth.OAuth2MetadataEndpoint requests to the external Authorization Server configured
+func GetMetadataRedirect(authCtx interfaces.AuthenticationContext) http.HandlerFunc {
+	return func(rw http.ResponseWriter, request *http.Request) {
+		baseURL := authCtx.Options().AppAuth.ExternalAuthServer.BaseURL
+		http.Redirect(rw, request, baseURL.ResolveReference(oauth2MetadataEndpoint).String(), http.StatusTemporaryRedirect)
 	}
 }

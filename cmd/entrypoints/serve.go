@@ -4,6 +4,9 @@ import (
 	"context"
 	"crypto/tls"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/secretmanager"
 
 	authConfig "github.com/flyteorg/flyteadmin/pkg/auth/config"
@@ -57,9 +60,10 @@ var serveCmd = &cobra.Command{
 		serverConfig := config.GetConfig()
 
 		if serverConfig.Security.Secure {
-			return serveGatewaySecure(ctx, serverConfig)
+			return serveGatewaySecure(ctx, serverConfig, authConfig.GetConfig())
 		}
-		return serveGatewayInsecure(ctx, serverConfig)
+
+		return serveGatewayInsecure(ctx, serverConfig, authConfig.GetConfig())
 	},
 }
 
@@ -74,6 +78,21 @@ func init() {
 		contextutils.TaskTypeKey, common.RuntimeTypeKey, common.RuntimeVersionKey)
 }
 
+func blanketAuthorization(ctx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (
+	resp interface{}, err error) {
+
+	identityContext := auth.IdentityContextFromContext(ctx)
+	if identityContext.IsEmpty() {
+		return nil, status.Errorf(codes.Unauthenticated, "empty identity")
+	}
+
+	if !identityContext.Scopes().Has(auth.ScopeAll) {
+		return nil, status.Errorf(codes.Unauthenticated, "authenticated user doesn't have required scope")
+	}
+
+	return handler(ctx, req)
+}
+
 // Creates a new gRPC Server with all the configuration
 func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authCtx interfaces.AuthenticationContext,
 	opts ...grpc.ServerOption) (*grpc.Server, error) {
@@ -85,6 +104,7 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authCtx interf
 			auth.GetAuthenticationCustomMetadataInterceptor(authCtx),
 			grpcauth.UnaryServerInterceptor(auth.GetAuthenticationInterceptor(authCtx)),
 			auth.AuthenticationLoggingInterceptor,
+			blanketAuthorization,
 		)
 	} else {
 		logger.Infof(ctx, "Creating gRPC server without authentication")
@@ -129,7 +149,7 @@ func healthCheckFunc(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authCtx interfaces.AuthenticationContext,
+func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authCfg *authConfig.Config, authCtx interfaces.AuthenticationContext,
 	grpcAddress string, grpcConnectionOpts ...grpc.DialOption) (*http.ServeMux, error) {
 
 	// Register the server that will serve HTTP/REST Traffic
@@ -143,7 +163,7 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authCtx interf
 	mux.HandleFunc("/api/v1/openapi", GetHandleOpenapiSpec(ctx))
 
 	// Handles serving config values required to initialize a flyte-client config
-	mux.HandleFunc("/config/v1/flyte_client", rpcConfig.HandleFlyteCliConfigFunc(ctx, cfg, authConfig.GetConfig()))
+	mux.HandleFunc("/config/v1/flyte_client", rpcConfig.HandleFlyteCliConfigFunc(ctx, cfg, authCfg))
 
 	var gwmuxOptions = make([]runtime.ServeMuxOption, 0)
 	// This option means that http requests are served with protobufs, instead of json. We always want this.
@@ -177,7 +197,7 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authCtx interf
 	return mux, nil
 }
 
-func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig) error {
+func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig, authCfg *authConfig.Config) error {
 	logger.Infof(ctx, "Serving Flyte Admin Insecure")
 
 	// This will parse configuration and create the necessary objects for dealing with auth
@@ -189,13 +209,16 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig) error {
 	// See the auth.Config object for additional settings as well.
 	if cfg.Security.UseAuth {
 		sm := secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig())
-		oauth2Provider, err := oauthserver.NewProvider(ctx, authConfig.GetConfig(), sm)
-		if err != nil {
-			logger.Errorf(ctx, "Error creating auth context %s", err)
-			return err
+		var oauth2Provider interfaces.OAuth2Provider
+		if authCfg.AppAuth.AuthServerType == authConfig.AuthorizationServerTypeSelf {
+			oauth2Provider, err = oauthserver.NewProvider(ctx, authCfg.AppAuth.SelfAuthServer, sm)
+			if err != nil {
+				logger.Errorf(ctx, "Error creating authorization server %s", err)
+				return err
+			}
 		}
 
-		authCtx, err = auth.NewAuthenticationContext(ctx, sm, oauth2Provider, authConfig.GetConfig())
+		authCtx, err = auth.NewAuthenticationContext(ctx, sm, oauth2Provider, authCfg)
 		if err != nil {
 			logger.Errorf(ctx, "Error creating auth context %s", err)
 			return err
@@ -219,7 +242,7 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig) error {
 	}()
 
 	logger.Infof(ctx, "Starting HTTP/1 Gateway server on %s", cfg.GetHostAddress())
-	httpServer, err := newHTTPServer(ctx, cfg, authCtx, cfg.GetGrpcHostAddress(), grpc.WithInsecure(),
+	httpServer, err := newHTTPServer(ctx, cfg, authCfg, authCtx, cfg.GetGrpcHostAddress(), grpc.WithInsecure(),
 		grpc.WithMaxHeaderListSize(common.MaxResponseStatusBytes))
 	if err != nil {
 		return err
@@ -259,7 +282,7 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 	})
 }
 
-func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig) error {
+func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig, authCfg *authConfig.Config) error {
 	certPool, cert, err := server.GetSslCredentials(ctx, cfg.Security.Ssl.CertificateFile, cfg.Security.Ssl.KeyFile)
 	if err != nil {
 		return err
@@ -268,8 +291,16 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig) error {
 	var authCtx interfaces.AuthenticationContext
 	if cfg.Security.UseAuth {
 		sm := secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig())
-		oauth2Provider, err := oauthserver.NewProvider(ctx, authConfig.GetConfig(), sm)
-		authCtx, err = auth.NewAuthenticationContext(ctx, sm, oauth2Provider, authConfig.GetConfig())
+		var oauth2Provider interfaces.OAuth2Provider
+		if authCfg.AppAuth.AuthServerType == authConfig.AuthorizationServerTypeSelf {
+			oauth2Provider, err = oauthserver.NewProvider(ctx, authCfg.AppAuth.SelfAuthServer, sm)
+			if err != nil {
+				logger.Errorf(ctx, "Error creating authorization server %s", err)
+				return err
+			}
+		}
+
+		authCtx, err = auth.NewAuthenticationContext(ctx, sm, oauth2Provider, authCfg)
 		if err != nil {
 			logger.Errorf(ctx, "Error creating auth context %s", err)
 			return err
@@ -287,7 +318,7 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig) error {
 		ServerName: cfg.GetHostAddress(),
 		RootCAs:    certPool,
 	})
-	httpServer, err := newHTTPServer(ctx, cfg, authCtx, cfg.GetHostAddress(), grpc.WithTransportCredentials(dialCreds))
+	httpServer, err := newHTTPServer(ctx, cfg, authCfg, authCtx, cfg.GetHostAddress(), grpc.WithTransportCredentials(dialCreds))
 	if err != nil {
 		return err
 	}

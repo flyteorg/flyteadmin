@@ -3,9 +3,12 @@ package interfaces
 import (
 	"context"
 	"crypto/rsa"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/lestrrat-go/jwx/jwk"
 
 	"github.com/ory/fosite"
 	fositeOAuth2 "github.com/ory/fosite/handler/oauth2"
@@ -26,6 +29,7 @@ type OAuth2Provider interface {
 	NewJWTSessionToken(subject string, userInfoClaims interface{}, appID, issuer, audience string) *fositeOAuth2.JWTSession
 	ValidateAccessToken(ctx context.Context, tokenStr string) (IdentityContext, error)
 	PublicKeys() []rsa.PublicKey
+	KeySet() jwk.Set
 }
 
 // This interface is a convenience wrapper object that holds all the utilities necessary to run Flyte Admin behind authentication
@@ -48,6 +52,7 @@ type IdentityContext interface {
 	IsEmpty() bool
 	WithContext(ctx context.Context) context.Context
 	AuthenticatedAt() time.Time
+	Scopes() sets.String
 }
 
 type UserInfo interface {

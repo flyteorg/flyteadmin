@@ -4,7 +4,6 @@ const (
 	// OAuth2 Parameters
 	CsrfFormKey                   = "state"
 	AuthorizationResponseCodeType = "code"
-	RefreshToken                  = "refresh_token"
 	DefaultAuthorizationHeader    = "authorization"
 	BearerScheme                  = "Bearer"
 	IDTokenScheme                 = "IDToken"
@@ -18,4 +17,5 @@ const (
 	OIdCMetadataEndpoint = ".well-known/openid-configuration"
 
 	ContextKeyIdentityContext = "identity_context"
+	ScopeAll                  = "all"
 )

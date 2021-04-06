@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/flyteorg/flyteadmin/pkg/auth/config"
+
 	"github.com/go-test/deep"
 	"github.com/ory/fosite"
 
@@ -17,6 +19,9 @@ func TestMarshalAuthorizeRequest(t *testing.T) {
 	assert.NoError(t, err)
 
 	ctx := context.Background()
+	oauth2Provider, err := NewProvider(ctx, config.AuthorizationServer{}, nil)
+	assert.NoError(t, err)
+
 	ar, err := oauth2Provider.NewAuthorizeRequest(ctx, req)
 	assert.NoError(t, err)
 

@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	"github.com/flyteorg/flyteadmin/pkg/auth/interfaces"
 )
 
@@ -21,6 +23,8 @@ type IdentityContext struct {
 	appID           string
 	authenticatedAt time.Time
 	userInfo        interfaces.UserInfo
+	// Set to pointer just to keep this struct go-simple to support equal operator
+	scopes *sets.String
 }
 
 func (c IdentityContext) Audience() string {
@@ -47,6 +51,14 @@ func (c IdentityContext) IsEmpty() bool {
 	return c == emptyIdentityContext
 }
 
+func (c IdentityContext) Scopes() sets.String {
+	if c.scopes != nil {
+		return *c.scopes
+	}
+
+	return sets.NewString()
+}
+
 func (c IdentityContext) WithContext(ctx context.Context) context.Context {
 	return context.WithValue(ctx, ContextKeyIdentityContext, c)
 }
@@ -56,13 +68,14 @@ func (c IdentityContext) AuthenticatedAt() time.Time {
 }
 
 // NewIdentityContext creates a new IdentityContext.
-func NewIdentityContext(audience, userID, appID string, authenticatedAt time.Time, userInfo interfaces.UserInfo) IdentityContext {
+func NewIdentityContext(audience, userID, appID string, authenticatedAt time.Time, scopes sets.String, userInfo interfaces.UserInfo) IdentityContext {
 	return IdentityContext{
 		audience:        audience,
 		userID:          userID,
 		appID:           appID,
 		userInfo:        userInfo,
 		authenticatedAt: authenticatedAt,
+		scopes:          &scopes,
 	}
 }
 

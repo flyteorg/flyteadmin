@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -27,12 +26,10 @@ import (
 )
 
 const (
-	RedirectURLParameter                   = "redirect_url"
-	FromHTTPKey                            = "from_http"
-	FromHTTPVal                            = "true"
-	bearerTokenContextKey contextutils.Key = "bearer"
-	idTokenContextKey     contextutils.Key = "idtoken"
-	PrincipalContextKey   contextutils.Key = "principal"
+	RedirectURLParameter                  = "redirect_url"
+	FromHTTPKey                           = "from_http"
+	FromHTTPVal                           = "true"
+	PrincipalContextKey  contextutils.Key = "principal"
 )
 
 type HTTPRequestToMetadataAnnotator func(ctx context.Context, request *http.Request) metadata.MD
@@ -139,7 +136,7 @@ func AuthenticationLoggingInterceptor(ctx context.Context, req interface{}, info
 	// Invoke 'handler' to use your gRPC server implementation and get
 	// the response.
 	identityContext := IdentityContextFromContext(ctx)
-	logger.Debugf(ctx, "gRPC server info in logging interceptor email %s method %s\n", identityContext.UserID(), info.FullMethod)
+	logger.Debugf(ctx, "gRPC server info in logging interceptor [%s] method [%s]\n", identityContext.UserID(), info.FullMethod)
 	return handler(ctx, req)
 }
 
@@ -173,7 +170,7 @@ func SetContextForIdentity(ctx context.Context, identityContext interfaces.Ident
 	email := identityContext.UserInfo().Email()
 	newCtx := identityContext.WithContext(ctx)
 	if len(email) > 0 {
-		newCtx = WithUserEmail(context.WithValue(newCtx, bearerTokenContextKey, identityContext), identityContext.UserID())
+		newCtx = WithUserEmail(newCtx, identityContext.UserID())
 	}
 
 	return WithAuditFields(newCtx, identityContext.UserID(), []string{identityContext.AppID()}, identityContext.AuthenticatedAt())
@@ -317,58 +314,23 @@ func GetMeEndpointHandler(ctx context.Context, authCtx interfaces.Authentication
 	return func(writer http.ResponseWriter, request *http.Request) {
 		identityContext, err := IdentityContextFromRequest(ctx, request, authCtx)
 		if err != nil {
+			logger.Infof(ctx, "failed to retrieve identity from request. Error: %v", err)
 			http.Error(writer, "Request is unauthenticated, try /login in again", http.StatusUnauthorized)
 			return
 		}
 
-		if identityContext.IsEmpty() {
+		userInfo, err := QueryUserInfo(ctx, identityContext, request, authCtx)
+		if err != nil {
+			logger.Infof(ctx, "failed to query user info. Error: %v", err)
 			http.Error(writer, "Request is unauthenticated, try /login in again", http.StatusUnauthorized)
 			return
 		}
 
-		var raw []byte
-		if len(identityContext.UserInfo().Name()) > 0 {
-			raw, err = identityContext.UserInfo().MarshalToJSON()
-			if err != nil {
-				http.Error(writer, "Request is unauthenticated, try /login in again", http.StatusUnauthorized)
-				return
-			}
-		} else {
-			_, accessToken, _, err := authCtx.CookieManager().RetrieveTokenValues(ctx, request)
-			if err != nil {
-				http.Error(writer, "Error decoding identify token, try /login in again", http.StatusUnauthorized)
-				return
-			}
-
-			originalToken := oauth2.Token{
-				AccessToken: accessToken,
-			}
-
-			tokenSource := authCtx.OAuth2ClientConfig().TokenSource(ctx, &originalToken)
-
-			// TODO: Investigate improving transparency of errors. The errors from this call may be just a local error, or may
-			//       be an error from the HTTP request to the IDP. In the latter case, consider passing along the error code/msg.
-			userInfo, err := authCtx.OidcProvider().UserInfo(ctx, tokenSource)
-			if err != nil {
-				logger.Errorf(ctx, "Error getting user info from IDP %s", err)
-				http.Error(writer, "Error getting user info from IDP", http.StatusFailedDependency)
-				return
-			}
-
-			resp := UserInfoResponse{}
-			err = userInfo.Claims(&resp)
-			if err != nil {
-				logger.Errorf(ctx, "Error getting user info from IDP %s", err)
-				http.Error(writer, "Error getting user info from IDP", http.StatusFailedDependency)
-				return
-			}
-
-			raw, err = json.Marshal(resp)
-			if err != nil {
-				logger.Errorf(ctx, "Error marshaling response into JSON %s", err)
-				http.Error(writer, "Error marshaling response into JSON", http.StatusInternalServerError)
-				return
-			}
+		raw, err := userInfo.MarshalToJSON()
+		if err != nil {
+			logger.Infof(ctx, "failed to marshal query user info. Error: %v", err)
+			http.Error(writer, "Request is unauthenticated, try /login in again", http.StatusUnauthorized)
+			return
 		}
 
 		writer.Header().Set("Content-Type", "application/json")
@@ -376,6 +338,46 @@ func GetMeEndpointHandler(ctx context.Context, authCtx interfaces.Authentication
 		if err != nil {
 			logger.Errorf(ctx, "Wrote user info response size %d, err %s", size, err)
 		}
+	}
+}
+
+func QueryUserInfo(ctx context.Context, identityContext interfaces.IdentityContext, request *http.Request,
+	authCtx interfaces.AuthenticationContext) (interfaces.UserInfo, error) {
+
+	if identityContext.IsEmpty() {
+		return nil, fmt.Errorf("request is unauthenticated, try /login in again")
+	}
+
+	if len(identityContext.UserInfo().Name()) > 0 {
+		return identityContext.UserInfo(), nil
+	} else {
+		_, accessToken, _, err := authCtx.CookieManager().RetrieveTokenValues(ctx, request)
+		if err != nil {
+			return nil, fmt.Errorf("error decoding identify token, try /login in again")
+		}
+
+		originalToken := oauth2.Token{
+			AccessToken: accessToken,
+		}
+
+		tokenSource := authCtx.OAuth2ClientConfig().TokenSource(ctx, &originalToken)
+
+		// TODO: Investigate improving transparency of errors. The errors from this call may be just a local error, or may
+		//       be an error from the HTTP request to the IDP. In the latter case, consider passing along the error code/msg.
+		userInfo, err := authCtx.OidcProvider().UserInfo(ctx, tokenSource)
+		if err != nil {
+			logger.Errorf(ctx, "Error getting user info from IDP %s", err)
+			return nil, fmt.Errorf("error getting user info from IDP")
+		}
+
+		resp := UserInfoResponse{}
+		err = userInfo.Claims(&resp)
+		if err != nil {
+			logger.Errorf(ctx, "Error getting user info from IDP %s", err)
+			return nil, fmt.Errorf("error getting user info from IDP")
+		}
+
+		return resp, err
 	}
 }
 

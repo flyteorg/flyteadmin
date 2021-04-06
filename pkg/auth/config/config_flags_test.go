@@ -407,11 +407,11 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
-	t.Run("Test_appAuth.issuer.issuer", func(t *testing.T) {
+	t.Run("Test_appAuth.selfAuthServer.issuer", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("appAuth.issuer.issuer"); err == nil {
-				assert.Equal(t, string(defaultConfig.AppAuth.Issuer.Issuer), vString)
+			if vString, err := cmdFlags.GetString("appAuth.selfAuthServer.issuer"); err == nil {
+				assert.Equal(t, string(defaultConfig.AppAuth.SelfAuthServer.Issuer), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -420,64 +420,42 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("appAuth.issuer.issuer", testValue)
-			if vString, err := cmdFlags.GetString("appAuth.issuer.issuer"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.AppAuth.Issuer.Issuer)
+			cmdFlags.Set("appAuth.selfAuthServer.issuer", testValue)
+			if vString, err := cmdFlags.GetString("appAuth.selfAuthServer.issuer"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.AppAuth.SelfAuthServer.Issuer)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_appAuth.accessTokenLifespan", func(t *testing.T) {
+	t.Run("Test_appAuth.selfAuthServer.accessTokenLifespan", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("appAuth.accessTokenLifespan"); err == nil {
-				assert.Equal(t, string(defaultConfig.AppAuth.AccessTokenLifespan.String()), vString)
+			if vString, err := cmdFlags.GetString("appAuth.selfAuthServer.accessTokenLifespan"); err == nil {
+				assert.Equal(t, string(defaultConfig.AppAuth.SelfAuthServer.AccessTokenLifespan.String()), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 
 		t.Run("Override", func(t *testing.T) {
-			testValue := defaultConfig.AppAuth.AccessTokenLifespan.String()
+			testValue := defaultConfig.AppAuth.SelfAuthServer.AccessTokenLifespan.String()
 
-			cmdFlags.Set("appAuth.accessTokenLifespan", testValue)
-			if vString, err := cmdFlags.GetString("appAuth.accessTokenLifespan"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.AppAuth.AccessTokenLifespan)
-
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-	})
-	t.Run("Test_appAuth.tokenHashKeySecretName", func(t *testing.T) {
-		t.Run("DefaultValue", func(t *testing.T) {
-			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("appAuth.tokenHashKeySecretName"); err == nil {
-				assert.Equal(t, string(defaultConfig.AppAuth.TokenHashKeySecretName), vString)
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-
-		t.Run("Override", func(t *testing.T) {
-			testValue := "1"
-
-			cmdFlags.Set("appAuth.tokenHashKeySecretName", testValue)
-			if vString, err := cmdFlags.GetString("appAuth.tokenHashKeySecretName"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.AppAuth.TokenHashKeySecretName)
+			cmdFlags.Set("appAuth.selfAuthServer.accessTokenLifespan", testValue)
+			if vString, err := cmdFlags.GetString("appAuth.selfAuthServer.accessTokenLifespan"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.AppAuth.SelfAuthServer.AccessTokenLifespan)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_appAuth.tokenSigningRSAKeySecretName", func(t *testing.T) {
+	t.Run("Test_appAuth.selfAuthServer.tokenHashKeySecretName", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("appAuth.tokenSigningRSAKeySecretName"); err == nil {
-				assert.Equal(t, string(defaultConfig.AppAuth.TokenSigningRSAKeySecretName), vString)
+			if vString, err := cmdFlags.GetString("appAuth.selfAuthServer.tokenHashKeySecretName"); err == nil {
+				assert.Equal(t, string(defaultConfig.AppAuth.SelfAuthServer.TokenHashKeySecretName), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -486,20 +464,20 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("appAuth.tokenSigningRSAKeySecretName", testValue)
-			if vString, err := cmdFlags.GetString("appAuth.tokenSigningRSAKeySecretName"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.AppAuth.TokenSigningRSAKeySecretName)
+			cmdFlags.Set("appAuth.selfAuthServer.tokenHashKeySecretName", testValue)
+			if vString, err := cmdFlags.GetString("appAuth.selfAuthServer.tokenHashKeySecretName"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.AppAuth.SelfAuthServer.TokenHashKeySecretName)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_appAuth.oldTokenSigningRSAKeySecretName", func(t *testing.T) {
+	t.Run("Test_appAuth.selfAuthServer.tokenSigningRSAKeySecretName", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("appAuth.oldTokenSigningRSAKeySecretName"); err == nil {
-				assert.Equal(t, string(defaultConfig.AppAuth.OldTokenSigningRSAKeySecretName), vString)
+			if vString, err := cmdFlags.GetString("appAuth.selfAuthServer.tokenSigningRSAKeySecretName"); err == nil {
+				assert.Equal(t, string(defaultConfig.AppAuth.SelfAuthServer.TokenSigningRSAKeySecretName), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -508,9 +486,75 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("appAuth.oldTokenSigningRSAKeySecretName", testValue)
-			if vString, err := cmdFlags.GetString("appAuth.oldTokenSigningRSAKeySecretName"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.AppAuth.OldTokenSigningRSAKeySecretName)
+			cmdFlags.Set("appAuth.selfAuthServer.tokenSigningRSAKeySecretName", testValue)
+			if vString, err := cmdFlags.GetString("appAuth.selfAuthServer.tokenSigningRSAKeySecretName"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.AppAuth.SelfAuthServer.TokenSigningRSAKeySecretName)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_appAuth.selfAuthServer.oldTokenSigningRSAKeySecretName", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vString, err := cmdFlags.GetString("appAuth.selfAuthServer.oldTokenSigningRSAKeySecretName"); err == nil {
+				assert.Equal(t, string(defaultConfig.AppAuth.SelfAuthServer.OldTokenSigningRSAKeySecretName), vString)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("appAuth.selfAuthServer.oldTokenSigningRSAKeySecretName", testValue)
+			if vString, err := cmdFlags.GetString("appAuth.selfAuthServer.oldTokenSigningRSAKeySecretName"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.AppAuth.SelfAuthServer.OldTokenSigningRSAKeySecretName)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_appAuth.externalAuthServer.baseUrl", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vString, err := cmdFlags.GetString("appAuth.externalAuthServer.baseUrl"); err == nil {
+				assert.Equal(t, string(defaultConfig.AppAuth.ExternalAuthServer.BaseURL.String()), vString)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := defaultConfig.AppAuth.ExternalAuthServer.BaseURL.String()
+
+			cmdFlags.Set("appAuth.externalAuthServer.baseUrl", testValue)
+			if vString, err := cmdFlags.GetString("appAuth.externalAuthServer.baseUrl"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.AppAuth.ExternalAuthServer.BaseURL)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_appAuth.externalAuthServer.expectedIssuer", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vString, err := cmdFlags.GetString("appAuth.externalAuthServer.expectedIssuer"); err == nil {
+				assert.Equal(t, string(defaultConfig.AppAuth.ExternalAuthServer.ExpectedAudience), vString)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("appAuth.externalAuthServer.expectedIssuer", testValue)
+			if vString, err := cmdFlags.GetString("appAuth.externalAuthServer.expectedIssuer"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.AppAuth.ExternalAuthServer.ExpectedAudience)
 
 			} else {
 				assert.FailNow(t, err.Error())
