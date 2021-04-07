@@ -500,19 +500,19 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		Inputs:         request.Inputs,
 		ReferenceName:  taskIdentifier.Name,
 		AcceptedAt:     requestedAt,
-		Auth:           request.Spec.AuthRole,
+		Auth:           requestSpec.AuthRole,
 		QueueingBudget: qualityOfService.QueuingBudget,
 	}
-	if request.Spec.Labels != nil {
-		executeTaskInputs.Labels = request.Spec.Labels.Values
+	if requestSpec.Labels != nil {
+		executeTaskInputs.Labels = requestSpec.Labels.Values
 	}
 	executeTaskInputs.Labels, err = m.addProjectLabels(ctx, request.Project, executeTaskInputs.Labels)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if request.Spec.Annotations != nil {
-		executeTaskInputs.Annotations = request.Spec.Annotations.Values
+	if requestSpec.Annotations != nil {
+		executeTaskInputs.Annotations = requestSpec.Annotations.Values
 	}
 
 	overrides, err := m.addPluginOverrides(ctx, &workflowExecutionID, workflowExecutionID.Name, "")
@@ -549,7 +549,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 
 	executionModel, err := transformers.CreateExecutionModel(transformers.CreateExecutionModelInput{
 		WorkflowExecutionID: workflowExecutionID,
-		RequestSpec:         request.Spec,
+		RequestSpec:         requestSpec,
 		TaskID:              taskModel.ID,
 		WorkflowID:          workflowModel.ID,
 		// The execution is not considered running until the propeller sends a specific event saying so.
@@ -705,10 +705,10 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	if launchPlan.Spec.GetEntityMetadata() != nil {
 		notificationsSettings = launchPlan.Spec.EntityMetadata.GetNotifications()
 	}
-	if request.Spec.GetNotifications() != nil && request.Spec.GetNotifications().Notifications != nil &&
-		len(request.Spec.GetNotifications().Notifications) > 0 {
-		notificationsSettings = request.Spec.GetNotifications().Notifications
-	} else if request.Spec.GetDisableAll() {
+	if requestSpec.GetNotifications() != nil && requestSpec.GetNotifications().Notifications != nil &&
+		len(requestSpec.GetNotifications().Notifications) > 0 {
+		notificationsSettings = requestSpec.GetNotifications().Notifications
+	} else if requestSpec.GetDisableAll() {
 		notificationsSettings = make([]*admin.Notification, 0)
 	}
 
