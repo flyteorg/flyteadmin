@@ -18,13 +18,23 @@ const (
 	authMetadataKey = "authorization_metadata_key"
 )
 
-func HandleFlyteCliConfigFunc(ctx context.Context, cfg *config.ServerConfig, authConfig *authConfig.Config) http.HandlerFunc {
+func HandleFlyteCliConfigFunc(ctx context.Context, cfg *config.ServerConfig, authCfg *authConfig.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		configValues := map[string]interface{}{
-			clientID:        cfg.ThirdPartyConfig.FlyteClientConfig.ClientID,
-			redirectURI:     cfg.ThirdPartyConfig.FlyteClientConfig.RedirectURI,
-			scopes:          authConfig.UserAuth.OpenID.Scopes,
-			authMetadataKey: authConfig.GrpcAuthorizationHeader,
+		var configValues map[string]interface{}
+		if !cfg.DeprecatedThirdPartyConfig.IsEmpty() {
+			configValues = map[string]interface{}{
+				clientID:        cfg.DeprecatedThirdPartyConfig.FlyteClientConfig.ClientID,
+				redirectURI:     cfg.DeprecatedThirdPartyConfig.FlyteClientConfig.RedirectURI,
+				scopes:          authCfg.UserAuth.OpenID.Scopes,
+				authMetadataKey: authCfg.GrpcAuthorizationHeader,
+			}
+		} else {
+			configValues = map[string]interface{}{
+				clientID:        authCfg.AppAuth.ThirdParty.FlyteClientConfig.ClientID,
+				redirectURI:     authCfg.AppAuth.ThirdParty.FlyteClientConfig.RedirectURI,
+				scopes:          authCfg.AppAuth.ThirdParty.FlyteClientConfig.Scopes,
+				authMetadataKey: authCfg.GrpcAuthorizationHeader,
+			}
 		}
 
 		configJSON, err := json.Marshal(configValues)

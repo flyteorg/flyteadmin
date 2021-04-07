@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 
-	config2 "github.com/flyteorg/flyteadmin/pkg/auth/config"
+	authConfig "github.com/flyteorg/flyteadmin/pkg/auth/config"
 	"github.com/flyteorg/flytestdlib/config"
 )
 
@@ -12,21 +12,23 @@ const SectionKey = "server"
 //go:generate pflags ServerConfig --default-var=defaultServerConfig
 
 type ServerConfig struct {
-	HTTPPort             int                     `json:"httpPort" pflag:",On which http port to serve admin"`
-	GrpcPort             int                     `json:"grpcPort" pflag:",On which grpc port to serve admin"`
-	GrpcServerReflection bool                    `json:"grpcServerReflection" pflag:",Enable GRPC Server Reflection"`
-	KubeConfig           string                  `json:"kube-config" pflag:",Path to kubernetes client config file."`
-	Master               string                  `json:"master" pflag:",The address of the Kubernetes API server."`
-	Security             ServerSecurityOptions   `json:"security"`
-	ThirdPartyConfig     ThirdPartyConfigOptions `json:"thirdPartyConfig"`
+	HTTPPort             int                   `json:"httpPort" pflag:",On which http port to serve admin"`
+	GrpcPort             int                   `json:"grpcPort" pflag:",On which grpc port to serve admin"`
+	GrpcServerReflection bool                  `json:"grpcServerReflection" pflag:",Enable GRPC Server Reflection"`
+	KubeConfig           string                `json:"kube-config" pflag:",Path to kubernetes client config file."`
+	Master               string                `json:"master" pflag:",The address of the Kubernetes API server."`
+	Security             ServerSecurityOptions `json:"security"`
+
+	// Deprecated: please use auth.AppAuth.ThirdPartyConfig instead.
+	DeprecatedThirdPartyConfig authConfig.ThirdPartyConfigOptions `json:"thirdPartyConfig" pflag:",Deprecated please use auth.appAuth.thirdPartyConfig instead."`
 }
 
 type ServerSecurityOptions struct {
-	Secure      bool           `json:"secure"`
-	Ssl         SslOptions     `json:"ssl"`
-	UseAuth     bool           `json:"useAuth"`
-	Auth        config2.Config `json:"auth"`
-	AuditAccess bool           `json:"auditAccess"`
+	Secure      bool              `json:"secure"`
+	Ssl         SslOptions        `json:"ssl"`
+	UseAuth     bool              `json:"useAuth"`
+	Auth        authConfig.Config `json:"auth"`
+	AuditAccess bool              `json:"auditAccess"`
 
 	// These options are here to allow deployments where the Flyte UI (Console) is served from a different domain/port.
 	// Note that CORS only applies to Admin's API endpoints. The health check endpoint for instance is unaffected.

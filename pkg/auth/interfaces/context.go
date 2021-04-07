@@ -3,10 +3,11 @@ package interfaces
 import (
 	"context"
 	"crypto/rsa"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"net/http"
 	"net/url"
 	"time"
+
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/lestrrat-go/jwx/jwk"
 

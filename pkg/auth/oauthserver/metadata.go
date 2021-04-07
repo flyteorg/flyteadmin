@@ -38,7 +38,7 @@ type DiscoveryDocument struct {
 	AuthorizationEndpoint             string   `json:"authorization_endpoint"`
 	TokenEndpoint                     string   `json:"token_endpoint"`
 	ResponseTypesSupported            []string `json:"response_types_supported"`
-	ScopesSupported                   []string `json:"scoped_supported"`
+	ScopesSupported                   []string `json:"scopes_supported"`
 	TokenEndpointAuthMethodsSupported []string `json:"token_endpoint_auth_methods_supported"`
 	JSONWebKeysUri                    string   `json:"jwks_uri"`
 	CodeChallengeMethodsSupported     []string `json:"code_challenge_methods_supported"`

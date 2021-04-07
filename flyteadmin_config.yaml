@@ -19,6 +19,10 @@ server:
 auth:
   disableForGrpc: true
   appAuth:
+    thirdPartyConfig:
+      flyteClient:
+        clientId: yourPublicAppClientId
+        redirectUri: yourRegisteredLoginRedirectUri
     oauth2:
       issuer:
         issuer: https://fosite.my-application.com
@@ -34,10 +38,6 @@ auth:
       clientId: 657465813211-6eog7ek7li5k7i7fvgv2921075063hpe.apps.googleusercontent.com
       callbackUrl: "http://localhost:8088/callback"
       redirectUrl: "/api/v1/projects"
-  thirdPartyConfig:
-    flyteClient:
-      clientId: yourPublicAppClientId
-      redirectUri: yourRegisteredLoginRedirectUri
 flyteadmin:
   runScheduler: false
   roleNameKey: "iam.amazonaws.com/role"

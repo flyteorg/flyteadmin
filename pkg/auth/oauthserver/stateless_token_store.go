@@ -3,11 +3,13 @@ package oauthserver
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"reflect"
 	"strings"
 	"time"
 
 	"github.com/flyteorg/flyteadmin/pkg/auth/config"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/ory/fosite/handler/oauth2"
 	oauth22 "github.com/ory/fosite/handler/oauth2"
@@ -17,11 +19,21 @@ import (
 	"github.com/ory/fosite/storage"
 )
 
+const (
+	encryptedCodeChallengeClaim = "challenge_code"
+	encryptedFormPostClaim      = "form"
+)
+
+var (
+	formPostParamsToPersist = sets.NewString("code_challenge", "code_challenge_method")
+)
+
 // StatelessTokenStore provides a ship on top of the MemoryStore to avoid storing tokens in memory (or elsewhere) but
 // instead hydrates fosite.Request and sessions from the tokens themselves.
 type StatelessTokenStore struct {
 	*storage.MemoryStore
 	jwt.JWTStrategy
+	encryptor Encryptor
 }
 
 func (s StatelessTokenStore) rehydrateSession(ctx context.Context, token string) (request *fosite.Request, err error) {
@@ -42,6 +54,31 @@ func (s StatelessTokenStore) rehydrateSession(ctx context.Context, token string)
 	}
 
 	rawRequest.Client = client
+
+	jwtSession, casted := rawRequest.GetSession().(*oauth22.JWTSession)
+	if !casted {
+		return nil, fmt.Errorf("expected *oauth22.JWTSession. Found %v", reflect.TypeOf(rawRequest.GetSession()))
+	}
+
+	formPostClaimValue, found := jwtSession.JWTClaims.Extra[encryptedFormPostClaim]
+	if found {
+		formPostParams, casted := formPostClaimValue.(map[string]interface{})
+		if !casted {
+			return nil, fmt.Errorf("expected map[string]interface{}. Found %v", reflect.TypeOf(formPostClaimValue))
+		}
+
+		rawRequest.Form = url.Values{}
+
+		for key, val := range formPostParams {
+			rawVal, err := s.encryptor.Decrypt(val.(string))
+			if err != nil {
+				return nil, fmt.Errorf("failed to Decrypt claim [%v]. Error: %w", key, err)
+			}
+
+			rawRequest.Form.Set(key, rawVal)
+		}
+	}
+
 	return rawRequest, nil
 }
 
@@ -121,6 +158,7 @@ type StatelessCodeProvider struct {
 	oauth22.CoreStrategy
 	authorizationCodeLifespan time.Duration
 	refreshTokenLifespan      time.Duration
+	blockKey                  [SymmetricKeyLength]byte
 }
 
 func (p StatelessCodeProvider) AuthorizeCodeSignature(token string) string {
@@ -139,6 +177,34 @@ func (p StatelessCodeProvider) GenerateAuthorizeCode(ctx context.Context, reques
 		} else {
 			requester.GrantScope(requestedScopePrefix + requestedScope)
 		}
+	}
+
+	jwtSession, casted := rawRequest.Session.(*oauth22.JWTSession)
+	if !casted {
+		return "", "", fmt.Errorf("expected *oauth22.JWTSession. Found [%v]", reflect.TypeOf(rawRequest.Session))
+	}
+
+	m := make(map[string]interface{}, len(requester.GetRequestForm()))
+
+	for key, val := range requester.GetRequestForm() {
+		if !formPostParamsToPersist.Has(key) {
+			continue
+		}
+
+		if len(val) == 0 {
+			continue
+		}
+
+		encryptedVal, err := p.Encrypt(val[0])
+		if err != nil {
+			return "", "", fmt.Errorf("failed to encrypt key [%v]. Error: %w", key, err)
+		}
+
+		m[key] = encryptedVal
+	}
+
+	if len(m) > 0 {
+		jwtSession.JWTClaims.Extra[encryptedFormPostClaim] = m
 	}
 
 	requester.GrantScope(accessTokenScope)
@@ -180,14 +246,23 @@ func (p StatelessCodeProvider) GenerateRefreshToken(ctx context.Context, request
 	return token, token, err
 }
 
+func (p StatelessCodeProvider) Encrypt(raw string) (string, error) {
+	return encryptString(raw, p.blockKey)
+}
+
+func (p StatelessCodeProvider) Decrypt(encrypted string) (string, error) {
+	return decryptString(encrypted, p.blockKey)
+}
+
 func (p StatelessCodeProvider) ValidateRefreshToken(ctx context.Context, requester fosite.Requester, token string) (err error) {
 	return p.CoreStrategy.ValidateAccessToken(ctx, requester, token)
 }
 
-func NewStatelessCodeProvider(cfg config.AuthorizationServer, strategy oauth22.CoreStrategy) StatelessCodeProvider {
+func NewStatelessCodeProvider(cfg config.AuthorizationServer, blockKey [SymmetricKeyLength]byte, strategy oauth22.CoreStrategy) StatelessCodeProvider {
 	return StatelessCodeProvider{
 		CoreStrategy:              strategy,
 		authorizationCodeLifespan: cfg.AuthorizationCodeLifespan.Duration,
 		refreshTokenLifespan:      cfg.RefreshTokenLifespan.Duration,
+		blockKey:                  blockKey,
 	}
 }

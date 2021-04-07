@@ -2,6 +2,7 @@ package oauthserver
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/flyteorg/flyteadmin/pkg/auth"
 	"github.com/flyteorg/flyteadmin/pkg/auth/config"
+	"github.com/gtank/cryptopasta"
 
 	"github.com/ory/fosite"
 
@@ -18,9 +20,10 @@ import (
 )
 
 const (
-	requestedScopePrefix = "f."
-	accessTokenScope     = "access_token"
-	refreshTokenScope    = "offline"
+	requestedScopePrefix        = "f."
+	accessTokenScope            = "access_token"
+	refreshTokenScope           = "offline"
+	codeChallengeFormParam      = "code"
 )
 
 func getAuthEndpoint(authCtx interfaces.AuthenticationContext) http.HandlerFunc {
@@ -57,6 +60,25 @@ func getRequestBaseUrl(r *http.Request) (*url.URL, error) {
 	}
 
 	return url.Parse(scheme + r.Host)
+}
+
+func encryptString(plainTextCode string, blockKey [SymmetricKeyLength]byte) (string, error) {
+	cypher, err := cryptopasta.Encrypt([]byte(plainTextCode), &blockKey)
+	if err != nil {
+		return "", err
+	}
+
+	return base64.RawStdEncoding.EncodeToString(cypher), nil
+}
+
+func decryptString(encryptedEncoded string, blockKey [SymmetricKeyLength]byte) (string, error) {
+	cypher, err := base64.RawStdEncoding.DecodeString(encryptedEncoded)
+	if err != nil {
+		return "", err
+	}
+
+	raw, err := cryptopasta.Decrypt(cypher, &blockKey)
+	return string(raw), err
 }
 
 func authCallbackEndpoint(authCtx interfaces.AuthenticationContext, rw http.ResponseWriter, req *http.Request) {
@@ -112,6 +134,18 @@ func authCallbackEndpoint(authCtx interfaces.AuthenticationContext, rw http.Resp
 
 	// Now that the user is authorized, we set up a session:
 	mySessionData := oauth2Provider.NewJWTSessionToken(userInfo.Subject(), userInfo, ar.GetClient().GetID(), issuer, issuer)
+	//codes := ar.GetRequestForm()[codeChallengeFormParam]
+	//if len(codes) > 0 {
+	//	code := codes[0]
+	//	mySessionData.JWTClaims.Extra[encryptedCodeChallengeClaim], err = oauth2Provider.EncryptCodeChallenge(code)
+	//	if err != nil {
+	//		logger.Infof(ctx, "Failed to encrypt code challenge. Error: %v", err)
+	//		oauth2Provider.WriteAuthorizeError(rw, fosite.NewAuthorizeRequest(), err)
+	//		return
+	//	}
+	//}
+
+	mySessionData.JWTClaims.Extra[encryptedCodeChallengeClaim] = nil
 
 	mySessionData.JWTClaims.ExpiresAt = time.Now().Add(time.Hour * 24)
 	mySessionData.SetExpiresAt(fosite.AuthorizeCode, time.Now().Add(time.Hour*24))
