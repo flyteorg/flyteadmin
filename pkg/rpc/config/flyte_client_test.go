@@ -19,8 +19,8 @@ func TestHandleFlyteCliConfigFunc(t *testing.T) {
 
 	handleFlyteCliConfigFunc := HandleFlyteCliConfigFunc(context.Background(), &config.ServerConfig{
 		Security: config.ServerSecurityOptions{},
-		ThirdPartyConfig: config.ThirdPartyConfigOptions{
-			FlyteClientConfig: config.FlyteClientConfig{
+		DeprecatedThirdPartyConfig: authConfig.ThirdPartyConfigOptions{
+			FlyteClientConfig: authConfig.FlyteClientConfig{
 				ClientID:    testClientID,
 				RedirectURI: testRedirectURI,
 			},

@@ -55,6 +55,22 @@ func (p Provider) KeySet() jwk.Set {
 	return p.keySet
 }
 
+//func (p Provider) NewAccessRequest(ctx context.Context, req *http.Request, session fosite.Session) (fosite.AccessRequester, error) {
+//	r, err := p.OAuth2Provider.NewAccessRequest(ctx, req, session)
+//	if err != nil {
+//		return r, err
+//	}
+//
+//	r.se
+//
+//	codeChallengeClaim, found := r.GetRequestForm()[encryptedCodeChallengeClaim]
+//	if !found {
+//		return r, nil
+//	}
+//
+//	p.DecryptCodeChallenge()
+//}
+
 // A session is passed from the `/auth` to the `/token` endpoint. You probably want to store data like: "Who made the request",
 // "What organization does that person belong to" and so on.
 // For our use case, the session will meet the requirements imposed by JWT access tokens, HMAC access tokens and OpenID Connect
@@ -142,15 +158,6 @@ func (p Provider) ValidateAccessToken(_ context.Context, tokenStr string) (inter
 		claims.IssuedAt, sets.NewString(interfaceSliceToStringSlice(claimsRaw[ScopeClaim].([]interface{}))...), userInfo), nil
 }
 
-func toClientIface(clients map[string]*fosite.DefaultClient) map[string]fosite.Client {
-	res := make(map[string]fosite.Client, len(clients))
-	for clientID, client := range clients {
-		res[clientID] = client
-	}
-
-	return res
-}
-
 // Creates a new OAuth2 Provider that is able to do OAuth 2-legged and 3-legged flows.
 // It'll lookup auth.SecretTokenHash and auth.SecretTokenSigningRSAKey secrets from the secret manager to use to sign
 // and generate hashes for tokens. The RSA Private key is expected to be in PEM format with the public key embedded.
@@ -169,27 +176,7 @@ func NewProvider(ctx context.Context, cfg config.AuthorizationServer, sm core.Se
 		RefreshTokenScopes:  []string{refreshTokenScope},
 	}
 
-	// Build an in-memory store with static clients defined in Config. This gives us the potential to move the clients
-	// storage into DB and allow registration of new clients to users.
-	store := &StatelessTokenStore{
-		MemoryStore: &storage.MemoryStore{
-			IDSessions:             make(map[string]fosite.Requester),
-			Clients:                toClientIface(cfg.StaticClients),
-			AuthorizeCodes:         map[string]storage.StoreAuthorizeCode{},
-			AccessTokens:           map[string]fosite.Requester{},
-			RefreshTokens:          map[string]storage.StoreRefreshToken{},
-			PKCES:                  map[string]fosite.Requester{},
-			AccessTokenRequestIDs:  map[string]string{},
-			RefreshTokenRequestIDs: map[string]string{},
-			IssuerPublicKeys:       map[string]storage.IssuerPublicKeys{},
-		},
-	}
-
-	// This secret is used to sign authorize codes, access and refresh tokens.
-	// It has to be 32-bytes long for HMAC signing. This requirement can be configured via `compose.Config` above.
-	// If you require this to key to be stable, for example, when running multiple fosite servers, you can generate the
-	// 32byte random key as above and push it out to a base64 encoded string.
-	// This can then be injected and decoded as the `var secret []byte` on server start.
+	// This secret is used to encryptString/decrypt challenge code to maintain a stateless authcode token.
 	tokenHashBase64, err := sm.Get(ctx, cfg.TokenHashKeySecretName)
 	if err != nil {
 		return Provider{}, fmt.Errorf("failed to read secretTokenHash file. Error: %w", err)
@@ -212,11 +199,32 @@ func NewProvider(ctx context.Context, cfg config.AuthorizationServer, sm core.Se
 		return Provider{}, fmt.Errorf("failed to parse PKCS1PrivateKey. Error: %w", err)
 	}
 
+	// Build an in-memory store with static clients defined in Config. This gives us the potential to move the clients
+	// storage into DB and allow registration of new clients to users.
+	store := &StatelessTokenStore{
+		MemoryStore: &storage.MemoryStore{
+			IDSessions:             make(map[string]fosite.Requester),
+			Clients:                toClientIface(cfg.StaticClients),
+			AuthorizeCodes:         map[string]storage.StoreAuthorizeCode{},
+			AccessTokens:           map[string]fosite.Requester{},
+			RefreshTokens:          map[string]storage.StoreRefreshToken{},
+			PKCES:                  map[string]fosite.Requester{},
+			AccessTokenRequestIDs:  map[string]string{},
+			RefreshTokenRequestIDs: map[string]string{},
+			IssuerPublicKeys:       map[string]storage.IssuerPublicKeys{},
+		},
+	}
+
+	sec := [SymmetricKeyLength]byte{}
+	copy(sec[:], secret)
+	codeProvider := NewStatelessCodeProvider(cfg, sec, compose.NewOAuth2JWTStrategy(privateKey, compose.NewOAuth2HMACStrategy(composeConfig, secret[:], nil)))
+
 	// Build a fosite instance with all OAuth2 and OpenID Connect handlers enabled, plugging in our configurations as specified above.
-	oauth2Provider := composeOAuth2Provider(cfg, composeConfig, store, secret, privateKey)
+	oauth2Provider := composeOAuth2Provider(codeProvider, composeConfig, store, privateKey)
 	store.JWTStrategy = &jwt.RS256JWTStrategy{
 		PrivateKey: privateKey,
 	}
+	store.encryptor = codeProvider
 
 	publicKeys := []rsa.PublicKey{privateKey.PublicKey}
 

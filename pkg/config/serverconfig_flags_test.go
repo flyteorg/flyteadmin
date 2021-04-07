@@ -851,7 +851,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("thirdPartyConfig.flyteClient.clientId"); err == nil {
-				assert.Equal(t, string(defaultServerConfig.ThirdPartyConfig.FlyteClientConfig.ClientID), vString)
+				assert.Equal(t, string(defaultServerConfig.DeprecatedThirdPartyConfig.FlyteClientConfig.ClientID), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -862,7 +862,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("thirdPartyConfig.flyteClient.clientId", testValue)
 			if vString, err := cmdFlags.GetString("thirdPartyConfig.flyteClient.clientId"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.ThirdPartyConfig.FlyteClientConfig.ClientID)
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.DeprecatedThirdPartyConfig.FlyteClientConfig.ClientID)
 
 			} else {
 				assert.FailNow(t, err.Error())
@@ -873,7 +873,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("thirdPartyConfig.flyteClient.redirectUri"); err == nil {
-				assert.Equal(t, string(defaultServerConfig.ThirdPartyConfig.FlyteClientConfig.RedirectURI), vString)
+				assert.Equal(t, string(defaultServerConfig.DeprecatedThirdPartyConfig.FlyteClientConfig.RedirectURI), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -884,7 +884,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("thirdPartyConfig.flyteClient.redirectUri", testValue)
 			if vString, err := cmdFlags.GetString("thirdPartyConfig.flyteClient.redirectUri"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.ThirdPartyConfig.FlyteClientConfig.RedirectURI)
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.DeprecatedThirdPartyConfig.FlyteClientConfig.RedirectURI)
 
 			} else {
 				assert.FailNow(t, err.Error())

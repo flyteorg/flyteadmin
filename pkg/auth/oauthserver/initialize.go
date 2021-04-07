@@ -4,9 +4,9 @@ import (
 	"crypto/rsa"
 	"fmt"
 
-	"github.com/flyteorg/flyteadmin/pkg/auth"
-	"github.com/flyteorg/flyteadmin/pkg/auth/config"
+	"github.com/ory/fosite/handler/oauth2"
 
+	"github.com/flyteorg/flyteadmin/pkg/auth"
 	"github.com/ory/fosite"
 
 	"github.com/flyteorg/flyteadmin/pkg/auth/interfaces"
@@ -41,9 +41,9 @@ func RegisterHandlers(handler interfaces.HandlerRegisterer, authCtx interfaces.A
 	//handler.HandleFunc("/oauthserver/introspect", introspectionEndpoint)
 }
 
-func composeOAuth2Provider(authCfg config.AuthorizationServer, config *compose.Config, storage interface{}, secret []byte, key *rsa.PrivateKey) fosite.OAuth2Provider {
+func composeOAuth2Provider(codeProvider oauth2.CoreStrategy, config *compose.Config, storage interface{}, key *rsa.PrivateKey) fosite.OAuth2Provider {
 	commonStrategy := &compose.CommonStrategy{
-		CoreStrategy:               NewStatelessCodeProvider(authCfg, compose.NewOAuth2JWTStrategy(key, compose.NewOAuth2HMACStrategy(config, secret, nil))),
+		CoreStrategy:               codeProvider,
 		OpenIDConnectTokenStrategy: compose.NewOpenIDConnectStrategy(config, key),
 		JWTStrategy: &jwt.RS256JWTStrategy{
 			PrivateKey: key,

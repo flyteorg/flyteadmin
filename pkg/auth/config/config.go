@@ -146,6 +146,7 @@ type OAuth2Options struct {
 	AuthServerType     AuthorizationServerType     `json:"authServerType" pflag:"-,Determines authorization server type to use. Additional config should be provided for the chosen AuthorizationServer"`
 	SelfAuthServer     AuthorizationServer         `json:"selfAuthServer" pflag:",Authorization Server config to run as a service. Use this when using an IdP that does not offer a custom OAuth2 Authorization Server."`
 	ExternalAuthServer ExternalAuthorizationServer `json:"externalAuthServer" pflag:",External Authorization Server config."`
+	ThirdParty         ThirdPartyConfigOptions     `json:"thirdPartyConfig" pflag:",Defines settings to instruct flyte cli tools (and optionally others) on what config to use to setup their client."`
 }
 
 type UserAuthConfig struct {
