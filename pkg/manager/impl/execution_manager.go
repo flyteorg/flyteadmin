@@ -401,7 +401,7 @@ func (m *ExecutionManager) getInheritedExecMetadata(ctx context.Context, request
 	} else {
 		requestSpec.Metadata.Nesting = 1
 	}
-	return sourceExecutionID, parentNodeExecutionID, nil
+	return parentNodeExecutionID, sourceExecutionID, nil
 }
 
 func (m *ExecutionManager) launchSingleTaskExecution(
