@@ -367,6 +367,43 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 	checkTaskRequestsLessThanLimits(ctx, task.Template.Id, task.Template.GetContainer().Resources)
 }
 
+// Fetches inherited execution metadata including the parent node execution db model id and the source execution model id
+// as well as sets request spec metadata with the inherited principal and adjusted nesting data.
+func (m *ExecutionManager) getInheritedExecMetadata(ctx context.Context, requestSpec *admin.ExecutionSpec,
+	workflowExecutionID *core.WorkflowExecutionIdentifier) (parentNodeExecutionID uint, sourceExecutionID uint, err error) {
+	if requestSpec.Metadata == nil || requestSpec.Metadata.ParentNodeExecution == nil {
+		return parentNodeExecutionID, sourceExecutionID, nil
+	}
+	parentNodeExecutionModel, err := util.GetNodeExecutionModel(ctx, m.db, requestSpec.Metadata.ParentNodeExecution)
+	if err != nil {
+		logger.Errorf(ctx, "Failed to get node execution [%+v] that launched this execution [%+v] with error %v",
+			requestSpec.Metadata.ParentNodeExecution, workflowExecutionID, err)
+		return parentNodeExecutionID, sourceExecutionID, err
+	}
+
+	parentNodeExecutionID = parentNodeExecutionModel.ID
+
+	sourceExecutionModel, err := util.GetExecutionModel(ctx, m.db, *requestSpec.Metadata.ParentNodeExecution.ExecutionId)
+	if err != nil {
+		logger.Errorf(ctx, "Failed to get workflow execution [%+v] that launched this execution [%+v] with error %v",
+			requestSpec.Metadata.ParentNodeExecution, workflowExecutionID, err)
+		return parentNodeExecutionID, sourceExecutionID, err
+	}
+	sourceExecutionID = sourceExecutionModel.ID
+	requestSpec.Metadata.Principal = sourceExecutionModel.User
+	sourceExecution, err := transformers.FromExecutionModel(*sourceExecutionModel)
+	if err != nil {
+		logger.Errorf(ctx, "Failed transform parent execution model for child execution [%+v] with err: %v", workflowExecutionID, err)
+		return parentNodeExecutionID, sourceExecutionID, err
+	}
+	if sourceExecution.Spec.Metadata != nil {
+		requestSpec.Metadata.Nesting = sourceExecution.Spec.Metadata.Nesting + 1
+	} else {
+		requestSpec.Metadata.Nesting = 1
+	}
+	return sourceExecutionID, parentNodeExecutionID, nil
+}
+
 func (m *ExecutionManager) launchSingleTaskExecution(
 	ctx context.Context, request admin.ExecutionCreateRequest, requestedAt time.Time) (
 	context.Context, *models.Execution, error) {
@@ -418,17 +455,18 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	}
 	ctx = getExecutionContext(ctx, &workflowExecutionID)
 
+	requestSpec := request.Spec
+	if requestSpec.Metadata == nil {
+		requestSpec.Metadata = &admin.ExecutionMetadata{}
+	}
+	requestSpec.Metadata.Principal = getUser(ctx)
+
 	// Get the node execution (if any) that launched this execution
 	var parentNodeExecutionID uint
-	if request.Spec.Metadata != nil && request.Spec.Metadata.ParentNodeExecution != nil {
-		parentNodeExecutionModel, err := util.GetNodeExecutionModel(ctx, m.db, request.Spec.Metadata.ParentNodeExecution)
-		if err != nil {
-			logger.Errorf(ctx, "Failed to get node execution [%+v] that launched this execution [%+v] with error %v",
-				request.Spec.Metadata.ParentNodeExecution, workflowExecutionID, err)
-			return nil, nil, err
-		}
-
-		parentNodeExecutionID = parentNodeExecutionModel.ID
+	var sourceExecutionID uint
+	parentNodeExecutionID, sourceExecutionID, err = m.getInheritedExecMetadata(ctx, requestSpec, &workflowExecutionID)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// Dynamically assign task resource defaults.
@@ -520,10 +558,10 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		Notifications:         notificationsSettings,
 		WorkflowIdentifier:    workflow.Id,
 		ParentNodeExecutionID: parentNodeExecutionID,
+		SourceExecutionID:     sourceExecutionID,
 		Cluster:               execInfo.Cluster,
 		InputsURI:             inputsURI,
 		UserInputsURI:         userInputsURI,
-		Principal:             getUser(ctx),
 	})
 	if err != nil {
 		logger.Infof(ctx, "Failed to create execution model in transformer for id: [%+v] with err: %v",
@@ -583,27 +621,18 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		Name:    name,
 	}
 	ctx = getExecutionContext(ctx, &workflowExecutionID)
+	var requestSpec = request.Spec
+	if requestSpec.Metadata == nil {
+		requestSpec.Metadata = &admin.ExecutionMetadata{}
+	}
+	requestSpec.Metadata.Principal = getUser(ctx)
 
 	// Get the node and parent execution (if any) that launched this execution
 	var parentNodeExecutionID uint
 	var sourceExecutionID uint
-	if request.Spec.Metadata != nil && request.Spec.Metadata.ParentNodeExecution != nil {
-		parentNodeExecutionModel, err := util.GetNodeExecutionModel(ctx, m.db, request.Spec.Metadata.ParentNodeExecution)
-		if err != nil {
-			logger.Errorf(ctx, "Failed to get node execution [%+v] that launched this execution [%+v] with error %v",
-				request.Spec.Metadata.ParentNodeExecution, workflowExecutionID, err)
-			return nil, nil, err
-		}
-
-		parentNodeExecutionID = parentNodeExecutionModel.ID
-
-		sourceExecutionModel, err := util.GetExecutionModel(ctx, m.db, *request.Spec.Metadata.ParentNodeExecution.ExecutionId)
-		if err != nil {
-			logger.Errorf(ctx, "Failed to get node execution [%+v] that launched this execution [%+v] with error %v",
-				request.Spec.Metadata.ParentNodeExecution, workflowExecutionID, err)
-			return nil, nil, err
-		}
-		sourceExecutionID = sourceExecutionModel.ID
+	parentNodeExecutionID, sourceExecutionID, err = m.getInheritedExecMetadata(ctx, requestSpec, &workflowExecutionID)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// Dynamically assign task resource defaults.
@@ -685,7 +714,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 
 	executionModel, err := transformers.CreateExecutionModel(transformers.CreateExecutionModelInput{
 		WorkflowExecutionID: workflowExecutionID,
-		RequestSpec:         request.Spec,
+		RequestSpec:         requestSpec,
 		LaunchPlanID:        launchPlanModel.ID,
 		WorkflowID:          launchPlanModel.WorkflowID,
 		// The execution is not considered running until the propeller sends a specific event saying so.
@@ -698,7 +727,6 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		Cluster:               execInfo.Cluster,
 		InputsURI:             inputsURI,
 		UserInputsURI:         userInputsURI,
-		Principal:             getUser(ctx),
 	})
 	if err != nil {
 		logger.Infof(ctx, "Failed to create execution model in transformer for id: [%+v] with err: %v",
