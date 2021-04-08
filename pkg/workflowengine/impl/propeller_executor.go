@@ -106,8 +106,6 @@ func (c *FlytePropeller) addPermissions(launchPlan admin.LaunchPlan, flyteWf *v1
 		} else {
 			flyteWf.Annotations[c.roleNameKey] = fmt.Sprintf("%sbatchworker-%s", launchPlan.GetId().GetProject(), launchPlan.GetId().GetDomain())
 		}
-		// To be removed after plugins update
-		flyteWf.Annotations["iam.amazonaws.com/role"] = flyteWf.Annotations[c.roleNameKey]
 	}
 }
 
