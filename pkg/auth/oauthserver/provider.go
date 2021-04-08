@@ -159,10 +159,10 @@ func (p Provider) ValidateAccessToken(_ context.Context, tokenStr string) (inter
 }
 
 // Creates a new OAuth2 Provider that is able to do OAuth 2-legged and 3-legged flows.
-// It'll lookup auth.SecretTokenHash and auth.SecretTokenSigningRSAKey secrets from the secret manager to use to sign
+// It'll lookup auth.SecretClaimSymmetricKey and auth.SecretTokenSigningRSAKey secrets from the secret manager to use to sign
 // and generate hashes for tokens. The RSA Private key is expected to be in PEM format with the public key embedded.
 // Use auth.GetInitSecretsCommand() to generate new valid secrets that will be accepted by this provider.
-// The auth.SecretTokenHash must be a 32-bytes long key in Base64Encoding.
+// The auth.SecretClaimSymmetricKey must be a 32-bytes long key in Base64Encoding.
 func NewProvider(ctx context.Context, cfg config.AuthorizationServer, sm core.SecretManager) (Provider, error) {
 	// fosite requires four parameters for the server to get up and running:
 	// 1. config - for any enforcement you may desire, you can do this using `compose.Config`. You like PKCE, enforce it!
@@ -177,7 +177,7 @@ func NewProvider(ctx context.Context, cfg config.AuthorizationServer, sm core.Se
 	}
 
 	// This secret is used to encryptString/decrypt challenge code to maintain a stateless authcode token.
-	tokenHashBase64, err := sm.Get(ctx, cfg.TokenHashKeySecretName)
+	tokenHashBase64, err := sm.Get(ctx, cfg.ClaimSymmetricEncryptionKeySecretName)
 	if err != nil {
 		return Provider{}, fmt.Errorf("failed to read secretTokenHash file. Error: %w", err)
 	}
@@ -215,9 +215,9 @@ func NewProvider(ctx context.Context, cfg config.AuthorizationServer, sm core.Se
 		},
 	}
 
-	sec := [SymmetricKeyLength]byte{}
+	sec := [auth.SymmetricKeyLength]byte{}
 	copy(sec[:], secret)
-	codeProvider := NewStatelessCodeProvider(cfg, sec, compose.NewOAuth2JWTStrategy(privateKey, compose.NewOAuth2HMACStrategy(composeConfig, secret[:], nil)))
+	codeProvider := NewStatelessCodeProvider(cfg, sec, compose.NewOAuth2JWTStrategy(privateKey, nil))
 
 	// Build a fosite instance with all OAuth2 and OpenID Connect handlers enabled, plugging in our configurations as specified above.
 	oauth2Provider := composeOAuth2Provider(codeProvider, composeConfig, store, privateKey)

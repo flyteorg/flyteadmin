@@ -653,7 +653,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("security.auth.appAuth.selfAuthServer.tokenHashKeySecretName"); err == nil {
-				assert.Equal(t, string(defaultServerConfig.Security.Auth.AppAuth.SelfAuthServer.TokenHashKeySecretName), vString)
+				assert.Equal(t, string(defaultServerConfig.Security.Auth.AppAuth.SelfAuthServer.ClaimSymmetricEncryptionKeySecretName), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -664,7 +664,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("security.auth.appAuth.selfAuthServer.tokenHashKeySecretName", testValue)
 			if vString, err := cmdFlags.GetString("security.auth.appAuth.selfAuthServer.tokenHashKeySecretName"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Auth.AppAuth.SelfAuthServer.TokenHashKeySecretName)
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.Auth.AppAuth.SelfAuthServer.ClaimSymmetricEncryptionKeySecretName)
 
 			} else {
 				assert.FailNow(t, err.Error())

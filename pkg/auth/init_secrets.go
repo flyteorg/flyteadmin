@@ -20,10 +20,14 @@ import (
 )
 
 const (
-	TokenHashKeyLength   = 32
+	SymmetricKeyLength   = 32
 	CookieHashKeyLength  = 64
 	CookieBlockKeyLength = 32
 	rsaPEMType           = "RSA PRIVATE KEY"
+)
+
+var (
+	localPath string
 )
 
 // GetInitSecretsCommand creates a command to issue secrets to be used for Auth settings. It writes the secrets to the
@@ -32,8 +36,8 @@ const (
 // secrets:
 //	secrets-prefix: <my custom path>
 func GetInitSecretsCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "init-secrets",
+	cmd := &cobra.Command{
+		Use:   "init",
 		Short: "Generates secrets needed for OpenIDC and OAuth2 providers",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
@@ -47,9 +51,23 @@ func GetInitSecretsCommand() *cobra.Command {
 				return fmt.Errorf("failed to get working directory. Error: %w", err)
 			}
 
-			return writeSecrets(ctx, secrets, d)
+			// If not overridden in cmd flags, use the working directory
+			if len(localPath) == 0 {
+				localPath = d
+			}
+
+			err = os.MkdirAll(localPath, 0755)
+			if err != nil {
+				return fmt.Errorf("failed to create path [%v]. Error: %w", localPath, err)
+			}
+
+			return writeSecrets(ctx, secrets, localPath)
 		},
 	}
+
+	cmd.Flags().StringVarP(&localPath, "localPath", "p", "", "Specifies where the secrets should be written.")
+
+	return cmd
 }
 
 type SecretsSet struct {
@@ -60,12 +78,12 @@ type SecretsSet struct {
 }
 
 func writeSecrets(ctx context.Context, secrets SecretsSet, path string) error {
-	err := ioutil.WriteFile(filepath.Join(path, config.SecretTokenHash), []byte(base64.RawStdEncoding.EncodeToString(secrets.TokenHashKey)), os.ModePerm)
+	err := ioutil.WriteFile(filepath.Join(path, config.SecretClaimSymmetricKey), []byte(base64.RawStdEncoding.EncodeToString(secrets.TokenHashKey)), os.ModePerm)
 	if err != nil {
 		return fmt.Errorf("failed to persist token hash key. Error: %w", err)
 	}
 
-	logger.Infof(ctx, "wrote %v", config.SecretTokenHash)
+	logger.Infof(ctx, "wrote %v", config.SecretClaimSymmetricKey)
 
 	err = ioutil.WriteFile(filepath.Join(path, config.SecretCookieHashKey), []byte(base64.RawStdEncoding.EncodeToString(secrets.CookieHashKey)), os.ModePerm)
 	if err != nil {
@@ -81,7 +99,7 @@ func writeSecrets(ctx context.Context, secrets SecretsSet, path string) error {
 
 	logger.Infof(ctx, "wrote %v", config.SecretCookieBlockKey)
 
-	keyOut, err := os.OpenFile(config.SecretTokenSigningRSAKey, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+	keyOut, err := os.OpenFile(filepath.Join(path, config.SecretTokenSigningRSAKey), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	if err != nil {
 		return fmt.Errorf("failed to open key.pem for writing: %w", err)
 	}
@@ -101,7 +119,7 @@ func writeSecrets(ctx context.Context, secrets SecretsSet, path string) error {
 }
 
 func createSecrets() (SecretsSet, error) {
-	secret := make([]byte, TokenHashKeyLength)
+	secret := make([]byte, SymmetricKeyLength)
 	_, err := rand.Read(secret)
 	if err != nil {
 		return SecretsSet{}, fmt.Errorf("failed to issue token hash key. Error: %w", err)
