@@ -49,7 +49,8 @@ type ApplicationConfig struct {
 	// offloaded.
 	MetadataStoragePrefix []string `json:"metadataStoragePrefix"`
 	// Event version to be used for Flyte workflows
-	EventVersion int `json:"eventVersion"`
+	EventVersion          int `json:"eventVersion"`
+	AsyncEventsBufferSize int `json:"asyncEventsBufferSize"`
 }
 
 // This section holds common config for AWS
