@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/flyteorg/flyteadmin/pkg/auth"
+
 	"github.com/flyteorg/flyteadmin/pkg/auth/config"
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -158,7 +160,7 @@ type StatelessCodeProvider struct {
 	oauth22.CoreStrategy
 	authorizationCodeLifespan time.Duration
 	refreshTokenLifespan      time.Duration
-	blockKey                  [SymmetricKeyLength]byte
+	blockKey                  [auth.SymmetricKeyLength]byte
 }
 
 func (p StatelessCodeProvider) AuthorizeCodeSignature(token string) string {
@@ -258,7 +260,7 @@ func (p StatelessCodeProvider) ValidateRefreshToken(ctx context.Context, request
 	return p.CoreStrategy.ValidateAccessToken(ctx, requester, token)
 }
 
-func NewStatelessCodeProvider(cfg config.AuthorizationServer, blockKey [SymmetricKeyLength]byte, strategy oauth22.CoreStrategy) StatelessCodeProvider {
+func NewStatelessCodeProvider(cfg config.AuthorizationServer, blockKey [auth.SymmetricKeyLength]byte, strategy oauth22.CoreStrategy) StatelessCodeProvider {
 	return StatelessCodeProvider{
 		CoreStrategy:              strategy,
 		authorizationCodeLifespan: cfg.AuthorizationCodeLifespan.Duration,

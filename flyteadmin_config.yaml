@@ -21,8 +21,8 @@ auth:
   appAuth:
     thirdPartyConfig:
       flyteClient:
-        clientId: yourPublicAppClientId
-        redirectUri: yourRegisteredLoginRedirectUri
+        clientId: flytectl
+        redirectUri: https://localhost:53593/callback
     oauth2:
       issuer:
         issuer: https://fosite.my-application.com

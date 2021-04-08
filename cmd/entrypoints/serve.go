@@ -70,7 +70,7 @@ var serveCmd = &cobra.Command{
 func init() {
 	// Command information
 	RootCmd.AddCommand(serveCmd)
-	RootCmd.AddCommand(auth.GetInitSecretsCommand())
+	RootCmd.AddCommand(secretsCmd)
 
 	// Set Keys
 	labeled.SetMetricKeys(contextutils.AppNameKey, contextutils.ProjectKey, contextutils.DomainKey,

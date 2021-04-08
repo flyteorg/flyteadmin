@@ -17,7 +17,7 @@ const (
 	SecretCookieBlockKey = "cookie_block_key"
 
 	// Base64 encoded secret of exactly 32 bytes
-	SecretTokenHash = "token_hash_key"
+	SecretClaimSymmetricKey = "claim_symmetric_key"
 
 	// PrivateKey is used to sign JWT tokens. The default strategy uses RS256 (RSA Signature with SHA-256)
 	SecretTokenSigningRSAKey = "token_rsa_key.pem"
@@ -63,12 +63,12 @@ var (
 		AppAuth: OAuth2Options{
 			AuthServerType: AuthorizationServerTypeSelf,
 			SelfAuthServer: AuthorizationServer{
-				AccessTokenLifespan:             config.Duration{Duration: 30 * time.Minute},
-				RefreshTokenLifespan:            config.Duration{Duration: 60 * time.Minute},
-				AuthorizationCodeLifespan:       config.Duration{Duration: 5 * time.Minute},
-				TokenHashKeySecretName:          SecretTokenHash,
-				TokenSigningRSAKeySecretName:    SecretTokenSigningRSAKey,
-				OldTokenSigningRSAKeySecretName: SecretOldTokenSigningRSAKey,
+				AccessTokenLifespan:                   config.Duration{Duration: 30 * time.Minute},
+				RefreshTokenLifespan:                  config.Duration{Duration: 60 * time.Minute},
+				AuthorizationCodeLifespan:             config.Duration{Duration: 5 * time.Minute},
+				ClaimSymmetricEncryptionKeySecretName: SecretClaimSymmetricKey,
+				TokenSigningRSAKeySecretName:          SecretTokenSigningRSAKey,
+				OldTokenSigningRSAKeySecretName:       SecretOldTokenSigningRSAKey,
 				StaticClients: map[string]*fosite.DefaultClient{
 					"flyte-cli": {
 						ID:            "flyte-cli",
@@ -125,13 +125,13 @@ type Config struct {
 }
 
 type AuthorizationServer struct {
-	Issuer                          string          `json:"issuer" pflag:",Defines the issuer to use when issuing and validating tokens. The default value is https://<requestUri.HostAndPort>/"`
-	AccessTokenLifespan             config.Duration `json:"accessTokenLifespan" pflag:",Defines the lifespan of issued access tokens."`
-	RefreshTokenLifespan            config.Duration `json:"refreshTokenLifespan" pflag:",Defines the lifespan of issued access tokens."`
-	AuthorizationCodeLifespan       config.Duration `json:"authorizationCodeLifespan" pflag:",Defines the lifespan of issued access tokens."`
-	TokenHashKeySecretName          string          `json:"tokenHashKeySecretName" pflag:",OPTIONAL"`
-	TokenSigningRSAKeySecretName    string          `json:"tokenSigningRSAKeySecretName" pflag:",OPTIONAL: Secret name to use to retrieve RSA Signing Key."`
-	OldTokenSigningRSAKeySecretName string          `json:"oldTokenSigningRSAKeySecretName" pflag:",OPTIONAL: Secret name to use to retrieve Old RSA Signing Key. This can be useful during key rotation to continue to accept older tokens."`
+	Issuer                                string          `json:"issuer" pflag:",Defines the issuer to use when issuing and validating tokens. The default value is https://<requestUri.HostAndPort>/"`
+	AccessTokenLifespan                   config.Duration `json:"accessTokenLifespan" pflag:",Defines the lifespan of issued access tokens."`
+	RefreshTokenLifespan                  config.Duration `json:"refreshTokenLifespan" pflag:",Defines the lifespan of issued access tokens."`
+	AuthorizationCodeLifespan             config.Duration `json:"authorizationCodeLifespan" pflag:",Defines the lifespan of issued access tokens."`
+	ClaimSymmetricEncryptionKeySecretName string          `json:"claimSymmetricEncryptionKeySecretName" pflag:",OPTIONAL"`
+	TokenSigningRSAKeySecretName          string          `json:"tokenSigningRSAKeySecretName" pflag:",OPTIONAL: Secret name to use to retrieve RSA Signing Key."`
+	OldTokenSigningRSAKeySecretName       string          `json:"oldTokenSigningRSAKeySecretName" pflag:",OPTIONAL: Secret name to use to retrieve Old RSA Signing Key. This can be useful during key rotation to continue to accept older tokens."`
 
 	StaticClients map[string]*fosite.DefaultClient `json:"staticClients" pflag:"-,Defines statically defined list of clients to allow."`
 }

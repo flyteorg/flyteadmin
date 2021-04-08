@@ -62,7 +62,7 @@ func getRequestBaseUrl(r *http.Request) (*url.URL, error) {
 	return url.Parse(scheme + r.Host)
 }
 
-func encryptString(plainTextCode string, blockKey [SymmetricKeyLength]byte) (string, error) {
+func encryptString(plainTextCode string, blockKey [auth.SymmetricKeyLength]byte) (string, error) {
 	cypher, err := cryptopasta.Encrypt([]byte(plainTextCode), &blockKey)
 	if err != nil {
 		return "", err
@@ -71,7 +71,7 @@ func encryptString(plainTextCode string, blockKey [SymmetricKeyLength]byte) (str
 	return base64.RawStdEncoding.EncodeToString(cypher), nil
 }
 
-func decryptString(encryptedEncoded string, blockKey [SymmetricKeyLength]byte) (string, error) {
+func decryptString(encryptedEncoded string, blockKey [auth.SymmetricKeyLength]byte) (string, error) {
 	cypher, err := base64.RawStdEncoding.DecodeString(encryptedEncoded)
 	if err != nil {
 		return "", err
