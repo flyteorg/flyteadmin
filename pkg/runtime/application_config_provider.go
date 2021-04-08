@@ -18,10 +18,13 @@ const notifications = "notifications"
 const domains = "domains"
 const externalEvents = "externalEvents"
 
-const defaultAsyncEventsBufferSize = 100
-
 var databaseConfig = config.MustRegisterSection(database, &interfaces.DbConfigSection{})
-var flyteAdminConfig = config.MustRegisterSection(flyteAdmin, &interfaces.ApplicationConfig{})
+
+var defaultFlyteAdminConfig = &interfaces.ApplicationConfig{
+	AsyncEventsBufferSize: 100,
+}
+var flyteAdminConfig = config.MustRegisterSection(flyteAdmin, defaultFlyteAdminConfig)
+
 var schedulerConfig = config.MustRegisterSection(scheduler, &interfaces.SchedulerConfig{})
 var remoteDataConfig = config.MustRegisterSection(remoteData, &interfaces.RemoteDataConfig{})
 var notificationsConfig = config.MustRegisterSection(notifications, &interfaces.NotificationsConfig{})
@@ -58,11 +61,7 @@ func (p *ApplicationConfigurationProvider) GetDbConfig() interfaces.DbConfig {
 }
 
 func (p *ApplicationConfigurationProvider) GetTopLevelConfig() *interfaces.ApplicationConfig {
-	applicationConfig := flyteAdminConfig.GetConfig().(*interfaces.ApplicationConfig)
-	if applicationConfig.AsyncEventsBufferSize == 0 {
-		applicationConfig.AsyncEventsBufferSize = defaultAsyncEventsBufferSize
-	}
-	return applicationConfig
+	return flyteAdminConfig.GetConfig().(*interfaces.ApplicationConfig)
 }
 
 func (p *ApplicationConfigurationProvider) GetSchedulerConfig() *interfaces.SchedulerConfig {
