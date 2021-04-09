@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/flyteorg/flyteadmin/pkg/common"
+
 	"github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flytestdlib/config"
 	"github.com/flyteorg/flytestdlib/logger"
@@ -21,7 +23,13 @@ const externalEvents = "externalEvents"
 var databaseConfig = config.MustRegisterSection(database, &interfaces.DbConfigSection{})
 var flyteAdminConfig = config.MustRegisterSection(flyteAdmin, &interfaces.ApplicationConfig{})
 var schedulerConfig = config.MustRegisterSection(scheduler, &interfaces.SchedulerConfig{})
-var remoteDataConfig = config.MustRegisterSection(remoteData, &interfaces.RemoteDataConfig{})
+
+var defaultRemoteDataConfig = &interfaces.RemoteDataConfig{
+	Scheme:         common.Local,
+	MaxSizeInBytes: 1048576, // 1 Mib
+}
+var remoteDataConfig = config.MustRegisterSection(remoteData, defaultRemoteDataConfig)
+
 var notificationsConfig = config.MustRegisterSection(notifications, &interfaces.NotificationsConfig{})
 var domainsConfig = config.MustRegisterSection(domains, &interfaces.DomainsConfig{})
 var externalEventsConfig = config.MustRegisterSection(externalEvents, &interfaces.ExternalEventsConfig{})
