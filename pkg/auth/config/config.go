@@ -9,6 +9,7 @@ import (
 )
 
 //go:generate pflags Config --default-var=defaultConfig
+//go:generate enumer --type=AuthorizationServerType --trimprefix=AuthorizationServerType -json
 
 const (
 	SecretOIdCClientSecret = "oidc_client_secret"
@@ -26,8 +27,6 @@ const (
 	// will not be issued using this key.
 	SecretOldTokenSigningRSAKey = "token_rsa_key_old.pem"
 )
-
-//go:generate enumer --type=AuthorizationServerType --trimprefix=AuthorizationServerType -json
 
 // AuthorizationServerType defines the type of Authorization Server to use.
 type AuthorizationServerType uint8
@@ -189,10 +188,6 @@ type OpenIDOptions struct {
 	// be supported by any OIdC server. Refer to https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims for
 	// a complete list. Other providers might support additional scopes that you can define in a config.
 	Scopes []string `json:"scopes"`
-
-	// The list of audiences to allow when doing token validation. This should typically be the public endpoint that
-	// Admin Service is accessed as (e.g. https://admin.mycompany.com)
-	AcceptedAudiences []string `json:"aud"`
 }
 
 func GetConfig() *Config {
