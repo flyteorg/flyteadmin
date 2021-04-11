@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"k8s.io/apimachinery/pkg/util/sets"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 
-	"github.com/flyteorg/flyteadmin/pkg/auth/interfaces"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 var (
@@ -22,7 +22,7 @@ type IdentityContext struct {
 	userID          string
 	appID           string
 	authenticatedAt time.Time
-	userInfo        interfaces.UserInfo
+	userInfo        *service.UserInfoResponse
 	// Set to pointer just to keep this struct go-simple to support equal operator
 	scopes *sets.String
 }
@@ -39,9 +39,9 @@ func (c IdentityContext) AppID() string {
 	return c.appID
 }
 
-func (c IdentityContext) UserInfo() interfaces.UserInfo {
+func (c IdentityContext) UserInfo() *service.UserInfoResponse {
 	if c.userInfo == nil {
-		return UserInfoResponse{}
+		return &service.UserInfoResponse{}
 	}
 
 	return c.userInfo
@@ -68,7 +68,7 @@ func (c IdentityContext) AuthenticatedAt() time.Time {
 }
 
 // NewIdentityContext creates a new IdentityContext.
-func NewIdentityContext(audience, userID, appID string, authenticatedAt time.Time, scopes sets.String, userInfo interfaces.UserInfo) IdentityContext {
+func NewIdentityContext(audience, userID, appID string, authenticatedAt time.Time, scopes sets.String, userInfo *service.UserInfoResponse) IdentityContext {
 	return IdentityContext{
 		audience:        audience,
 		userID:          userID,

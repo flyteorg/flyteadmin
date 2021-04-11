@@ -120,6 +120,8 @@ type Config struct {
 	DisableForHTTP bool `json:"disableForHttp"`
 	DisableForGrpc bool `json:"disableForGrpc"`
 
+	HTTPPublicUri config.URL `json:"httpPublicUri" pflag:",The publicly accessible http endpoint. This is used to build absolute URLs for endpoints that are only exposed over http (e.g. /authorize and /token for OAuth2)."`
+
 	UserAuth UserAuthConfig `json:"userAuth" pflag:",Defines Auth options for users."`
 	AppAuth  OAuth2Options  `json:"appAuth" pflag:",Defines Auth options for apps. UserAuth must be enabled for AppAuth to work."`
 }

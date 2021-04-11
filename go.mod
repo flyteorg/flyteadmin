@@ -70,3 +70,5 @@ require (
 	sigs.k8s.io/controller-runtime v0.8.3
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.0 // indirect
 )
+
+replace github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v0.18.33-0.20210409164018-2cf6f0aca46d

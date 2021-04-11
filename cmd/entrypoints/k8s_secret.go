@@ -135,7 +135,7 @@ func persistSecrets(ctx context.Context, _ *pflag.FlagSet) error {
 
 	_, err = secretsClient.Create(ctx, newSecret, metav1.CreateOptions{})
 
-	if kubeErrors.IsAlreadyExists(err) {
+	if err != nil && kubeErrors.IsAlreadyExists(err) {
 		if forceUpdate {
 			logger.Infof(ctx, "A secret already exists with the same name. Attempting to update it.")
 			_, err = secretsClient.Update(ctx, newSecret, metav1.UpdateOptions{})
@@ -147,8 +147,20 @@ func persistSecrets(ctx context.Context, _ *pflag.FlagSet) error {
 				return err
 			}
 
-			if len(existingSecret.Data) != len(secretsData) {
-				_, err = secretsClient.Update(ctx, newSecret, metav1.UpdateOptions{})
+			needsUpdate := false
+			for key, val := range secretsData {
+				if _, found := existingSecret.Data[key]; !found {
+					existingSecret.Data[key] = val
+					needsUpdate = true
+				}
+			}
+
+			if needsUpdate {
+				_, err = secretsClient.Update(ctx, existingSecret, metav1.UpdateOptions{})
+				if err != nil && kubeErrors.IsConflict(err) {
+					logger.Infof(ctx, "Another instance of flyteadmin has updated the same secret. Ignoring this update")
+					err = nil
+				}
 			}
 		}
 

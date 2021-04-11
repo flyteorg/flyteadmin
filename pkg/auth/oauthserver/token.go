@@ -64,7 +64,7 @@ func tokenEndpoint(authCtx interfaces.AuthenticationContext, rw http.ResponseWri
 			fositeAccessRequest.GrantScope(strings.TrimPrefix(scope, requestedScopePrefix))
 		}
 
-		issuer := getIssuer(authCtx.Options(), req)
+		issuer := getIssuer(authCtx.Options())
 		fositeAccessRequest.GrantAudience(issuer)
 	} else {
 		logger.Infof(ctx, "Unsupported grant types [%+v]", fositeAccessRequest.GetGrantTypes())

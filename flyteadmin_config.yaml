@@ -18,14 +18,15 @@ server:
       - "Content-Type"
 auth:
   disableForGrpc: true
+  httpPublicUri: http://localhost:8088/
   appAuth:
     thirdPartyConfig:
       flyteClient:
         clientId: flytectl
         redirectUri: https://localhost:53593/callback
-    oauth2:
-      issuer:
-        issuer: https://fosite.my-application.com
+        scopes:
+          - offline
+          - all
   userAuth:
     openId:
       baseUrl: https://accounts.google.com

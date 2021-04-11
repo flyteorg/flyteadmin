@@ -2,8 +2,11 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"time"
+
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -87,8 +90,8 @@ func GRPCGetIdentityFromIDToken(ctx context.Context, clientID string, provider *
 
 	tokenStr, err := grpcauth.AuthFromMD(ctx, IDTokenScheme)
 	if err != nil {
-		logger.Debugf(ctx, "Could not retrieve bearer token from metadata %v", err)
-		return nil, errors.Wrapf(ErrJwtValidation, err, "Could not retrieve bearer token from metadata")
+		logger.Debugf(ctx, "Could not retrieve id token from metadata %v", err)
+		return nil, errors.Wrapf(ErrJwtValidation, err, "Could not retrieve id token from metadata")
 	}
 
 	if tokenStr == "" {
@@ -96,16 +99,30 @@ func GRPCGetIdentityFromIDToken(ctx context.Context, clientID string, provider *
 		return nil, errors.Errorf(ErrJwtValidation, "%v token is blank", IDTokenScheme)
 	}
 
-	return IdentityContextFromIDTokenToken(ctx, tokenStr, clientID, provider)
+	userInfoStr, err := grpcauth.AuthFromMD(ctx, UserInfoMDKey)
+	if err != nil {
+		logger.Debugf(ctx, "Could not retrieve user info from metadata %v", err)
+		return nil, errors.Wrapf(ErrJwtValidation, err, "Could not retrieve user info from metadata")
+	}
+
+	userInfo := &service.UserInfoResponse{}
+	err = json.Unmarshal([]byte(userInfoStr), userInfo)
+	if err != nil {
+		logger.Debugf(ctx, "Could not unmarshal user info from metadata %v", err)
+		return nil, errors.Wrapf(ErrJwtValidation, err, "Could not unmarshal user info from metadata")
+	}
+
+	return IdentityContextFromIDTokenToken(ctx, tokenStr, clientID, provider, userInfo)
 }
 
-func IdentityContextFromIDTokenToken(ctx context.Context, tokenStr, clientID string, provider *oidc.Provider) (
-	interfaces.IdentityContext, error) {
+func IdentityContextFromIDTokenToken(ctx context.Context, tokenStr, clientID string, provider *oidc.Provider,
+	userInfo *service.UserInfoResponse) (interfaces.IdentityContext, error) {
+
 	idToken, err := ParseIDTokenAndValidate(ctx, clientID, tokenStr, provider)
 	if err != nil {
 		return nil, err
 	}
 
 	return NewIdentityContext(idToken.Audience[0], idToken.Subject, "", idToken.IssuedAt,
-		sets.NewString(ScopeAll), UserInfoResponse{}), nil
+		sets.NewString(ScopeAll), userInfo), nil
 }

@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
+
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/lestrrat-go/jwx/jwk"
@@ -149,8 +151,8 @@ func (p Provider) ValidateAccessToken(_ context.Context, tokenStr string) (inter
 		return nil, err
 	}
 
-	userInfo := auth.UserInfoResponse{}
-	if err = json.Unmarshal(raw, &userInfo); err != nil {
+	userInfo := &service.UserInfoResponse{}
+	if err = json.Unmarshal(raw, userInfo); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal user info claim into UserInfo type. Error: %w", err)
 	}
 

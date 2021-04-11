@@ -83,7 +83,7 @@ func blanketAuthorization(ctx context.Context, req interface{}, _ *grpc.UnarySer
 
 	identityContext := auth.IdentityContextFromContext(ctx)
 	if identityContext.IsEmpty() {
-		return nil, status.Errorf(codes.Unauthenticated, "empty identity")
+		return handler(ctx, req)
 	}
 
 	if !identityContext.Scopes().Has(auth.ScopeAll) {
@@ -118,6 +118,7 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authCtx interf
 	grpcServer := grpc.NewServer(serverOpts...)
 	grpc_prometheus.Register(grpcServer)
 	flyteService.RegisterAdminServiceServer(grpcServer, adminservice.NewAdminServer(cfg.KubeConfig, cfg.Master))
+	flyteService.RegisterAuthServiceServer(grpcServer, authCtx.AuthService())
 
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
@@ -192,6 +193,11 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authCfg *authC
 		return nil, errors.Wrap(err, "error registering admin service")
 	}
 
+	err = flyteService.RegisterAuthServiceHandlerFromEndpoint(ctx, gwmux, grpcAddress, grpcConnectionOpts)
+	if err != nil {
+		return nil, errors.Wrap(err, "error registering auth service")
+	}
+
 	mux.Handle("/", gwmux)
 
 	return mux, nil
@@ -218,7 +224,10 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig, authCfg
 			}
 		}
 
-		authCtx, err = auth.NewAuthenticationContext(ctx, sm, oauth2Provider, authCfg)
+		oauth2MetadataProvider := oauthserver.NewService(authCfg)
+		oidcUserInfoProvider := auth.NewUserInfoProvider()
+
+		authCtx, err = auth.NewAuthenticationContext(ctx, sm, oauth2Provider, oauth2MetadataProvider, oidcUserInfoProvider, authCfg)
 		if err != nil {
 			logger.Errorf(ctx, "Error creating auth context %s", err)
 			return err
@@ -300,7 +309,10 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig, authCfg *
 			}
 		}
 
-		authCtx, err = auth.NewAuthenticationContext(ctx, sm, oauth2Provider, authCfg)
+		oauth2MetadataProvider := oauthserver.NewService(authCfg)
+		oidcUserInfoProvider := auth.NewUserInfoProvider()
+
+		authCtx, err = auth.NewAuthenticationContext(ctx, sm, oauth2Provider, oauth2MetadataProvider, oidcUserInfoProvider, authCfg)
 		if err != nil {
 			logger.Errorf(ctx, "Error creating auth context %s", err)
 			return err
