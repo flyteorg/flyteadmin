@@ -1,12 +1,10 @@
 package oauthserver
 
 import (
-	"context"
 	"encoding/base64"
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/flyteorg/flyteadmin/pkg/auth"
@@ -20,10 +18,10 @@ import (
 )
 
 const (
-	requestedScopePrefix        = "f."
-	accessTokenScope            = "access_token"
-	refreshTokenScope           = "offline"
-	codeChallengeFormParam      = "code"
+	requestedScopePrefix   = "f."
+	accessTokenScope       = "access_token"
+	refreshTokenScope      = "offline"
+	codeChallengeFormParam = "code"
 )
 
 func getAuthEndpoint(authCtx interfaces.AuthenticationContext) http.HandlerFunc {
@@ -38,28 +36,12 @@ func getAuthCallbackEndpoint(authCtx interfaces.AuthenticationContext) http.Hand
 	}
 }
 
-func getIssuer(cfg *config.Config, req *http.Request) string {
+func getIssuer(cfg *config.Config) string {
 	if configIssuer := cfg.AppAuth.SelfAuthServer.Issuer; len(configIssuer) > 0 {
 		return configIssuer
 	}
 
-	u, err := getRequestBaseUrl(req)
-	if err != nil {
-		// Should never happen
-		logger.Error(context.Background(), err)
-		return ""
-	}
-
-	return u.String()
-}
-
-func getRequestBaseUrl(r *http.Request) (*url.URL, error) {
-	scheme := "http://"
-	if r.TLS != nil {
-		scheme = "https://"
-	}
-
-	return url.Parse(scheme + r.Host)
+	return cfg.HTTPPublicUri.String()
 }
 
 func encryptString(plainTextCode string, blockKey [auth.SymmetricKeyLength]byte) (string, error) {
@@ -82,7 +64,7 @@ func decryptString(encryptedEncoded string, blockKey [auth.SymmetricKeyLength]by
 }
 
 func authCallbackEndpoint(authCtx interfaces.AuthenticationContext, rw http.ResponseWriter, req *http.Request) {
-	issuer := getIssuer(authCtx.Options(), req)
+	issuer := getIssuer(authCtx.Options())
 
 	// This context will be passed to all methods.
 	ctx := req.Context()
@@ -133,39 +115,15 @@ func authCallbackEndpoint(authCtx interfaces.AuthenticationContext, rw http.Resp
 	}
 
 	// Now that the user is authorized, we set up a session:
-	mySessionData := oauth2Provider.NewJWTSessionToken(userInfo.Subject(), userInfo, ar.GetClient().GetID(), issuer, issuer)
-	//codes := ar.GetRequestForm()[codeChallengeFormParam]
-	//if len(codes) > 0 {
-	//	code := codes[0]
-	//	mySessionData.JWTClaims.Extra[encryptedCodeChallengeClaim], err = oauth2Provider.EncryptCodeChallenge(code)
-	//	if err != nil {
-	//		logger.Infof(ctx, "Failed to encrypt code challenge. Error: %v", err)
-	//		oauth2Provider.WriteAuthorizeError(rw, fosite.NewAuthorizeRequest(), err)
-	//		return
-	//	}
-	//}
-
-	mySessionData.JWTClaims.Extra[encryptedCodeChallengeClaim] = nil
-
+	mySessionData := oauth2Provider.NewJWTSessionToken(identityContext.UserID(), userInfo, ar.GetClient().GetID(), issuer, issuer)
 	mySessionData.JWTClaims.ExpiresAt = time.Now().Add(time.Hour * 24)
 	mySessionData.SetExpiresAt(fosite.AuthorizeCode, time.Now().Add(time.Hour*24))
 	mySessionData.SetExpiresAt(fosite.AccessToken, time.Now().Add(time.Hour*24))
-
-	// It's also wise to check the requested scopes, e.g.:
-	// if ar.GetRequestedScopes().Has("admin") {
-	//     http.Error(rw, "you're not allowed to do that", http.StatusForbidden)
-	//     return
-	// }
 
 	// Now we need to get a response. This is the place where the AuthorizeEndpointHandlers kick in and start processing the request.
 	// NewAuthorizeResponse is capable of running multiple response type handlers which in turn enables this library
 	// to support open id connect.
 	response, err := oauth2Provider.NewAuthorizeResponse(ctx, ar, mySessionData)
-
-	// Catch any errors, e.g.:
-	// * unknown client
-	// * invalid redirect
-	// * ...
 	if err != nil {
 		log.Printf("Error occurred in NewAuthorizeResponse: %+v", err)
 		oauth2Provider.WriteAuthorizeError(rw, ar, err)
@@ -176,6 +134,7 @@ func authCallbackEndpoint(authCtx interfaces.AuthenticationContext, rw http.Resp
 	oauth2Provider.WriteAuthorizeResponse(rw, ar, response)
 }
 
+// Get the /authorize endpoint handler that is supposed to be invoked in the browser for the user to log in and consent.
 func authEndpoint(authCtx interfaces.AuthenticationContext, rw http.ResponseWriter, req *http.Request) {
 	// This context will be passed to all methods.
 	ctx := req.Context()

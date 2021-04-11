@@ -2,10 +2,13 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 
 	"golang.org/x/oauth2"
 
@@ -45,7 +48,6 @@ func RegisterHandlers(ctx context.Context, handler interfaces.HandlerRegisterer,
 
 	// These endpoints require authentication
 	handler.HandleFunc("/logout", GetLogoutEndpointHandler(ctx, authCtx))
-	handler.HandleFunc("/me", GetMeEndpointHandler(ctx, authCtx))
 }
 
 // Look for access token and refresh token, if both are present and the access token is expired, then attempt to
@@ -55,23 +57,43 @@ func RefreshTokensIfExists(ctx context.Context, authCtx interfaces.Authenticatio
 		// Since we only do one thing if there are no errors anywhere along the chain, we can save code by just
 		// using one variable and checking for errors at the end.
 		idToken, accessToken, refreshToken, err := authCtx.CookieManager().RetrieveTokenValues(ctx, request)
-		if err == nil {
-			_, err = ParseIDTokenAndValidate(ctx, authCtx.Options().UserAuth.OpenID.ClientID, idToken, authCtx.OidcProvider())
-			if err != nil && errors.IsCausedBy(err, ErrTokenExpired) && len(refreshToken) > 0 {
-				logger.Debugf(ctx, "Expired id token found, attempting to refresh")
-				newToken, e := GetRefreshedToken(ctx, authCtx.OAuth2ClientConfig(), accessToken, refreshToken)
-				err = e
-				if err == nil {
-					logger.Debugf(ctx, "Tokens are refreshed. Saving new tokens into cookies.")
-					err = authCtx.CookieManager().SetTokenCookies(ctx, writer, newToken)
-				}
-			}
-		}
-
 		if err != nil {
-			logger.Errorf(ctx, "Non-expiration error in refresh token handler, redirecting to login handler. Error: %s", err)
+			logger.Errorf(ctx, "Failed to retrieve tokens from request, redirecting to login handler. Error: %s", err)
 			handlerFunc(writer, request)
 			return
+		}
+
+		_, err = ParseIDTokenAndValidate(ctx, authCtx.Options().UserAuth.OpenID.ClientID, idToken, authCtx.OidcProvider())
+		if err != nil && errors.IsCausedBy(err, ErrTokenExpired) && len(refreshToken) > 0 {
+			logger.Debugf(ctx, "Expired id token found, attempting to refresh")
+			newToken, err := GetRefreshedToken(ctx, authCtx.OAuth2ClientConfig(), accessToken, refreshToken)
+			if err != nil {
+				logger.Infof(ctx, "Failed to refresh tokens. Restarting login flow. Error: %s", err)
+				handlerFunc(writer, request)
+				return
+			}
+
+			logger.Debugf(ctx, "Tokens are refreshed. Saving new tokens into cookies.")
+			err = authCtx.CookieManager().SetTokenCookies(ctx, writer, newToken)
+			if err != nil {
+				logger.Infof(ctx, "Failed to set token cookies. Restarting login flow. Error: %s", err)
+				handlerFunc(writer, request)
+				return
+			}
+
+			userInfo, err := QueryUserInfoUsingAccessToken(ctx, authCtx, newToken.AccessToken)
+			if err != nil {
+				logger.Infof(ctx, "Failed to query user info. Restarting login flow. Error: %s", err)
+				handlerFunc(writer, request)
+				return
+			}
+
+			err = authCtx.CookieManager().SetUserInfoCookie(ctx, writer, userInfo)
+			if err != nil {
+				logger.Infof(ctx, "Failed to set user info cookie. Restarting login flow. Error: %s", err)
+				handlerFunc(writer, request)
+				return
+			}
 		}
 
 		redirectURL := getAuthFlowEndRedirect(ctx, authCtx, request)
@@ -101,6 +123,8 @@ func GetLoginHandler(ctx context.Context, authCtx interfaces.AuthenticationConte
 	}
 }
 
+// GetCallbackHandler returns a handler that is called by the OIdC provider with the authorization code to complete
+// the user authentication flow.
 func GetCallbackHandler(ctx context.Context, authCtx interfaces.AuthenticationContext) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		logger.Debugf(ctx, "Running callback handler...")
@@ -123,6 +147,20 @@ func GetCallbackHandler(ctx context.Context, authCtx interfaces.AuthenticationCo
 		err = authCtx.CookieManager().SetTokenCookies(ctx, writer, token)
 		if err != nil {
 			logger.Errorf(ctx, "Error setting encrypted JWT cookie %s", err)
+			writer.WriteHeader(http.StatusForbidden)
+			return
+		}
+
+		userInfo, err := QueryUserInfoUsingAccessToken(ctx, authCtx, token.AccessToken)
+		if err != nil {
+			logger.Errorf(ctx, "Failed to query user info. Error: %v", err)
+			writer.WriteHeader(http.StatusForbidden)
+			return
+		}
+
+		err = authCtx.CookieManager().SetUserInfoCookie(ctx, writer, userInfo)
+		if err != nil {
+			logger.Errorf(ctx, "Error setting encrypted user info cookie. Error: %v", err)
 			writer.WriteHeader(http.StatusForbidden)
 			return
 		}
@@ -167,7 +205,7 @@ func GetAuthenticationCustomMetadataInterceptor(authCtx interfaces.Authenticatio
 }
 
 func SetContextForIdentity(ctx context.Context, identityContext interfaces.IdentityContext) context.Context {
-	email := identityContext.UserInfo().Email()
+	email := identityContext.UserInfo().GetEmail()
 	newCtx := identityContext.WithContext(ctx)
 	if len(email) > 0 {
 		newCtx = WithUserEmail(newCtx, identityContext.UserID())
@@ -195,23 +233,14 @@ func GetAuthenticationInterceptor(authCtx interfaces.AuthenticationContext) func
 		identityContext, err = GRPCGetIdentityFromIDToken(ctx, authCtx.Options().UserAuth.OpenID.ClientID,
 			authCtx.OidcProvider())
 
+		if err == nil {
+			return SetContextForIdentity(ctx, identityContext), nil
+		}
+
 		// Only enforcement logic is present. The default case is to let things through.
 		if (isFromHTTP && !authCtx.Options().DisableForHTTP) ||
 			(!isFromHTTP && !authCtx.Options().DisableForGrpc) {
-
-			if err != nil {
-				return ctx, status.Errorf(codes.Unauthenticated, "token parse error %s", err)
-			}
-
-			if identityContext == nil {
-				return ctx, status.Errorf(codes.Unauthenticated, "Token was nil after parsing")
-			} else if len(identityContext.UserID()) == 0 {
-				return ctx, status.Errorf(codes.Unauthenticated, "no user id or empty user id was found")
-			}
-		}
-
-		if err == nil {
-			return SetContextForIdentity(ctx, identityContext), nil
+			return ctx, status.Errorf(codes.Unauthenticated, "token parse error %s", err)
 		}
 
 		return ctx, nil
@@ -262,9 +291,26 @@ func GetHTTPRequestCookieToMetadataHandler(authCtx interfaces.AuthenticationCont
 			logger.Infof(ctx, "Could not find access token cookie while requesting %s", request.RequestURI)
 			return nil
 		}
-		return metadata.MD{
+
+		meta := metadata.MD{
 			DefaultAuthorizationHeader: []string{fmt.Sprintf("%s %s", IDTokenScheme, idToken)},
 		}
+
+		userInfo, err := authCtx.CookieManager().RetrieveUserInfo(ctx, request)
+		if err != nil {
+			logger.Infof(ctx, "Failed to retrieve user info cookie. Ignoring. Error: %v", err)
+		}
+
+		raw, err := json.Marshal(userInfo)
+		if err != nil {
+			logger.Infof(ctx, "Failed to marshal user info. Ignoring. Error: %v", err)
+		}
+
+		if len(raw) > 0 {
+			meta.Set(UserInfoMDKey, string(raw))
+		}
+
+		return meta
 	}
 }
 
@@ -298,87 +344,65 @@ func IdentityContextFromRequest(ctx context.Context, req *http.Request, authCtx 
 		}
 	}
 
-	idToken, _, _, _ := authCtx.CookieManager().RetrieveTokenValues(ctx, req)
-	if len(idToken) > 0 {
-		return IdentityContextFromIDTokenToken(ctx, idToken, authCtx.Options().UserAuth.OpenID.ClientID,
-			authCtx.OidcProvider())
+	idToken, _, _, err := authCtx.CookieManager().RetrieveTokenValues(ctx, req)
+	if len(idToken) == 0 {
+		return nil, fmt.Errorf("unauthenticated request. Error: %w", err)
 	}
 
-	return nil, fmt.Errorf("unauthenticated request")
-}
-
-// TODO: Add this to the Admin service IDL in Flyte IDL so that this can be exposed from gRPC as well.
-// This returns a handler that will retrieve user info, from the OAuth2 authorization server.
-// See the OpenID Connect spec at https://openid.net/specs/openid-connect-core-1_0.html#UserInfoResponse for more information.
-func GetMeEndpointHandler(ctx context.Context, authCtx interfaces.AuthenticationContext) http.HandlerFunc {
-	return func(writer http.ResponseWriter, request *http.Request) {
-		identityContext, err := IdentityContextFromRequest(ctx, request, authCtx)
-		if err != nil {
-			logger.Infof(ctx, "failed to retrieve identity from request. Error: %v", err)
-			http.Error(writer, "Request is unauthenticated, try /login in again", http.StatusUnauthorized)
-			return
-		}
-
-		userInfo, err := QueryUserInfo(ctx, identityContext, request, authCtx)
-		if err != nil {
-			logger.Infof(ctx, "failed to query user info. Error: %v", err)
-			http.Error(writer, "Request is unauthenticated, try /login in again", http.StatusUnauthorized)
-			return
-		}
-
-		raw, err := userInfo.MarshalToJSON()
-		if err != nil {
-			logger.Infof(ctx, "failed to marshal query user info. Error: %v", err)
-			http.Error(writer, "Request is unauthenticated, try /login in again", http.StatusUnauthorized)
-			return
-		}
-
-		writer.Header().Set("Content-Type", "application/json")
-		size, err := writer.Write(raw)
-		if err != nil {
-			logger.Errorf(ctx, "Wrote user info response size %d, err %s", size, err)
-		}
+	userInfo, err := authCtx.CookieManager().RetrieveUserInfo(ctx, req)
+	if err != nil {
+		logger.Infof(ctx, "Failed to retrieve user info cookie from request. Error: %v", err)
+		return nil, fmt.Errorf("unauthenticated request. Error: %w", err)
 	}
+
+	return IdentityContextFromIDTokenToken(ctx, idToken, authCtx.Options().UserAuth.OpenID.ClientID,
+		authCtx.OidcProvider(), userInfo)
 }
 
 func QueryUserInfo(ctx context.Context, identityContext interfaces.IdentityContext, request *http.Request,
-	authCtx interfaces.AuthenticationContext) (interfaces.UserInfo, error) {
+	authCtx interfaces.AuthenticationContext) (*service.UserInfoResponse, error) {
 
 	if identityContext.IsEmpty() {
-		return nil, fmt.Errorf("request is unauthenticated, try /login in again")
+		return &service.UserInfoResponse{}, fmt.Errorf("request is unauthenticated, try /login in again")
 	}
 
-	if len(identityContext.UserInfo().Name()) > 0 {
+	if len(identityContext.UserInfo().GetName()) > 0 {
 		return identityContext.UserInfo(), nil
 	} else {
 		_, accessToken, _, err := authCtx.CookieManager().RetrieveTokenValues(ctx, request)
 		if err != nil {
-			return nil, fmt.Errorf("error decoding identify token, try /login in again")
+			return &service.UserInfoResponse{}, fmt.Errorf("error decoding identify token, try /login in again")
 		}
 
-		originalToken := oauth2.Token{
-			AccessToken: accessToken,
-		}
-
-		tokenSource := authCtx.OAuth2ClientConfig().TokenSource(ctx, &originalToken)
-
-		// TODO: Investigate improving transparency of errors. The errors from this call may be just a local error, or may
-		//       be an error from the HTTP request to the IDP. In the latter case, consider passing along the error code/msg.
-		userInfo, err := authCtx.OidcProvider().UserInfo(ctx, tokenSource)
-		if err != nil {
-			logger.Errorf(ctx, "Error getting user info from IDP %s", err)
-			return nil, fmt.Errorf("error getting user info from IDP")
-		}
-
-		resp := UserInfoResponse{}
-		err = userInfo.Claims(&resp)
-		if err != nil {
-			logger.Errorf(ctx, "Error getting user info from IDP %s", err)
-			return nil, fmt.Errorf("error getting user info from IDP")
-		}
-
-		return resp, err
+		return QueryUserInfoUsingAccessToken(ctx, authCtx, accessToken)
 	}
+}
+
+func QueryUserInfoUsingAccessToken(ctx context.Context, authCtx interfaces.AuthenticationContext, accessToken string) (
+	*service.UserInfoResponse, error) {
+
+	originalToken := oauth2.Token{
+		AccessToken: accessToken,
+	}
+
+	tokenSource := authCtx.OAuth2ClientConfig().TokenSource(ctx, &originalToken)
+
+	// TODO: Investigate improving transparency of errors. The errors from this call may be just a local error, or may
+	//       be an error from the HTTP request to the IDP. In the latter case, consider passing along the error code/msg.
+	userInfo, err := authCtx.OidcProvider().UserInfo(ctx, tokenSource)
+	if err != nil {
+		logger.Errorf(ctx, "Error getting user info from IDP %s", err)
+		return &service.UserInfoResponse{}, fmt.Errorf("error getting user info from IDP")
+	}
+
+	resp := &service.UserInfoResponse{}
+	err = userInfo.Claims(&resp)
+	if err != nil {
+		logger.Errorf(ctx, "Error getting user info from IDP %s", err)
+		return &service.UserInfoResponse{}, fmt.Errorf("error getting user info from IDP")
+	}
+
+	return resp, err
 }
 
 // This returns a handler that will redirect (303) to the well-known metadata endpoint for the OAuth2 authorization server

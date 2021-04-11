@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
+
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 
 	"github.com/coreos/go-oidc"
@@ -25,13 +27,19 @@ const (
 	ErrConfigFileRead errors.ErrorCode = "CONFIG_OPTION_FILE_READ_FAILED"
 )
 
+type authServiceWrapper struct {
+	interfaces.OAuth2MetadataProvider
+	interfaces.OIdCUserInfoProvider
+}
+
 // Please see the comment on the corresponding AuthenticationContext for more information.
 type Context struct {
-	oauth2Client   *oauth2.Config
-	cookieManager  interfaces.CookieHandler
-	oidcProvider   *oidc.Provider
-	options        *config.Config
-	oauth2Provider interfaces.OAuth2Provider
+	oauth2Client    *oauth2.Config
+	cookieManager   interfaces.CookieHandler
+	oidcProvider    *oidc.Provider
+	options         *config.Config
+	oauth2Provider  interfaces.OAuth2Provider
+	AuthServiceImpl service.AuthServiceServer
 
 	userInfoURL       *url.URL
 	oauth2MetadataURL *url.URL
@@ -75,7 +83,12 @@ func (c Context) GetOIdCMetadataURL() *url.URL {
 	return c.oidcMetadataURL
 }
 
+func (c Context) AuthService() service.AuthServiceServer {
+	return c.AuthServiceImpl
+}
+
 func NewAuthenticationContext(ctx context.Context, sm core.SecretManager, oauth2Provider interfaces.OAuth2Provider,
+	metadataProvider interfaces.OAuth2MetadataProvider, infoProvider interfaces.OIdCUserInfoProvider,
 	options *config.Config) (Context, error) {
 
 	// Construct the cookie manager object.
@@ -141,6 +154,10 @@ func NewAuthenticationContext(ctx context.Context, sm core.SecretManager, oauth2
 		httpClient:        httpClient,
 		cookieManager:     cookieManager,
 		oauth2Provider:    oauth2Provider,
+		AuthServiceImpl: authServiceWrapper{
+			OAuth2MetadataProvider: metadataProvider,
+			OIdCUserInfoProvider:   infoProvider,
+		},
 	}, nil
 }
 

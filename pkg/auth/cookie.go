@@ -32,6 +32,9 @@ const (
 
 	// #nosec
 	authCodeCookieName = "flyte_auth_code"
+
+	// #nosec
+	userInfoCookieName = "flyte_user_info"
 )
 
 const (

@@ -3,8 +3,12 @@ package auth
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 
 	"github.com/flyteorg/flytestdlib/errors"
 	"github.com/flyteorg/flytestdlib/logger"
@@ -69,6 +73,40 @@ func (c CookieManager) RetrieveTokenValues(ctx context.Context, request *http.Re
 	}
 
 	return
+}
+
+func (c CookieManager) SetUserInfoCookie(ctx context.Context, writer http.ResponseWriter, userInfo *service.UserInfoResponse) error {
+	raw, err := json.Marshal(userInfo)
+	if err != nil {
+		return fmt.Errorf("failed to marshal user info to store in a cookie. Error: %w", err)
+	}
+
+	userInfoCookie, err := NewSecureCookie(userInfoCookieName, string(raw), c.hashKey, c.blockKey)
+	if err != nil {
+		logger.Errorf(ctx, "Error generating encrypted user info cookie %s", err)
+		return err
+	}
+
+	http.SetCookie(writer, &userInfoCookie)
+
+	return nil
+
+}
+
+func (c CookieManager) RetrieveUserInfo(ctx context.Context, request *http.Request) (*service.UserInfoResponse, error) {
+	userInfoCookie, err := retrieveSecureCookie(ctx, request, userInfoCookieName, c.hashKey, c.blockKey)
+	if err != nil {
+		return nil, err
+	}
+
+	res := service.UserInfoResponse{}
+	err = json.Unmarshal([]byte(userInfoCookie), &res)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmasharl user info cookie. Error: %w", err)
+	}
+
+	return &res, nil
+
 }
 
 func (c CookieManager) RetrieveAuthCodeRequest(ctx context.Context, request *http.Request) (authRequestUrl string, err error) {

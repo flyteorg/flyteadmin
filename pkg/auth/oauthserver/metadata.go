@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/flyteorg/flyteadmin/pkg/auth"
-
 	"github.com/lestrrat-go/jwx/jwk"
 
 	"github.com/flyteorg/flytestdlib/logger"
@@ -88,54 +86,4 @@ func getJSONWebKeys(publicKeys []rsa.PublicKey) (jwk.Set, error) {
 	}
 
 	return s, nil
-}
-
-// GetMetadataEndpoint serves auth.OAuth2MetadataEndpoint requests with an RFC Compliant json object.
-// ref: https://tools.ietf.org/html/rfc8414
-func GetMetadataEndpoint(authCtx interfaces.AuthenticationContext) http.HandlerFunc {
-	return func(rw http.ResponseWriter, request *http.Request) {
-		requestUrl, err := getRequestBaseUrl(request)
-		if err != nil {
-			http.Error(rw, "Error parsing request url", http.StatusBadRequest)
-			return
-		}
-
-		doc := DiscoveryDocument{
-			Issuer:                        getIssuer(authCtx.Options(), request),
-			AuthorizationEndpoint:         requestUrl.ResolveReference(authorizeRelativeUrl).String(),
-			TokenEndpoint:                 requestUrl.ResolveReference(tokenRelativeUrl).String(),
-			JSONWebKeysUri:                requestUrl.ResolveReference(jsonWebKeysUrl).String(),
-			CodeChallengeMethodsSupported: []string{"S256"},
-			ResponseTypesSupported: []string{
-				"code",
-				"token",
-				"code token",
-			},
-			GrantTypesSupported: supportedGrantTypes,
-			ScopesSupported:     []string{auth.ScopeAll},
-			TokenEndpointAuthMethodsSupported: []string{
-				"client_secret_basic",
-			},
-		}
-
-		raw, err := json.Marshal(doc)
-		if err != nil {
-			http.Error(rw, "Error marshaling Metadata Doc", http.StatusBadRequest)
-			return
-		}
-
-		rw.Header().Set("Content-Type", "application/json")
-		size, err := rw.Write(raw)
-		if err != nil {
-			logger.Errorf(context.TODO(), "Wrote user info response size %d, err %s", size, err)
-		}
-	}
-}
-
-// GetMetadataRedirect redirects auth.OAuth2MetadataEndpoint requests to the external Authorization Server configured
-func GetMetadataRedirect(authCtx interfaces.AuthenticationContext) http.HandlerFunc {
-	return func(rw http.ResponseWriter, request *http.Request) {
-		baseURL := authCtx.Options().AppAuth.ExternalAuthServer.BaseURL
-		http.Redirect(rw, request, baseURL.ResolveReference(oauth2MetadataEndpoint).String(), http.StatusTemporaryRedirect)
-	}
 }

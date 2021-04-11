@@ -2,8 +2,6 @@ package oauthserver
 
 import (
 	"crypto/rsa"
-	"fmt"
-
 	"github.com/ory/fosite/handler/oauth2"
 
 	"github.com/flyteorg/flyteadmin/pkg/auth"
@@ -25,13 +23,7 @@ func RegisterHandlers(handler interfaces.HandlerRegisterer, authCtx interfaces.A
 		handler.HandleFunc(authorizeRelativeUrl.String(), getAuthEndpoint(authCtx))
 		handler.HandleFunc(authorizeCallbackRelativeUrl.String(), getAuthCallbackEndpoint(authCtx))
 		handler.HandleFunc(tokenRelativeUrl.String(), getTokenEndpointHandler(authCtx))
-
-		// The metadata endpoint is an RFC-defined constant, but we need a leading / for the handler to pattern match correctly.
-		handler.HandleFunc(fmt.Sprintf("/%s", auth.OAuth2MetadataEndpoint), GetMetadataEndpoint(authCtx))
 		handler.HandleFunc(jsonWebKeysUrl.String(), GetJSONWebKeysEndpoint(authCtx))
-	} else {
-		// The metadata endpoint is an RFC-defined constant, but we need a leading / for the handler to pattern match correctly.
-		handler.HandleFunc(fmt.Sprintf("/%s", auth.OAuth2MetadataEndpoint), GetMetadataRedirect(authCtx))
 	}
 
 	// TODO: Support token revocation and introspection
