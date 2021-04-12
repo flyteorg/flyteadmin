@@ -33,6 +33,7 @@ var flyteAdminConfig = config.MustRegisterSection(flyteAdmin, &interfaces.Applic
 	MetricsScope:          "flyte:",
 	MetadataStoragePrefix: []string{"metadata", "admin"},
 	EventVersion:          1,
+	AsyncEventsBufferSize: 100,
 })
 var schedulerConfig = config.MustRegisterSection(scheduler, &interfaces.SchedulerConfig{
 	EventSchedulerConfig: interfaces.EventSchedulerConfig{
