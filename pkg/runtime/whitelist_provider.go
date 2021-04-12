@@ -7,7 +7,9 @@ import (
 
 const whitelistKey = "task_type_whitelist"
 
-var whitelistConfig = config.MustRegisterSection(whitelistKey, make(map[string][]interfaces.WhitelistScope))
+var whiteListProviderDefault = make(map[string][]interfaces.WhitelistScope)
+
+var whitelistConfig = config.MustRegisterSection(whitelistKey, &whiteListProviderDefault)
 
 // Implementation of an interfaces.QueueConfiguration
 type WhitelistConfigurationProvider struct{}
