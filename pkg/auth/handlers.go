@@ -94,6 +94,10 @@ func RefreshTokensIfExists(ctx context.Context, authCtx interfaces.Authenticatio
 				handlerFunc(writer, request)
 				return
 			}
+		} else if err != nil {
+			logger.Infof(ctx, "Failed to validate tokens. Restarting login flow. Error: %s", err)
+			handlerFunc(writer, request)
+			return
 		}
 
 		redirectURL := getAuthFlowEndRedirect(ctx, authCtx, request)
