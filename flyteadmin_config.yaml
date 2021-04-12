@@ -20,20 +20,24 @@ auth:
   disableForGrpc: true
   httpPublicUri: http://localhost:8088/
   appAuth:
+    authServerType: External
+    externalAuthServer:
+      baseUrl: https://dev-14186422.okta.com/oauth2/auskngnn7uBViQq6b5d6
     thirdPartyConfig:
       flyteClient:
         clientId: flytectl
         redirectUri: https://localhost:53593/callback
         scopes:
           - offline
-          - all
+          - delegated_access
   userAuth:
     openId:
-      baseUrl: https://accounts.google.com
+      baseUrl: https://dev-14186422.okta.com/oauth2/auskngnn7uBViQq6b5d6
       scopes:
         - profile
         - openid
-      clientId: 657465813211-6eog7ek7li5k7i7fvgv2921075063hpe.apps.googleusercontent.com
+        - offline_access
+      clientId: 0oakkheteNjCMERst5d6
       callbackUrl: "http://localhost:8088/callback"
       redirectUrl: "/api/v1/projects"
 flyteadmin:

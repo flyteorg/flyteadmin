@@ -13,7 +13,7 @@ const _AuthorizationServerTypeName = "SelfExternal"
 var _AuthorizationServerTypeIndex = [...]uint8{0, 4, 12}
 
 func (i AuthorizationServerType) String() string {
-	if i >= AuthorizationServerType(len(_AuthorizationServerTypeIndex)-1) {
+	if i < 0 || i >= AuthorizationServerType(len(_AuthorizationServerTypeIndex)-1) {
 		return fmt.Sprintf("AuthorizationServerType(%d)", i)
 	}
 	return _AuthorizationServerTypeName[_AuthorizationServerTypeIndex[i]:_AuthorizationServerTypeIndex[i+1]]

@@ -52,12 +52,13 @@ func (s authServiceWrapper) AuthFuncOverride(ctx context.Context, fullMethodName
 
 // Please see the comment on the corresponding AuthenticationContext for more information.
 type Context struct {
-	oauth2Client    *oauth2.Config
-	cookieManager   interfaces.CookieHandler
-	oidcProvider    *oidc.Provider
-	options         *config.Config
-	oauth2Provider  interfaces.OAuth2Provider
-	AuthServiceImpl service.AuthServiceServer
+	oauth2Client         *oauth2.Config
+	cookieManager        interfaces.CookieHandler
+	oidcProvider         *oidc.Provider
+	options              *config.Config
+	oauth2Provider       interfaces.OAuth2Provider
+	oauth2ResourceServer interfaces.OAuth2ResourceServer
+	AuthServiceImpl      service.AuthServiceServer
 
 	userInfoURL       *url.URL
 	oauth2MetadataURL *url.URL
@@ -105,9 +106,13 @@ func (c Context) AuthService() service.AuthServiceServer {
 	return c.AuthServiceImpl
 }
 
+func (c Context) OAuth2ResourceServer() interfaces.OAuth2ResourceServer {
+	return c.oauth2ResourceServer
+}
+
 func NewAuthenticationContext(ctx context.Context, sm core.SecretManager, oauth2Provider interfaces.OAuth2Provider,
-	metadataProvider interfaces.OAuth2MetadataProvider, infoProvider interfaces.OIdCUserInfoProvider,
-	options *config.Config) (Context, error) {
+	oauth2ResourceServer interfaces.OAuth2ResourceServer, metadataProvider interfaces.OAuth2MetadataProvider,
+	infoProvider interfaces.OIdCUserInfoProvider, options *config.Config) (Context, error) {
 
 	// Construct the cookie manager object.
 	hashKeyBase64, err := sm.Get(ctx, options.UserAuth.CookieHashKeySecretName)
@@ -164,14 +169,15 @@ func NewAuthenticationContext(ctx context.Context, sm core.SecretManager, oauth2
 	logger.Infof(ctx, "Metadata endpoint is %s", oidcMetadataURL)
 
 	authCtx := Context{
-		options:           options,
-		oidcMetadataURL:   oidcMetadataURL,
-		oauth2MetadataURL: oauth2MetadataURL,
-		oauth2Client:      &oauth2Config,
-		oidcProvider:      provider,
-		httpClient:        httpClient,
-		cookieManager:     cookieManager,
-		oauth2Provider:    oauth2Provider,
+		options:              options,
+		oidcMetadataURL:      oidcMetadataURL,
+		oauth2MetadataURL:    oauth2MetadataURL,
+		oauth2Client:         &oauth2Config,
+		oidcProvider:         provider,
+		httpClient:           httpClient,
+		cookieManager:        cookieManager,
+		oauth2Provider:       oauth2Provider,
+		oauth2ResourceServer: oauth2ResourceServer,
 	}
 
 	authSvc := authServiceWrapper{
