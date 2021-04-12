@@ -7,7 +7,7 @@ const (
 	DefaultAuthorizationHeader    = "authorization"
 	BearerScheme                  = "Bearer"
 	IDTokenScheme                 = "IDToken"
-	UserInfoMDKey = "UserInfo"
+	UserInfoMDKey                 = "UserInfo"
 
 	// https://tools.ietf.org/html/rfc8414
 	// This should be defined without a leading slash. If there is one, the url library's ResolveReference will make it a root path

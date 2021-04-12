@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/auth/interfaces"
 	"github.com/flyteorg/flytestdlib/errors"
 	"github.com/flyteorg/flytestdlib/logger"
+	grpcauth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"golang.org/x/oauth2"
 )
 
@@ -27,9 +29,25 @@ const (
 	ErrConfigFileRead errors.ErrorCode = "CONFIG_OPTION_FILE_READ_FAILED"
 )
 
+var (
+	anonymousMethodNames = sets.NewString("/flyteidl.service.AuthService/OAuth2Metadata", "/flyteidl.service.AuthService/FlyteClient")
+)
+
 type authServiceWrapper struct {
 	interfaces.OAuth2MetadataProvider
 	interfaces.OIdCUserInfoProvider
+
+	authInterceptor grpcauth.AuthFunc
+}
+
+// Override auth func to enforce anonymous access on the implemented APIs
+// Ref: https://github.com/grpc-ecosystem/go-grpc-middleware/blob/master/auth/auth.go#L31
+func (s authServiceWrapper) AuthFuncOverride(ctx context.Context, fullMethodName string) (context.Context, error) {
+	if anonymousMethodNames.Has(fullMethodName) {
+		return ctx, nil
+	}
+
+	return s.authInterceptor(ctx)
 }
 
 // Please see the comment on the corresponding AuthenticationContext for more information.
@@ -145,7 +163,7 @@ func NewAuthenticationContext(ctx context.Context, sm core.SecretManager, oauth2
 
 	logger.Infof(ctx, "Metadata endpoint is %s", oidcMetadataURL)
 
-	return Context{
+	authCtx := Context{
 		options:           options,
 		oidcMetadataURL:   oidcMetadataURL,
 		oauth2MetadataURL: oauth2MetadataURL,
@@ -154,11 +172,17 @@ func NewAuthenticationContext(ctx context.Context, sm core.SecretManager, oauth2
 		httpClient:        httpClient,
 		cookieManager:     cookieManager,
 		oauth2Provider:    oauth2Provider,
-		AuthServiceImpl: authServiceWrapper{
-			OAuth2MetadataProvider: metadataProvider,
-			OIdCUserInfoProvider:   infoProvider,
-		},
-	}, nil
+	}
+
+	authSvc := authServiceWrapper{
+		OAuth2MetadataProvider: metadataProvider,
+		OIdCUserInfoProvider:   infoProvider,
+		authInterceptor:        GetAuthenticationInterceptor(authCtx),
+	}
+
+	authCtx.AuthServiceImpl = authSvc
+
+	return authCtx, nil
 }
 
 // This creates a oauth2 library config object, with values from the Flyte Admin config

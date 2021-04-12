@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -99,17 +101,14 @@ func GRPCGetIdentityFromIDToken(ctx context.Context, clientID string, provider *
 		return nil, errors.Errorf(ErrJwtValidation, "%v token is blank", IDTokenScheme)
 	}
 
-	userInfoStr, err := grpcauth.AuthFromMD(ctx, UserInfoMDKey)
-	if err != nil {
-		logger.Debugf(ctx, "Could not retrieve user info from metadata %v", err)
-		return nil, errors.Wrapf(ErrJwtValidation, err, "Could not retrieve user info from metadata")
-	}
-
+	meta := metautils.ExtractIncoming(ctx)
+	userInfoStr := meta.Get(UserInfoMDKey)
 	userInfo := &service.UserInfoResponse{}
-	err = json.Unmarshal([]byte(userInfoStr), userInfo)
-	if err != nil {
-		logger.Debugf(ctx, "Could not unmarshal user info from metadata %v", err)
-		return nil, errors.Wrapf(ErrJwtValidation, err, "Could not unmarshal user info from metadata")
+	if len(userInfoStr) > 0 {
+		err = json.Unmarshal([]byte(userInfoStr), userInfo)
+		if err != nil {
+			logger.Infof(ctx, "Could not unmarshal user info from metadata %v", err)
+		}
 	}
 
 	return IdentityContextFromIDTokenToken(ctx, tokenStr, clientID, provider, userInfo)

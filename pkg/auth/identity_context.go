@@ -69,6 +69,11 @@ func (c IdentityContext) AuthenticatedAt() time.Time {
 
 // NewIdentityContext creates a new IdentityContext.
 func NewIdentityContext(audience, userID, appID string, authenticatedAt time.Time, scopes sets.String, userInfo *service.UserInfoResponse) IdentityContext {
+	// For some reason, google IdP returns a subject in the ID Token but an empty subject in the /user_info endpoint
+	if len(userInfo.Subject) == 0 {
+		userInfo.Subject = userID
+	}
+
 	return IdentityContext{
 		audience:        audience,
 		userID:          userID,
