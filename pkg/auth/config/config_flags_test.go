@@ -583,28 +583,6 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
-	t.Run("Test_appAuth.externalAuthServer.expectedIssuer", func(t *testing.T) {
-		t.Run("DefaultValue", func(t *testing.T) {
-			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("appAuth.externalAuthServer.expectedIssuer"); err == nil {
-				assert.Equal(t, string(defaultConfig.AppAuth.ExternalAuthServer.ExpectedAudience), vString)
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-
-		t.Run("Override", func(t *testing.T) {
-			testValue := "1"
-
-			cmdFlags.Set("appAuth.externalAuthServer.expectedIssuer", testValue)
-			if vString, err := cmdFlags.GetString("appAuth.externalAuthServer.expectedIssuer"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.AppAuth.ExternalAuthServer.ExpectedAudience)
-
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-	})
 	t.Run("Test_appAuth.thirdPartyConfig.flyteClient.clientId", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly

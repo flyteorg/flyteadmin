@@ -2,7 +2,6 @@ package interfaces
 
 import (
 	"context"
-	"crypto/rsa"
 	"net/http"
 	"net/url"
 	"time"
@@ -29,10 +28,13 @@ type HandlerRegisterer interface {
 
 type OAuth2Provider interface {
 	fosite.OAuth2Provider
+	OAuth2ResourceServer
 	NewJWTSessionToken(subject string, userInfoClaims interface{}, appID, issuer, audience string) *fositeOAuth2.JWTSession
-	ValidateAccessToken(ctx context.Context, tokenStr string) (IdentityContext, error)
-	PublicKeys() []rsa.PublicKey
 	KeySet() jwk.Set
+}
+
+type OAuth2ResourceServer interface {
+	ValidateAccessToken(ctx context.Context, tokenStr string) (IdentityContext, error)
 }
 
 type OAuth2MetadataProvider interface {
@@ -49,6 +51,7 @@ type OIdCUserInfoProvider interface {
 // It is constructed at the root server layer, and passed around to the various auth handlers and utility functions/objects.
 type AuthenticationContext interface {
 	OAuth2Provider() OAuth2Provider
+	OAuth2ResourceServer() OAuth2ResourceServer
 	OAuth2ClientConfig() *oauth2.Config
 	OidcProvider() *oidc.Provider
 	CookieManager() CookieHandler

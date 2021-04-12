@@ -29,7 +29,7 @@ const (
 )
 
 // AuthorizationServerType defines the type of Authorization Server to use.
-type AuthorizationServerType uint8
+type AuthorizationServerType int
 
 const (
 	// AuthorizationServerTypeSelf determines that FlyteAdmin should act as the authorization server to serve
@@ -139,8 +139,6 @@ type AuthorizationServer struct {
 
 type ExternalAuthorizationServer struct {
 	BaseURL config.URL `json:"baseUrl" pflag:",This should be the base url of the authorization server that you are trying to hit. With Okta for instance, it will look something like https://company.okta.com/oauth2/abcdef123456789/"`
-
-	ExpectedAudience string `json:"expectedIssuer" pflag:",Expected Audience to use to validate access tokens."`
 }
 
 type OAuth2Options struct {

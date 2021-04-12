@@ -82,7 +82,7 @@ func GRPCGetIdentityFromAccessToken(ctx context.Context, authCtx interfaces.Auth
 		return nil, errors.Errorf(ErrJwtValidation, "%v token is blank", IDTokenScheme)
 	}
 
-	return authCtx.OAuth2Provider().ValidateAccessToken(ctx, tokenStr)
+	return authCtx.OAuth2ResourceServer().ValidateAccessToken(ctx, tokenStr)
 }
 
 // This function attempts to extract a token from the context, and will then call the validation function, passing up

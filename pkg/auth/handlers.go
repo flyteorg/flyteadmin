@@ -344,7 +344,7 @@ func IdentityContextFromRequest(ctx context.Context, req *http.Request, authCtx 
 	if len(headerValue) > 0 {
 		logger.Debugf(ctx, "Found authorization header at [%v] header. Validating.", authHeader)
 		if strings.HasPrefix(headerValue, BearerScheme+" ") {
-			return authCtx.OAuth2Provider().ValidateAccessToken(ctx, strings.TrimPrefix(headerValue, BearerScheme+" "))
+			return authCtx.OAuth2ResourceServer().ValidateAccessToken(ctx, strings.TrimPrefix(headerValue, BearerScheme+" "))
 		}
 	}
 

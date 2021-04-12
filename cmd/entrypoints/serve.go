@@ -211,10 +211,19 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig, authCfg
 	if cfg.Security.UseAuth {
 		sm := secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig())
 		var oauth2Provider interfaces.OAuth2Provider
+		var oauth2ResourceServer interfaces.OAuth2ResourceServer
 		if authCfg.AppAuth.AuthServerType == authConfig.AuthorizationServerTypeSelf {
 			oauth2Provider, err = oauthserver.NewProvider(ctx, authCfg.AppAuth.SelfAuthServer, sm)
 			if err != nil {
 				logger.Errorf(ctx, "Error creating authorization server %s", err)
+				return err
+			}
+
+			oauth2ResourceServer = oauth2Provider
+		} else {
+			oauth2ResourceServer, err = oauthserver.NewOAuth2ResourceServer(ctx, authCfg.AppAuth.ExternalAuthServer, authCfg.UserAuth.OpenID.BaseURL)
+			if err != nil {
+				logger.Errorf(ctx, "Error creating resource server %s", err)
 				return err
 			}
 		}
@@ -222,7 +231,7 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig, authCfg
 		oauth2MetadataProvider := oauthserver.NewService(authCfg)
 		oidcUserInfoProvider := auth.NewUserInfoProvider()
 
-		authCtx, err = auth.NewAuthenticationContext(ctx, sm, oauth2Provider, oauth2MetadataProvider, oidcUserInfoProvider, authCfg)
+		authCtx, err = auth.NewAuthenticationContext(ctx, sm, oauth2Provider, oauth2ResourceServer, oauth2MetadataProvider, oidcUserInfoProvider, authCfg)
 		if err != nil {
 			logger.Errorf(ctx, "Error creating auth context %s", err)
 			return err
@@ -296,10 +305,19 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig, authCfg *
 	if cfg.Security.UseAuth {
 		sm := secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig())
 		var oauth2Provider interfaces.OAuth2Provider
+		var oauth2ResourceServer interfaces.OAuth2ResourceServer
 		if authCfg.AppAuth.AuthServerType == authConfig.AuthorizationServerTypeSelf {
 			oauth2Provider, err = oauthserver.NewProvider(ctx, authCfg.AppAuth.SelfAuthServer, sm)
 			if err != nil {
 				logger.Errorf(ctx, "Error creating authorization server %s", err)
+				return err
+			}
+
+			oauth2ResourceServer = oauth2Provider
+		} else {
+			oauth2ResourceServer, err = oauthserver.NewOAuth2ResourceServer(ctx, authCfg.AppAuth.ExternalAuthServer, authCfg.UserAuth.OpenID.BaseURL)
+			if err != nil {
+				logger.Errorf(ctx, "Error creating resource server %s", err)
 				return err
 			}
 		}
@@ -307,7 +325,7 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig, authCfg *
 		oauth2MetadataProvider := oauthserver.NewService(authCfg)
 		oidcUserInfoProvider := auth.NewUserInfoProvider()
 
-		authCtx, err = auth.NewAuthenticationContext(ctx, sm, oauth2Provider, oauth2MetadataProvider, oidcUserInfoProvider, authCfg)
+		authCtx, err = auth.NewAuthenticationContext(ctx, sm, oauth2Provider, oauth2ResourceServer, oauth2MetadataProvider, oidcUserInfoProvider, authCfg)
 		if err != nil {
 			logger.Errorf(ctx, "Error creating auth context %s", err)
 			return err
