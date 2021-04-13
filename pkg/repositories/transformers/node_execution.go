@@ -173,12 +173,19 @@ func UpdateNodeExecutionModel(
 	// Update TaskNodeMetadata, which includes caching information today.
 	if request.Event.GetTaskNodeMetadata() != nil {
 		st := request.Event.GetTaskNodeMetadata().GetCacheStatus().String()
-		nodeExecutionClosure.TargetMetadata = &admin.NodeExecutionClosure_TaskNodeMetadata{
+		targetMetadata := &admin.NodeExecutionClosure_TaskNodeMetadata{
 			TaskNodeMetadata: &admin.TaskNodeMetadata{
 				CacheStatus: request.Event.GetTaskNodeMetadata().GetCacheStatus(),
 				CatalogKey:  request.Event.GetTaskNodeMetadata().GetCatalogKey(),
 			},
 		}
+		if request.Event.GetTaskNodeMetadata().DynamicWorkflow != nil {
+			targetMetadata.TaskNodeMetadata.DynamicWorkflow = &admin.DynamicWorkflowNodeMetadata{
+				Id:               request.Event.GetTaskNodeMetadata().DynamicWorkflow.Id,
+				CompiledWorkflow: request.Event.GetTaskNodeMetadata().DynamicWorkflow.CompiledWorkflow,
+			}
+		}
+		nodeExecutionClosure.TargetMetadata = targetMetadata
 		nodeExecutionModel.CacheStatus = &st
 	}
 

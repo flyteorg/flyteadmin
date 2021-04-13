@@ -218,6 +218,24 @@ func TestUpdateNodeExecutionModel(t *testing.T) {
 								Domain:       "domain",
 							},
 						},
+						DynamicWorkflow: &event.DynamicWorkflowNodeMetadata{
+							Id: &core.Identifier{
+								ResourceType: core.ResourceType_WORKFLOW,
+								Name:         "n",
+								Project:      "proj",
+								Domain:       "domain",
+								Version:      "v",
+							},
+							CompiledWorkflow: &core.CompiledWorkflowClosure{
+								Primary: &core.CompiledWorkflow{
+									Template: &core.WorkflowTemplate{
+										Metadata: &core.WorkflowMetadata{
+											OnFailure: core.WorkflowMetadata_FAIL_AFTER_EXECUTABLE_NODES_COMPLETE,
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 			},
@@ -241,6 +259,10 @@ func TestUpdateNodeExecutionModel(t *testing.T) {
 				TaskNodeMetadata: &admin.TaskNodeMetadata{
 					CacheStatus: request.Event.GetTaskNodeMetadata().CacheStatus,
 					CatalogKey:  request.Event.GetTaskNodeMetadata().CatalogKey,
+					DynamicWorkflow: &admin.DynamicWorkflowNodeMetadata{
+						Id:               request.Event.GetTaskNodeMetadata().DynamicWorkflow.Id,
+						CompiledWorkflow: request.Event.GetTaskNodeMetadata().DynamicWorkflow.CompiledWorkflow,
+					},
 				},
 			},
 		}
