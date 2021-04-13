@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/qor/validations"
 
 	mocket "github.com/Selvatico/go-mocket"
 	"github.com/flyteorg/flyteadmin/pkg/common"
@@ -26,7 +25,6 @@ func GetDbForTest(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatal(fmt.Sprintf("Failed to open mock db with err %v", err))
 	}
-	validations.RegisterCallbacks(db)
 	return db
 }
 
