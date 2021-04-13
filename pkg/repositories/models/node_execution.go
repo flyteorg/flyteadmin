@@ -9,7 +9,7 @@ import (
 
 type NodeExecutionKey struct {
 	ExecutionKey
-	NodeID string `gorm:"primary_key;index"`
+	NodeID string `gorm:"primary_key;index" valid:"length(3|50)"`
 }
 
 // By convention, gorm foreign key references are of the form {ModelName}ID

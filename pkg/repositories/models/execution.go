@@ -20,10 +20,10 @@ type ExecutionKey struct {
 type Execution struct {
 	BaseModel
 	ExecutionKey
-	LaunchPlanID uint `gorm:"index"`
-	WorkflowID   uint `gorm:"index"`
-	TaskID       uint `gorm:"index"`
-	Phase        string
+	LaunchPlanID uint   `gorm:"index"`
+	WorkflowID   uint   `gorm:"index"`
+	TaskID       uint   `gorm:"index"`
+	Phase        string `valid:"length(3|50)"`
 	Closure      []byte
 	Spec         []byte `gorm:"not null"`
 	StartedAt    *time.Time
@@ -37,7 +37,7 @@ type Execution struct {
 	ExecutionEvents    []ExecutionEvent
 	// In the case of an aborted execution this string may be non-empty.
 	// It should be ignored for any other value of phase other than aborted.
-	AbortCause string
+	AbortCause string `valid:"length(3|50)"`
 	// Corresponds to the execution mode used to trigger this execution
 	Mode int32
 	// The "parent" execution (if there is one) that is related to this execution.
@@ -47,7 +47,7 @@ type Execution struct {
 	// The parent node execution if this was launched by a node
 	ParentNodeExecutionID uint
 	// Cluster where execution was triggered
-	Cluster string
+	Cluster string `valid:"length(3|50)"`
 	// Offloaded location of inputs LiteralMap. These are the inputs evaluated and contain applied defaults.
 	InputsURI storage.DataReference
 	// User specified inputs. This map might be incomplete and not include defaults applied
@@ -55,8 +55,8 @@ type Execution struct {
 	// Execution Error Kind. nullable
 	ErrorKind *string `gorm:"index"`
 	// Execution Error Code nullable
-	ErrorCode *string
+	ErrorCode *string `valid:"length(3|50)"`
 	// The user responsible for launching this execution.
 	// This is also stored in the spec but promoted as a column for filtering.
-	User string `gorm:"index"`
+	User string `gorm:"index" valid:"length(3|50)"`
 }

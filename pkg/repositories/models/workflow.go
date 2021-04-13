@@ -13,7 +13,7 @@ type Workflow struct {
 	BaseModel
 	WorkflowKey
 	TypedInterface          []byte
-	RemoteClosureIdentifier string `gorm:"not null"`
+	RemoteClosureIdentifier string `gorm:"not null" valid:"length(3|50)"`
 	LaunchPlans             []LaunchPlan
 	Executions              []Execution
 	// Hash of the compiled workflow closure
