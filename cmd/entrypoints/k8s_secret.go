@@ -147,6 +147,10 @@ func persistSecrets(ctx context.Context, _ *pflag.FlagSet) error {
 				return err
 			}
 
+			if existingSecret.Data == nil {
+				existingSecret.Data = map[string][]byte{}
+			}
+
 			needsUpdate := false
 			for key, val := range secretsData {
 				if _, found := existingSecret.Data[key]; !found {
