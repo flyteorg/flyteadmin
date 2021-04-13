@@ -25,8 +25,11 @@ type ProjectRepo struct {
 func (r *ProjectRepo) Create(ctx context.Context, project models.Project) error {
 	timer := r.metrics.CreateDuration.Start()
 	tx := r.db.Create(&project)
+	// TODO: Should we return all validation error here
+	// txErr := tx.GetErrors()
 	timer.Stop()
 	if tx.Error != nil {
+		//TODO: Should we return all the errors here
 		return r.errorTransformer.ToFlyteAdminError(tx.Error)
 	}
 	return nil
