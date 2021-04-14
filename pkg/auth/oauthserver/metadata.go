@@ -76,8 +76,9 @@ func getJSONWebKeys(publicKeys []rsa.PublicKey) (jwk.Set, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to write public key. Error: %w", err)
 		}
-
-		err = key.Set(KeyMetadataPublicCert, &publicKey)
+		var localPublicKey rsa.PublicKey
+		localPublicKey = publicKey
+		err = key.Set(KeyMetadataPublicCert, &localPublicKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to write public key. Error: %w", err)
 		}
