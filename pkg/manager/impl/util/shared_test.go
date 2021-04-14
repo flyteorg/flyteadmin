@@ -142,6 +142,22 @@ func TestCreateDataReference(t *testing.T) {
 	assert.Equal(t, storage.DataReference("s3://bucket/admin/metadata/project/domain/name/version"), dataReference)
 }
 
+func TestCreateDataReference_Failure(t *testing.T) {
+	mockStorageClient := commonMocks.GetMockStorageClient()
+	mockStorageClient.ReferenceConstructor.(*commonMocks.TestDataStore).ConstructReferenceCb = func(
+		ctx context.Context, reference storage.DataReference, nestedKeys ...string) (storage.DataReference, error) {
+		return "", errors.New("foo")
+	}
+	_, err := createDataReference(context.TODO(), &core.Identifier{
+		ResourceType: core.ResourceType_WORKFLOW,
+		Project:      "project",
+		Domain:       "domain",
+		Name:         "name",
+		Version:      "version",
+	}, []string{"admin", "metadata"}, mockStorageClient)
+	assert.EqualError(t, err, "foo")
+}
+
 func TestWriteCompiledWorkflow(t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
 	workflowID := core.Identifier{
@@ -152,6 +168,8 @@ func TestWriteCompiledWorkflow(t *testing.T) {
 		Version:      "version",
 	}
 	expectedClosureIdentifier := "s3://bucket/admin/metadata/project/domain/name/version"
+
+	typedInterface, _ := proto.Marshal(testutils.GetWorkflowClosure().CompiledWorkflow.Primary.Template.Interface)
 	repository.WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetCreateCallback(func(input models.Workflow) error {
 		assert.Equal(t, models.WorkflowKey{
 			Project: workflowID.Project,
@@ -160,7 +178,6 @@ func TestWriteCompiledWorkflow(t *testing.T) {
 			Version: "version",
 		}, input.WorkflowKey)
 		assert.Equal(t, expectedClosureIdentifier, input.RemoteClosureIdentifier)
-		typedInterface, _ := proto.Marshal(testutils.GetWorkflowClosure().CompiledWorkflow.Primary.Template.Interface)
 		assert.EqualValues(t, typedInterface, input.TypedInterface)
 		return nil
 	})
@@ -168,23 +185,100 @@ func TestWriteCompiledWorkflow(t *testing.T) {
 		return models.Workflow{}, flyteAdminErrors.NewFlyteAdminError(codes.NotFound, "foo")
 	})
 
-	workflowClosure := &admin.WorkflowClosure{
-		CompiledWorkflow: &core.CompiledWorkflowClosure{
-			Primary: &core.CompiledWorkflow{
-				Template: &core.WorkflowTemplate{
-					Id:        &workflowID,
-					Interface: testutils.GetWorkflowClosure().CompiledWorkflow.Primary.Template.Interface,
-				},
-			},
-		},
-	}
 	mockStorageClient := commonMocks.GetMockStorageClient()
 	mockStorageClient.ComposedProtobufStore.(*commonMocks.TestDataStore).WriteProtobufCb = func(
 		ctx context.Context, reference storage.DataReference, opts storage.Options, msg proto.Message) error {
 		assert.Equal(t, expectedClosureIdentifier, reference.String())
-		assert.True(t, proto.Equal(workflowClosure, msg))
 		return nil
 	}
+	workflowModel, err := WriteCompiledWorkflow(context.TODO(), repository, []string{"admin", "metadata"},
+		mockStorageClient, &workflowID, testutils.GetWorkflowClosure())
+	assert.NoError(t, err)
+	assert.Equal(t, models.WorkflowKey{
+		Project: workflowID.Project,
+		Domain:  workflowID.Domain,
+		Name:    "name",
+		Version: "version",
+	}, workflowModel.WorkflowKey)
+	assert.EqualValues(t, typedInterface, workflowModel.TypedInterface)
+	assert.Equal(t, expectedClosureIdentifier, workflowModel.RemoteClosureIdentifier)
+	assert.Equal(t, []byte{0x2, 0x5, 0x8f, 0xfc, 0xfe, 0x2f, 0x92, 0x1b, 0x26, 0x1d, 0x95, 0xb5, 0xb6, 0xd4, 0x78, 0x6e, 0x95, 0x47, 0xc6, 0x8e, 0x6b, 0xbd, 0x54, 0x9e, 0xd2, 0xaa, 0xe9, 0x76, 0x9f, 0xff, 0xa8, 0xf2}, workflowModel.Digest)
+}
+
+func TestWriteCompiledWorkflow_SadCases(t *testing.T) {
+	storagePrefix := []string{"flyte", "metadata"}
+	workflowID := &core.Identifier{
+		ResourceType: core.ResourceType_WORKFLOW,
+		Project:      "project",
+		Domain:       "domain",
+		Name:         "name",
+		Version:      "version",
+	}
+	t.Run("existing workflow, different workflow digest", func(t *testing.T) {
+		repository := repositoryMocks.NewMockRepository()
+		repository.WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetGetCallback(func(input interfaces.Identifier) (models.Workflow, error) {
+			return models.Workflow{
+				WorkflowKey: models.WorkflowKey{
+					Project: workflowID.Project,
+					Domain:  workflowID.Domain,
+					Name:    "name",
+					Version: "version",
+				},
+				Digest: []byte("i won't match"),
+			}, nil
+		})
+
+		workflowModel, err := WriteCompiledWorkflow(context.TODO(), repository, storagePrefix,
+			commonMocks.GetMockStorageClient(), workflowID, testutils.GetWorkflowClosure())
+		assert.Nil(t, workflowModel)
+		assert.EqualError(t, err, "workflow with different structure already exists with id resource_type:WORKFLOW project:\"project\" domain:\"domain\" name:\"name\" version:\"version\" ")
+	})
+	t.Run("failed to even fetch existing matching workflow", func(t *testing.T) {
+		repository := repositoryMocks.NewMockRepository()
+		repository.WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetGetCallback(func(input interfaces.Identifier) (models.Workflow, error) {
+			return models.Workflow{}, flyteAdminErrors.NewFlyteAdminError(codes.Internal, "foo")
+		})
+
+		workflowModel, err := WriteCompiledWorkflow(context.TODO(), repository, storagePrefix,
+			commonMocks.GetMockStorageClient(), workflowID, testutils.GetWorkflowClosure())
+		assert.Nil(t, workflowModel)
+		assert.EqualError(t, err, "foo")
+	})
+	t.Run("failed to create data reference for workflow closure", func(t *testing.T) {
+		repository := repositoryMocks.NewMockRepository()
+		repository.WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetGetCallback(func(input interfaces.Identifier) (models.Workflow, error) {
+			return models.Workflow{}, flyteAdminErrors.NewFlyteAdminError(codes.NotFound, "foo")
+		})
+
+		mockStorageClient := commonMocks.GetMockStorageClient()
+		mockStorageClient.ComposedProtobufStore.(*commonMocks.TestDataStore).WriteProtobufCb = func(
+			ctx context.Context, reference storage.DataReference, opts storage.Options, msg proto.Message) error {
+			return errors.New("foo")
+		}
+		workflowModel, err := WriteCompiledWorkflow(context.TODO(), repository, storagePrefix, mockStorageClient,
+			workflowID, testutils.GetWorkflowClosure())
+		assert.Nil(t, workflowModel)
+		assert.EqualError(t, err, "failed to write marshaled workflow [resource_type:WORKFLOW project:\"project\" domain:\"domain\" name:\"name\" version:\"version\" ] to storage s3://bucket/flyte/metadata/project/domain/name/version with err foo and base container: s3://bucket")
+	})
+	t.Run("failed to create workflow db model", func(t *testing.T) {
+		repository := repositoryMocks.NewMockRepository()
+		repository.WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetGetCallback(func(input interfaces.Identifier) (models.Workflow, error) {
+			return models.Workflow{}, flyteAdminErrors.NewFlyteAdminError(codes.NotFound, "foo")
+		})
+		repository.WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetCreateCallback(func(input models.Workflow) error {
+			return flyteAdminErrors.NewFlyteAdminError(codes.Internal, "foo")
+		})
+
+		mockStorageClient := commonMocks.GetMockStorageClient()
+		mockStorageClient.ComposedProtobufStore.(*commonMocks.TestDataStore).WriteProtobufCb = func(
+			ctx context.Context, reference storage.DataReference, opts storage.Options, msg proto.Message) error {
+			return nil
+		}
+		workflowModel, err := WriteCompiledWorkflow(context.TODO(), repository, storagePrefix, mockStorageClient,
+			workflowID, testutils.GetWorkflowClosure())
+		assert.Nil(t, workflowModel)
+		assert.EqualError(t, err, "foo")
+	})
 }
 
 func TestGetWorkflowModel(t *testing.T) {
