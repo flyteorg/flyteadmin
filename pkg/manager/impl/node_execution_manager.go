@@ -139,15 +139,6 @@ func (m *NodeExecutionManager) createNodeExecutionWithEvent(
 		return err
 	}
 	m.metrics.ClosureSizeBytes.Observe(float64(len(nodeExecutionModel.Closure)))
-	if request.Event.GetTaskNodeMetadata() != nil && request.Event.GetTaskNodeMetadata().DynamicWorkflow != nil {
-		_, err := util.WriteCompiledWorkflow(ctx, m.db, m.storagePrefix, m.storageClient,
-			request.Event.GetTaskNodeMetadata().DynamicWorkflow.Id, &admin.WorkflowClosure{
-				CompiledWorkflow: request.Event.GetTaskNodeMetadata().DynamicWorkflow.CompiledWorkflow,
-			})
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
@@ -234,6 +225,19 @@ func (m *NodeExecutionManager) CreateNodeEvent(ctx context.Context, request admi
 		}
 	}
 	m.dbEventWriter.Write(request)
+
+	// If the request references a dynamically compiled subworklow in the node, serialize that to the db.
+	if request.Event.GetTaskNodeMetadata() != nil && request.Event.GetTaskNodeMetadata().DynamicWorkflow != nil {
+		_, err := util.WriteCompiledWorkflow(ctx, m.db, m.storagePrefix, m.storageClient,
+			request.Event.GetTaskNodeMetadata().DynamicWorkflow.Id, &admin.WorkflowClosure{
+				CompiledWorkflow: request.Event.GetTaskNodeMetadata().DynamicWorkflow.CompiledWorkflow,
+			})
+		if err != nil {
+			if fErr, ok := err.(errors.FlyteAdminError); !ok || fErr.Code() != codes.AlreadyExists {
+				return nil, err
+			}
+		}
+	}
 
 	if request.Event.Phase == core.NodeExecution_RUNNING {
 		m.metrics.ActiveNodeExecutions.Inc()

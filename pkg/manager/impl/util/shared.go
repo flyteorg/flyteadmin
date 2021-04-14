@@ -102,8 +102,11 @@ func WriteCompiledWorkflow(ctx context.Context, repo repositories.RepositoryInte
 			id, remoteClosureDataRef.String(), err, storageClient.GetBaseContainerFQN(ctx))
 	}
 	// Save the workflow & its reference to the offloaded, compiled workflow in the database.
-	workflowModel, err := transformers.CreateWorkflowModel(
-		id, remoteClosureDataRef.String(), workflowClosure.CompiledWorkflow.Primary.Template.Interface, workflowDigest)
+	var typedInterface *core.TypedInterface
+	if workflowClosure.CompiledWorkflow.Primary != nil && workflowClosure.CompiledWorkflow.Primary.Template != nil {
+		typedInterface = workflowClosure.CompiledWorkflow.Primary.Template.Interface
+	}
+	workflowModel, err := transformers.CreateWorkflowModel(id, remoteClosureDataRef.String(), typedInterface, workflowDigest)
 	if err != nil {
 		logger.Errorf(ctx,
 			"Failed to transform workflow model for workflow [%+v] and remoteClosureIdentifier [%s] with err: %v",
