@@ -1,10 +1,11 @@
-package oauthserver
+package authzserver
 
 import (
 	"context"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 
 	"github.com/flyteorg/flyteadmin/pkg/auth"
 
@@ -13,21 +14,15 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 )
 
-type AnonymousOAuth2MetadataProvider struct {
+type OAuth2MetadataProvider struct {
 	cfg *authConfig.Config
 }
 
-// Override auth func to enforce anonymous access on the implemented APIs
-// Ref: https://github.com/grpc-ecosystem/go-grpc-middleware/blob/master/auth/auth.go#L31
-func (s AnonymousOAuth2MetadataProvider) AuthFuncOverride(ctx context.Context, fullMethodName string) (context.Context, error) {
-	return ctx, nil
-}
-
-func (s AnonymousOAuth2MetadataProvider) OAuth2Metadata(context.Context, *service.OAuth2MetadataRequest) (*service.OAuth2MetadataResponse, error) {
+func (s OAuth2MetadataProvider) OAuth2Metadata(context.Context, *service.OAuth2MetadataRequest) (*service.OAuth2MetadataResponse, error) {
 	switch s.cfg.AppAuth.AuthServerType {
 	case authConfig.AuthorizationServerTypeSelf:
 		doc := &service.OAuth2MetadataResponse{
-			Issuer:                        getIssuer(s.cfg),
+			Issuer:                        GetIssuer(s.cfg),
 			AuthorizationEndpoint:         s.cfg.HTTPPublicUri.ResolveReference(authorizeRelativeUrl).String(),
 			TokenEndpoint:                 s.cfg.HTTPPublicUri.ResolveReference(tokenRelativeUrl).String(),
 			JwksUri:                       s.cfg.HTTPPublicUri.ResolveReference(jsonWebKeysUrl).String(),
@@ -46,7 +41,13 @@ func (s AnonymousOAuth2MetadataProvider) OAuth2Metadata(context.Context, *servic
 
 		return doc, nil
 	default:
-		externalMetadataURL := s.cfg.AppAuth.ExternalAuthServer.BaseURL.ResolveReference(oauth2MetadataEndpoint)
+		var externalMetadataURL *url.URL
+		if len(s.cfg.AppAuth.ExternalAuthServer.BaseURL.String()) > 0 {
+			externalMetadataURL = s.cfg.AppAuth.ExternalAuthServer.BaseURL.ResolveReference(oauth2MetadataEndpoint)
+		} else {
+			externalMetadataURL = s.cfg.UserAuth.OpenID.BaseURL.ResolveReference(oauth2MetadataEndpoint)
+		}
+
 		response, err := http.Get(externalMetadataURL.String())
 		if err != nil {
 			return nil, err
@@ -67,7 +68,7 @@ func (s AnonymousOAuth2MetadataProvider) OAuth2Metadata(context.Context, *servic
 	}
 }
 
-func (s AnonymousOAuth2MetadataProvider) FlyteClient(context.Context, *service.FlyteClientRequest) (*service.FlyteClientResponse, error) {
+func (s OAuth2MetadataProvider) FlyteClient(context.Context, *service.FlyteClientRequest) (*service.FlyteClientResponse, error) {
 	return &service.FlyteClientResponse{
 		ClientId:                 s.cfg.AppAuth.ThirdParty.FlyteClientConfig.ClientID,
 		RedirectUri:              s.cfg.AppAuth.ThirdParty.FlyteClientConfig.RedirectURI,
@@ -76,8 +77,8 @@ func (s AnonymousOAuth2MetadataProvider) FlyteClient(context.Context, *service.F
 	}, nil
 }
 
-func NewService(config *authConfig.Config) AnonymousOAuth2MetadataProvider {
-	return AnonymousOAuth2MetadataProvider{
+func NewService(config *authConfig.Config) OAuth2MetadataProvider {
+	return OAuth2MetadataProvider{
 		cfg: config,
 	}
 }

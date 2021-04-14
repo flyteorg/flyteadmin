@@ -263,6 +263,40 @@ func (_m *AuthenticationContext) OAuth2Provider() interfaces.OAuth2Provider {
 	return r0
 }
 
+type AuthenticationContext_OAuth2ResourceServer struct {
+	*mock.Call
+}
+
+func (_m AuthenticationContext_OAuth2ResourceServer) Return(_a0 interfaces.OAuth2ResourceServer) *AuthenticationContext_OAuth2ResourceServer {
+	return &AuthenticationContext_OAuth2ResourceServer{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *AuthenticationContext) OnOAuth2ResourceServer() *AuthenticationContext_OAuth2ResourceServer {
+	c := _m.On("OAuth2ResourceServer")
+	return &AuthenticationContext_OAuth2ResourceServer{Call: c}
+}
+
+func (_m *AuthenticationContext) OnOAuth2ResourceServerMatch(matchers ...interface{}) *AuthenticationContext_OAuth2ResourceServer {
+	c := _m.On("OAuth2ResourceServer", matchers...)
+	return &AuthenticationContext_OAuth2ResourceServer{Call: c}
+}
+
+// OAuth2ResourceServer provides a mock function with given fields:
+func (_m *AuthenticationContext) OAuth2ResourceServer() interfaces.OAuth2ResourceServer {
+	ret := _m.Called()
+
+	var r0 interfaces.OAuth2ResourceServer
+	if rf, ok := ret.Get(0).(func() interfaces.OAuth2ResourceServer); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(interfaces.OAuth2ResourceServer)
+		}
+	}
+
+	return r0
+}
+
 type AuthenticationContext_OidcProvider struct {
 	*mock.Call
 }

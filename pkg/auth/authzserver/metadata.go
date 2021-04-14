@@ -1,4 +1,4 @@
-package oauthserver
+package authzserver
 
 import (
 	"context"
@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+
+	"github.com/flyteorg/flyteadmin/pkg/auth"
 
 	"github.com/lestrrat-go/jwx/jwk"
 
@@ -20,8 +22,10 @@ var (
 	authorizeRelativeUrl         = mustParseURL("/oauth2/authorize")
 	authorizeCallbackRelativeUrl = mustParseURL("/oauth2/authorize_callback")
 	jsonWebKeysUrl               = mustParseURL("/oauth2/jwks")
+	oauth2MetadataEndpoint       = mustParseURL("/" + auth.OAuth2MetadataEndpoint)
 )
 
+// mustParseURL panics if the provided url fails parsing. Should only be used in package initialization or tests.
 func mustParseURL(rawURL string) *url.URL {
 	res, err := url.Parse(rawURL)
 	if err != nil {
@@ -29,20 +33,6 @@ func mustParseURL(rawURL string) *url.URL {
 	}
 
 	return res
-}
-
-type DiscoveryDocument struct {
-	Issuer                            string   `json:"issuer"`
-	AuthorizationEndpoint             string   `json:"authorization_endpoint"`
-	TokenEndpoint                     string   `json:"token_endpoint"`
-	ResponseTypesSupported            []string `json:"response_types_supported"`
-	ScopesSupported                   []string `json:"scopes_supported"`
-	TokenEndpointAuthMethodsSupported []string `json:"token_endpoint_auth_methods_supported"`
-	JSONWebKeysUri                    string   `json:"jwks_uri"`
-	CodeChallengeMethodsSupported     []string `json:"code_challenge_methods_supported"`
-
-	// optional
-	GrantTypesSupported []string `json:"grant_types_supported"`
 }
 
 // GetJSONWebKeysEndpoint serves requests to the jwks endpoint.
@@ -64,7 +54,7 @@ func GetJSONWebKeysEndpoint(authCtx interfaces.AuthenticationContext) http.Handl
 	}
 }
 
-func getJSONWebKeys(publicKeys []rsa.PublicKey) (jwk.Set, error) {
+func newJSONWebKeySet(publicKeys []rsa.PublicKey) (jwk.Set, error) {
 	s := jwk.NewSet()
 	for _, publicKey := range publicKeys {
 		key, err := jwk.New(publicKey)
@@ -73,12 +63,6 @@ func getJSONWebKeys(publicKeys []rsa.PublicKey) (jwk.Set, error) {
 		}
 
 		err = jwk.AssignKeyID(key)
-		if err != nil {
-			return nil, fmt.Errorf("failed to write public key. Error: %w", err)
-		}
-		var localPublicKey rsa.PublicKey
-		localPublicKey = publicKey
-		err = key.Set(KeyMetadataPublicCert, &localPublicKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to write public key. Error: %w", err)
 		}

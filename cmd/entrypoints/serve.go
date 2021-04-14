@@ -11,7 +11,7 @@ import (
 
 	authConfig "github.com/flyteorg/flyteadmin/pkg/auth/config"
 
-	"github.com/flyteorg/flyteadmin/pkg/auth/oauthserver"
+	"github.com/flyteorg/flyteadmin/pkg/auth/authzserver"
 
 	"github.com/gorilla/handlers"
 
@@ -170,7 +170,7 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authCfg *authC
 		auth.RegisterHandlers(ctx, mux, authCtx)
 
 		// Add HTTP handlers for OAuth2 endpoints
-		oauthserver.RegisterHandlers(mux, authCtx)
+		authzserver.RegisterHandlers(mux, authCtx)
 
 		// This option translates HTTP authorization data (cookies) into a gRPC metadata field
 		gwmuxOptions = append(gwmuxOptions, runtime.WithMetadata(auth.GetHTTPRequestCookieToMetadataHandler(authCtx)))
@@ -213,7 +213,7 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig, authCfg
 		var oauth2Provider interfaces.OAuth2Provider
 		var oauth2ResourceServer interfaces.OAuth2ResourceServer
 		if authCfg.AppAuth.AuthServerType == authConfig.AuthorizationServerTypeSelf {
-			oauth2Provider, err = oauthserver.NewProvider(ctx, authCfg.AppAuth.SelfAuthServer, sm)
+			oauth2Provider, err = authzserver.NewProvider(ctx, authCfg.AppAuth.SelfAuthServer, authzserver.GetIssuer(authCfg), sm)
 			if err != nil {
 				logger.Errorf(ctx, "Error creating authorization server %s", err)
 				return err
@@ -221,14 +221,14 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig, authCfg
 
 			oauth2ResourceServer = oauth2Provider
 		} else {
-			oauth2ResourceServer, err = oauthserver.NewOAuth2ResourceServer(ctx, authCfg.AppAuth.ExternalAuthServer, authCfg.UserAuth.OpenID.BaseURL)
+			oauth2ResourceServer, err = authzserver.NewOAuth2ResourceServer(ctx, authCfg.AppAuth.ExternalAuthServer, authCfg.UserAuth.OpenID.BaseURL)
 			if err != nil {
 				logger.Errorf(ctx, "Error creating resource server %s", err)
 				return err
 			}
 		}
 
-		oauth2MetadataProvider := oauthserver.NewService(authCfg)
+		oauth2MetadataProvider := authzserver.NewService(authCfg)
 		oidcUserInfoProvider := auth.NewUserInfoProvider()
 
 		authCtx, err = auth.NewAuthenticationContext(ctx, sm, oauth2Provider, oauth2ResourceServer, oauth2MetadataProvider, oidcUserInfoProvider, authCfg)
@@ -307,7 +307,7 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig, authCfg *
 		var oauth2Provider interfaces.OAuth2Provider
 		var oauth2ResourceServer interfaces.OAuth2ResourceServer
 		if authCfg.AppAuth.AuthServerType == authConfig.AuthorizationServerTypeSelf {
-			oauth2Provider, err = oauthserver.NewProvider(ctx, authCfg.AppAuth.SelfAuthServer, sm)
+			oauth2Provider, err = authzserver.NewProvider(ctx, authCfg.AppAuth.SelfAuthServer, authzserver.GetIssuer(authCfg), sm)
 			if err != nil {
 				logger.Errorf(ctx, "Error creating authorization server %s", err)
 				return err
@@ -315,14 +315,14 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig, authCfg *
 
 			oauth2ResourceServer = oauth2Provider
 		} else {
-			oauth2ResourceServer, err = oauthserver.NewOAuth2ResourceServer(ctx, authCfg.AppAuth.ExternalAuthServer, authCfg.UserAuth.OpenID.BaseURL)
+			oauth2ResourceServer, err = authzserver.NewOAuth2ResourceServer(ctx, authCfg.AppAuth.ExternalAuthServer, authCfg.UserAuth.OpenID.BaseURL)
 			if err != nil {
 				logger.Errorf(ctx, "Error creating resource server %s", err)
 				return err
 			}
 		}
 
-		oauth2MetadataProvider := oauthserver.NewService(authCfg)
+		oauth2MetadataProvider := authzserver.NewService(authCfg)
 		oidcUserInfoProvider := auth.NewUserInfoProvider()
 
 		authCtx, err = auth.NewAuthenticationContext(ctx, sm, oauth2Provider, oauth2ResourceServer, oauth2MetadataProvider, oidcUserInfoProvider, authCfg)

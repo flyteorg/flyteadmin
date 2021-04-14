@@ -15,47 +15,6 @@ type OAuth2MetadataProvider struct {
 	mock.Mock
 }
 
-type OAuth2MetadataProvider_AuthFuncOverride struct {
-	*mock.Call
-}
-
-func (_m OAuth2MetadataProvider_AuthFuncOverride) Return(_a0 context.Context, _a1 error) *OAuth2MetadataProvider_AuthFuncOverride {
-	return &OAuth2MetadataProvider_AuthFuncOverride{Call: _m.Call.Return(_a0, _a1)}
-}
-
-func (_m *OAuth2MetadataProvider) OnAuthFuncOverride(ctx context.Context, fullMethodName string) *OAuth2MetadataProvider_AuthFuncOverride {
-	c := _m.On("AuthFuncOverride", ctx, fullMethodName)
-	return &OAuth2MetadataProvider_AuthFuncOverride{Call: c}
-}
-
-func (_m *OAuth2MetadataProvider) OnAuthFuncOverrideMatch(matchers ...interface{}) *OAuth2MetadataProvider_AuthFuncOverride {
-	c := _m.On("AuthFuncOverride", matchers...)
-	return &OAuth2MetadataProvider_AuthFuncOverride{Call: c}
-}
-
-// AuthFuncOverride provides a mock function with given fields: ctx, fullMethodName
-func (_m *OAuth2MetadataProvider) AuthFuncOverride(ctx context.Context, fullMethodName string) (context.Context, error) {
-	ret := _m.Called(ctx, fullMethodName)
-
-	var r0 context.Context
-	if rf, ok := ret.Get(0).(func(context.Context, string) context.Context); ok {
-		r0 = rf(ctx, fullMethodName)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(context.Context)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, fullMethodName)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 type OAuth2MetadataProvider_FlyteClient struct {
 	*mock.Call
 }

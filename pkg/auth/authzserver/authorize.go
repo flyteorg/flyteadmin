@@ -1,4 +1,4 @@
-package oauthserver
+package authzserver
 
 import (
 	"encoding/base64"
@@ -18,10 +18,9 @@ import (
 )
 
 const (
-	requestedScopePrefix   = "f."
-	accessTokenScope       = "access_token"
-	refreshTokenScope      = "offline"
-	codeChallengeFormParam = "code"
+	requestedScopePrefix = "f."
+	accessTokenScope     = "access_token"
+	refreshTokenScope    = "offline"
 )
 
 func getAuthEndpoint(authCtx interfaces.AuthenticationContext) http.HandlerFunc {
@@ -36,7 +35,7 @@ func getAuthCallbackEndpoint(authCtx interfaces.AuthenticationContext) http.Hand
 	}
 }
 
-func getIssuer(cfg *config.Config) string {
+func GetIssuer(cfg *config.Config) string {
 	if configIssuer := cfg.AppAuth.SelfAuthServer.Issuer; len(configIssuer) > 0 {
 		return configIssuer
 	}
@@ -63,8 +62,10 @@ func decryptString(encryptedEncoded string, blockKey [auth.SymmetricKeyLength]by
 	return string(raw), err
 }
 
+// authCallbackEndpoint is the endpoint that gets called after the user-auth flow finishes. It retrieves the original
+// /authorize request and issues an auth_code in response.
 func authCallbackEndpoint(authCtx interfaces.AuthenticationContext, rw http.ResponseWriter, req *http.Request) {
-	issuer := getIssuer(authCtx.Options())
+	issuer := GetIssuer(authCtx.Options())
 
 	// This context will be passed to all methods.
 	ctx := req.Context()
@@ -86,6 +87,7 @@ func authCallbackEndpoint(authCtx interfaces.AuthenticationContext, rw http.Resp
 		return
 	}
 
+	// Rehydrate the original auth code request
 	arUrl, err := authCtx.CookieManager().RetrieveAuthCodeRequest(ctx, req)
 	if err != nil {
 		logger.Infof(ctx, "Error occurred in NewAuthorizeRequest: %+v", err)
@@ -121,8 +123,7 @@ func authCallbackEndpoint(authCtx interfaces.AuthenticationContext, rw http.Resp
 	mySessionData.SetExpiresAt(fosite.AccessToken, time.Now().Add(time.Hour*24))
 
 	// Now we need to get a response. This is the place where the AuthorizeEndpointHandlers kick in and start processing the request.
-	// NewAuthorizeResponse is capable of running multiple response type handlers which in turn enables this library
-	// to support open id connect.
+	// NewAuthorizeResponse is capable of running multiple response type handlers.
 	response, err := oauth2Provider.NewAuthorizeResponse(ctx, ar, mySessionData)
 	if err != nil {
 		log.Printf("Error occurred in NewAuthorizeResponse: %+v", err)

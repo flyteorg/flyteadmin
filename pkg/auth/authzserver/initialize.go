@@ -1,10 +1,10 @@
-package oauthserver
+package authzserver
 
 import (
 	"crypto/rsa"
+
 	"github.com/ory/fosite/handler/oauth2"
 
-	"github.com/flyteorg/flyteadmin/pkg/auth"
 	"github.com/ory/fosite"
 
 	"github.com/flyteorg/flyteadmin/pkg/auth/interfaces"
@@ -13,10 +13,7 @@ import (
 	"github.com/ory/fosite/token/jwt"
 )
 
-var (
-	oauth2MetadataEndpoint = mustParseURL("/" + auth.OAuth2MetadataEndpoint)
-)
-
+// RegisterHandlers registers http endpoints for handling OAuth2 flow (/authorize,
 func RegisterHandlers(handler interfaces.HandlerRegisterer, authCtx interfaces.AuthenticationContext) {
 	if authCtx.OAuth2Provider() != nil {
 		// Set up oauthserver endpoints. You could also use gorilla/mux or any other router.
@@ -25,15 +22,13 @@ func RegisterHandlers(handler interfaces.HandlerRegisterer, authCtx interfaces.A
 		handler.HandleFunc(tokenRelativeUrl.String(), getTokenEndpointHandler(authCtx))
 		handler.HandleFunc(jsonWebKeysUrl.String(), GetJSONWebKeysEndpoint(authCtx))
 	}
-
-	// TODO: Support token revocation and introspection
-	// revoke tokens
-	//handler.HandleFunc("/oauthserver/revoke", revokeEndpoint)
-	// introspect tokens
-	//handler.HandleFunc("/oauthserver/introspect", introspectionEndpoint)
 }
 
-func composeOAuth2Provider(codeProvider oauth2.CoreStrategy, config *compose.Config, storage interface{}, key *rsa.PrivateKey) fosite.OAuth2Provider {
+// composeOAuth2Provider builds a fosite.OAuth2Provider that uses JWT for issuing access tokens and uses the provided
+// codeProvider to issue AuthCode and RefreshTokens.
+func composeOAuth2Provider(codeProvider oauth2.CoreStrategy, config *compose.Config, storage fosite.Storage,
+	key *rsa.PrivateKey) fosite.OAuth2Provider {
+
 	commonStrategy := &compose.CommonStrategy{
 		CoreStrategy:               codeProvider,
 		OpenIDConnectTokenStrategy: compose.NewOpenIDConnectStrategy(config, key),

@@ -18,11 +18,11 @@ server:
       - "Content-Type"
 auth:
   disableForGrpc: true
-  httpPublicUri: http://localhost:8088/
+  httpPublicUri: https://demo.nuclyde.io/
   appAuth:
     # Choose External if you will use an external Authorization Server (e.g. a Custom Authorization server in Okta)
     # Choose Self (or omit the value) to use Flyte Admin's internal (albeit limited) Authorization Server.
-    authServerType: External
+    #    authServerType: External
     thirdPartyConfig:
       flyteClient:
         clientId: flytectl
@@ -33,18 +33,17 @@ auth:
   userAuth:
     openId:
       # Put the URL of the OpenID Connect provider.
-      # baseUrl: https://accounts.google.com/ # Uncomment for Google
-      baseUrl: https://dev-14186422.okta.com/oauth2/auskngnn7uBViQq6b5d6 # Okta with a custom Authorization Server
+      baseUrl: https://accounts.google.com # Uncomment for Google
       scopes:
         - profile
         - openid
         # - offline_access # Uncomment if OIdC supports issuing refresh tokens.
       # Replace with the client id created for Flyte.
-      clientId: 0oakkheteNjCMERst5d6
+      clientId: 657465813211-6eog7ek7li5k7i7fvgv2921075063hpe.apps.googleusercontent.com
       # Replace with the public facing URL of flyte admin (e.g. https://flyte.mycompany.io/callback)
-      callbackUrl: "http://localhost:8088/callback"
+      callbackUrl: "https://demo.nuclyde.io/callback"
       # Replace with the flyte console's URL (e.g. https://flyte.mycompany.io/console)
-      redirectUrl: "/api/v1/projects"
+      redirectUrl: "https://demo.nuclyde.io/console"
 flyteadmin:
   runScheduler: false
   roleNameKey: "iam.amazonaws.com/role"

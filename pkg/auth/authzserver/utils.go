@@ -1,4 +1,4 @@
-package oauthserver
+package authzserver
 
 import "github.com/ory/fosite"
 

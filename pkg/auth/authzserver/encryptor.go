@@ -1,4 +1,4 @@
-package oauthserver
+package authzserver
 
 type Encryptor interface {
 	Encrypt(raw string) (cypher string, err error)

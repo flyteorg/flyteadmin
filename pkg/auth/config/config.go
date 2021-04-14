@@ -42,7 +42,7 @@ const (
 )
 
 var (
-	defaultConfig = &Config{
+	DefaultConfig = &Config{
 		// Please see the comments in this struct's definition for more information
 		HTTPAuthorizationHeader: "flyte-authorization",
 		GrpcAuthorizationHeader: "flyte-authorization",
@@ -61,6 +61,9 @@ var (
 		},
 		AppAuth: OAuth2Options{
 			AuthServerType: AuthorizationServerTypeSelf,
+			ThirdParty: ThirdPartyConfigOptions{
+				//...
+			},
 			SelfAuthServer: AuthorizationServer{
 				AccessTokenLifespan:                   config.Duration{Duration: 30 * time.Minute},
 				RefreshTokenLifespan:                  config.Duration{Duration: 60 * time.Minute},
@@ -98,7 +101,7 @@ var (
 		},
 	}
 
-	cfgSection = config.MustRegisterSection("auth", defaultConfig)
+	cfgSection = config.MustRegisterSection("auth", DefaultConfig)
 )
 
 type Config struct {

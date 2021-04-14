@@ -1,4 +1,4 @@
-package oauthserver
+package authzserver
 
 import (
 	"net/http"
@@ -64,7 +64,7 @@ func tokenEndpoint(authCtx interfaces.AuthenticationContext, rw http.ResponseWri
 			fositeAccessRequest.GrantScope(strings.TrimPrefix(scope, requestedScopePrefix))
 		}
 
-		issuer := getIssuer(authCtx.Options())
+		issuer := GetIssuer(authCtx.Options())
 		fositeAccessRequest.GrantAudience(issuer)
 	} else {
 		logger.Infof(ctx, "Unsupported grant types [%+v]", fositeAccessRequest.GetGrantTypes())

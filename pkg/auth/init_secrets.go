@@ -41,7 +41,7 @@ func GetInitSecretsCommand() *cobra.Command {
 		Short: "Generates secrets needed for OpenIDC and OAuth2 providers",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			secrets, err := createSecrets()
+			secrets, err := NewSecrets()
 			if err != nil {
 				return err
 			}
@@ -118,7 +118,7 @@ func writeSecrets(ctx context.Context, secrets SecretsSet, path string) error {
 	return nil
 }
 
-func createSecrets() (SecretsSet, error) {
+func NewSecrets() (SecretsSet, error) {
 	secret := make([]byte, SymmetricKeyLength)
 	_, err := rand.Read(secret)
 	if err != nil {

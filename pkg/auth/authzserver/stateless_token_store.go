@@ -1,4 +1,4 @@
-package oauthserver
+package authzserver
 
 import (
 	"context"
@@ -158,6 +158,7 @@ func (s StatelessTokenStore) DeleteRefreshTokenSession(_ context.Context, _ stri
 // strategy.
 type StatelessCodeProvider struct {
 	oauth22.CoreStrategy
+	accessTokenLifespan       time.Duration
 	authorizationCodeLifespan time.Duration
 	refreshTokenLifespan      time.Duration
 	blockKey                  [auth.SymmetricKeyLength]byte
@@ -165,6 +166,11 @@ type StatelessCodeProvider struct {
 
 func (p StatelessCodeProvider) AuthorizeCodeSignature(token string) string {
 	return token
+}
+
+func (p StatelessCodeProvider) GenerateAccessToken(ctx context.Context, requester fosite.Requester) (token string, signature string, err error) {
+	requester.GetSession().SetExpiresAt(fosite.AccessToken, time.Now().Add(p.accessTokenLifespan))
+	return p.CoreStrategy.GenerateAccessToken(ctx, requester)
 }
 
 func (p StatelessCodeProvider) GenerateAuthorizeCode(ctx context.Context, requester fosite.Requester) (token string, signature string, err error) {
@@ -263,6 +269,7 @@ func (p StatelessCodeProvider) ValidateRefreshToken(ctx context.Context, request
 func NewStatelessCodeProvider(cfg config.AuthorizationServer, blockKey [auth.SymmetricKeyLength]byte, strategy oauth22.CoreStrategy) StatelessCodeProvider {
 	return StatelessCodeProvider{
 		CoreStrategy:              strategy,
+		accessTokenLifespan:       cfg.AccessTokenLifespan.Duration,
 		authorizationCodeLifespan: cfg.AuthorizationCodeLifespan.Duration,
 		refreshTokenLifespan:      cfg.RefreshTokenLifespan.Duration,
 		blockKey:                  blockKey,

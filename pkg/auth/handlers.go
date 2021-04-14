@@ -349,8 +349,8 @@ func IdentityContextFromRequest(ctx context.Context, req *http.Request, authCtx 
 	}
 
 	idToken, _, _, err := authCtx.CookieManager().RetrieveTokenValues(ctx, req)
-	if len(idToken) == 0 {
-		return nil, fmt.Errorf("unauthenticated request. Error: %w", err)
+	if err != nil || len(idToken) == 0 {
+		return nil, fmt.Errorf("unauthenticated request. IDToken Len [%v], Error: %w", len(idToken), err)
 	}
 
 	userInfo, err := authCtx.CookieManager().RetrieveUserInfo(ctx, req)
