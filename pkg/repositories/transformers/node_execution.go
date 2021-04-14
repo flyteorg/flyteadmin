@@ -181,8 +181,7 @@ func UpdateNodeExecutionModel(
 		}
 		if request.Event.GetTaskNodeMetadata().DynamicWorkflow != nil {
 			targetMetadata.TaskNodeMetadata.DynamicWorkflow = &admin.DynamicWorkflowNodeMetadata{
-				Id:               request.Event.GetTaskNodeMetadata().DynamicWorkflow.Id,
-				CompiledWorkflow: request.Event.GetTaskNodeMetadata().DynamicWorkflow.CompiledWorkflow,
+				Id: request.Event.GetTaskNodeMetadata().DynamicWorkflow.Id,
 			}
 		}
 		nodeExecutionClosure.TargetMetadata = targetMetadata

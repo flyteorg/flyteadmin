@@ -260,8 +260,7 @@ func TestUpdateNodeExecutionModel(t *testing.T) {
 					CacheStatus: request.Event.GetTaskNodeMetadata().CacheStatus,
 					CatalogKey:  request.Event.GetTaskNodeMetadata().CatalogKey,
 					DynamicWorkflow: &admin.DynamicWorkflowNodeMetadata{
-						Id:               request.Event.GetTaskNodeMetadata().DynamicWorkflow.Id,
-						CompiledWorkflow: request.Event.GetTaskNodeMetadata().DynamicWorkflow.CompiledWorkflow,
+						Id: request.Event.GetTaskNodeMetadata().DynamicWorkflow.Id,
 					},
 				},
 			},

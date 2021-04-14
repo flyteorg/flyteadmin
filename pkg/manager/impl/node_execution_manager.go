@@ -54,6 +54,7 @@ type nodeExecutionMetrics struct {
 type NodeExecutionManager struct {
 	db             repositories.RepositoryInterface
 	config         runtimeInterfaces.Configuration
+	storagePrefix  []string
 	storageClient  *storage.DataStore
 	metrics        nodeExecutionMetrics
 	urlData        dataInterfaces.RemoteURLInterface
@@ -138,6 +139,15 @@ func (m *NodeExecutionManager) createNodeExecutionWithEvent(
 		return err
 	}
 	m.metrics.ClosureSizeBytes.Observe(float64(len(nodeExecutionModel.Closure)))
+	if request.Event.GetTaskNodeMetadata() != nil && request.Event.GetTaskNodeMetadata().DynamicWorkflow != nil {
+		_, err := util.WriteCompiledWorkflow(ctx, m.db, m.storagePrefix, m.storageClient,
+			request.Event.GetTaskNodeMetadata().DynamicWorkflow.Id, &admin.WorkflowClosure{
+				CompiledWorkflow: request.Event.GetTaskNodeMetadata().DynamicWorkflow.CompiledWorkflow,
+			})
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -434,7 +444,7 @@ func (m *NodeExecutionManager) GetNodeExecutionData(
 }
 
 func NewNodeExecutionManager(db repositories.RepositoryInterface, config runtimeInterfaces.Configuration,
-	storageClient *storage.DataStore, scope promutils.Scope, urlData dataInterfaces.RemoteURLInterface,
+	storagePrefix []string, storageClient *storage.DataStore, scope promutils.Scope, urlData dataInterfaces.RemoteURLInterface,
 	eventPublisher notificationInterfaces.Publisher, eventWriter eventWriter.NodeExecutionEventWriter) interfaces.NodeExecutionInterface {
 	metrics := nodeExecutionMetrics{
 		Scope: scope,
@@ -458,8 +468,10 @@ func NewNodeExecutionManager(db repositories.RepositoryInterface, config runtime
 			"overall count of publish event errors when invoking publish()"),
 	}
 	return &NodeExecutionManager{
-		db:             db,
-		config:         config,
+		db:     db,
+		config: config,
+
+		storagePrefix:  storagePrefix,
 		storageClient:  storageClient,
 		metrics:        metrics,
 		urlData:        urlData,

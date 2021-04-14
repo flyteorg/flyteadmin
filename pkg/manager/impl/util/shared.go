@@ -2,6 +2,7 @@
 package util
 
 import (
+	"bytes"
 	"context"
 	"time"
 
@@ -19,6 +20,8 @@ import (
 	"github.com/flyteorg/flytestdlib/storage"
 	"google.golang.org/grpc/codes"
 )
+
+var defaultStorageOptions = storage.Options{}
 
 func GetExecutionName(request admin.ExecutionCreateRequest) string {
 	if request.Name != "" {
@@ -40,6 +43,78 @@ func GetTask(ctx context.Context, repo repositories.RepositoryInterface, identif
 		return nil, err
 	}
 	return &task, nil
+}
+
+func createDataReference(
+	ctx context.Context, identifier *core.Identifier, storagePrefix []string, storageClient *storage.DataStore) (
+	storage.DataReference, error) {
+	nestedSubKeys := []string{
+		identifier.Project,
+		identifier.Domain,
+		identifier.Name,
+		identifier.Version,
+	}
+	nestedKeys := append(storagePrefix, nestedSubKeys...)
+	return storageClient.ConstructReference(ctx, storageClient.GetBaseContainerFQN(ctx), nestedKeys...)
+}
+
+func WriteCompiledWorkflow(ctx context.Context, repo repositories.RepositoryInterface, storagePrefix []string,
+	storageClient *storage.DataStore, id *core.Identifier, workflowClosure *admin.WorkflowClosure) (
+	*models.Workflow, error) {
+	workflowDigest, err := GetWorkflowDigest(ctx, workflowClosure.CompiledWorkflow)
+	if err != nil {
+		logger.Errorf(ctx, "failed to compute workflow digest with err %v", err)
+		return nil, err
+	}
+
+	// Assert that a matching workflow doesn't already exist before uploading the workflow closure.
+	existingMatchingWorkflow, err := GetWorkflowModel(ctx, repo, *id)
+	// Check that no identical or conflicting workflows exist.
+	if err == nil {
+		// A workflow's structure is uniquely defined by its collection of nodes.
+		if bytes.Equal(workflowDigest, existingMatchingWorkflow.Digest) {
+			return nil, errors.NewFlyteAdminErrorf(
+				codes.AlreadyExists, "identical workflow already exists with id %v", id)
+		}
+		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
+			"workflow with different structure already exists with id %v", id)
+	} else if flyteAdminError, ok := err.(errors.FlyteAdminError); !ok || flyteAdminError.Code() != codes.NotFound {
+		logger.Debugf(ctx, "Failed to get workflow for comparison in CreateWorkflow with ID [%+v] with err %v",
+			id, err)
+		return nil, err
+	}
+
+	remoteClosureDataRef, err := createDataReference(ctx, id, storagePrefix, storageClient)
+	if err != nil {
+		logger.Infof(ctx, "failed to construct data reference for workflow closure with id [%+v] with err %v",
+			id, err)
+		return nil, errors.NewFlyteAdminErrorf(codes.Internal,
+			"failed to construct data reference for workflow closure with id [%+v] and err %v", id, err)
+	}
+	err = storageClient.WriteProtobuf(ctx, remoteClosureDataRef, defaultStorageOptions, workflowClosure)
+
+	if err != nil {
+		logger.Infof(ctx,
+			"failed to write marshaled workflow with id [%+v] to storage %s with err %v and base container: %s",
+			id, remoteClosureDataRef.String(), err, storageClient.GetBaseContainerFQN(ctx))
+		return nil, errors.NewFlyteAdminErrorf(codes.Internal,
+			"failed to write marshaled workflow [%+v] to storage %s with err %v and base container: %s",
+			id, remoteClosureDataRef.String(), err, storageClient.GetBaseContainerFQN(ctx))
+	}
+	// Save the workflow & its reference to the offloaded, compiled workflow in the database.
+	workflowModel, err := transformers.CreateWorkflowModel(
+		id, remoteClosureDataRef.String(), workflowClosure.CompiledWorkflow.Primary.Template.Interface, workflowDigest)
+	if err != nil {
+		logger.Errorf(ctx,
+			"Failed to transform workflow model for workflow [%+v] and remoteClosureIdentifier [%s] with err: %v",
+			id, remoteClosureDataRef.String(), err)
+		return nil, err
+	}
+	if err = repo.WorkflowRepo().Create(ctx, workflowModel); err != nil {
+		logger.Infof(ctx, "Failed to create workflow model [%+v] with err %v", id, err)
+		return nil, err
+	}
+	return &workflowModel, nil
 }
 
 func GetWorkflowModel(
