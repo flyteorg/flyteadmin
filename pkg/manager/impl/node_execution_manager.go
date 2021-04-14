@@ -226,7 +226,7 @@ func (m *NodeExecutionManager) CreateNodeEvent(ctx context.Context, request admi
 	}
 	m.dbEventWriter.Write(request)
 
-	// If the request references a dynamically compiled subworklow in the node, serialize that to the db.
+	// If the request references a dynamically compiled subworkflow in the node metadata, serialize that to the db.
 	if request.Event.GetTaskNodeMetadata() != nil && request.Event.GetTaskNodeMetadata().DynamicWorkflow != nil {
 		_, err := util.WriteCompiledWorkflow(ctx, m.db, m.storagePrefix, m.storageClient,
 			request.Event.GetTaskNodeMetadata().DynamicWorkflow.Id, &admin.WorkflowClosure{
@@ -271,6 +271,21 @@ func (m *NodeExecutionManager) GetNodeExecution(
 	if err != nil {
 		logger.Debugf(ctx, "failed to transform node execution model [%+v] to proto with err: %v", request.Id, err)
 		return nil, err
+	}
+	if nodeExecution.Closure.GetTaskNodeMetadata() != nil &&
+		nodeExecution.Closure.GetTaskNodeMetadata().DynamicWorkflow != nil &&
+		nodeExecution.Closure.GetTaskNodeMetadata().DynamicWorkflow.Id != nil {
+		dynamicWf, err := util.GetWorkflow(ctx, m.db, m.storageClient, *nodeExecution.Closure.GetTaskNodeMetadata().DynamicWorkflow.Id)
+		if err != nil {
+			logger.Warnf(ctx, "failed to fetch dynamic workflow definition for node [%+v] with err: %v", request.Id, err)
+		}
+		if dynamicWf.Closure != nil {
+			taskNodeMetadata := nodeExecution.Closure.GetTaskNodeMetadata()
+			taskNodeMetadata.DynamicWorkflow.CompiledWorkflow = dynamicWf.Closure.CompiledWorkflow
+			nodeExecution.Closure.TargetMetadata = &admin.NodeExecutionClosure_TaskNodeMetadata{
+				TaskNodeMetadata: taskNodeMetadata,
+			}
+		}
 	}
 	return nodeExecution, nil
 }

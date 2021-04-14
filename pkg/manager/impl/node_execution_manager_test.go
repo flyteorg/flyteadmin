@@ -487,6 +487,91 @@ func TestGetNodeExecutionParentNode(t *testing.T) {
 	}, nodeExecution))
 }
 
+func TestGetNodeExecution_DynamicWorkflowNode(t *testing.T) {
+	repository := repositoryMocks.NewMockRepository()
+
+	dynamicWorkflowID := &core.Identifier{
+		Project: "proj2",
+		Domain:  "domain2",
+		Name:    "dynamic_workflow",
+		Version: "abc234",
+	}
+	workflowClosure := testutils.GetWorkflowClosure()
+
+	expectedClosure := admin.NodeExecutionClosure{
+		Phase: core.NodeExecution_SUCCEEDED,
+		TargetMetadata: &admin.NodeExecutionClosure_TaskNodeMetadata{
+			TaskNodeMetadata: &admin.TaskNodeMetadata{
+				DynamicWorkflow: &admin.DynamicWorkflowNodeMetadata{
+					Id:               dynamicWorkflowID,
+					CompiledWorkflow: workflowClosure.CompiledWorkflow,
+				},
+			},
+		},
+	}
+	expectedMetadata := admin.NodeExecutionMetaData{
+		SpecNodeId: "spec_node_id",
+		RetryGroup: "retry_group",
+	}
+	metadataBytes, _ := proto.Marshal(&expectedMetadata)
+	closureBytes, _ := proto.Marshal(&expectedClosure)
+	repository.NodeExecutionRepo().(*repositoryMocks.MockNodeExecutionRepo).SetGetCallback(
+		func(ctx context.Context, input interfaces.NodeExecutionResource) (models.NodeExecution, error) {
+			return models.NodeExecution{
+				NodeExecutionKey: models.NodeExecutionKey{
+					NodeID: "node id",
+					ExecutionKey: models.ExecutionKey{
+						Project: "project",
+						Domain:  "domain",
+						Name:    "name",
+					},
+				},
+				Phase:                 core.NodeExecution_SUCCEEDED.String(),
+				InputURI:              "input uri",
+				StartedAt:             &occurredAt,
+				Closure:               closureBytes,
+				NodeExecutionMetadata: metadataBytes,
+			}, nil
+		})
+	repository.WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetGetCallback(func(input interfaces.Identifier) (models.Workflow, error) {
+		assert.Equal(t, interfaces.Identifier{
+			Project: dynamicWorkflowID.Project,
+			Domain:  dynamicWorkflowID.Domain,
+			Name:    dynamicWorkflowID.Name,
+			Version: dynamicWorkflowID.Version,
+		}, input)
+		return models.Workflow{
+			WorkflowKey: models.WorkflowKey{
+				Project: dynamicWorkflowID.Project,
+				Domain:  dynamicWorkflowID.Domain,
+				Name:    dynamicWorkflowID.Name,
+				Version: dynamicWorkflowID.Version,
+			},
+			TypedInterface:          testutils.GetWorkflowRequestInterfaceBytes(),
+			RemoteClosureIdentifier: remoteClosureIdentifier,
+		}, nil
+	})
+	mockStorageClient := commonMocks.GetMockStorageClient()
+	mockStorageClient.ComposedProtobufStore.(*commonMocks.TestDataStore).ReadProtobufCb =
+		func(ctx context.Context, reference storage.DataReference, msg proto.Message) error {
+			assert.Equal(t, remoteClosureIdentifier, reference.String())
+			bytes, _ := proto.Marshal(workflowClosure)
+			_ = proto.Unmarshal(bytes, msg)
+			return nil
+		}
+	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(), storagePrefix, mockStorageClient, mockScope.NewTestScope(), mockNodeExecutionRemoteURL, nil, &eventWriterMocks.NodeExecutionEventWriter{})
+	nodeExecution, err := nodeExecManager.GetNodeExecution(context.Background(), admin.NodeExecutionGetRequest{
+		Id: &nodeExecutionIdentifier,
+	})
+	assert.Nil(t, err)
+	assert.True(t, proto.Equal(&admin.NodeExecution{
+		Id:       &nodeExecutionIdentifier,
+		InputUri: "input uri",
+		Closure:  &expectedClosure,
+		Metadata: &expectedMetadata,
+	}, nodeExecution))
+}
+
 func TestGetNodeExecution_DatabaseError(t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
 	expectedErr := errors.New("expected error")

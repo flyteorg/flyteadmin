@@ -129,6 +129,64 @@ func TestGetTask_TransformerError(t *testing.T) {
 	assert.Nil(t, task)
 }
 
+func TestCreateDataReference(t *testing.T) {
+	mockStorageClient := commonMocks.GetMockStorageClient()
+	dataReference, err := createDataReference(context.TODO(), &core.Identifier{
+		ResourceType: core.ResourceType_WORKFLOW,
+		Project:      "project",
+		Domain:       "domain",
+		Name:         "name",
+		Version:      "version",
+	}, []string{"admin", "metadata"}, mockStorageClient)
+	assert.NoError(t, err)
+	assert.Equal(t, storage.DataReference("s3://bucket/admin/metadata/project/domain/name/version"), dataReference)
+}
+
+func TestWriteCompiledWorkflow(t *testing.T) {
+	repository := repositoryMocks.NewMockRepository()
+	workflowID := core.Identifier{
+		ResourceType: core.ResourceType_WORKFLOW,
+		Project:      "project",
+		Domain:       "domain",
+		Name:         "name",
+		Version:      "version",
+	}
+	expectedClosureIdentifier := "s3://bucket/admin/metadata/project/domain/name/version"
+	repository.WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetCreateCallback(func(input models.Workflow) error {
+		assert.Equal(t, models.WorkflowKey{
+			Project: workflowID.Project,
+			Domain:  workflowID.Domain,
+			Name:    "name",
+			Version: "version",
+		}, input.WorkflowKey)
+		assert.Equal(t, expectedClosureIdentifier, input.RemoteClosureIdentifier)
+		typedInterface, _ := proto.Marshal(testutils.GetWorkflowClosure().CompiledWorkflow.Primary.Template.Interface)
+		assert.EqualValues(t, typedInterface, input.TypedInterface)
+		return nil
+	})
+	repository.WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetGetCallback(func(input interfaces.Identifier) (models.Workflow, error) {
+		return models.Workflow{}, flyteAdminErrors.NewFlyteAdminError(codes.NotFound, "foo")
+	})
+
+	workflowClosure := &admin.WorkflowClosure{
+		CompiledWorkflow: &core.CompiledWorkflowClosure{
+			Primary: &core.CompiledWorkflow{
+				Template: &core.WorkflowTemplate{
+					Id:        &workflowID,
+					Interface: testutils.GetWorkflowClosure().CompiledWorkflow.Primary.Template.Interface,
+				},
+			},
+		},
+	}
+	mockStorageClient := commonMocks.GetMockStorageClient()
+	mockStorageClient.ComposedProtobufStore.(*commonMocks.TestDataStore).WriteProtobufCb = func(
+		ctx context.Context, reference storage.DataReference, opts storage.Options, msg proto.Message) error {
+		assert.Equal(t, expectedClosureIdentifier, reference.String())
+		assert.True(t, proto.Equal(workflowClosure, msg))
+		return nil
+	}
+}
+
 func TestGetWorkflowModel(t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
 	workflowGetFunc := func(input interfaces.Identifier) (models.Workflow, error) {
