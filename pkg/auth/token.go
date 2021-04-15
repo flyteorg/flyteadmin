@@ -47,9 +47,17 @@ func GetRefreshedToken(ctx context.Context, oauth *oauth2.Config, accessToken, r
 }
 
 func ParseIDTokenAndValidate(ctx context.Context, clientID, rawIDToken string, provider *oidc.Provider) (*oidc.IDToken, error) {
-	var verifier = provider.Verifier(&oidc.Config{
+	cfg := &oidc.Config{
 		ClientID: clientID,
-	})
+	}
+
+	if len(clientID) == 0 {
+		cfg.SkipClientIDCheck = true
+		cfg.SkipIssuerCheck = true
+		cfg.SkipExpiryCheck = true
+	}
+
+	var verifier = provider.Verifier(cfg)
 
 	idToken, err := verifier.Verify(ctx, rawIDToken)
 	if err != nil {

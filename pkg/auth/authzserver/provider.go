@@ -59,7 +59,7 @@ func (p Provider) KeySet() jwk.Set {
 }
 
 // NewJWTSessionToken is a helper function for creating a new session.
-func (p Provider) NewJWTSessionToken(subject string, userInfoClaims interface{}, appID, issuer, audience string) *fositeOAuth2.JWTSession {
+func (p Provider) NewJWTSessionToken(subject, appID, issuer, audience string, userInfoClaims *service.UserInfoResponse) *fositeOAuth2.JWTSession {
 	key, found := p.keySet.Get(0)
 	keyID := ""
 	if found {
@@ -86,24 +86,37 @@ func (p Provider) NewJWTSessionToken(subject string, userInfoClaims interface{},
 	}
 }
 
+func findPublicKeyForTokenOrFirst(ctx context.Context, t *jwtgo.Token, publicKeys jwk.Set) (*rsa.PublicKey, error) {
+	if _, ok := t.Method.(*jwtgo.SigningMethodRSA); !ok {
+		return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+	}
+
+	if publicKeys.Len() == 0 {
+		return nil, fmt.Errorf("no keys exist to match")
+	}
+
+	publicKey := &rsa.PublicKey{}
+	k, _ := publicKeys.Get(0)
+	if err := k.Raw(publicKey); err != nil {
+		return nil, err
+	}
+
+	if keyID, found := t.Header[KeyIDClaim]; !found {
+		return publicKey, nil
+	} else if key, found := publicKeys.LookupKeyID(keyID.(string)); !found {
+		return publicKey, nil
+	} else if err := key.Raw(publicKey); err != nil {
+		logger.Errorf(ctx, "Failed to load public key from key [%v]. Will default to the first key. Error: %v", keyID)
+		return publicKey, nil
+	}
+
+	return publicKey, nil
+}
+
 func (p Provider) ValidateAccessToken(ctx context.Context, tokenStr string) (interfaces.IdentityContext, error) {
 	// Parse and validate the token.
 	parsedToken, err := jwtgo.Parse(tokenStr, func(t *jwtgo.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwtgo.SigningMethodRSA); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
-		}
-
-		publicKey := &rsa.PublicKey{}
-		if keyID, found := t.Header[KeyIDClaim]; !found {
-			return &p.PublicKeys()[0], nil
-		} else if key, found := p.keySet.LookupKeyID(keyID.(string)); !found {
-			return &p.PublicKeys()[0], nil
-		} else if err := key.Raw(publicKey); err != nil {
-			logger.Errorf(ctx, "Failed to load public key from key [%v]. Will default to the first key. Error: %v", keyID)
-			return &p.PublicKeys()[0], nil
-		} else {
-			return publicKey, nil
-		}
+		return findPublicKeyForTokenOrFirst(ctx, t, p.KeySet())
 	})
 
 	if err != nil {
@@ -115,28 +128,43 @@ func (p Provider) ValidateAccessToken(ctx context.Context, tokenStr string) (int
 	}
 
 	claimsRaw := parsedToken.Claims.(jwtgo.MapClaims)
+	return verifyClaims(p.audience, claimsRaw)
+}
+
+func verifyClaims(expectedAudience string, claimsRaw map[string]interface{}) (interfaces.IdentityContext, error) {
 	claims := jwtx.ParseMapStringInterfaceClaims(claimsRaw)
 	if len(claims.Audience) != 1 {
 		return nil, fmt.Errorf("expected exactly one granted audience. found [%v]", len(claims.Audience))
 	}
 
-	if claims.Audience[0] != p.audience {
+	if claims.Audience[0] != expectedAudience {
 		return nil, fmt.Errorf("invalid audience [%v]", claims.Audience[0])
 	}
 
-	userInfoRaw := claimsRaw[UserIDClaim].(map[string]interface{})
-	raw, err := json.Marshal(userInfoRaw)
-	if err != nil {
-		return nil, err
-	}
-
 	userInfo := &service.UserInfoResponse{}
-	if err = json.Unmarshal(raw, userInfo); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal user info claim into UserInfo type. Error: %w", err)
+	if userInfoClaim, found := claimsRaw[UserIDClaim]; found {
+		userInfoRaw := userInfoClaim.(map[string]interface{})
+		raw, err := json.Marshal(userInfoRaw)
+		if err != nil {
+			return nil, err
+		}
+
+		if err = json.Unmarshal(raw, userInfo); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal user info claim into UserInfo type. Error: %w", err)
+		}
 	}
 
-	return auth.NewIdentityContext(claims.Audience[0], claims.Subject, claimsRaw[ClientIDClaim].(string),
-		claims.IssuedAt, sets.NewString(interfaceSliceToStringSlice(claimsRaw[ScopeClaim].([]interface{}))...), userInfo), nil
+	clientID := ""
+	if clientIDClaim, found := claimsRaw[ClientIDClaim]; found {
+		clientID = clientIDClaim.(string)
+	}
+
+	scopes := sets.NewString()
+	if scopesClaim, found := claimsRaw[ScopeClaim]; found {
+		scopes = sets.NewString(interfaceSliceToStringSlice(scopesClaim.([]interface{}))...)
+	}
+
+	return auth.NewIdentityContext(claims.Audience[0], claims.Subject, clientID, claims.IssuedAt, scopes, userInfo), nil
 }
 
 // Creates a new OAuth2 Provider that is able to do OAuth 2-legged and 3-legged flows.

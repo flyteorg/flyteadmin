@@ -12,11 +12,8 @@ import (
 
 	"github.com/flyteorg/flytestdlib/config"
 
-	"github.com/flyteorg/flyteadmin/pkg/auth"
-	"github.com/ory/x/jwtx"
-	"k8s.io/apimachinery/pkg/util/sets"
-
 	"github.com/coreos/go-oidc"
+	"github.com/flyteorg/flyteadmin/pkg/auth"
 
 	authConfig "github.com/flyteorg/flyteadmin/pkg/auth/config"
 	"github.com/flyteorg/flyteadmin/pkg/auth/interfaces"
@@ -25,6 +22,7 @@ import (
 )
 
 type ResourceServer struct {
+	expectedAudience  string
 	signatureVerifier oidc.KeySet
 }
 
@@ -39,32 +37,7 @@ func (r ResourceServer) ValidateAccessToken(ctx context.Context, tokenStr string
 		return nil, fmt.Errorf("failed to unmarshal user info claim into UserInfo type. Error: %w", err)
 	}
 
-	claims := jwtx.ParseMapStringInterfaceClaims(claimsRaw)
-	userInfo := &service.UserInfoResponse{}
-	if userIdClaim, found := claimsRaw[UserIDClaim]; found {
-		userInfoRaw := userIdClaim.(map[string]interface{})
-		raw, err := json.Marshal(userInfoRaw)
-		if err != nil {
-			return nil, err
-		}
-
-		userInfo := &service.UserInfoResponse{}
-		if err = json.Unmarshal(raw, userInfo); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal user info claim into UserInfo type. Error: %w", err)
-		}
-	}
-
-	clientID := ""
-	if clientIDClaim, found := claimsRaw[ClientIDClaim]; found {
-		clientID = clientIDClaim.(string)
-	}
-
-	scopes := sets.NewString()
-	if scopesClaim, found := claimsRaw[ScopeClaim]; found {
-		scopes = sets.NewString(interfaceSliceToStringSlice(scopesClaim.([]interface{}))...)
-	}
-
-	return auth.NewIdentityContext(claims.Audience[0], claims.Subject, clientID, claims.IssuedAt, scopes, userInfo), nil
+	return verifyClaims(r.expectedAudience, claimsRaw)
 }
 
 func doRequest(ctx context.Context, req *http.Request) (*http.Response, error) {
@@ -126,7 +99,7 @@ func getJwksForIssuer(ctx context.Context, issuerBaseUrl url.URL) (oidc.KeySet, 
 	return oidc.NewRemoteKeySet(ctx, p.JwksUri), nil
 }
 
-func NewOAuth2ResourceServer(ctx context.Context, cfg authConfig.ExternalAuthorizationServer, fallbackBaseURL config.URL) (ResourceServer, error) {
+func NewOAuth2ResourceServer(ctx context.Context, expectedAudience string, cfg authConfig.ExternalAuthorizationServer, fallbackBaseURL config.URL) (ResourceServer, error) {
 	u := cfg.BaseURL
 	if len(u.String()) == 0 {
 		u = fallbackBaseURL
@@ -138,6 +111,7 @@ func NewOAuth2ResourceServer(ctx context.Context, cfg authConfig.ExternalAuthori
 	}
 
 	return ResourceServer{
+		expectedAudience:  expectedAudience,
 		signatureVerifier: verifier,
 	}, nil
 }

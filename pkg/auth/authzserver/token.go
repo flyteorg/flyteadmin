@@ -29,7 +29,7 @@ func tokenEndpoint(authCtx interfaces.AuthenticationContext, rw http.ResponseWri
 	oauth2Provider := authCtx.OAuth2Provider()
 
 	// Create an empty session object which will be passed to the request handlers
-	emptySession := oauth2Provider.NewJWTSessionToken("", nil, "", "", "")
+	emptySession := oauth2Provider.NewJWTSessionToken("", "", "", "", nil)
 
 	// This will create an access request object and iterate through the registered TokenEndpointHandlers to validate the request.
 	accessRequest, err := oauth2Provider.NewAccessRequest(ctx, req, emptySession)

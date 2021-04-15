@@ -221,7 +221,7 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig, authCfg
 
 			oauth2ResourceServer = oauth2Provider
 		} else {
-			oauth2ResourceServer, err = authzserver.NewOAuth2ResourceServer(ctx, authCfg.AppAuth.ExternalAuthServer, authCfg.UserAuth.OpenID.BaseURL)
+			oauth2ResourceServer, err = authzserver.NewOAuth2ResourceServer(ctx, authzserver.GetIssuer(authCfg), authCfg.AppAuth.ExternalAuthServer, authCfg.UserAuth.OpenID.BaseURL)
 			if err != nil {
 				logger.Errorf(ctx, "Error creating resource server %s", err)
 				return err
@@ -315,7 +315,7 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig, authCfg *
 
 			oauth2ResourceServer = oauth2Provider
 		} else {
-			oauth2ResourceServer, err = authzserver.NewOAuth2ResourceServer(ctx, authCfg.AppAuth.ExternalAuthServer, authCfg.UserAuth.OpenID.BaseURL)
+			oauth2ResourceServer, err = authzserver.NewOAuth2ResourceServer(ctx, authzserver.GetIssuer(authCfg), authCfg.AppAuth.ExternalAuthServer, authCfg.UserAuth.OpenID.BaseURL)
 			if err != nil {
 				logger.Errorf(ctx, "Error creating resource server %s", err)
 				return err

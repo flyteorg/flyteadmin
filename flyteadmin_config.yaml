@@ -33,17 +33,17 @@ auth:
   userAuth:
     openId:
       # Put the URL of the OpenID Connect provider.
-      baseUrl: https://accounts.google.com # Uncomment for Google
+      baseUrl: https://dev-14186422.okta.com/oauth2/auskngnn7uBViQq6b5d6
       scopes:
         - profile
         - openid
         # - offline_access # Uncomment if OIdC supports issuing refresh tokens.
       # Replace with the client id created for Flyte.
-      clientId: 657465813211-6eog7ek7li5k7i7fvgv2921075063hpe.apps.googleusercontent.com
+      clientId: 0oakkheteNjCMERst5d6
       # Replace with the public facing URL of flyte admin (e.g. https://flyte.mycompany.io/callback)
-      callbackUrl: "https://demo.nuclyde.io/callback"
+      callbackUrl: "http://localhost:8088/callback"
       # Replace with the flyte console's URL (e.g. https://flyte.mycompany.io/console)
-      redirectUrl: "https://demo.nuclyde.io/console"
+      redirectUrl: "/api/v1/projects"
 flyteadmin:
   runScheduler: false
   roleNameKey: "iam.amazonaws.com/role"

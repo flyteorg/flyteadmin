@@ -30,7 +30,7 @@ type HandlerRegisterer interface {
 type OAuth2Provider interface {
 	fosite.OAuth2Provider
 	OAuth2ResourceServer
-	NewJWTSessionToken(subject string, userInfoClaims interface{}, appID, issuer, audience string) *fositeOAuth2.JWTSession
+	NewJWTSessionToken(subject, appID, issuer, audience string, userInfoClaims *service.UserInfoResponse) *fositeOAuth2.JWTSession
 	KeySet() jwk.Set
 }
 

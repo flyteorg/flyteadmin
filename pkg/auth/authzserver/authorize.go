@@ -117,7 +117,7 @@ func authCallbackEndpoint(authCtx interfaces.AuthenticationContext, rw http.Resp
 	}
 
 	// Now that the user is authorized, we set up a session:
-	mySessionData := oauth2Provider.NewJWTSessionToken(identityContext.UserID(), userInfo, ar.GetClient().GetID(), issuer, issuer)
+	mySessionData := oauth2Provider.NewJWTSessionToken(identityContext.UserID(), ar.GetClient().GetID(), issuer, issuer, userInfo)
 	mySessionData.JWTClaims.ExpiresAt = time.Now().Add(time.Hour * 24)
 	mySessionData.SetExpiresAt(fosite.AuthorizeCode, time.Now().Add(time.Hour*24))
 	mySessionData.SetExpiresAt(fosite.AccessToken, time.Now().Add(time.Hour*24))

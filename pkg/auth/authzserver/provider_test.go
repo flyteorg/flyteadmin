@@ -1,186 +1,237 @@
 package authzserver
 
 import (
+	"bytes"
 	"context"
 	"crypto/rsa"
-	"github.com/flyteorg/flyteadmin/pkg/auth/config"
-	"github.com/flyteorg/flyteadmin/pkg/auth/interfaces"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/lestrrat-go/jwx/jwk"
-	"github.com/ory/fosite"
-	fositeOAuth2 "github.com/ory/fosite/handler/oauth2"
-	"reflect"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/pem"
+	"fmt"
 	"testing"
+	"time"
+
+	"k8s.io/apimachinery/pkg/util/sets"
+
+	jwtgo "github.com/dgrijalva/jwt-go"
+
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
+
+	"github.com/flyteorg/flyteadmin/pkg/auth"
+	"github.com/flyteorg/flyteadmin/pkg/auth/config"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
+	"github.com/stretchr/testify/assert"
 )
 
+func newMockProvider(t testing.TB) Provider {
+	secrets, err := auth.NewSecrets()
+	assert.NoError(t, err)
+
+	ctx := context.Background()
+	sm := &mocks.SecretManager{}
+	sm.OnGet(ctx, config.SecretClaimSymmetricKey).Return(base64.RawStdEncoding.EncodeToString(secrets.TokenHashKey), nil)
+	sm.OnGet(ctx, config.SecretCookieBlockKey).Return(base64.RawStdEncoding.EncodeToString(secrets.CookieBlockKey), nil)
+	sm.OnGet(ctx, config.SecretCookieHashKey).Return(base64.RawStdEncoding.EncodeToString(secrets.CookieHashKey), nil)
+
+	privBytes := x509.MarshalPKCS1PrivateKey(secrets.TokenSigningRSAPrivateKey)
+	var buf bytes.Buffer
+	assert.NoError(t, pem.Encode(&buf, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: privBytes}))
+	sm.OnGet(ctx, config.SecretTokenSigningRSAKey).Return(buf.String(), nil)
+	sm.OnGet(ctx, config.SecretOldTokenSigningRSAKey).Return("", fmt.Errorf("not found"))
+
+	p, err := NewProvider(ctx, config.DefaultConfig.AppAuth.SelfAuthServer, "https://myserver", sm)
+	assert.NoError(t, err)
+	return p
+}
+
 func TestNewProvider(t *testing.T) {
-	type args struct {
-		ctx      context.Context
-		cfg      config.AuthorizationServer
-		audience string
-		sm       core.SecretManager
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    Provider
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewProvider(tt.args.ctx, tt.args.cfg, tt.args.audience, tt.args.sm)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NewProvider() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewProvider() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
+	newMockProvider(t)
 }
 
 func TestProvider_KeySet(t *testing.T) {
-	type fields struct {
-		OAuth2Provider fosite.OAuth2Provider
-		audience       string
-		cfg            config.AuthorizationServer
-		publicKey      []rsa.PublicKey
-		keySet         jwk.Set
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   jwk.Set
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := Provider{
-				OAuth2Provider: tt.fields.OAuth2Provider,
-				audience:       tt.fields.audience,
-				cfg:            tt.fields.cfg,
-				publicKey:      tt.fields.publicKey,
-				keySet:         tt.fields.keySet,
-			}
-			if got := p.KeySet(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("KeySet() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+	p := newMockProvider(t)
+	assert.Equal(t, 1, p.KeySet().Len())
 }
 
 func TestProvider_NewJWTSessionToken(t *testing.T) {
-	type fields struct {
-		OAuth2Provider fosite.OAuth2Provider
-		audience       string
-		cfg            config.AuthorizationServer
-		publicKey      []rsa.PublicKey
-		keySet         jwk.Set
-	}
-	type args struct {
-		subject        string
-		userInfoClaims interface{}
-		appID          string
-		issuer         string
-		audience       string
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   *fositeOAuth2.JWTSession
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := Provider{
-				OAuth2Provider: tt.fields.OAuth2Provider,
-				audience:       tt.fields.audience,
-				cfg:            tt.fields.cfg,
-				publicKey:      tt.fields.publicKey,
-				keySet:         tt.fields.keySet,
-			}
-			if got := p.NewJWTSessionToken(tt.args.subject, tt.args.userInfoClaims, tt.args.appID, tt.args.issuer, tt.args.audience); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewJWTSessionToken() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+	p := newMockProvider(t)
+	s := p.NewJWTSessionToken("userID", "appID", "my-issuer", "my-audience", &service.UserInfoResponse{
+		Email: "foo@localhost",
+	})
+
+	k, found := p.KeySet().Get(0)
+	assert.True(t, found)
+	assert.NotEmpty(t, k.KeyID())
+	assert.Equal(t, k.KeyID(), s.JWTHeader.Extra[KeyIDClaim])
 }
 
 func TestProvider_PublicKeys(t *testing.T) {
-	type fields struct {
-		OAuth2Provider fosite.OAuth2Provider
-		audience       string
-		cfg            config.AuthorizationServer
-		publicKey      []rsa.PublicKey
-		keySet         jwk.Set
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   []rsa.PublicKey
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := Provider{
-				OAuth2Provider: tt.fields.OAuth2Provider,
-				audience:       tt.fields.audience,
-				cfg:            tt.fields.cfg,
-				publicKey:      tt.fields.publicKey,
-				keySet:         tt.fields.keySet,
-			}
-			if got := p.PublicKeys(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("PublicKeys() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+	p := newMockProvider(t)
+	assert.Len(t, p.PublicKeys(), 1)
+}
+
+type CustomClaimsExample struct {
+	*jwtgo.StandardClaims
+	ClientID string   `json:"client_id"`
+	Scopes   []string `json:"scp"`
+	UserID   string   `json:"user_id"`
+}
+
+func TestProvider_findPublicKeyForTokenOrFirst(t *testing.T) {
+	ctx := context.Background()
+	secrets, err := auth.NewSecrets()
+	assert.NoError(t, err)
+
+	secrets2, err := auth.NewSecrets()
+	assert.NoError(t, err)
+
+	keySet, err := newJSONWebKeySet([]rsa.PublicKey{secrets.TokenSigningRSAPrivateKey.PublicKey, secrets2.TokenSigningRSAPrivateKey.PublicKey})
+	assert.NoError(t, err)
+
+	// set our claims
+	secondKey, found := keySet.Get(1)
+	assert.True(t, found)
+
+	t.Run("KeyID Exists", func(t *testing.T) {
+		// create a signer for rsa 256
+		tok := jwtgo.New(jwtgo.GetSigningMethod("RS256"))
+
+		tok.Header[KeyIDClaim] = secondKey.KeyID()
+		tok.Claims = &CustomClaimsExample{
+			StandardClaims: &jwtgo.StandardClaims{},
+		}
+
+		// Create token string
+		_, err = tok.SignedString(secrets2.TokenSigningRSAPrivateKey)
+		assert.NoError(t, err)
+
+		k, err := findPublicKeyForTokenOrFirst(ctx, tok, keySet)
+		assert.NoError(t, err)
+		assert.Equal(t, secrets2.TokenSigningRSAPrivateKey.PublicKey, *k)
+	})
+
+	t.Run("Unknown KeyID, Default to first key", func(t *testing.T) {
+		// create a signer for rsa 256
+		tok := jwtgo.New(jwtgo.GetSigningMethod("RS256"))
+
+		tok.Header[KeyIDClaim] = "not found"
+		tok.Claims = &CustomClaimsExample{
+			StandardClaims: &jwtgo.StandardClaims{
+				ExpiresAt: time.Now().Add(time.Minute * 1).Unix(),
+			},
+		}
+
+		// Create token string
+		_, err = tok.SignedString(secrets2.TokenSigningRSAPrivateKey)
+		assert.NoError(t, err)
+
+		k, err := findPublicKeyForTokenOrFirst(ctx, tok, keySet)
+		assert.NoError(t, err)
+		assert.Equal(t, secrets.TokenSigningRSAPrivateKey.PublicKey, *k)
+	})
+
+	t.Run("No KeyID Claim, Default to first key", func(t *testing.T) {
+		// create a signer for rsa 256
+		tok := jwtgo.New(jwtgo.GetSigningMethod("RS256"))
+
+		tok.Claims = &CustomClaimsExample{
+			StandardClaims: &jwtgo.StandardClaims{
+				ExpiresAt: time.Now().Add(time.Minute * 1).Unix(),
+			},
+		}
+
+		// Create token string
+		_, err = tok.SignedString(secrets2.TokenSigningRSAPrivateKey)
+		assert.NoError(t, err)
+
+		k, err := findPublicKeyForTokenOrFirst(ctx, tok, keySet)
+		assert.NoError(t, err)
+		assert.Equal(t, secrets.TokenSigningRSAPrivateKey.PublicKey, *k)
+	})
 }
 
 func TestProvider_ValidateAccessToken(t *testing.T) {
-	type fields struct {
-		OAuth2Provider fosite.OAuth2Provider
-		audience       string
-		cfg            config.AuthorizationServer
-		publicKey      []rsa.PublicKey
-		keySet         jwk.Set
-	}
-	type args struct {
-		ctx      context.Context
-		tokenStr string
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    interfaces.IdentityContext
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := Provider{
-				OAuth2Provider: tt.fields.OAuth2Provider,
-				audience:       tt.fields.audience,
-				cfg:            tt.fields.cfg,
-				publicKey:      tt.fields.publicKey,
-				keySet:         tt.fields.keySet,
-			}
-			got, err := p.ValidateAccessToken(tt.args.ctx, tt.args.tokenStr)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ValidateAccessToken() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ValidateAccessToken() got = %v, want %v", got, tt.want)
-			}
+	p := newMockProvider(t)
+	ctx := context.Background()
+
+	t.Run("Invalid JWT", func(t *testing.T) {
+		_, err := p.ValidateAccessToken(ctx, "abc")
+		assert.Error(t, err)
+	})
+
+	t.Run("Invalid Signature", func(t *testing.T) {
+		_, err := p.ValidateAccessToken(ctx, "sampleIDToken")
+		assert.Error(t, err)
+	})
+
+	t.Run("Valid", func(t *testing.T) {
+		ctx := context.Background()
+		secrets, err := auth.NewSecrets()
+		assert.NoError(t, err)
+
+		sm := &mocks.SecretManager{}
+		sm.OnGet(ctx, config.SecretClaimSymmetricKey).Return(base64.RawStdEncoding.EncodeToString(secrets.TokenHashKey), nil)
+		sm.OnGet(ctx, config.SecretCookieBlockKey).Return(base64.RawStdEncoding.EncodeToString(secrets.CookieBlockKey), nil)
+		sm.OnGet(ctx, config.SecretCookieHashKey).Return(base64.RawStdEncoding.EncodeToString(secrets.CookieHashKey), nil)
+
+		privBytes := x509.MarshalPKCS1PrivateKey(secrets.TokenSigningRSAPrivateKey)
+		var buf bytes.Buffer
+		assert.NoError(t, pem.Encode(&buf, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: privBytes}))
+		sm.OnGet(ctx, config.SecretTokenSigningRSAKey).Return(buf.String(), nil)
+		sm.OnGet(ctx, config.SecretOldTokenSigningRSAKey).Return("", fmt.Errorf("not found"))
+
+		p, err := NewProvider(ctx, config.DefaultConfig.AppAuth.SelfAuthServer, "https://myserver", sm)
+
+		// create a signer for rsa 256
+		tok := jwtgo.New(jwtgo.GetSigningMethod("RS256"))
+
+		keySet, err := newJSONWebKeySet([]rsa.PublicKey{secrets.TokenSigningRSAPrivateKey.PublicKey})
+		assert.NoError(t, err)
+
+		// set our claims
+		k, found := keySet.Get(0)
+		assert.True(t, found)
+
+		tok.Header[KeyIDClaim] = k.KeyID()
+		tok.Claims = &CustomClaimsExample{
+			StandardClaims: &jwtgo.StandardClaims{
+				Audience:  "https://myserver",
+				ExpiresAt: time.Now().Add(time.Minute * 1).Unix(),
+			},
+			ClientID: "client-1",
+			UserID:   "1234",
+			Scopes:   []string{"all"},
+		}
+
+		// Create token string
+		str, err := tok.SignedString(secrets.TokenSigningRSAPrivateKey)
+		assert.NoError(t, err)
+
+		identity, err := p.ValidateAccessToken(ctx, str)
+		assert.NoError(t, err)
+		assert.False(t, identity.IsEmpty())
+	})
+}
+
+func Test_verifyClaims(t *testing.T) {
+	t.Run("Empty claims, fail", func(t *testing.T) {
+		_, err := verifyClaims("https://myserver", map[string]interface{}{})
+		assert.Error(t, err)
+	})
+
+	t.Run("All filled", func(t *testing.T) {
+		identityCtx, err := verifyClaims("https://myserver", map[string]interface{}{
+			"aud": []string{"https://myserver"},
+			"user_info": map[string]interface{}{
+				"preferred_name": "John Doe",
+			},
+			"sub":       "123",
+			"client_id": "my-client",
+			"scp":       []interface{}{"all", "offline"},
 		})
-	}
+		assert.NoError(t, err)
+		assert.Equal(t, sets.NewString("all", "offline"), identityCtx.Scopes())
+		assert.Equal(t, "my-client", identityCtx.AppID())
+		assert.Equal(t, "123", identityCtx.UserID())
+	})
 }

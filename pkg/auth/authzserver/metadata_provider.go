@@ -2,7 +2,6 @@ package authzserver
 
 import (
 	"context"
-	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -59,7 +58,7 @@ func (s OAuth2MetadataProvider) OAuth2Metadata(context.Context, *service.OAuth2M
 		}
 
 		resp := &service.OAuth2MetadataResponse{}
-		err = json.Unmarshal(raw, resp)
+		err = unmarshalResp(response, raw, resp)
 		if err != nil {
 			return nil, err
 		}
