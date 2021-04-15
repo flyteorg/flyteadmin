@@ -30,6 +30,11 @@ k8s_integration_execute:
 compile:
 	go build -o flyteadmin -ldflags=$(LD_FLAGS) ./cmd/ && mv ./flyteadmin ${GOPATH}/bin
 
+.PHONY: compile_debug
+compile_debug:
+	go build -gcflags='all=-N -l' -o flyteadmin ./cmd/ && mv ./flyteadmin ${GOPATH}/bin
+
+
 .PHONY: linux_compile
 linux_compile:
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0  go build -o /artifacts/flyteadmin -ldflags=$(LD_FLAGS) ./cmd/
