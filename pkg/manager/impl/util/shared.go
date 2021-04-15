@@ -45,7 +45,7 @@ func GetTask(ctx context.Context, repo repositories.RepositoryInterface, identif
 	return &task, nil
 }
 
-func createDataReference(
+func CreateDataReference(
 	ctx context.Context, identifier *core.Identifier, storagePrefix []string, storageClient *storage.DataStore) (
 	storage.DataReference, error) {
 	nestedSubKeys := []string{
@@ -58,7 +58,27 @@ func createDataReference(
 	return storageClient.ConstructReference(ctx, storageClient.GetBaseContainerFQN(ctx), nestedKeys...)
 }
 
-func WriteCompiledWorkflow(ctx context.Context, repo repositories.RepositoryInterface, storagePrefix []string,
+func CreateDynamicWorkflowDataReference(
+	ctx context.Context, identifier *core.Identifier, nodeExecutionID *core.NodeExecutionIdentifier,
+	storagePrefix []string, storageClient *storage.DataStore) (
+	storage.DataReference, error) {
+	nestedSubKeys := []string{
+		identifier.Project,
+		identifier.Domain,
+		identifier.Name,
+		identifier.Version,
+		nodeExecutionID.ExecutionId.Project,
+		nodeExecutionID.ExecutionId.Domain,
+		nodeExecutionID.ExecutionId.Name,
+		nodeExecutionID.NodeId,
+	}
+	nestedKeys := append(storagePrefix, nestedSubKeys...)
+	return storageClient.ConstructReference(ctx, storageClient.GetBaseContainerFQN(ctx), nestedKeys...)
+}
+
+// This function takes a compiled workflow, and uses the storageClient to write the closure to a location specified by the
+// storagePrefix and then finally commits a database entry for workflow.
+func WriteCompiledWorkflow(ctx context.Context, repo repositories.RepositoryInterface, remoteClosureDataRef storage.DataReference,
 	storageClient *storage.DataStore, id *core.Identifier, workflowClosure *admin.WorkflowClosure) (
 	*models.Workflow, error) {
 	workflowDigest, err := GetWorkflowDigest(ctx, workflowClosure.CompiledWorkflow)
@@ -84,13 +104,6 @@ func WriteCompiledWorkflow(ctx context.Context, repo repositories.RepositoryInte
 		return nil, err
 	}
 
-	remoteClosureDataRef, err := createDataReference(ctx, id, storagePrefix, storageClient)
-	if err != nil {
-		logger.Infof(ctx, "failed to construct data reference for workflow closure with id [%+v] with err %v",
-			id, err)
-		return nil, errors.NewFlyteAdminErrorf(codes.Internal,
-			"failed to construct data reference for workflow closure with id [%+v] and err %v", id, err)
-	}
 	err = storageClient.WriteProtobuf(ctx, remoteClosureDataRef, defaultStorageOptions, workflowClosure)
 
 	if err != nil {

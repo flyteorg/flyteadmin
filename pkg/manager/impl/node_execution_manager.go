@@ -228,7 +228,14 @@ func (m *NodeExecutionManager) CreateNodeEvent(ctx context.Context, request admi
 
 	// If the request references a dynamically compiled subworkflow in the node metadata, serialize that to the db.
 	if request.Event.GetTaskNodeMetadata() != nil && request.Event.GetTaskNodeMetadata().DynamicWorkflow != nil {
-		_, err := util.WriteCompiledWorkflow(ctx, m.db, m.storagePrefix, m.storageClient,
+		remoteClosureDataRef, err := util.CreateDynamicWorkflowDataReference(ctx,
+			request.Event.GetTaskNodeMetadata().DynamicWorkflow.Id, request.Event.Id, m.storagePrefix, m.storageClient)
+		if err != nil {
+			return nil, errors.NewFlyteAdminErrorf(codes.Internal,
+				"Failed to create data reference for dynamic workflow closure for node [%+v] and workflow [%+v] with err: %v",
+				request.Event.GetTaskNodeMetadata().DynamicWorkflow.Id, request.Event.Id, err)
+		}
+		_, err = util.WriteCompiledWorkflow(ctx, m.db, remoteClosureDataRef, m.storageClient,
 			request.Event.GetTaskNodeMetadata().DynamicWorkflow.Id, &admin.WorkflowClosure{
 				CompiledWorkflow: request.Event.GetTaskNodeMetadata().DynamicWorkflow.CompiledWorkflow,
 			})

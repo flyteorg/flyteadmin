@@ -141,7 +141,12 @@ func (w *WorkflowManager) CreateWorkflow(
 		return nil, err
 	}
 
-	workflowModel, err := util.WriteCompiledWorkflow(ctx, w.db, w.storagePrefix, w.storageClient,
+	remoteClosureDataRef, err := util.CreateDataReference(ctx, request.Id, w.storagePrefix, w.storageClient)
+	if err != nil {
+		return nil, errors.NewFlyteAdminErrorf(codes.Internal,
+			"Failed to create data reference for workflow closure [%+v] with err: %v", request.Id, err)
+	}
+	workflowModel, err := util.WriteCompiledWorkflow(ctx, w.db, remoteClosureDataRef, w.storageClient,
 		request.Id, &workflowClosure)
 	if err != nil {
 		return nil, err
