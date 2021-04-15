@@ -45,6 +45,7 @@ func GetTask(ctx context.Context, repo repositories.RepositoryInterface, identif
 	return &task, nil
 }
 
+// Creates a unique data reference based on a provided storage prefix and identifier.
 func CreateDataReference(
 	ctx context.Context, identifier *core.Identifier, storagePrefix []string, storageClient *storage.DataStore) (
 	storage.DataReference, error) {
@@ -58,6 +59,8 @@ func CreateDataReference(
 	return storageClient.ConstructReference(ctx, storageClient.GetBaseContainerFQN(ctx), nestedKeys...)
 }
 
+// Creates a unique data reference for a workflow generated in a dynamic node.
+// Path is determined using provided storage prefix and workflow and node execution identifiers.
 func CreateDynamicWorkflowDataReference(
 	ctx context.Context, identifier *core.Identifier, nodeExecutionID *core.NodeExecutionIdentifier,
 	storagePrefix []string, storageClient *storage.DataStore) (
