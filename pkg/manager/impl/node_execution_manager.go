@@ -146,7 +146,7 @@ func (m *NodeExecutionManager) updateNodeExecutionWithEvent(
 	ctx context.Context, request *admin.NodeExecutionEventRequest, nodeExecutionModel *models.NodeExecution) (updateNodeExecutionStatus, error) {
 	// If we have an existing execution, check if the phase change is valid
 	nodeExecPhase := core.NodeExecution_Phase(core.NodeExecution_Phase_value[nodeExecutionModel.Phase])
-	if nodeExecPhase == request.Event.Phase {
+	if nodeExecPhase == request.Event.Phase && nodeExecutionModel.PhaseVersion >= request.Event.PhaseVersion {
 		logger.Debugf(ctx, "This phase was already recorded %v for %+v", nodeExecPhase.String(), request.Event.Id)
 		return updateFailed, errors.NewFlyteAdminErrorf(codes.AlreadyExists,
 			"This phase was already recorded %v for %+v", nodeExecPhase.String(), request.Event.Id)

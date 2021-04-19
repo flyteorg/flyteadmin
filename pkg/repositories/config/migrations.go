@@ -296,4 +296,13 @@ var Migrations = []*gormigrate.Migration{
 			return tx.Model(&models.Execution{}).DropColumn("user").Error
 		},
 	},
+	{
+		ID: "2021-04-19-phase-version-node-execution",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&models.NodeExecution{}).Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Model(&models.NodeExecution{}).DropColumn("phase_version").Error
+		},
+	},
 }
