@@ -112,6 +112,7 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authCtx interf
 		logger.Infof(ctx, "Creating gRPC server without authentication")
 		chainedUnaryInterceptors = grpc_middleware.ChainUnaryServer(grpcPrometheus.UnaryServerInterceptor)
 	}
+
 	serverOpts := []grpc.ServerOption{
 		grpc.StreamInterceptor(grpcPrometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(chainedUnaryInterceptors),
@@ -120,7 +121,9 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authCtx interf
 	grpcServer := grpc.NewServer(serverOpts...)
 	grpcPrometheus.Register(grpcServer)
 	flyteService.RegisterAdminServiceServer(grpcServer, adminservice.NewAdminServer(cfg.KubeConfig, cfg.Master))
-	flyteService.RegisterAuthServiceServer(grpcServer, authCtx.AuthService())
+	if cfg.Security.UseAuth {
+		flyteService.RegisterAuthServiceServer(grpcServer, authCtx.AuthService())
+	}
 
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
