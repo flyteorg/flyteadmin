@@ -22,8 +22,7 @@ import (
 )
 
 const (
-	encryptedCodeChallengeClaim = "challenge_code"
-	encryptedFormPostClaim      = "form"
+	encryptedFormPostClaim = "form"
 )
 
 var (

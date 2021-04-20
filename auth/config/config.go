@@ -13,16 +13,19 @@ import (
 //go:generate enumer --type=AuthorizationServerType --trimprefix=AuthorizationServerType -json
 
 const (
+	// #nosec
 	SecretOIdCClientSecret = "oidc_client_secret"
-
-	SecretCookieHashKey  = "cookie_hash_key"
+	// #nosec
+	SecretCookieHashKey = "cookie_hash_key"
+	// #nosec
 	SecretCookieBlockKey = "cookie_block_key"
-
+	// #nosec
 	// Base64 encoded secret of exactly 32 bytes
 	SecretClaimSymmetricKey = "claim_symmetric_key"
-
+	// #nosec
 	// PrivateKey is used to sign JWT tokens. The default strategy uses RS256 (RSA Signature with SHA-256)
 	SecretTokenSigningRSAKey = "token_rsa_key.pem"
+	// #nosec
 	// PrivateKey that was used to sign old JWT tokens. The default strategy uses RS256 (RSA Signature with SHA-256)
 	// This is used to support key rotation. When present, it'll only be used to validate incoming tokens. New tokens
 	// will not be issued using this key.
@@ -128,7 +131,7 @@ type Config struct {
 	DisableForHTTP bool `json:"disableForHttp"`
 	DisableForGrpc bool `json:"disableForGrpc"`
 
-	HTTPPublicUri config.URL `json:"httpPublicUri" pflag:",The publicly accessible http endpoint. This is used to build absolute URLs for endpoints that are only exposed over http (e.g. /authorize and /token for OAuth2)."`
+	HTTPPublicURI config.URL `json:"httpPublicUri" pflag:",The publicly accessible http endpoint. This is used to build absolute URLs for endpoints that are only exposed over http (e.g. /authorize and /token for OAuth2)."`
 	Secure        bool       `json:"secure" pflag:",Sets whether the system is serving over SSL/TLS "`
 
 	UserAuth UserAuthConfig `json:"userAuth" pflag:",Defines Auth options for users."`

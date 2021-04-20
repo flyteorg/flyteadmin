@@ -191,18 +191,18 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("httpPublicUri"); err == nil {
-				assert.Equal(t, string(DefaultConfig.HTTPPublicUri.String()), vString)
+				assert.Equal(t, string(DefaultConfig.HTTPPublicURI.String()), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 
 		t.Run("Override", func(t *testing.T) {
-			testValue := DefaultConfig.HTTPPublicUri.String()
+			testValue := DefaultConfig.HTTPPublicURI.String()
 
 			cmdFlags.Set("httpPublicUri", testValue)
 			if vString, err := cmdFlags.GetString("httpPublicUri"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.HTTPPublicUri)
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.HTTPPublicURI)
 
 			} else {
 				assert.FailNow(t, err.Error())

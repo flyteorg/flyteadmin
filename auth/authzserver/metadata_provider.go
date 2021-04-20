@@ -20,12 +20,12 @@ type OAuth2MetadataProvider struct {
 func (s OAuth2MetadataProvider) OAuth2Metadata(ctx context.Context, r *service.OAuth2MetadataRequest) (*service.OAuth2MetadataResponse, error) {
 	switch s.cfg.AppAuth.AuthServerType {
 	case authConfig.AuthorizationServerTypeSelf:
-		u := auth.GetPublicURL(ctx, s.cfg.Secure, &s.cfg.HTTPPublicUri.URL)
+		u := auth.GetPublicURL(ctx, s.cfg.Secure, &s.cfg.HTTPPublicURI.URL)
 		doc := &service.OAuth2MetadataResponse{
 			Issuer:                        GetIssuer(ctx, nil, s.cfg),
-			AuthorizationEndpoint:         u.ResolveReference(authorizeRelativeUrl).String(),
-			TokenEndpoint:                 u.ResolveReference(tokenRelativeUrl).String(),
-			JwksUri:                       u.ResolveReference(jsonWebKeysUrl).String(),
+			AuthorizationEndpoint:         u.ResolveReference(authorizeRelativeURL).String(),
+			TokenEndpoint:                 u.ResolveReference(tokenRelativeURL).String(),
+			JwksUri:                       u.ResolveReference(jsonWebKeysURL).String(),
 			CodeChallengeMethodsSupported: []string{"S256"},
 			ResponseTypesSupported: []string{
 				"code",

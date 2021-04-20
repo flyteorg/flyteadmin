@@ -1,5 +1,7 @@
 package auth
 
+import "github.com/flyteorg/flytestdlib/contextutils"
+
 const (
 	// OAuth2 Parameters
 	CsrfFormKey                   = "state"
@@ -17,6 +19,6 @@ const (
 	// This should be defined without a leading slash. If there is one, the url library's ResolveReference will make it a root path
 	OIdCMetadataEndpoint = ".well-known/openid-configuration"
 
-	ContextKeyIdentityContext = "identity_context"
+	ContextKeyIdentityContext = contextutils.Key("identity_context")
 	ScopeAll                  = "all"
 )

@@ -17,10 +17,10 @@ import (
 func RegisterHandlers(handler interfaces.HandlerRegisterer, authCtx interfaces.AuthenticationContext) {
 	if authCtx.OAuth2Provider() != nil {
 		// Set up oauthserver endpoints. You could also use gorilla/mux or any other router.
-		handler.HandleFunc(authorizeRelativeUrl.String(), getAuthEndpoint(authCtx))
-		handler.HandleFunc(authorizeCallbackRelativeUrl.String(), getAuthCallbackEndpoint(authCtx))
-		handler.HandleFunc(tokenRelativeUrl.String(), getTokenEndpointHandler(authCtx))
-		handler.HandleFunc(jsonWebKeysUrl.String(), GetJSONWebKeysEndpoint(authCtx))
+		handler.HandleFunc(authorizeRelativeURL.String(), getAuthEndpoint(authCtx))
+		handler.HandleFunc(authorizeCallbackRelativeURL.String(), getAuthCallbackEndpoint(authCtx))
+		handler.HandleFunc(tokenRelativeURL.String(), getTokenEndpointHandler(authCtx))
+		handler.HandleFunc(jsonWebKeysURL.String(), GetJSONWebKeysEndpoint(authCtx))
 	}
 }
 

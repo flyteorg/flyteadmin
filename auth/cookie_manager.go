@@ -109,7 +109,7 @@ func (c CookieManager) RetrieveUserInfo(ctx context.Context, request *http.Reque
 
 }
 
-func (c CookieManager) RetrieveAuthCodeRequest(ctx context.Context, request *http.Request) (authRequestUrl string, err error) {
+func (c CookieManager) RetrieveAuthCodeRequest(ctx context.Context, request *http.Request) (authRequestURL string, err error) {
 	authCodeCookie, err := retrieveSecureCookie(ctx, request, authCodeCookieName, c.hashKey, c.blockKey)
 	if err != nil {
 		return "", err
@@ -118,8 +118,8 @@ func (c CookieManager) RetrieveAuthCodeRequest(ctx context.Context, request *htt
 	return authCodeCookie, nil
 }
 
-func (c CookieManager) SetAuthCodeCookie(ctx context.Context, writer http.ResponseWriter, authRequestUrl string) error {
-	authCodeCookie, err := NewSecureCookie(authCodeCookieName, authRequestUrl, c.hashKey, c.blockKey)
+func (c CookieManager) SetAuthCodeCookie(ctx context.Context, writer http.ResponseWriter, authRequestURL string) error {
+	authCodeCookie, err := NewSecureCookie(authCodeCookieName, authRequestURL, c.hashKey, c.blockKey)
 	if err != nil {
 		logger.Errorf(ctx, "Error generating encrypted accesstoken cookie %s", err)
 		return err

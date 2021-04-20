@@ -41,7 +41,7 @@ func GetIssuer(ctx context.Context, req *http.Request, cfg *config.Config) strin
 		return configIssuer
 	}
 
-	u := auth.GetPublicURL(ctx, cfg.Secure, &cfg.HTTPPublicUri.URL)
+	u := auth.GetPublicURL(ctx, cfg.Secure, &cfg.HTTPPublicURI.URL)
 	if u != nil && len(u.String()) > 0 {
 		return u.String()
 	}
@@ -103,14 +103,14 @@ func authCallbackEndpoint(authCtx interfaces.AuthenticationContext, rw http.Resp
 	}
 
 	// Rehydrate the original auth code request
-	arUrl, err := authCtx.CookieManager().RetrieveAuthCodeRequest(ctx, req)
+	arURL, err := authCtx.CookieManager().RetrieveAuthCodeRequest(ctx, req)
 	if err != nil {
 		logger.Infof(ctx, "Error occurred in NewAuthorizeRequest: %+v", err)
 		oauth2Provider.WriteAuthorizeError(rw, fosite.NewAuthorizeRequest(), err)
 		return
 	}
 
-	arReq, err := http.NewRequest(http.MethodGet, arUrl, nil)
+	arReq, err := http.NewRequest(http.MethodGet, arURL, nil)
 	if err != nil {
 		logger.Infof(ctx, "Error occurred in NewAuthorizeRequest: %+v", err)
 		oauth2Provider.WriteAuthorizeError(rw, fosite.NewAuthorizeRequest(), err)
@@ -174,6 +174,6 @@ func authEndpoint(authCtx interfaces.AuthenticationContext, rw http.ResponseWrit
 		return
 	}
 
-	redirectUrl := fmt.Sprintf("/login?redirect_url=%v", authorizeCallbackRelativeUrl.String())
-	http.Redirect(rw, req, redirectUrl, http.StatusTemporaryRedirect)
+	redirectURL := fmt.Sprintf("/login?redirect_url=%v", authorizeCallbackRelativeURL.String())
+	http.Redirect(rw, req, redirectURL, http.StatusTemporaryRedirect)
 }

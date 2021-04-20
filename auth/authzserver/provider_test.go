@@ -39,7 +39,7 @@ func newMockProvider(t testing.TB) Provider {
 	sm.OnGet(ctx, config.SecretTokenSigningRSAKey).Return(buf.String(), nil)
 	sm.OnGet(ctx, config.SecretOldTokenSigningRSAKey).Return("", fmt.Errorf("not found"))
 
-	p, err := NewProvider(ctx, config.DefaultConfig.AppAuth.SelfAuthServer, "https://myserver", sm)
+	p, err := NewProvider(ctx, config.DefaultConfig.AppAuth.SelfAuthServer, sm)
 	assert.NoError(t, err)
 	return p
 }
@@ -155,12 +155,12 @@ func TestProvider_ValidateAccessToken(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Invalid JWT", func(t *testing.T) {
-		_, err := p.ValidateAccessToken(ctx, "abc")
+		_, err := p.ValidateAccessToken(ctx, "myserver", "abc")
 		assert.Error(t, err)
 	})
 
 	t.Run("Invalid Signature", func(t *testing.T) {
-		_, err := p.ValidateAccessToken(ctx, "sampleIDToken")
+		_, err := p.ValidateAccessToken(ctx, "myserver", "sampleIDToken")
 		assert.Error(t, err)
 	})
 
@@ -180,7 +180,8 @@ func TestProvider_ValidateAccessToken(t *testing.T) {
 		sm.OnGet(ctx, config.SecretTokenSigningRSAKey).Return(buf.String(), nil)
 		sm.OnGet(ctx, config.SecretOldTokenSigningRSAKey).Return("", fmt.Errorf("not found"))
 
-		p, err := NewProvider(ctx, config.DefaultConfig.AppAuth.SelfAuthServer, "https://myserver", sm)
+		p, err := NewProvider(ctx, config.DefaultConfig.AppAuth.SelfAuthServer, sm)
+		assert.NoError(t, err)
 
 		// create a signer for rsa 256
 		tok := jwtgo.New(jwtgo.GetSigningMethod("RS256"))
@@ -207,7 +208,7 @@ func TestProvider_ValidateAccessToken(t *testing.T) {
 		str, err := tok.SignedString(secrets.TokenSigningRSAPrivateKey)
 		assert.NoError(t, err)
 
-		identity, err := p.ValidateAccessToken(ctx, str)
+		identity, err := p.ValidateAccessToken(ctx, "https://myserver", str)
 		assert.NoError(t, err)
 		assert.False(t, identity.IsEmpty())
 	})

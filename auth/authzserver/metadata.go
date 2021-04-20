@@ -5,9 +5,10 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
+	"net/http"
+
 	"github.com/flyteorg/flyteadmin/auth"
 	"github.com/flyteorg/flyteadmin/auth/config"
-	"net/http"
 
 	"github.com/lestrrat-go/jwx/jwk"
 
@@ -17,10 +18,10 @@ import (
 )
 
 var (
-	tokenRelativeUrl             = config.MustParseURL("/oauth2/token")
-	authorizeRelativeUrl         = config.MustParseURL("/oauth2/authorize")
-	authorizeCallbackRelativeUrl = config.MustParseURL("/oauth2/authorize_callback")
-	jsonWebKeysUrl               = config.MustParseURL("/oauth2/jwks")
+	tokenRelativeURL             = config.MustParseURL("/oauth2/token")
+	authorizeRelativeURL         = config.MustParseURL("/oauth2/authorize")
+	authorizeCallbackRelativeURL = config.MustParseURL("/oauth2/authorize_callback")
+	jsonWebKeysURL               = config.MustParseURL("/oauth2/jwks")
 	oauth2MetadataEndpoint       = config.MustParseURL("/" + auth.OAuth2MetadataEndpoint)
 )
 

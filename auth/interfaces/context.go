@@ -55,7 +55,7 @@ type OIdCUserInfoProvider interface {
 type AuthenticationContext interface {
 	OAuth2Provider() OAuth2Provider
 	OAuth2ResourceServer() OAuth2ResourceServer
-	OAuth2ClientConfig(requestUrl *url.URL) *oauth2.Config
+	OAuth2ClientConfig(requestURL *url.URL) *oauth2.Config
 	OidcProvider() *oidc.Provider
 	CookieManager() CookieHandler
 	Options() *config.Config

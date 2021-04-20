@@ -45,7 +45,7 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "grpcAuthorizationHeader"), DefaultConfig.GrpcAuthorizationHeader, "")
 	cmdFlags.Bool(fmt.Sprintf("%v%v", prefix, "disableForHttp"), DefaultConfig.DisableForHTTP, "")
 	cmdFlags.Bool(fmt.Sprintf("%v%v", prefix, "disableForGrpc"), DefaultConfig.DisableForGrpc, "")
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "httpPublicUri"), DefaultConfig.HTTPPublicUri.String(), "The publicly accessible http endpoint. This is used to build absolute URLs for endpoints that are only exposed over http (e.g. /authorize and /token for OAuth2).")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "httpPublicUri"), DefaultConfig.HTTPPublicURI.String(), "The publicly accessible http endpoint. This is used to build absolute URLs for endpoints that are only exposed over http (e.g. /authorize and /token for OAuth2).")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "userAuth.redirectUrl"), DefaultConfig.UserAuth.RedirectURL.String(), "")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "userAuth.openId.clientId"), DefaultConfig.UserAuth.OpenID.ClientID, "")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "userAuth.openId.clientSecretName"), DefaultConfig.UserAuth.OpenID.ClientSecretName, "")

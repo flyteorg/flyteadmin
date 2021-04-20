@@ -1,6 +1,7 @@
 package authzserver
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"net/http"
@@ -64,6 +65,7 @@ func TestAuthEndpoint(t *testing.T) {
 	})
 }
 
+// #nosec
 const sampleIDToken = `eyJraWQiOiJaNmRtWl9UWGhkdXctalVCWjZ1RUV6dm5oLWpoTk8wWWhlbUI3cWFfTE9jIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiIwMHVra2k0OHBzSDhMaWtZVjVkNiIsIm5hbWUiOiJIYXl0aGFtIEFidWVsZnV0dWgiLCJ2ZXIiOjEsImlzcyI6Imh0dHBzOi8vZGV2LTE0MTg2NDIyLm9rdGEuY29tL29hdXRoMi9hdXNrbmdubjd1QlZpUXE2YjVkNiIsImF1ZCI6IjBvYWtraGV0ZU5qQ01FUnN0NWQ2IiwiaWF0IjoxNjE4NDUzNjc5LCJleHAiOjE2MTg0NTcyNzksImp0aSI6IklELmE0YXpLdUphVFM2YzNTeHdpWWdTMHhPbTM2bVFnVlVVN0I4V2dEdk80dFkiLCJhbXIiOlsicHdkIl0sImlkcCI6IjBvYWtrbTFjaTFVZVBwTlUwNWQ2IiwicHJlZmVycmVkX3VzZXJuYW1lIjoiaGF5dGhhbUB1bmlvbi5haSIsImF1dGhfdGltZSI6MTYxODQ0NjI0NywiYXRfaGFzaCI6Ikg5Q0FweWlrQkpGYXJ4d1FUbnB6ZFEifQ.SJ3BTD_MFcrYvTnql181Ddeb_mOm81z_S7ZKQ6P8mMgWqn94LZ2nG8k8-_odaaNAAT-M1nAFKWqZAQGvliwS1_TsD8_j0cen5zYnGcz2Uu5fFlvoHwuPgy5JYYNOXkXYgPnIb3kNkgXKbkdjS9hdbMfvnPd9rr8v0yzqf0AQBnUe-cPrzY-ZJjvh80IWDZgSjoP244tTYppPkx8UtedJLJZ4tzB7aXlEyoRV-DpmOLfJkAmblRm4OsO1qjwmx3HSIy_T-0PANn-g4AS07rpoMYHRcqncdgcAsVfGxjyWiOg3kbymLqpGlkIZgzmev-TmpoDp0QkUVPOntuiB57GZ6g`
 
 //func TestAuthCallbackEndpoint(t *testing.T) {
@@ -140,21 +142,21 @@ const sampleIDToken = `eyJraWQiOiJaNmRtWl9UWGhkdXctalVCWjZ1RUV6dm5oLWpoTk8wWWhlb
 
 func TestGetIssuer(t *testing.T) {
 	t.Run("SelfAuthServerIssuer wins", func(t *testing.T) {
-		issuer := GetIssuer(&config.Config{
+		issuer := GetIssuer(context.Background(), nil, &config.Config{
 			AppAuth: config.OAuth2Options{
 				SelfAuthServer: config.AuthorizationServer{
 					Issuer: "my_issuer",
 				},
 			},
-			HTTPPublicUri: config2.URL{URL: *MustParseURL("http://localhost/")},
+			HTTPPublicURI: config2.URL{URL: *config.MustParseURL("http://localhost/")},
 		})
 
 		assert.Equal(t, "my_issuer", issuer)
 	})
 
 	t.Run("Fallback to http public uri", func(t *testing.T) {
-		issuer := GetIssuer(&config.Config{
-			HTTPPublicUri: config2.URL{URL: *MustParseURL("http://localhost/")},
+		issuer := GetIssuer(context.Background(), nil, &config.Config{
+			HTTPPublicURI: config2.URL{URL: *config.MustParseURL("http://localhost/")},
 		})
 
 		assert.Equal(t, "http://localhost/", issuer)

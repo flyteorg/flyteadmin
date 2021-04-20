@@ -67,7 +67,7 @@ func RefreshTokensIfExists(ctx context.Context, authCtx interfaces.Authenticatio
 		_, err = ParseIDTokenAndValidate(ctx, authCtx.Options().UserAuth.OpenID.ClientID, idToken, authCtx.OidcProvider())
 		if err != nil && errors.IsCausedBy(err, ErrTokenExpired) && len(refreshToken) > 0 {
 			logger.Debugf(ctx, "Expired id token found, attempting to refresh")
-			newToken, err := GetRefreshedToken(ctx, authCtx.OAuth2ClientConfig(reconstructRequestUrl(request)), accessToken, refreshToken)
+			newToken, err := GetRefreshedToken(ctx, authCtx.OAuth2ClientConfig(reconstructRequestURL(request)), accessToken, refreshToken)
 			if err != nil {
 				logger.Infof(ctx, "Failed to refresh tokens. Restarting login flow. Error: %s", err)
 				authHandler(writer, request)
@@ -114,7 +114,7 @@ func GetLoginHandler(ctx context.Context, authCtx interfaces.AuthenticationConte
 
 		state := HashCsrfState(csrfToken)
 		logger.Debugf(ctx, "Setting CSRF state cookie to %s and state to %s\n", csrfToken, state)
-		url := authCtx.OAuth2ClientConfig(reconstructRequestUrl(request)).AuthCodeURL(state)
+		url := authCtx.OAuth2ClientConfig(reconstructRequestURL(request)).AuthCodeURL(state)
 		queryParams := request.URL.Query()
 		if flowEndRedirectURL := queryParams.Get(RedirectURLParameter); flowEndRedirectURL != "" {
 			redirectCookie := NewRedirectCookie(ctx, flowEndRedirectURL)
@@ -142,7 +142,7 @@ func GetCallbackHandler(ctx context.Context, authCtx interfaces.AuthenticationCo
 			return
 		}
 
-		token, err := authCtx.OAuth2ClientConfig(reconstructRequestUrl(request)).Exchange(ctx, authorizationCode)
+		token, err := authCtx.OAuth2ClientConfig(reconstructRequestURL(request)).Exchange(ctx, authorizationCode)
 		if err != nil {
 			logger.Errorf(ctx, "Error when exchanging code %s", err)
 			writer.WriteHeader(http.StatusForbidden)
@@ -345,7 +345,7 @@ func IdentityContextFromRequest(ctx context.Context, req *http.Request, authCtx 
 	if len(headerValue) > 0 {
 		logger.Debugf(ctx, "Found authorization header at [%v] header. Validating.", authHeader)
 		if strings.HasPrefix(headerValue, BearerScheme+" ") {
-			expectedAudience := GetPublicURL(ctx, req.TLS != nil, &authCtx.Options().HTTPPublicUri.URL).String()
+			expectedAudience := GetPublicURL(ctx, req.TLS != nil, &authCtx.Options().HTTPPublicURI.URL).String()
 			return authCtx.OAuth2ResourceServer().ValidateAccessToken(ctx, expectedAudience, strings.TrimPrefix(headerValue, BearerScheme+" "))
 		}
 	}
@@ -374,14 +374,14 @@ func QueryUserInfo(ctx context.Context, identityContext interfaces.IdentityConte
 
 	if len(identityContext.UserInfo().GetName()) > 0 {
 		return identityContext.UserInfo(), nil
-	} else {
-		_, accessToken, _, err := authCtx.CookieManager().RetrieveTokenValues(ctx, request)
-		if err != nil {
-			return &service.UserInfoResponse{}, fmt.Errorf("error decoding identify token, try /login in again")
-		}
-
-		return QueryUserInfoUsingAccessToken(ctx, request, authCtx, accessToken)
 	}
+
+	_, accessToken, _, err := authCtx.CookieManager().RetrieveTokenValues(ctx, request)
+	if err != nil {
+		return &service.UserInfoResponse{}, fmt.Errorf("error decoding identify token, try /login in again")
+	}
+
+	return QueryUserInfoUsingAccessToken(ctx, request, authCtx, accessToken)
 }
 
 func QueryUserInfoUsingAccessToken(ctx context.Context, originalRequest *http.Request, authCtx interfaces.AuthenticationContext, accessToken string) (
@@ -391,7 +391,7 @@ func QueryUserInfoUsingAccessToken(ctx context.Context, originalRequest *http.Re
 		AccessToken: accessToken,
 	}
 
-	tokenSource := authCtx.OAuth2ClientConfig(reconstructRequestUrl(originalRequest)).TokenSource(ctx, &originalToken)
+	tokenSource := authCtx.OAuth2ClientConfig(reconstructRequestURL(originalRequest)).TokenSource(ctx, &originalToken)
 
 	// TODO: Investigate improving transparency of errors. The errors from this call may be just a local error, or may
 	//       be an error from the HTTP request to the IDP. In the latter case, consider passing along the error code/msg.

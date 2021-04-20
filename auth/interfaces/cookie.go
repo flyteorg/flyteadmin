@@ -18,10 +18,10 @@ type CookieHandler interface {
 
 	// SetAuthCodeCookie stores, in a cookie, the /authorize request url initiated by an app before executing OIdC protocol.
 	// This enables the service to recover it after the user completes the login process in an external OIdC provider.
-	SetAuthCodeCookie(ctx context.Context, writer http.ResponseWriter, authRequestUrl string) error
+	SetAuthCodeCookie(ctx context.Context, writer http.ResponseWriter, authRequestURL string) error
 
 	// RetrieveAuthCodeRequest retrieves the /authorize request url from stored cookie to complete the OAuth2 app auth
 	// flow.
-	RetrieveAuthCodeRequest(ctx context.Context, request *http.Request) (authRequestUrl string, err error)
+	RetrieveAuthCodeRequest(ctx context.Context, request *http.Request) (authRequestURL string, err error)
 	DeleteCookies(ctx context.Context, writer http.ResponseWriter)
 }

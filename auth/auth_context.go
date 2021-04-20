@@ -31,8 +31,8 @@ const (
 
 var (
 	anonymousMethodNames = sets.NewString("/flyteidl.service.AuthService/OAuth2Metadata", "/flyteidl.service.AuthService/FlyteClient")
-	callbackRelativeUrl  = config.MustParseURL("/callback")
-	rootRelativeUrl      = config.MustParseURL("/")
+	callbackRelativeURL  = config.MustParseURL("/callback")
+	rootRelativeURL      = config.MustParseURL("/")
 )
 
 type authServiceWrapper struct {
@@ -72,13 +72,13 @@ func (c Context) OAuth2Provider() interfaces.OAuth2Provider {
 	return c.oauth2Provider
 }
 
-func (c Context) OAuth2ClientConfig(requestUrl *url.URL) *oauth2.Config {
-	if requestUrl == nil || strings.HasPrefix(c.oauth2Client.RedirectURL, requestUrl.ResolveReference(rootRelativeUrl).String()) {
+func (c Context) OAuth2ClientConfig(requestURL *url.URL) *oauth2.Config {
+	if requestURL == nil || strings.HasPrefix(c.oauth2Client.RedirectURL, requestURL.ResolveReference(rootRelativeURL).String()) {
 		return c.oauth2Client
 	}
 
 	return &oauth2.Config{
-		RedirectURL:  requestUrl.ResolveReference(callbackRelativeUrl).String(),
+		RedirectURL:  requestURL.ResolveReference(callbackRelativeURL).String(),
 		ClientID:     c.oauth2Client.ClientID,
 		ClientSecret: c.oauth2Client.ClientSecret,
 		Scopes:       c.oauth2Client.Scopes,
@@ -156,7 +156,7 @@ func NewAuthenticationContext(ctx context.Context, sm core.SecretManager, oauth2
 	}
 
 	// Construct the golang OAuth2 library's own internal configuration object from this package's config
-	oauth2Config, err := GetOAuth2ClientConfig(ctx, options.UserAuth.OpenID, options.HTTPPublicUri.URL, provider.Endpoint(), sm)
+	oauth2Config, err := GetOAuth2ClientConfig(ctx, options.UserAuth.OpenID, options.HTTPPublicURI.URL, provider.Endpoint(), sm)
 	if err != nil {
 		return Context{}, errors.Wrapf(ErrauthCtx, err, "Error creating OAuth2 library configuration")
 	}
@@ -203,7 +203,7 @@ func NewAuthenticationContext(ctx context.Context, sm core.SecretManager, oauth2
 }
 
 // This creates a oauth2 library config object, with values from the Flyte Admin config
-func GetOAuth2ClientConfig(ctx context.Context, options config.OpenIDOptions, publicHTTPBaseUrl url.URL, providerEndpoints oauth2.Endpoint, sm core.SecretManager) (cfg oauth2.Config, err error) {
+func GetOAuth2ClientConfig(ctx context.Context, options config.OpenIDOptions, publicHTTPBaseURL url.URL, providerEndpoints oauth2.Endpoint, sm core.SecretManager) (cfg oauth2.Config, err error) {
 	var secret string
 	if len(options.DeprecatedClientSecretFile) > 0 {
 		secretBytes, err := ioutil.ReadFile(options.ClientSecretName)
@@ -222,7 +222,7 @@ func GetOAuth2ClientConfig(ctx context.Context, options config.OpenIDOptions, pu
 	secret = strings.TrimSuffix(secret, "\n")
 
 	return oauth2.Config{
-		RedirectURL:  publicHTTPBaseUrl.ResolveReference(callbackRelativeUrl).String(),
+		RedirectURL:  publicHTTPBaseURL.ResolveReference(callbackRelativeURL).String(),
 		ClientID:     options.ClientID,
 		ClientSecret: secret,
 		Scopes:       options.Scopes,

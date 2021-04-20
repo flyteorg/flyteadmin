@@ -60,14 +60,14 @@ func unmarshalResp(r *http.Response, body []byte, v interface{}) error {
 	return fmt.Errorf("expected Content-Type = application/json, got %q: %v", ct, err)
 }
 
-func getJwksForIssuer(ctx context.Context, issuerBaseUrl url.URL) (oidc.KeySet, error) {
+func getJwksForIssuer(ctx context.Context, issuerBaseURL url.URL) (oidc.KeySet, error) {
 	u, err := url.Parse(auth.OAuth2MetadataEndpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	issuerBaseUrl.Path = strings.TrimSuffix(issuerBaseUrl.Path, "/") + "/"
-	wellKnown := issuerBaseUrl.ResolveReference(u)
+	issuerBaseURL.Path = strings.TrimSuffix(issuerBaseURL.Path, "/") + "/"
+	wellKnown := issuerBaseURL.ResolveReference(u)
 	req, err := http.NewRequest(http.MethodGet, wellKnown.String(), nil)
 	if err != nil {
 		return nil, err

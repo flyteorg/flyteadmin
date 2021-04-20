@@ -10,6 +10,7 @@ import (
 
 	config2 "github.com/flyteorg/flytestdlib/config"
 
+	"github.com/flyteorg/flyteadmin/auth/config"
 	authConfig "github.com/flyteorg/flyteadmin/auth/config"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 	"github.com/stretchr/testify/assert"
@@ -39,7 +40,7 @@ func TestOAuth2MetadataProvider_FlyteClient(t *testing.T) {
 func TestOAuth2MetadataProvider_OAuth2Metadata(t *testing.T) {
 	t.Run("Self AuthServer", func(t *testing.T) {
 		provider := NewService(&authConfig.Config{
-			HTTPPublicUri: config2.URL{URL: *MustParseURL("https://issuer/")},
+			HTTPPublicURI: config2.URL{URL: *config.MustParseURL("https://issuer/")},
 		})
 
 		ctx := context.Background()
@@ -55,13 +56,16 @@ func TestOAuth2MetadataProvider_OAuth2Metadata(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, strings.ReplaceAll(`{
+		_, err := io.WriteString(w, strings.ReplaceAll(`{
 				"issuer": "https://dev-14186422.okta.com",
 				"authorization_endpoint": "https://example.com/auth",
 				"token_endpoint": "https://example.com/token",
 				"jwks_uri": "https://example.com/keys",
 				"id_token_signing_alg_values_supported": ["RS256"]
 			}`, "ISSUER", issuer))
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
 	}
 
 	s := httptest.NewServer(http.HandlerFunc(hf))
@@ -71,11 +75,11 @@ func TestOAuth2MetadataProvider_OAuth2Metadata(t *testing.T) {
 
 	t.Run("External AuthServer", func(t *testing.T) {
 		provider := NewService(&authConfig.Config{
-			HTTPPublicUri: config2.URL{URL: *MustParseURL("https://issuer/")},
+			HTTPPublicURI: config2.URL{URL: *config.MustParseURL("https://issuer/")},
 			AppAuth: authConfig.OAuth2Options{
 				AuthServerType: authConfig.AuthorizationServerTypeExternal,
 				ExternalAuthServer: authConfig.ExternalAuthorizationServer{
-					BaseURL: config2.URL{URL: *MustParseURL(s.URL)},
+					BaseURL: config2.URL{URL: *config.MustParseURL(s.URL)},
 				},
 			},
 		})
@@ -88,13 +92,13 @@ func TestOAuth2MetadataProvider_OAuth2Metadata(t *testing.T) {
 
 	t.Run("External AuthServer fallback url", func(t *testing.T) {
 		provider := NewService(&authConfig.Config{
-			HTTPPublicUri: config2.URL{URL: *MustParseURL("https://issuer/")},
+			HTTPPublicURI: config2.URL{URL: *config.MustParseURL("https://issuer/")},
 			AppAuth: authConfig.OAuth2Options{
 				AuthServerType: authConfig.AuthorizationServerTypeExternal,
 			},
 			UserAuth: authConfig.UserAuthConfig{
 				OpenID: authConfig.OpenIDOptions{
-					BaseURL: config2.URL{URL: *MustParseURL(s.URL)},
+					BaseURL: config2.URL{URL: *config.MustParseURL(s.URL)},
 				},
 			},
 		})

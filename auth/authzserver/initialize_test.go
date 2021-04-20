@@ -1,8 +1,9 @@
 package authzserver
 
 import (
-	"github.com/ory/fosite/storage"
 	"testing"
+
+	"github.com/ory/fosite/storage"
 
 	"github.com/ory/fosite/compose"
 
