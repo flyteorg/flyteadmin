@@ -67,7 +67,7 @@ func RefreshTokensIfExists(ctx context.Context, authCtx interfaces.Authenticatio
 		_, err = ParseIDTokenAndValidate(ctx, authCtx.Options().UserAuth.OpenID.ClientID, idToken, authCtx.OidcProvider())
 		if err != nil && errors.IsCausedBy(err, ErrTokenExpired) && len(refreshToken) > 0 {
 			logger.Debugf(ctx, "Expired id token found, attempting to refresh")
-			newToken, err := GetRefreshedToken(ctx, authCtx.OAuth2ClientConfig(reconstructRequestURL(request)), accessToken, refreshToken)
+			newToken, err := GetRefreshedToken(ctx, authCtx.OAuth2ClientConfig(ReconstructRequestURL(request)), accessToken, refreshToken)
 			if err != nil {
 				logger.Infof(ctx, "Failed to refresh tokens. Restarting login flow. Error: %s", err)
 				authHandler(writer, request)
@@ -114,7 +114,7 @@ func GetLoginHandler(ctx context.Context, authCtx interfaces.AuthenticationConte
 
 		state := HashCsrfState(csrfToken)
 		logger.Debugf(ctx, "Setting CSRF state cookie to %s and state to %s\n", csrfToken, state)
-		url := authCtx.OAuth2ClientConfig(reconstructRequestURL(request)).AuthCodeURL(state)
+		url := authCtx.OAuth2ClientConfig(ReconstructRequestURL(request)).AuthCodeURL(state)
 		queryParams := request.URL.Query()
 		if flowEndRedirectURL := queryParams.Get(RedirectURLParameter); flowEndRedirectURL != "" {
 			redirectCookie := NewRedirectCookie(ctx, flowEndRedirectURL)
@@ -142,7 +142,7 @@ func GetCallbackHandler(ctx context.Context, authCtx interfaces.AuthenticationCo
 			return
 		}
 
-		token, err := authCtx.OAuth2ClientConfig(reconstructRequestURL(request)).Exchange(ctx, authorizationCode)
+		token, err := authCtx.OAuth2ClientConfig(ReconstructRequestURL(request)).Exchange(ctx, authorizationCode)
 		if err != nil {
 			logger.Errorf(ctx, "Error when exchanging code %s", err)
 			writer.WriteHeader(http.StatusForbidden)
@@ -391,7 +391,7 @@ func QueryUserInfoUsingAccessToken(ctx context.Context, originalRequest *http.Re
 		AccessToken: accessToken,
 	}
 
-	tokenSource := authCtx.OAuth2ClientConfig(reconstructRequestURL(originalRequest)).TokenSource(ctx, &originalToken)
+	tokenSource := authCtx.OAuth2ClientConfig(ReconstructRequestURL(originalRequest)).TokenSource(ctx, &originalToken)
 
 	// TODO: Investigate improving transparency of errors. The errors from this call may be just a local error, or may
 	//       be an error from the HTTP request to the IDP. In the latter case, consider passing along the error code/msg.

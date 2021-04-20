@@ -1,17 +1,12 @@
 package authzserver
 
 import (
-	"context"
-	"encoding/base64"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/flyteorg/flyteadmin/auth"
-	"github.com/flyteorg/flyteadmin/auth/config"
-	"github.com/gtank/cryptopasta"
-
 	"github.com/ory/fosite"
 
 	"github.com/flyteorg/flyteadmin/auth/interfaces"
@@ -34,47 +29,6 @@ func getAuthCallbackEndpoint(authCtx interfaces.AuthenticationContext) http.Hand
 	return func(writer http.ResponseWriter, request *http.Request) {
 		authCallbackEndpoint(authCtx, writer, request)
 	}
-}
-
-func GetIssuer(ctx context.Context, req *http.Request, cfg *config.Config) string {
-	if configIssuer := cfg.AppAuth.SelfAuthServer.Issuer; len(configIssuer) > 0 {
-		return configIssuer
-	}
-
-	u := auth.GetPublicURL(ctx, cfg.Secure, &cfg.HTTPPublicURI.URL)
-	if u != nil && len(u.String()) > 0 {
-		return u.String()
-	}
-
-	if req == nil {
-		return ""
-	}
-
-	scheme := "http://"
-	if req.TLS != nil {
-		scheme = "https://"
-	}
-
-	return scheme + req.Host
-}
-
-func encryptString(plainTextCode string, blockKey [auth.SymmetricKeyLength]byte) (string, error) {
-	cypher, err := cryptopasta.Encrypt([]byte(plainTextCode), &blockKey)
-	if err != nil {
-		return "", err
-	}
-
-	return base64.RawStdEncoding.EncodeToString(cypher), nil
-}
-
-func decryptString(encryptedEncoded string, blockKey [auth.SymmetricKeyLength]byte) (string, error) {
-	cypher, err := base64.RawStdEncoding.DecodeString(encryptedEncoded)
-	if err != nil {
-		return "", err
-	}
-
-	raw, err := cryptopasta.Decrypt(cypher, &blockKey)
-	return string(raw), err
 }
 
 // authCallbackEndpoint is the endpoint that gets called after the user-auth flow finishes. It retrieves the original

@@ -46,7 +46,7 @@ const (
 //	return oidc.NewProvider(ctx, issuer)
 //}
 
-func reconstructRequestURL(req *http.Request) *url.URL {
+func ReconstructRequestURL(req *http.Request) *url.URL {
 	if req == nil {
 		return nil
 	}
