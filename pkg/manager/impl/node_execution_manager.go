@@ -227,6 +227,7 @@ func (m *NodeExecutionManager) CreateNodeEvent(ctx context.Context, request admi
 	m.dbEventWriter.Write(request)
 
 	// If the request references a dynamically compiled subworkflow in the node metadata, serialize that to the db.
+	logger.Infof(ctx, "received event [%+v]", request.Event)
 	if request.Event.GetTaskNodeMetadata() != nil && request.Event.GetTaskNodeMetadata().DynamicWorkflow != nil {
 		remoteClosureDataRef, err := util.CreateDynamicWorkflowDataReference(ctx,
 			request.Event.GetTaskNodeMetadata().DynamicWorkflow.Id, request.Event.Id, m.storagePrefix, m.storageClient)
