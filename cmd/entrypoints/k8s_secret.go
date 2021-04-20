@@ -11,7 +11,7 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 	kubeErrors "k8s.io/apimachinery/pkg/api/errors"
 
-	"github.com/flyteorg/flyteadmin/pkg/auth"
+	"github.com/flyteorg/flyteadmin/auth"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 

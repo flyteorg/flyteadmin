@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/flyteorg/flyteadmin/pkg/auth"
+	"github.com/flyteorg/flyteadmin/auth"
 
 	"k8s.io/apimachinery/pkg/api/resource"
 

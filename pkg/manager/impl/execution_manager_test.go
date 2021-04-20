@@ -7,7 +7,7 @@ import (
 
 	"github.com/gogo/protobuf/jsonpb"
 
-	"github.com/flyteorg/flyteadmin/pkg/auth"
+	"github.com/flyteorg/flyteadmin/auth"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	commonMocks "github.com/flyteorg/flyteadmin/pkg/common/mocks"

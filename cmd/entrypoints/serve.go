@@ -9,14 +9,14 @@ import (
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/secretmanager"
 
-	authConfig "github.com/flyteorg/flyteadmin/pkg/auth/config"
+	authConfig "github.com/flyteorg/flyteadmin/auth/config"
 
-	"github.com/flyteorg/flyteadmin/pkg/auth/authzserver"
+	"github.com/flyteorg/flyteadmin/auth/authzserver"
 
 	"github.com/gorilla/handlers"
 
-	"github.com/flyteorg/flyteadmin/pkg/auth"
-	"github.com/flyteorg/flyteadmin/pkg/auth/interfaces"
+	"github.com/flyteorg/flyteadmin/auth"
+	"github.com/flyteorg/flyteadmin/auth/interfaces"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpcauth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 
@@ -42,7 +42,7 @@ import (
 
 	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpcPrometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -56,6 +56,8 @@ var serveCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
 		serverConfig := config.GetConfig()
+
+		authConfig.GetConfig().Secure = serverConfig.Security.Secure
 
 		if serverConfig.Security.Secure {
 			return serveGatewaySecure(ctx, serverConfig, authConfig.GetConfig())
@@ -98,7 +100,7 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authCtx interf
 	var chainedUnaryInterceptors grpc.UnaryServerInterceptor
 	if cfg.Security.UseAuth {
 		logger.Infof(ctx, "Creating gRPC server with authentication")
-		chainedUnaryInterceptors = grpc_middleware.ChainUnaryServer(grpc_prometheus.UnaryServerInterceptor,
+		chainedUnaryInterceptors = grpc_middleware.ChainUnaryServer(grpcPrometheus.UnaryServerInterceptor,
 			auth.GetAuthenticationCustomMetadataInterceptor(authCtx),
 			grpcauth.UnaryServerInterceptor(auth.GetAuthenticationInterceptor(authCtx)),
 			auth.AuthenticationLoggingInterceptor,
@@ -106,15 +108,15 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authCtx interf
 		)
 	} else {
 		logger.Infof(ctx, "Creating gRPC server without authentication")
-		chainedUnaryInterceptors = grpc_middleware.ChainUnaryServer(grpc_prometheus.UnaryServerInterceptor)
+		chainedUnaryInterceptors = grpc_middleware.ChainUnaryServer(grpcPrometheus.UnaryServerInterceptor)
 	}
 	serverOpts := []grpc.ServerOption{
-		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+		grpc.StreamInterceptor(grpcPrometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(chainedUnaryInterceptors),
 	}
 	serverOpts = append(serverOpts, opts...)
 	grpcServer := grpc.NewServer(serverOpts...)
-	grpc_prometheus.Register(grpcServer)
+	grpcPrometheus.Register(grpcServer)
 	flyteService.RegisterAdminServiceServer(grpcServer, adminservice.NewAdminServer(cfg.KubeConfig, cfg.Master))
 	flyteService.RegisterAuthServiceServer(grpcServer, authCtx.AuthService())
 
@@ -177,7 +179,7 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authCfg *authC
 
 		// In an attempt to be able to selectively enforce whether or not authentication is required, we're going to tag
 		// the requests that come from the HTTP gateway. See the enforceHttp/Grpc options for more information.
-		gwmuxOptions = append(gwmuxOptions, runtime.WithMetadata(auth.GetHTTPMetadataTaggingHandler(authCtx)))
+		gwmuxOptions = append(gwmuxOptions, runtime.WithMetadata(auth.GetHTTPMetadataTaggingHandler()))
 	}
 
 	// Create the grpc-gateway server with the options specified
@@ -213,7 +215,7 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig, authCfg
 		var oauth2Provider interfaces.OAuth2Provider
 		var oauth2ResourceServer interfaces.OAuth2ResourceServer
 		if authCfg.AppAuth.AuthServerType == authConfig.AuthorizationServerTypeSelf {
-			oauth2Provider, err = authzserver.NewProvider(ctx, authCfg.AppAuth.SelfAuthServer, authzserver.GetIssuer(authCfg), sm)
+			oauth2Provider, err = authzserver.NewProvider(ctx, authCfg.AppAuth.SelfAuthServer, sm)
 			if err != nil {
 				logger.Errorf(ctx, "Error creating authorization server %s", err)
 				return err
@@ -221,7 +223,7 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig, authCfg
 
 			oauth2ResourceServer = oauth2Provider
 		} else {
-			oauth2ResourceServer, err = authzserver.NewOAuth2ResourceServer(ctx, authzserver.GetIssuer(authCfg), authCfg.AppAuth.ExternalAuthServer, authCfg.UserAuth.OpenID.BaseURL)
+			oauth2ResourceServer, err = authzserver.NewOAuth2ResourceServer(ctx, authCfg.AppAuth.ExternalAuthServer, authCfg.UserAuth.OpenID.BaseURL)
 			if err != nil {
 				logger.Errorf(ctx, "Error creating resource server %s", err)
 				return err
@@ -307,7 +309,7 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig, authCfg *
 		var oauth2Provider interfaces.OAuth2Provider
 		var oauth2ResourceServer interfaces.OAuth2ResourceServer
 		if authCfg.AppAuth.AuthServerType == authConfig.AuthorizationServerTypeSelf {
-			oauth2Provider, err = authzserver.NewProvider(ctx, authCfg.AppAuth.SelfAuthServer, authzserver.GetIssuer(authCfg), sm)
+			oauth2Provider, err = authzserver.NewProvider(ctx, authCfg.AppAuth.SelfAuthServer, sm)
 			if err != nil {
 				logger.Errorf(ctx, "Error creating authorization server %s", err)
 				return err
@@ -315,7 +317,7 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig, authCfg *
 
 			oauth2ResourceServer = oauth2Provider
 		} else {
-			oauth2ResourceServer, err = authzserver.NewOAuth2ResourceServer(ctx, authzserver.GetIssuer(authCfg), authCfg.AppAuth.ExternalAuthServer, authCfg.UserAuth.OpenID.BaseURL)
+			oauth2ResourceServer, err = authzserver.NewOAuth2ResourceServer(ctx, authCfg.AppAuth.ExternalAuthServer, authCfg.UserAuth.OpenID.BaseURL)
 			if err != nil {
 				logger.Errorf(ctx, "Error creating resource server %s", err)
 				return err
