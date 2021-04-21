@@ -21,6 +21,9 @@ func ValidateNodeExecutionIdentifier(identifier *core.NodeExecutionIdentifier) e
 	return ValidateWorkflowExecutionIdentifier(identifier.ExecutionId)
 }
 
+// Validates that NodeExecutionEventRequests handled by admin include a valid node execution identifier.
+// In the case the event specifies a DynamicWorkflow in the TaskNodeMetadata, this method also validates the contents of
+// the dynamic workflow.
 func ValidateNodeExecutionEventRequest(request *admin.NodeExecutionEventRequest) error {
 	if request.Event == nil {
 		return shared.GetMissingArgumentError(shared.Event)
