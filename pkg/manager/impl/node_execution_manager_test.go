@@ -136,14 +136,14 @@ func TestCreateNodeEvent(t *testing.T) {
 						Name:    "name",
 					},
 				},
-				Phase:                        core.NodeExecution_RUNNING.String(),
-				InputURI:                     "input uri",
-				StartedAt:                    &occurredAt,
-				Closure:                      closureBytes,
-				NodeExecutionMetadata:        []byte{},
-				NodeExecutionCreatedAt:       &occurredAt,
-				NodeExecutionUpdatedAt:       &occurredAt,
-				DynamicWorkflowRemoteClosure: "s3://bucket/admin/metadata/project/domain/name/node id/proj_domain_dynamic_wf_abc123",
+				Phase:                                 core.NodeExecution_RUNNING.String(),
+				InputURI:                              "input uri",
+				StartedAt:                             &occurredAt,
+				Closure:                               closureBytes,
+				NodeExecutionMetadata:                 []byte{},
+				NodeExecutionCreatedAt:                &occurredAt,
+				NodeExecutionUpdatedAt:                &occurredAt,
+				DynamicWorkflowRemoteClosureReference: "s3://bucket/admin/metadata/project/domain/name/node id/proj_domain_dynamic_wf_abc123",
 			}, *input)
 			return nil
 		})
@@ -200,12 +200,12 @@ func TestCreateNodeEvent_Update(t *testing.T) {
 						Name:    "name",
 					},
 				},
-				Phase:                        core.NodeExecution_RUNNING.String(),
-				InputURI:                     "input uri",
-				StartedAt:                    &occurredAt,
-				Closure:                      expectedClosureBytes,
-				NodeExecutionUpdatedAt:       &occurredAt,
-				DynamicWorkflowRemoteClosure: "s3://bucket/admin/metadata/project/domain/name/node id/proj_domain_dynamic_wf_abc123",
+				Phase:                                 core.NodeExecution_RUNNING.String(),
+				InputURI:                              "input uri",
+				StartedAt:                             &occurredAt,
+				Closure:                               expectedClosureBytes,
+				NodeExecutionUpdatedAt:                &occurredAt,
+				DynamicWorkflowRemoteClosureReference: "s3://bucket/admin/metadata/project/domain/name/node id/proj_domain_dynamic_wf_abc123",
 			}, *nodeExecution)
 
 			return nil
@@ -1018,11 +1018,11 @@ func TestGetNodeExecutionData(t *testing.T) {
 						Name:    "name",
 					},
 				},
-				Phase:                        core.NodeExecution_SUCCEEDED.String(),
-				InputURI:                     "input uri",
-				StartedAt:                    &occurredAt,
-				Closure:                      closureBytes,
-				DynamicWorkflowRemoteClosure: dynamicWorkflowClosureRef,
+				Phase:                                 core.NodeExecution_SUCCEEDED.String(),
+				InputURI:                              "input uri",
+				StartedAt:                             &occurredAt,
+				Closure:                               closureBytes,
+				DynamicWorkflowRemoteClosureReference: dynamicWorkflowClosureRef,
 			}, nil
 		})
 

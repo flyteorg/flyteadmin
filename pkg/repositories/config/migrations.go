@@ -302,7 +302,7 @@ var Migrations = []*gormigrate.Migration{
 			return tx.AutoMigrate(&models.NodeExecution{}).Error
 		},
 		Rollback: func(tx *gorm.DB) error {
-			return tx.Model(&models.NodeExecution{}).DropColumn("dynamic_workflow_remote_closure_identifier").Error
+			return tx.Model(&models.NodeExecution{}).DropColumn("dynamic_workflow_remote_closure_reference").Error
 		},
 	},
 }

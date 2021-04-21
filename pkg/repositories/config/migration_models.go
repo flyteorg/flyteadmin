@@ -51,7 +51,7 @@ type NodeExecution struct {
 	// The workflow execution (if any) which this node execution launched
 	LaunchedExecution models.Execution `gorm:"foreignkey:ParentNodeExecutionID"`
 	// In the case of dynamic workflow nodes, the remote closure is uploaded to the path specified here.
-	DynamicWorkflowRemoteClosure string
+	DynamicWorkflowRemoteClosureReference string
 }
 
 type TaskExecutionKey struct {

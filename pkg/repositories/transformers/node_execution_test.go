@@ -189,7 +189,7 @@ func TestUpdateNodeExecutionModel(t *testing.T) {
 		assert.Equal(t, occurredAt, *nodeExecutionModel.StartedAt)
 		assert.EqualValues(t, occurredAt, *nodeExecutionModel.NodeExecutionUpdatedAt)
 		assert.Nil(t, nodeExecutionModel.CacheStatus)
-		assert.Equal(t, nodeExecutionModel.DynamicWorkflowRemoteClosure, dynamicWorkflowClosureRef)
+		assert.Equal(t, nodeExecutionModel.DynamicWorkflowRemoteClosureReference, dynamicWorkflowClosureRef)
 
 		var closure = &admin.NodeExecutionClosure{
 			Phase:     core.NodeExecution_RUNNING,
@@ -253,7 +253,7 @@ func TestUpdateNodeExecutionModel(t *testing.T) {
 		assert.EqualValues(t, occurredAt, *nodeExecutionModel.NodeExecutionUpdatedAt)
 		assert.NotNil(t, nodeExecutionModel.CacheStatus)
 		assert.Equal(t, *nodeExecutionModel.CacheStatus, request.Event.GetTaskNodeMetadata().CacheStatus.String())
-		assert.Equal(t, nodeExecutionModel.DynamicWorkflowRemoteClosure, dynamicWorkflowClosureRef)
+		assert.Equal(t, nodeExecutionModel.DynamicWorkflowRemoteClosureReference, dynamicWorkflowClosureRef)
 
 		var closure = &admin.NodeExecutionClosure{
 			Phase:     core.NodeExecution_RUNNING,

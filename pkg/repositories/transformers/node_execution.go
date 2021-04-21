@@ -133,7 +133,7 @@ func CreateNodeExecutionModel(input ToNodeExecutionModelInput) (*models.NodeExec
 		nodeExecution.ParentTaskExecutionID = input.ParentTaskExecutionID
 	}
 	nodeExecution.ParentID = input.ParentID
-	nodeExecution.DynamicWorkflowRemoteClosure = input.DynamicWorkflowRemoteClosure
+	nodeExecution.DynamicWorkflowRemoteClosureReference = input.DynamicWorkflowRemoteClosure
 	return nodeExecution, nil
 }
 
@@ -197,7 +197,7 @@ func UpdateNodeExecutionModel(
 		return errors.NewFlyteAdminErrorf(codes.Internal, "failed to parse updated at timestamp")
 	}
 	nodeExecutionModel.NodeExecutionUpdatedAt = &updatedAt
-	nodeExecutionModel.DynamicWorkflowRemoteClosure = dynamicWorkflowRemoteClosure
+	nodeExecutionModel.DynamicWorkflowRemoteClosureReference = dynamicWorkflowRemoteClosure
 	return nil
 }
 
