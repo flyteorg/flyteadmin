@@ -40,6 +40,8 @@ var childExecutionID = &core.WorkflowExecutionIdentifier{
 	Name:    "name",
 }
 
+const dynamicWorkflowClosureRef = "s3://bucket/admin/metadata/workflow"
+
 func TestAddRunningState(t *testing.T) {
 	var startedAt = time.Now().UTC()
 	var startedAtProto, _ = ptypes.TimestampProto(startedAt)
@@ -181,12 +183,13 @@ func TestUpdateNodeExecutionModel(t *testing.T) {
 		nodeExecutionModel := models.NodeExecution{
 			Phase: core.NodeExecution_UNDEFINED.String(),
 		}
-		err := UpdateNodeExecutionModel(&request, &nodeExecutionModel, childExecutionID)
+		err := UpdateNodeExecutionModel(&request, &nodeExecutionModel, childExecutionID, dynamicWorkflowClosureRef)
 		assert.Nil(t, err)
 		assert.Equal(t, core.NodeExecution_RUNNING.String(), nodeExecutionModel.Phase)
 		assert.Equal(t, occurredAt, *nodeExecutionModel.StartedAt)
 		assert.EqualValues(t, occurredAt, *nodeExecutionModel.NodeExecutionUpdatedAt)
 		assert.Nil(t, nodeExecutionModel.CacheStatus)
+		assert.Equal(t, nodeExecutionModel.DynamicWorkflowRemoteClosure, dynamicWorkflowClosureRef)
 
 		var closure = &admin.NodeExecutionClosure{
 			Phase:     core.NodeExecution_RUNNING,
@@ -243,13 +246,14 @@ func TestUpdateNodeExecutionModel(t *testing.T) {
 		nodeExecutionModel := models.NodeExecution{
 			Phase: core.NodeExecution_UNDEFINED.String(),
 		}
-		err := UpdateNodeExecutionModel(&request, &nodeExecutionModel, childExecutionID)
+		err := UpdateNodeExecutionModel(&request, &nodeExecutionModel, childExecutionID, dynamicWorkflowClosureRef)
 		assert.Nil(t, err)
 		assert.Equal(t, core.NodeExecution_RUNNING.String(), nodeExecutionModel.Phase)
 		assert.Equal(t, occurredAt, *nodeExecutionModel.StartedAt)
 		assert.EqualValues(t, occurredAt, *nodeExecutionModel.NodeExecutionUpdatedAt)
 		assert.NotNil(t, nodeExecutionModel.CacheStatus)
 		assert.Equal(t, *nodeExecutionModel.CacheStatus, request.Event.GetTaskNodeMetadata().CacheStatus.String())
+		assert.Equal(t, nodeExecutionModel.DynamicWorkflowRemoteClosure, dynamicWorkflowClosureRef)
 
 		var closure = &admin.NodeExecutionClosure{
 			Phase:     core.NodeExecution_RUNNING,
@@ -259,9 +263,6 @@ func TestUpdateNodeExecutionModel(t *testing.T) {
 				TaskNodeMetadata: &admin.TaskNodeMetadata{
 					CacheStatus: request.Event.GetTaskNodeMetadata().CacheStatus,
 					CatalogKey:  request.Event.GetTaskNodeMetadata().CatalogKey,
-					DynamicWorkflow: &admin.DynamicWorkflowNodeMetadata{
-						Id: request.Event.GetTaskNodeMetadata().DynamicWorkflow.Id,
-					},
 				},
 			},
 		}

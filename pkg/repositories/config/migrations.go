@@ -297,12 +297,12 @@ var Migrations = []*gormigrate.Migration{
 		},
 	},
 	{
-		ID: "2021-04-19-phase-version-node-execution",
+		ID: "2021-04-19-node-execution_dynamic-workflow",
 		Migrate: func(tx *gorm.DB) error {
 			return tx.AutoMigrate(&models.NodeExecution{}).Error
 		},
 		Rollback: func(tx *gorm.DB) error {
-			return tx.Model(&models.NodeExecution{}).DropColumn("phase_version").Error
+			return tx.Model(&models.NodeExecution{}).DropColumn("dynamic_workflow_remote_closure_identifier").Error
 		},
 	},
 }

@@ -15,7 +15,7 @@ require (
 	github.com/bradfitz/gomemcache v0.0.0-20190913173617-a41fca850d0b // indirect
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/evanphx/json-patch v4.9.0+incompatible
-	github.com/flyteorg/flyteidl v0.18.36-0.20210417001501-910f8f60f11b
+	github.com/flyteorg/flyteidl v0.18.36-0.20210421190033-1c3204dd34e0
 	github.com/flyteorg/flytepropeller v0.7.8
 	github.com/flyteorg/flytestdlib v0.3.15
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect

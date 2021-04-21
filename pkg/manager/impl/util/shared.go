@@ -2,7 +2,6 @@
 package util
 
 import (
-	"bytes"
 	"context"
 	"time"
 
@@ -20,8 +19,6 @@ import (
 	"github.com/flyteorg/flytestdlib/storage"
 	"google.golang.org/grpc/codes"
 )
-
-var defaultStorageOptions = storage.Options{}
 
 func GetExecutionName(request admin.ExecutionCreateRequest) string {
 	if request.Name != "" {
@@ -43,97 +40,6 @@ func GetTask(ctx context.Context, repo repositories.RepositoryInterface, identif
 		return nil, err
 	}
 	return &task, nil
-}
-
-// Creates a unique data reference based on a provided storage prefix and identifier.
-func CreateDataReference(
-	ctx context.Context, identifier *core.Identifier, storagePrefix []string, storageClient *storage.DataStore) (
-	storage.DataReference, error) {
-	nestedSubKeys := []string{
-		identifier.Project,
-		identifier.Domain,
-		identifier.Name,
-		identifier.Version,
-	}
-	nestedKeys := append(storagePrefix, nestedSubKeys...)
-	return storageClient.ConstructReference(ctx, storageClient.GetBaseContainerFQN(ctx), nestedKeys...)
-}
-
-// Creates a unique data reference for a workflow generated in a dynamic node.
-// Path is determined using provided storage prefix and workflow and node execution identifiers.
-func CreateDynamicWorkflowDataReference(
-	ctx context.Context, identifier *core.Identifier, nodeExecutionID *core.NodeExecutionIdentifier,
-	storagePrefix []string, storageClient *storage.DataStore) (
-	storage.DataReference, error) {
-	nestedSubKeys := []string{
-		identifier.Project,
-		identifier.Domain,
-		identifier.Name,
-		identifier.Version,
-		nodeExecutionID.ExecutionId.Project,
-		nodeExecutionID.ExecutionId.Domain,
-		nodeExecutionID.ExecutionId.Name,
-		nodeExecutionID.NodeId,
-	}
-	nestedKeys := append(storagePrefix, nestedSubKeys...)
-	return storageClient.ConstructReference(ctx, storageClient.GetBaseContainerFQN(ctx), nestedKeys...)
-}
-
-// This function takes a compiled workflow, and uses the storageClient to write the closure to a location specified by the
-// storagePrefix and then finally commits a database entry for workflow.
-func WriteCompiledWorkflow(ctx context.Context, repo repositories.RepositoryInterface, remoteClosureDataRef storage.DataReference,
-	storageClient *storage.DataStore, id *core.Identifier, workflowClosure *admin.WorkflowClosure) (
-	*models.Workflow, error) {
-	workflowDigest, err := GetWorkflowDigest(ctx, workflowClosure.CompiledWorkflow)
-	if err != nil {
-		logger.Errorf(ctx, "failed to compute workflow digest with err %v", err)
-		return nil, err
-	}
-
-	// Assert that a matching workflow doesn't already exist before uploading the workflow closure.
-	existingMatchingWorkflow, err := GetWorkflowModel(ctx, repo, *id)
-	// Check that no identical or conflicting workflows exist.
-	if err == nil {
-		// A workflow's structure is uniquely defined by its collection of nodes.
-		if bytes.Equal(workflowDigest, existingMatchingWorkflow.Digest) {
-			return nil, errors.NewFlyteAdminErrorf(
-				codes.AlreadyExists, "identical workflow already exists with id %v", id)
-		}
-		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
-			"workflow with different structure already exists with id %v", id)
-	} else if flyteAdminError, ok := err.(errors.FlyteAdminError); !ok || flyteAdminError.Code() != codes.NotFound {
-		logger.Debugf(ctx, "Failed to get workflow for comparison in CreateWorkflow with ID [%+v] with err %v",
-			id, err)
-		return nil, err
-	}
-
-	err = storageClient.WriteProtobuf(ctx, remoteClosureDataRef, defaultStorageOptions, workflowClosure)
-
-	if err != nil {
-		logger.Infof(ctx,
-			"failed to write marshaled workflow with id [%+v] to storage %s with err %v and base container: %s",
-			id, remoteClosureDataRef.String(), err, storageClient.GetBaseContainerFQN(ctx))
-		return nil, errors.NewFlyteAdminErrorf(codes.Internal,
-			"failed to write marshaled workflow [%+v] to storage %s with err %v and base container: %s",
-			id, remoteClosureDataRef.String(), err, storageClient.GetBaseContainerFQN(ctx))
-	}
-	// Save the workflow & its reference to the offloaded, compiled workflow in the database.
-	var typedInterface *core.TypedInterface
-	if workflowClosure.CompiledWorkflow.Primary != nil && workflowClosure.CompiledWorkflow.Primary.Template != nil {
-		typedInterface = workflowClosure.CompiledWorkflow.Primary.Template.Interface
-	}
-	workflowModel, err := transformers.CreateWorkflowModel(id, remoteClosureDataRef.String(), typedInterface, workflowDigest)
-	if err != nil {
-		logger.Errorf(ctx,
-			"Failed to transform workflow model for workflow [%+v] and remoteClosureIdentifier [%s] with err: %v",
-			id, remoteClosureDataRef.String(), err)
-		return nil, err
-	}
-	if err = repo.WorkflowRepo().Create(ctx, workflowModel); err != nil {
-		logger.Infof(ctx, "Failed to create workflow model [%+v] with err %v", id, err)
-		return nil, err
-	}
-	return &workflowModel, nil
 }
 
 func GetWorkflowModel(

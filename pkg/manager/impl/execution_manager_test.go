@@ -172,7 +172,7 @@ func getMockStorageForExecTest(ctx context.Context) *storage.DataStore {
 		return nil
 	}
 	workflowClosure := testutils.GetWorkflowClosure()
-	if err := mockStorage.WriteProtobuf(ctx, remoteClosureIdentifier, storage.Options{}, workflowClosure); err != nil {
+	if err := mockStorage.WriteProtobuf(ctx, remoteClosureIdentifier, defaultStorageOptions, workflowClosure); err != nil {
 		return nil
 	}
 	return mockStorage

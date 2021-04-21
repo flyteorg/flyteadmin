@@ -82,7 +82,7 @@ func getNodeExecutionContext(ctx context.Context, identifier *core.NodeExecution
 }
 
 func (m *NodeExecutionManager) createNodeExecutionWithEvent(
-	ctx context.Context, request *admin.NodeExecutionEventRequest) error {
+	ctx context.Context, request *admin.NodeExecutionEventRequest, dynamicWorkflowRemoteClosure string) error {
 
 	executionID := request.Event.Id.ExecutionId
 	workflowExecutionExists, err := m.db.ExecutionRepo().Exists(ctx, repoInterfaces.Identifier{
@@ -124,9 +124,10 @@ func (m *NodeExecutionManager) createNodeExecutionWithEvent(
 		parentID = &parentNodeExecutionModel.ID
 	}
 	nodeExecutionModel, err := transformers.CreateNodeExecutionModel(transformers.ToNodeExecutionModelInput{
-		Request:               request,
-		ParentTaskExecutionID: parentTaskExecutionID,
-		ParentID:              parentID,
+		Request:                      request,
+		ParentTaskExecutionID:        parentTaskExecutionID,
+		ParentID:                     parentID,
+		DynamicWorkflowRemoteClosure: dynamicWorkflowRemoteClosure,
 	})
 	if err != nil {
 		logger.Debugf(ctx, "failed to create node execution model for event request: %s with err: %v",
@@ -143,10 +144,11 @@ func (m *NodeExecutionManager) createNodeExecutionWithEvent(
 }
 
 func (m *NodeExecutionManager) updateNodeExecutionWithEvent(
-	ctx context.Context, request *admin.NodeExecutionEventRequest, nodeExecutionModel *models.NodeExecution) (updateNodeExecutionStatus, error) {
+	ctx context.Context, request *admin.NodeExecutionEventRequest, nodeExecutionModel *models.NodeExecution,
+	dynamicWorkflowRemoteClosure string) (updateNodeExecutionStatus, error) {
 	// If we have an existing execution, check if the phase change is valid
 	nodeExecPhase := core.NodeExecution_Phase(core.NodeExecution_Phase_value[nodeExecutionModel.Phase])
-	if nodeExecPhase == request.Event.Phase && nodeExecutionModel.PhaseVersion >= request.Event.PhaseVersion {
+	if nodeExecPhase == request.Event.Phase {
 		logger.Debugf(ctx, "This phase was already recorded %v for %+v", nodeExecPhase.String(), request.Event.Id)
 		return updateFailed, errors.NewFlyteAdminErrorf(codes.AlreadyExists,
 			"This phase was already recorded %v for %+v", nodeExecPhase.String(), request.Event.Id)
@@ -173,7 +175,7 @@ func (m *NodeExecutionManager) updateNodeExecutionWithEvent(
 			return updateFailed, err
 		}
 	}
-	err := transformers.UpdateNodeExecutionModel(request, nodeExecutionModel, childExecutionID)
+	err := transformers.UpdateNodeExecutionModel(request, nodeExecutionModel, childExecutionID, dynamicWorkflowRemoteClosure)
 	if err != nil {
 		logger.Debugf(ctx, "failed to update node execution model: %+v with err: %v", request.Event.Id, err)
 		return updateFailed, err
@@ -188,14 +190,51 @@ func (m *NodeExecutionManager) updateNodeExecutionWithEvent(
 	return updateSucceeded, nil
 }
 
+func (m *NodeExecutionManager) uploadDynamicWorkflowClosure(
+	ctx context.Context, nodeID *core.NodeExecutionIdentifier, workflowID *core.Identifier,
+	compiledWorkflowClosure *core.CompiledWorkflowClosure) (storage.DataReference, error) {
+	nestedSubKeys := []string{
+		nodeID.ExecutionId.Project,
+		nodeID.ExecutionId.Domain,
+		nodeID.ExecutionId.Name,
+		nodeID.NodeId,
+		fmt.Sprintf("%s_%s_%s_%s", workflowID.Project, workflowID.Domain, workflowID.Name, workflowID.Version),
+	}
+	nestedKeys := append(m.storagePrefix, nestedSubKeys...)
+	remoteClosureDataRef, err := m.storageClient.ConstructReference(ctx, m.storageClient.GetBaseContainerFQN(ctx), nestedKeys...)
+
+	if err != nil {
+		return "", errors.NewFlyteAdminErrorf(codes.Internal,
+			"Failed to produce remote closure data reference for dynamic workflow yielded by node id [%+v] with workflow id [%+v]; err: %v", nodeID, workflowID, err)
+	}
+
+	err = m.storageClient.WriteProtobuf(ctx, remoteClosureDataRef, defaultStorageOptions, compiledWorkflowClosure)
+	if err != nil {
+		return "", errors.NewFlyteAdminErrorf(codes.Internal,
+			"Failed to upload dynamic workflow closure for node id [%+v] and workflow id [%+v] with err: %v", nodeID, workflowID, err)
+	}
+	return remoteClosureDataRef, nil
+}
+
 func (m *NodeExecutionManager) CreateNodeEvent(ctx context.Context, request admin.NodeExecutionEventRequest) (
 	*admin.NodeExecutionEventResponse, error) {
-	if err := validation.ValidateNodeExecutionIdentifier(request.Event.Id); err != nil {
+	if err := validation.ValidateNodeExecutionEventRequest(&request); err != nil {
 		logger.Debugf(ctx, "CreateNodeEvent called with invalid identifier [%+v]: %v", request.Event.Id, err)
 	}
 	ctx = getNodeExecutionContext(ctx, request.Event.Id)
 	logger.Debugf(ctx, "Received node execution event for Node Exec Id [%+v] transitioning to phase [%v], w/ Metadata [%v]",
 		request.Event.Id, request.Event.Phase, request.Event.ParentTaskMetadata)
+
+	var dynamicWorkflowRemoteClosure string
+	if request.Event.GetTaskNodeMetadata() != nil && request.Event.GetTaskNodeMetadata().DynamicWorkflow != nil {
+		dynamicWorkflowRemoteClosureReference, err := m.uploadDynamicWorkflowClosure(
+			ctx, request.Event.Id, request.Event.GetTaskNodeMetadata().DynamicWorkflow.Id,
+			request.Event.GetTaskNodeMetadata().DynamicWorkflow.CompiledWorkflow)
+		if err != nil {
+			return nil, err
+		}
+		dynamicWorkflowRemoteClosure = string(dynamicWorkflowRemoteClosureReference)
+	}
 
 	nodeExecutionModel, err := m.db.NodeExecutionRepo().Get(ctx, repoInterfaces.NodeExecutionResource{
 		NodeExecutionIdentifier: *request.Event.Id,
@@ -206,14 +245,14 @@ func (m *NodeExecutionManager) CreateNodeEvent(ctx context.Context, request admi
 				request.Event.Id, err)
 			return nil, err
 		}
-		err = m.createNodeExecutionWithEvent(ctx, &request)
+		err = m.createNodeExecutionWithEvent(ctx, &request, dynamicWorkflowRemoteClosure)
 		if err != nil {
 			return nil, err
 		}
 		m.metrics.NodeExecutionsCreated.Inc()
 	} else {
 		phase := core.NodeExecution_Phase(core.NodeExecution_Phase_value[nodeExecutionModel.Phase])
-		updateStatus, err := m.updateNodeExecutionWithEvent(ctx, &request, &nodeExecutionModel)
+		updateStatus, err := m.updateNodeExecutionWithEvent(ctx, &request, &nodeExecutionModel, dynamicWorkflowRemoteClosure)
 		if err != nil {
 			return nil, err
 		}
@@ -225,27 +264,6 @@ func (m *NodeExecutionManager) CreateNodeEvent(ctx context.Context, request admi
 		}
 	}
 	m.dbEventWriter.Write(request)
-
-	// If the request references a dynamically compiled subworkflow in the node metadata, serialize that to the db.
-	logger.Infof(ctx, "received event [%+v]", request.Event)
-	if request.Event.GetTaskNodeMetadata() != nil && request.Event.GetTaskNodeMetadata().DynamicWorkflow != nil {
-		remoteClosureDataRef, err := util.CreateDynamicWorkflowDataReference(ctx,
-			request.Event.GetTaskNodeMetadata().DynamicWorkflow.Id, request.Event.Id, m.storagePrefix, m.storageClient)
-		if err != nil {
-			return nil, errors.NewFlyteAdminErrorf(codes.Internal,
-				"Failed to create data reference for dynamic workflow closure for node [%+v] and workflow [%+v] with err: %v",
-				request.Event.GetTaskNodeMetadata().DynamicWorkflow.Id, request.Event.Id, err)
-		}
-		_, err = util.WriteCompiledWorkflow(ctx, m.db, remoteClosureDataRef, m.storageClient,
-			request.Event.GetTaskNodeMetadata().DynamicWorkflow.Id, &admin.WorkflowClosure{
-				CompiledWorkflow: request.Event.GetTaskNodeMetadata().DynamicWorkflow.CompiledWorkflow,
-			})
-		if err != nil {
-			if fErr, ok := err.(errors.FlyteAdminError); !ok || fErr.Code() != codes.AlreadyExists {
-				return nil, err
-			}
-		}
-	}
 
 	if request.Event.Phase == core.NodeExecution_RUNNING {
 		m.metrics.ActiveNodeExecutions.Inc()
@@ -279,21 +297,6 @@ func (m *NodeExecutionManager) GetNodeExecution(
 	if err != nil {
 		logger.Debugf(ctx, "failed to transform node execution model [%+v] to proto with err: %v", request.Id, err)
 		return nil, err
-	}
-	if nodeExecution.Closure.GetTaskNodeMetadata() != nil &&
-		nodeExecution.Closure.GetTaskNodeMetadata().DynamicWorkflow != nil &&
-		nodeExecution.Closure.GetTaskNodeMetadata().DynamicWorkflow.Id != nil {
-		dynamicWf, err := util.GetWorkflow(ctx, m.db, m.storageClient, *nodeExecution.Closure.GetTaskNodeMetadata().DynamicWorkflow.Id)
-		if err != nil {
-			logger.Warnf(ctx, "failed to fetch dynamic workflow definition for node [%+v] with err: %v", request.Id, err)
-		}
-		if dynamicWf.Closure != nil {
-			taskNodeMetadata := nodeExecution.Closure.GetTaskNodeMetadata()
-			taskNodeMetadata.DynamicWorkflow.CompiledWorkflow = dynamicWf.Closure.CompiledWorkflow
-			nodeExecution.Closure.TargetMetadata = &admin.NodeExecutionClosure_TaskNodeMetadata{
-				TaskNodeMetadata: taskNodeMetadata,
-			}
-		}
 	}
 	return nodeExecution, nil
 }
@@ -462,6 +465,19 @@ func (m *NodeExecutionManager) GetNodeExecutionData(
 				nodeExecution.Closure.GetOutputUri(), err)
 		}
 		response.FullOutputs = &fullOutputs
+	}
+
+	if len(nodeExecutionModel.DynamicWorkflowRemoteClosure) > 0 {
+		closure := &core.CompiledWorkflowClosure{}
+		err := m.storageClient.ReadProtobuf(ctx, storage.DataReference(nodeExecutionModel.DynamicWorkflowRemoteClosure), closure)
+		if err != nil {
+			return nil, errors.NewFlyteAdminErrorf(codes.Internal,
+				"Unable to read WorkflowClosure from location %s : %v", nodeExecutionModel.DynamicWorkflowRemoteClosure, err)
+		}
+		response.DynamicWorkflow = &admin.DynamicWorkflowNodeMetadata{
+			Id:               closure.Primary.Template.Id,
+			CompiledWorkflow: closure,
+		}
 	}
 
 	m.metrics.NodeExecutionInputBytes.Observe(float64(response.Inputs.Bytes))

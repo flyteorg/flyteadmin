@@ -17,11 +17,10 @@ type NodeExecution struct {
 	BaseModel
 	NodeExecutionKey
 	// Also stored in the closure, but defined as a separate column because it's useful for filtering and sorting.
-	Phase        string
-	PhaseVersion uint32
-	InputURI     string
-	Closure      []byte
-	StartedAt    *time.Time
+	Phase     string
+	InputURI  string
+	Closure   []byte
+	StartedAt *time.Time
 	// Corresponds to the CreatedAt field in the NodeExecution closure
 	// Prefixed with NodeExecution to avoid clashes with gorm.Model CreatedAt
 	NodeExecutionCreatedAt *time.Time
@@ -48,4 +47,6 @@ type NodeExecution struct {
 	ErrorCode *string
 	// If the node is of Type Task, this should always exist for a successful execution, indicating the cache status for the execution
 	CacheStatus *string
+	// In the case of dynamic workflow nodes, the remote closure is uploaded to the path specified here.
+	DynamicWorkflowRemoteClosure string
 }

@@ -21,7 +21,7 @@ var workflowDigest = []byte("workflow digest")
 
 func TestCreateWorkflow(t *testing.T) {
 	request := testutils.GetWorkflowRequest()
-	workflow, err := CreateWorkflowModel(request.Id, remoteClosureIdentifier, request.Spec.Template.Interface, workflowDigest)
+	workflow, err := CreateWorkflowModel(request, remoteClosureIdentifier, workflowDigest)
 	assert.NoError(t, err)
 	assert.Equal(t, "project", workflow.Project)
 	assert.Equal(t, "domain", workflow.Domain)
@@ -36,7 +36,7 @@ func TestCreateWorkflow(t *testing.T) {
 func TestCreateWorkflowEmptyInterface(t *testing.T) {
 	request := testutils.GetWorkflowRequest()
 	request.Spec.Template.Interface = nil
-	workflow, err := CreateWorkflowModel(request.Id, remoteClosureIdentifier, request.Spec.Template.Interface, workflowDigest)
+	workflow, err := CreateWorkflowModel(request, remoteClosureIdentifier, workflowDigest)
 	assert.NoError(t, err)
 	assert.Equal(t, "project", workflow.Project)
 	assert.Equal(t, "domain", workflow.Domain)

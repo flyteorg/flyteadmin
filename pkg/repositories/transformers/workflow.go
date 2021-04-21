@@ -11,24 +11,24 @@ import (
 )
 
 // Transforms a WorkflowCreateRequest to a workflow model
-func CreateWorkflowModel(id *core.Identifier, remoteClosureIdentifier string,
-	typedInterface *core.TypedInterface, digest []byte) (models.Workflow, error) {
-	var serializedTypedInterface []byte
-	if typedInterface != nil {
-		var err error
-		serializedTypedInterface, err = proto.Marshal(typedInterface)
+func CreateWorkflowModel(request admin.WorkflowCreateRequest, remoteClosureIdentifier string,
+	digest []byte) (models.Workflow, error) {
+	var typedInterface []byte
+	if request.Spec != nil && request.Spec.Template != nil && request.Spec.Template.Interface != nil {
+		serializedTypedInterface, err := proto.Marshal(request.Spec.Template.Interface)
 		if err != nil {
 			return models.Workflow{}, errors.NewFlyteAdminError(codes.Internal, "Failed to serialize workflow spec")
 		}
+		typedInterface = serializedTypedInterface
 	}
 	return models.Workflow{
 		WorkflowKey: models.WorkflowKey{
-			Project: id.Project,
-			Domain:  id.Domain,
-			Name:    id.Name,
-			Version: id.Version,
+			Project: request.Id.Project,
+			Domain:  request.Id.Domain,
+			Name:    request.Id.Name,
+			Version: request.Id.Version,
 		},
-		TypedInterface:          serializedTypedInterface,
+		TypedInterface:          typedInterface,
 		RemoteClosureIdentifier: remoteClosureIdentifier,
 		Digest:                  digest,
 	}, nil

@@ -34,11 +34,10 @@ type NodeExecution struct {
 	models.BaseModel
 	NodeExecutionKey
 	// Also stored in the closure, but defined as a separate column because it's useful for filtering and sorting.
-	Phase        string
-	PhaseVersion uint32
-	InputURI     string
-	Closure      []byte
-	StartedAt    *time.Time
+	Phase     string
+	InputURI  string
+	Closure   []byte
+	StartedAt *time.Time
 	// Corresponds to the CreatedAt field in the NodeExecution closure
 	// Prefixed with NodeExecution to avoid clashes with gorm.Model CreatedAt
 	NodeExecutionCreatedAt *time.Time
@@ -51,6 +50,8 @@ type NodeExecution struct {
 	ParentTaskExecutionID uint `sql:"default:null" gorm:"index"`
 	// The workflow execution (if any) which this node execution launched
 	LaunchedExecution models.Execution `gorm:"foreignkey:ParentNodeExecutionID"`
+	// In the case of dynamic workflow nodes, the remote closure is uploaded to the path specified here.
+	DynamicWorkflowRemoteClosure string
 }
 
 type TaskExecutionKey struct {
