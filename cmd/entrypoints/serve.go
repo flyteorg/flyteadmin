@@ -122,7 +122,8 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authCtx interf
 	grpcPrometheus.Register(grpcServer)
 	flyteService.RegisterAdminServiceServer(grpcServer, adminservice.NewAdminServer(cfg.KubeConfig, cfg.Master))
 	if cfg.Security.UseAuth {
-		flyteService.RegisterAuthServiceServer(grpcServer, authCtx.AuthService())
+		flyteService.RegisterAuthMetadataServiceServer(grpcServer, authCtx.AuthMetadataService())
+		flyteService.RegisterIdentityServiceServer(grpcServer, authCtx.IdentityService())
 	}
 
 	healthServer := health.NewServer()
@@ -195,9 +196,14 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authCfg *authC
 		return nil, errors.Wrap(err, "error registering admin service")
 	}
 
-	err = flyteService.RegisterAuthServiceHandlerFromEndpoint(ctx, gwmux, grpcAddress, grpcConnectionOpts)
+	err = flyteService.RegisterAuthMetadataServiceHandlerFromEndpoint(ctx, gwmux, grpcAddress, grpcConnectionOpts)
 	if err != nil {
 		return nil, errors.Wrap(err, "error registering auth service")
+	}
+
+	err = flyteService.RegisterIdentityServiceHandlerFromEndpoint(ctx, gwmux, grpcAddress, grpcConnectionOpts)
+	if err != nil {
+		return nil, errors.Wrap(err, "error registering identity service")
 	}
 
 	mux.Handle("/", gwmux)

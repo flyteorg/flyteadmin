@@ -12,24 +12,27 @@ import (
 //go:generate pflags Config --default-var=DefaultConfig
 //go:generate enumer --type=AuthorizationServerType --trimprefix=AuthorizationServerType -json
 
+type SecretName = string
+
 const (
 	// #nosec
-	SecretOIdCClientSecret = "oidc_client_secret"
+	// Default OIdC client secret name to use.
+	SecretNameOIdCClientSecret SecretName = "oidc_client_secret"
 	// #nosec
-	SecretCookieHashKey = "cookie_hash_key"
+	SecretNameCookieHashKey SecretName = "cookie_hash_key"
 	// #nosec
-	SecretCookieBlockKey = "cookie_block_key"
+	SecretNameCookieBlockKey SecretName = "cookie_block_key"
 	// #nosec
 	// Base64 encoded secret of exactly 32 bytes
-	SecretClaimSymmetricKey = "claim_symmetric_key"
+	SecretNameClaimSymmetricKey SecretName = "claim_symmetric_key"
 	// #nosec
 	// PrivateKey is used to sign JWT tokens. The default strategy uses RS256 (RSA Signature with SHA-256)
-	SecretTokenSigningRSAKey = "token_rsa_key.pem"
+	SecretNameTokenSigningRSAKey SecretName = "token_rsa_key.pem"
 	// #nosec
 	// PrivateKey that was used to sign old JWT tokens. The default strategy uses RS256 (RSA Signature with SHA-256)
 	// This is used to support key rotation. When present, it'll only be used to validate incoming tokens. New tokens
 	// will not be issued using this key.
-	SecretOldTokenSigningRSAKey = "token_rsa_key_old.pem"
+	SecretNameOldTokenSigningRSAKey SecretName = "token_rsa_key_old.pem"
 )
 
 // AuthorizationServerType defines the type of Authorization Server to use.
@@ -52,10 +55,10 @@ var (
 		GrpcAuthorizationHeader: "flyte-authorization",
 		UserAuth: UserAuthConfig{
 			RedirectURL:              config.URL{URL: *MustParseURL("/console")},
-			CookieHashKeySecretName:  SecretCookieHashKey,
-			CookieBlockKeySecretName: SecretCookieBlockKey,
+			CookieHashKeySecretName:  SecretNameCookieHashKey,
+			CookieBlockKeySecretName: SecretNameCookieBlockKey,
 			OpenID: OpenIDOptions{
-				ClientSecretName: SecretOIdCClientSecret,
+				ClientSecretName: SecretNameOIdCClientSecret,
 				// Default claims that should be supported by any OIdC server. Refer to https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims
 				// for a complete list.
 				Scopes: []string{
@@ -77,9 +80,9 @@ var (
 				AccessTokenLifespan:                   config.Duration{Duration: 30 * time.Minute},
 				RefreshTokenLifespan:                  config.Duration{Duration: 60 * time.Minute},
 				AuthorizationCodeLifespan:             config.Duration{Duration: 5 * time.Minute},
-				ClaimSymmetricEncryptionKeySecretName: SecretClaimSymmetricKey,
-				TokenSigningRSAKeySecretName:          SecretTokenSigningRSAKey,
-				OldTokenSigningRSAKeySecretName:       SecretOldTokenSigningRSAKey,
+				ClaimSymmetricEncryptionKeySecretName: SecretNameClaimSymmetricKey,
+				TokenSigningRSAKeySecretName:          SecretNameTokenSigningRSAKey,
+				OldTokenSigningRSAKeySecretName:       SecretNameOldTokenSigningRSAKey,
 				StaticClients: map[string]*fosite.DefaultClient{
 					"flyte-cli": {
 						ID:            "flyte-cli",
@@ -99,7 +102,7 @@ var (
 					},
 					"flytepropeller": {
 						ID:            "flytepropeller",
-						Secret:        []byte(`$2a$10$IxMdI6d.LIRZPpSfEwNoeu4rY3FhDREsxFJXikcgdRRAStxUlsuEO`), // = "foobar"
+						Secret:        []byte(`$2a$06$pxs1AkG81Kvrhpml1QiLSOQaTk9eePrU/7Yab9y07h3x0TglbaoT6`), // = "foobar"
 						RedirectURIs:  []string{"http://localhost:3846/callback"},
 						ResponseTypes: []string{"token"},
 						GrantTypes:    []string{"refresh_token", "client_credentials"},
@@ -128,37 +131,68 @@ type Config struct {
 	// dimension that made the most sense to cut by at time of writing is HTTP vs gRPC as the web UI mainly used HTTP
 	// and the backend used mostly gRPC.  Cutting by individual endpoints is another option but it possibly falls more
 	// into the realm of authorization rather than authentication.
-	DisableForHTTP bool `json:"disableForHttp"`
-	DisableForGrpc bool `json:"disableForGrpc"`
+	DisableForHTTP bool `json:"disableForHttp" pflag:",Disables auth enforcement on HTTP Endpoints."`
+	DisableForGrpc bool `json:"disableForGrpc" pflag:",Disables auth enforcement on Grpc Endpoints."`
 
-	HTTPPublicURI config.URL `json:"httpPublicUri" pflag:",The publicly accessible http endpoint. This is used to build absolute URLs for endpoints that are only exposed over http (e.g. /authorize and /token for OAuth2)."`
-	Secure        bool       `json:"secure" pflag:",Sets whether the system is serving over SSL/TLS "`
+	// Optional: The publicly accessible http endpoint. This is used to build absolute URLs for endpoints that are only
+	// exposed over http (e.g. /authorize and /token for OAuth2). If not provided, the url will be deduced based on the
+	// request url.
+	HTTPPublicURI config.URL `json:"httpPublicUri" pflag:",Optional: The publicly accessible http endpoint. This is used to build absolute URLs for endpoints that are only exposed over http (e.g. /authorize and /token for OAuth2). If not provided, the url will be deduced based on the request url."`
 
+	// Sets whether the system is serving over SSL/TLS. Setting it is optional. If the request URLs are served over SSL,
+	// this is only useful for Grpc calls where it's not possible to programmatically retrieve TLS status.
+	// The value of this field should be set from the serving command when the Grpc server is built rather than as a user
+	// controlled setting.
+	Secure bool `json:"secure" pflag:",Optional: Sets whether the system is serving over SSL/TLS."`
+
+	// UserAuth settings used to authenticate end users in web-browsers.
 	UserAuth UserAuthConfig `json:"userAuth" pflag:",Defines Auth options for users."`
-	AppAuth  OAuth2Options  `json:"appAuth" pflag:",Defines Auth options for apps. UserAuth must be enabled for AppAuth to work."`
+
+	// AppAuth settings used to authenticate and control/limit access scopes for apps.
+	AppAuth OAuth2Options `json:"appAuth" pflag:",Defines Auth options for apps. UserAuth must be enabled for AppAuth to work."`
 }
 
 type AuthorizationServer struct {
-	Issuer                                string          `json:"issuer" pflag:",Defines the issuer to use when issuing and validating tokens. The default value is https://<requestUri.HostAndPort>/"`
-	AccessTokenLifespan                   config.Duration `json:"accessTokenLifespan" pflag:",Defines the lifespan of issued access tokens."`
-	RefreshTokenLifespan                  config.Duration `json:"refreshTokenLifespan" pflag:",Defines the lifespan of issued access tokens."`
-	AuthorizationCodeLifespan             config.Duration `json:"authorizationCodeLifespan" pflag:",Defines the lifespan of issued access tokens."`
-	ClaimSymmetricEncryptionKeySecretName string          `json:"claimSymmetricEncryptionKeySecretName" pflag:",OPTIONAL"`
-	TokenSigningRSAKeySecretName          string          `json:"tokenSigningRSAKeySecretName" pflag:",OPTIONAL: Secret name to use to retrieve RSA Signing Key."`
-	OldTokenSigningRSAKeySecretName       string          `json:"oldTokenSigningRSAKeySecretName" pflag:",OPTIONAL: Secret name to use to retrieve Old RSA Signing Key. This can be useful during key rotation to continue to accept older tokens."`
+	// Defines the issuer to use when issuing and validating tokens. The default value is https://<requestUri.HostAndPort>/
+	Issuer string `json:"issuer" pflag:",Defines the issuer to use when issuing and validating tokens. The default value is https://<requestUri.HostAndPort>/"`
 
+	// Defines the lifespan of issued access tokens.
+	AccessTokenLifespan config.Duration `json:"accessTokenLifespan" pflag:",Defines the lifespan of issued access tokens."`
+
+	// Defines the lifespan of issued access tokens.
+	RefreshTokenLifespan config.Duration `json:"refreshTokenLifespan" pflag:",Defines the lifespan of issued access tokens."`
+
+	// Defines the lifespan of issued access tokens.
+	AuthorizationCodeLifespan config.Duration `json:"authorizationCodeLifespan" pflag:",Defines the lifespan of issued access tokens."`
+
+	// Secret names, defaults are set in DefaultConfig variable above but are possible to override through configs.
+	ClaimSymmetricEncryptionKeySecretName string `json:"claimSymmetricEncryptionKeySecretName" pflag:",OPTIONAL: Secret name to use to encrypt claims in authcode token."`
+	TokenSigningRSAKeySecretName          string `json:"tokenSigningRSAKeySecretName" pflag:",OPTIONAL: Secret name to use to retrieve RSA Signing Key."`
+	OldTokenSigningRSAKeySecretName       string `json:"oldTokenSigningRSAKeySecretName" pflag:",OPTIONAL: Secret name to use to retrieve Old RSA Signing Key. This can be useful during key rotation to continue to accept older tokens."`
+
+	// A list of clients to grant access to.
 	StaticClients map[string]*fosite.DefaultClient `json:"staticClients" pflag:"-,Defines statically defined list of clients to allow."`
 }
 
 type ExternalAuthorizationServer struct {
+	// BaseURL should be the base url of the authorization server that you are trying to hit. With Okta for instance, it will look something like https://company.okta.com/oauth2/abcdef123456789/
+	// If not provided, the OpenID.BaseURL will be assumed instead.
 	BaseURL config.URL `json:"baseUrl" pflag:",This should be the base url of the authorization server that you are trying to hit. With Okta for instance, it will look something like https://company.okta.com/oauth2/abcdef123456789/"`
 }
 
+// OAuth2Options defines settings for app auth.
 type OAuth2Options struct {
-	AuthServerType     AuthorizationServerType     `json:"authServerType" pflag:"-,Determines authorization server type to use. Additional config should be provided for the chosen AuthorizationServer"`
-	SelfAuthServer     AuthorizationServer         `json:"selfAuthServer" pflag:",Authorization Server config to run as a service. Use this when using an IdP that does not offer a custom OAuth2 Authorization Server."`
+	// AuthServerType defines the type of AuthServer to connect to.
+	AuthServerType AuthorizationServerType `json:"authServerType" pflag:"-,Determines authorization server type to use. Additional config should be provided for the chosen AuthorizationServer"`
+
+	// SelfAuthServer defines settings for running authorization server locally.
+	SelfAuthServer AuthorizationServer `json:"selfAuthServer" pflag:",Authorization Server config to run as a service. Use this when using an IdP that does not offer a custom OAuth2 Authorization Server."`
+
+	// ExternalAuthServer defines settings for connecting with an external authorization server.
 	ExternalAuthServer ExternalAuthorizationServer `json:"externalAuthServer" pflag:",External Authorization Server config."`
-	ThirdParty         ThirdPartyConfigOptions     `json:"thirdPartyConfig" pflag:",Defines settings to instruct flyte cli tools (and optionally others) on what config to use to setup their client."`
+
+	// ThirdParty defines settings for the public client flyte-clients (e.g. flytectl, flytecli) should use.
+	ThirdParty ThirdPartyConfigOptions `json:"thirdPartyConfig" pflag:",Defines settings to instruct flyte cli tools (and optionally others) on what config to use to setup their client."`
 }
 
 type UserAuthConfig struct {
@@ -168,9 +202,11 @@ type UserAuthConfig struct {
 	// See the login handler code for more comments.
 	RedirectURL config.URL `json:"redirectUrl"`
 
+	// OpenID defines settings for connecting and trusting an OpenIDConnect provider.
 	OpenID OpenIDOptions `json:"openId" pflag:",OpenID Configuration for User Auth"`
 	// Possibly add basicAuth & SAML/p support.
 
+	// Secret names, defaults are set in DefaultConfig variable above but are possible to override through configs.
 	CookieHashKeySecretName  string `json:"cookie_hash_key_secret_name" pflag:",OPTIONAL: Secret name to use for cookie hash key."`
 	CookieBlockKeySecretName string `json:"cookie_block_key_secret_name" pflag:",OPTIONAL: Secret name to use for cookie block key."`
 }

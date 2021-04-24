@@ -29,15 +29,15 @@ func newMockProvider(t testing.TB) Provider {
 
 	ctx := context.Background()
 	sm := &mocks.SecretManager{}
-	sm.OnGet(ctx, config.SecretClaimSymmetricKey).Return(base64.RawStdEncoding.EncodeToString(secrets.TokenHashKey), nil)
-	sm.OnGet(ctx, config.SecretCookieBlockKey).Return(base64.RawStdEncoding.EncodeToString(secrets.CookieBlockKey), nil)
-	sm.OnGet(ctx, config.SecretCookieHashKey).Return(base64.RawStdEncoding.EncodeToString(secrets.CookieHashKey), nil)
+	sm.OnGet(ctx, config.SecretNameClaimSymmetricKey).Return(base64.RawStdEncoding.EncodeToString(secrets.TokenHashKey), nil)
+	sm.OnGet(ctx, config.SecretNameCookieBlockKey).Return(base64.RawStdEncoding.EncodeToString(secrets.CookieBlockKey), nil)
+	sm.OnGet(ctx, config.SecretNameCookieHashKey).Return(base64.RawStdEncoding.EncodeToString(secrets.CookieHashKey), nil)
 
 	privBytes := x509.MarshalPKCS1PrivateKey(secrets.TokenSigningRSAPrivateKey)
 	var buf bytes.Buffer
 	assert.NoError(t, pem.Encode(&buf, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: privBytes}))
-	sm.OnGet(ctx, config.SecretTokenSigningRSAKey).Return(buf.String(), nil)
-	sm.OnGet(ctx, config.SecretOldTokenSigningRSAKey).Return("", fmt.Errorf("not found"))
+	sm.OnGet(ctx, config.SecretNameTokenSigningRSAKey).Return(buf.String(), nil)
+	sm.OnGet(ctx, config.SecretNameOldTokenSigningRSAKey).Return("", fmt.Errorf("not found"))
 
 	p, err := NewProvider(ctx, config.DefaultConfig.AppAuth.SelfAuthServer, sm)
 	assert.NoError(t, err)
@@ -170,15 +170,15 @@ func TestProvider_ValidateAccessToken(t *testing.T) {
 		assert.NoError(t, err)
 
 		sm := &mocks.SecretManager{}
-		sm.OnGet(ctx, config.SecretClaimSymmetricKey).Return(base64.RawStdEncoding.EncodeToString(secrets.TokenHashKey), nil)
-		sm.OnGet(ctx, config.SecretCookieBlockKey).Return(base64.RawStdEncoding.EncodeToString(secrets.CookieBlockKey), nil)
-		sm.OnGet(ctx, config.SecretCookieHashKey).Return(base64.RawStdEncoding.EncodeToString(secrets.CookieHashKey), nil)
+		sm.OnGet(ctx, config.SecretNameClaimSymmetricKey).Return(base64.RawStdEncoding.EncodeToString(secrets.TokenHashKey), nil)
+		sm.OnGet(ctx, config.SecretNameCookieBlockKey).Return(base64.RawStdEncoding.EncodeToString(secrets.CookieBlockKey), nil)
+		sm.OnGet(ctx, config.SecretNameCookieHashKey).Return(base64.RawStdEncoding.EncodeToString(secrets.CookieHashKey), nil)
 
 		privBytes := x509.MarshalPKCS1PrivateKey(secrets.TokenSigningRSAPrivateKey)
 		var buf bytes.Buffer
 		assert.NoError(t, pem.Encode(&buf, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: privBytes}))
-		sm.OnGet(ctx, config.SecretTokenSigningRSAKey).Return(buf.String(), nil)
-		sm.OnGet(ctx, config.SecretOldTokenSigningRSAKey).Return("", fmt.Errorf("not found"))
+		sm.OnGet(ctx, config.SecretNameTokenSigningRSAKey).Return(buf.String(), nil)
+		sm.OnGet(ctx, config.SecretNameOldTokenSigningRSAKey).Return("", fmt.Errorf("not found"))
 
 		p, err := NewProvider(ctx, config.DefaultConfig.AppAuth.SelfAuthServer, sm)
 		assert.NoError(t, err)

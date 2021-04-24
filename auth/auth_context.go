@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
-	"k8s.io/apimachinery/pkg/util/sets"
-
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 
 	"github.com/coreos/go-oidc"
@@ -18,7 +16,6 @@ import (
 	"github.com/flyteorg/flyteadmin/auth/interfaces"
 	"github.com/flyteorg/flytestdlib/errors"
 	"github.com/flyteorg/flytestdlib/logger"
-	grpcauth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"golang.org/x/oauth2"
 )
 
@@ -30,27 +27,9 @@ const (
 )
 
 var (
-	anonymousMethodNames = sets.NewString("/flyteidl.service.AuthService/OAuth2Metadata", "/flyteidl.service.AuthService/FlyteClient")
-	callbackRelativeURL  = config.MustParseURL("/callback")
-	rootRelativeURL      = config.MustParseURL("/")
+	callbackRelativeURL = config.MustParseURL("/callback")
+	rootRelativeURL     = config.MustParseURL("/")
 )
-
-type authServiceWrapper struct {
-	interfaces.OAuth2MetadataProvider
-	interfaces.OIdCUserInfoProvider
-
-	authInterceptor grpcauth.AuthFunc
-}
-
-// Override auth func to enforce anonymous access on the implemented APIs
-// Ref: https://github.com/grpc-ecosystem/go-grpc-middleware/blob/master/auth/auth.go#L31
-func (s authServiceWrapper) AuthFuncOverride(ctx context.Context, fullMethodName string) (context.Context, error) {
-	if anonymousMethodNames.Has(fullMethodName) {
-		return ctx, nil
-	}
-
-	return s.authInterceptor(ctx)
-}
 
 // Please see the comment on the corresponding AuthenticationContext for more information.
 type Context struct {
@@ -60,7 +39,8 @@ type Context struct {
 	options              *config.Config
 	oauth2Provider       interfaces.OAuth2Provider
 	oauth2ResourceServer interfaces.OAuth2ResourceServer
-	AuthServiceImpl      service.AuthServiceServer
+	authServiceImpl      service.AuthMetadataServiceServer
+	identityServiceIml   service.IdentityServiceServer
 
 	userInfoURL       *url.URL
 	oauth2MetadataURL *url.URL
@@ -114,16 +94,20 @@ func (c Context) GetOIdCMetadataURL() *url.URL {
 	return c.oidcMetadataURL
 }
 
-func (c Context) AuthService() service.AuthServiceServer {
-	return c.AuthServiceImpl
+func (c Context) AuthMetadataService() service.AuthMetadataServiceServer {
+	return c.authServiceImpl
+}
+
+func (c Context) IdentityService() service.IdentityServiceServer {
+	return c.identityServiceIml
 }
 
 func (c Context) OAuth2ResourceServer() interfaces.OAuth2ResourceServer {
 	return c.oauth2ResourceServer
 }
 func NewAuthenticationContext(ctx context.Context, sm core.SecretManager, oauth2Provider interfaces.OAuth2Provider,
-	oauth2ResourceServer interfaces.OAuth2ResourceServer, metadataProvider interfaces.OAuth2MetadataProvider,
-	infoProvider interfaces.OIdCUserInfoProvider, options *config.Config) (Context, error) {
+	oauth2ResourceServer interfaces.OAuth2ResourceServer, authMetadataService service.AuthMetadataServiceServer,
+	identityService service.IdentityServiceServer, options *config.Config) (Context, error) {
 
 	// Construct the cookie manager object.
 	hashKeyBase64, err := sm.Get(ctx, options.UserAuth.CookieHashKeySecretName)
@@ -191,13 +175,8 @@ func NewAuthenticationContext(ctx context.Context, sm core.SecretManager, oauth2
 		oauth2ResourceServer: oauth2ResourceServer,
 	}
 
-	authSvc := authServiceWrapper{
-		OAuth2MetadataProvider: metadataProvider,
-		OIdCUserInfoProvider:   infoProvider,
-		authInterceptor:        GetAuthenticationInterceptor(authCtx),
-	}
-
-	authCtx.AuthServiceImpl = authSvc
+	authCtx.authServiceImpl = authMetadataService
+	authCtx.identityServiceIml = identityService
 
 	return authCtx, nil
 }

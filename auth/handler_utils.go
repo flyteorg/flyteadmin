@@ -5,11 +5,12 @@ import (
 	"net/http"
 	"net/url"
 
-	"google.golang.org/grpc/metadata"
+	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 )
 
 const (
 	metadataXForwardedHost = "x-forwarded-host"
+	metadataAuthority      = ":authority"
 )
 
 //func NewMockOIdCProvider() (*oidc.Provider, error) {
@@ -70,23 +71,23 @@ func GetPublicURL(ctx context.Context, isSecure bool, httpURLCfg *url.URL) *url.
 		return httpURLCfg
 	}
 
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
+	md := metautils.ExtractIncoming(ctx)
+
+	forwardedHost := md.Get(metadataXForwardedHost)
+	if len(forwardedHost) == 0 {
+		forwardedHost = md.Get(metadataAuthority)
+	}
+
+	if len(forwardedHost) == 0 {
 		return httpURLCfg
 	}
 
-	res := ""
-	forwardedHosts := md.Get(metadataXForwardedHost)
-	if len(forwardedHosts) > 0 {
-		res = forwardedHosts[0]
-	}
-
 	if isSecure {
-		res = "https://" + res
+		forwardedHost = "https://" + forwardedHost
 	} else {
-		res = "http://" + res
+		forwardedHost = "http://" + forwardedHost
 	}
 
-	u, _ := url.Parse(res)
+	u, _ := url.Parse(forwardedHost)
 	return u
 }

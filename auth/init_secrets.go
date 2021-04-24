@@ -78,28 +78,28 @@ type SecretsSet struct {
 }
 
 func writeSecrets(ctx context.Context, secrets SecretsSet, path string) error {
-	err := ioutil.WriteFile(filepath.Join(path, config.SecretClaimSymmetricKey), []byte(base64.RawStdEncoding.EncodeToString(secrets.TokenHashKey)), os.ModePerm)
+	err := ioutil.WriteFile(filepath.Join(path, config.SecretNameClaimSymmetricKey), []byte(base64.RawStdEncoding.EncodeToString(secrets.TokenHashKey)), os.ModePerm)
 	if err != nil {
 		return fmt.Errorf("failed to persist token hash key. Error: %w", err)
 	}
 
-	logger.Infof(ctx, "wrote %v", config.SecretClaimSymmetricKey)
+	logger.Infof(ctx, "wrote %v", config.SecretNameClaimSymmetricKey)
 
-	err = ioutil.WriteFile(filepath.Join(path, config.SecretCookieHashKey), []byte(base64.RawStdEncoding.EncodeToString(secrets.CookieHashKey)), os.ModePerm)
+	err = ioutil.WriteFile(filepath.Join(path, config.SecretNameCookieHashKey), []byte(base64.RawStdEncoding.EncodeToString(secrets.CookieHashKey)), os.ModePerm)
 	if err != nil {
 		return fmt.Errorf("failed to persist cookie hash key. Error: %w", err)
 	}
 
-	logger.Infof(ctx, "wrote %v", config.SecretCookieHashKey)
+	logger.Infof(ctx, "wrote %v", config.SecretNameCookieHashKey)
 
-	err = ioutil.WriteFile(filepath.Join(path, config.SecretCookieBlockKey), []byte(base64.RawStdEncoding.EncodeToString(secrets.CookieBlockKey)), os.ModePerm)
+	err = ioutil.WriteFile(filepath.Join(path, config.SecretNameCookieBlockKey), []byte(base64.RawStdEncoding.EncodeToString(secrets.CookieBlockKey)), os.ModePerm)
 	if err != nil {
 		return fmt.Errorf("failed to persist cookie block key. Error: %w", err)
 	}
 
-	logger.Infof(ctx, "wrote %v", config.SecretCookieBlockKey)
+	logger.Infof(ctx, "wrote %v", config.SecretNameCookieBlockKey)
 
-	keyOut, err := os.OpenFile(filepath.Join(path, config.SecretTokenSigningRSAKey), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+	keyOut, err := os.OpenFile(filepath.Join(path, config.SecretNameTokenSigningRSAKey), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	if err != nil {
 		return fmt.Errorf("failed to open key.pem for writing: %w", err)
 	}
@@ -113,7 +113,7 @@ func writeSecrets(ctx context.Context, secrets SecretsSet, path string) error {
 		return fmt.Errorf("error closing key.pem: %w", err)
 	}
 
-	logger.Infof(ctx, "wrote %v", config.SecretTokenSigningRSAKey)
+	logger.Infof(ctx, "wrote %v", config.SecretNameTokenSigningRSAKey)
 
 	return nil
 }

@@ -39,17 +39,6 @@ type OAuth2ResourceServer interface {
 	ValidateAccessToken(ctx context.Context, expectedAudience, tokenStr string) (IdentityContext, error)
 }
 
-// OAuth2MetadataProvider represents a subset of the service.AuthServiceServer interface
-type OAuth2MetadataProvider interface {
-	OAuth2Metadata(context.Context, *service.OAuth2MetadataRequest) (*service.OAuth2MetadataResponse, error)
-	FlyteClient(context.Context, *service.FlyteClientRequest) (*service.FlyteClientResponse, error)
-}
-
-// OIdCUserInfoProvider represents a subset of the service.AuthServiceServer interface
-type OIdCUserInfoProvider interface {
-	UserInfo(context.Context, *service.UserInfoRequest) (*service.UserInfoResponse, error)
-}
-
 // AuthenticationContext is a convenience wrapper object that holds all the utilities necessary to run Flyte Admin behind authentication
 // It is constructed at the root server layer, and passed around to the various auth handlers and utility functions/objects.
 type AuthenticationContext interface {
@@ -62,7 +51,8 @@ type AuthenticationContext interface {
 	GetOAuth2MetadataURL() *url.URL
 	GetOIdCMetadataURL() *url.URL
 	GetHTTPClient() *http.Client
-	AuthService() service.AuthServiceServer
+	AuthMetadataService() service.AuthMetadataServiceServer
+	IdentityService() service.IdentityServiceServer
 }
 
 // IdentityContext represents the authenticated identity and can be used to abstract the way the user/app authenticated

@@ -141,7 +141,7 @@ func verifyClaims(expectedAudience string, claimsRaw map[string]interface{}) (in
 	}
 
 	userInfo := &service.UserInfoResponse{}
-	if userInfoClaim, found := claimsRaw[UserIDClaim]; found {
+	if userInfoClaim, found := claimsRaw[UserIDClaim]; found && userInfoClaim != nil {
 		userInfoRaw := userInfoClaim.(map[string]interface{})
 		raw, err := json.Marshal(userInfoRaw)
 		if err != nil {
@@ -167,10 +167,10 @@ func verifyClaims(expectedAudience string, claimsRaw map[string]interface{}) (in
 }
 
 // Creates a new OAuth2 Provider that is able to do OAuth 2-legged and 3-legged flows.
-// It'll lookup auth.SecretClaimSymmetricKey and auth.SecretTokenSigningRSAKey secrets from the secret manager to use to sign
+// It'll lookup auth.SecretNameClaimSymmetricKey and auth.SecretNameTokenSigningRSAKey secrets from the secret manager to use to sign
 // and generate hashes for tokens. The RSA Private key is expected to be in PEM format with the public key embedded.
 // Use auth.GetInitSecretsCommand() to generate new valid secrets that will be accepted by this provider.
-// The auth.SecretClaimSymmetricKey must be a 32-bytes long key in Base64Encoding.
+// The auth.SecretNameClaimSymmetricKey must be a 32-bytes long key in Base64Encoding.
 func NewProvider(ctx context.Context, cfg config.AuthorizationServer, sm core.SecretManager) (Provider, error) {
 	// fosite requires four parameters for the server to get up and running:
 	// 1. config - for any enforcement you may desire, you can do this using `compose.Config`. You like PKCE, enforce it!

@@ -25,34 +25,34 @@ type AuthenticationContext struct {
 	mock.Mock
 }
 
-type AuthenticationContext_AuthService struct {
+type AuthenticationContext_AuthMetadataService struct {
 	*mock.Call
 }
 
-func (_m AuthenticationContext_AuthService) Return(_a0 service.AuthServiceServer) *AuthenticationContext_AuthService {
-	return &AuthenticationContext_AuthService{Call: _m.Call.Return(_a0)}
+func (_m AuthenticationContext_AuthMetadataService) Return(_a0 service.AuthMetadataServiceServer) *AuthenticationContext_AuthMetadataService {
+	return &AuthenticationContext_AuthMetadataService{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *AuthenticationContext) OnAuthService() *AuthenticationContext_AuthService {
-	c := _m.On("AuthService")
-	return &AuthenticationContext_AuthService{Call: c}
+func (_m *AuthenticationContext) OnAuthMetadataService() *AuthenticationContext_AuthMetadataService {
+	c := _m.On("AuthMetadataService")
+	return &AuthenticationContext_AuthMetadataService{Call: c}
 }
 
-func (_m *AuthenticationContext) OnAuthServiceMatch(matchers ...interface{}) *AuthenticationContext_AuthService {
-	c := _m.On("AuthService", matchers...)
-	return &AuthenticationContext_AuthService{Call: c}
+func (_m *AuthenticationContext) OnAuthMetadataServiceMatch(matchers ...interface{}) *AuthenticationContext_AuthMetadataService {
+	c := _m.On("AuthMetadataService", matchers...)
+	return &AuthenticationContext_AuthMetadataService{Call: c}
 }
 
-// AuthService provides a mock function with given fields:
-func (_m *AuthenticationContext) AuthService() service.AuthServiceServer {
+// AuthMetadataService provides a mock function with given fields:
+func (_m *AuthenticationContext) AuthMetadataService() service.AuthMetadataServiceServer {
 	ret := _m.Called()
 
-	var r0 service.AuthServiceServer
-	if rf, ok := ret.Get(0).(func() service.AuthServiceServer); ok {
+	var r0 service.AuthMetadataServiceServer
+	if rf, ok := ret.Get(0).(func() service.AuthMetadataServiceServer); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(service.AuthServiceServer)
+			r0 = ret.Get(0).(service.AuthMetadataServiceServer)
 		}
 	}
 
@@ -195,6 +195,40 @@ func (_m *AuthenticationContext) GetOIdCMetadataURL() *url.URL {
 	return r0
 }
 
+type AuthenticationContext_IdentityService struct {
+	*mock.Call
+}
+
+func (_m AuthenticationContext_IdentityService) Return(_a0 service.IdentityServiceServer) *AuthenticationContext_IdentityService {
+	return &AuthenticationContext_IdentityService{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *AuthenticationContext) OnIdentityService() *AuthenticationContext_IdentityService {
+	c := _m.On("IdentityService")
+	return &AuthenticationContext_IdentityService{Call: c}
+}
+
+func (_m *AuthenticationContext) OnIdentityServiceMatch(matchers ...interface{}) *AuthenticationContext_IdentityService {
+	c := _m.On("IdentityService", matchers...)
+	return &AuthenticationContext_IdentityService{Call: c}
+}
+
+// IdentityService provides a mock function with given fields:
+func (_m *AuthenticationContext) IdentityService() service.IdentityServiceServer {
+	ret := _m.Called()
+
+	var r0 service.IdentityServiceServer
+	if rf, ok := ret.Get(0).(func() service.IdentityServiceServer); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(service.IdentityServiceServer)
+		}
+	}
+
+	return r0
+}
+
 type AuthenticationContext_OAuth2ClientConfig struct {
 	*mock.Call
 }
@@ -203,8 +237,8 @@ func (_m AuthenticationContext_OAuth2ClientConfig) Return(_a0 *oauth2.Config) *A
 	return &AuthenticationContext_OAuth2ClientConfig{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *AuthenticationContext) OnOAuth2ClientConfig(requestUrl *url.URL) *AuthenticationContext_OAuth2ClientConfig {
-	c := _m.On("OAuth2ClientConfig", requestUrl)
+func (_m *AuthenticationContext) OnOAuth2ClientConfig(requestURL *url.URL) *AuthenticationContext_OAuth2ClientConfig {
+	c := _m.On("OAuth2ClientConfig", requestURL)
 	return &AuthenticationContext_OAuth2ClientConfig{Call: c}
 }
 
@@ -213,13 +247,13 @@ func (_m *AuthenticationContext) OnOAuth2ClientConfigMatch(matchers ...interface
 	return &AuthenticationContext_OAuth2ClientConfig{Call: c}
 }
 
-// OAuth2ClientConfig provides a mock function with given fields: requestUrl
-func (_m *AuthenticationContext) OAuth2ClientConfig(requestUrl *url.URL) *oauth2.Config {
-	ret := _m.Called(requestUrl)
+// OAuth2ClientConfig provides a mock function with given fields: requestURL
+func (_m *AuthenticationContext) OAuth2ClientConfig(requestURL *url.URL) *oauth2.Config {
+	ret := _m.Called(requestURL)
 
 	var r0 *oauth2.Config
 	if rf, ok := ret.Get(0).(func(*url.URL) *oauth2.Config); ok {
-		r0 = rf(requestUrl)
+		r0 = rf(requestURL)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*oauth2.Config)
@@ -360,38 +394,6 @@ func (_m *AuthenticationContext) Options() *config.Config {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*config.Config)
 		}
-	}
-
-	return r0
-}
-
-type AuthenticationContext_Secure struct {
-	*mock.Call
-}
-
-func (_m AuthenticationContext_Secure) Return(_a0 bool) *AuthenticationContext_Secure {
-	return &AuthenticationContext_Secure{Call: _m.Call.Return(_a0)}
-}
-
-func (_m *AuthenticationContext) OnSecure() *AuthenticationContext_Secure {
-	c := _m.On("Secure")
-	return &AuthenticationContext_Secure{Call: c}
-}
-
-func (_m *AuthenticationContext) OnSecureMatch(matchers ...interface{}) *AuthenticationContext_Secure {
-	c := _m.On("Secure", matchers...)
-	return &AuthenticationContext_Secure{Call: c}
-}
-
-// Secure provides a mock function with given fields:
-func (_m *AuthenticationContext) Secure() bool {
-	ret := _m.Called()
-
-	var r0 bool
-	if rf, ok := ret.Get(0).(func() bool); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(bool)
 	}
 
 	return r0

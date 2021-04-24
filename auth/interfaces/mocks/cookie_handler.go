@@ -27,8 +27,8 @@ type CookieHandler_RetrieveAuthCodeRequest struct {
 	*mock.Call
 }
 
-func (_m CookieHandler_RetrieveAuthCodeRequest) Return(authRequestUrl string, err error) *CookieHandler_RetrieveAuthCodeRequest {
-	return &CookieHandler_RetrieveAuthCodeRequest{Call: _m.Call.Return(authRequestUrl, err)}
+func (_m CookieHandler_RetrieveAuthCodeRequest) Return(authRequestURL string, err error) *CookieHandler_RetrieveAuthCodeRequest {
+	return &CookieHandler_RetrieveAuthCodeRequest{Call: _m.Call.Return(authRequestURL, err)}
 }
 
 func (_m *CookieHandler) OnRetrieveAuthCodeRequest(ctx context.Context, request *http.Request) *CookieHandler_RetrieveAuthCodeRequest {
@@ -164,8 +164,8 @@ func (_m CookieHandler_SetAuthCodeCookie) Return(_a0 error) *CookieHandler_SetAu
 	return &CookieHandler_SetAuthCodeCookie{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *CookieHandler) OnSetAuthCodeCookie(ctx context.Context, writer http.ResponseWriter, authRequestUrl string) *CookieHandler_SetAuthCodeCookie {
-	c := _m.On("SetAuthCodeCookie", ctx, writer, authRequestUrl)
+func (_m *CookieHandler) OnSetAuthCodeCookie(ctx context.Context, writer http.ResponseWriter, authRequestURL string) *CookieHandler_SetAuthCodeCookie {
+	c := _m.On("SetAuthCodeCookie", ctx, writer, authRequestURL)
 	return &CookieHandler_SetAuthCodeCookie{Call: c}
 }
 
@@ -174,13 +174,13 @@ func (_m *CookieHandler) OnSetAuthCodeCookieMatch(matchers ...interface{}) *Cook
 	return &CookieHandler_SetAuthCodeCookie{Call: c}
 }
 
-// SetAuthCodeCookie provides a mock function with given fields: ctx, writer, authRequestUrl
-func (_m *CookieHandler) SetAuthCodeCookie(ctx context.Context, writer http.ResponseWriter, authRequestUrl string) error {
-	ret := _m.Called(ctx, writer, authRequestUrl)
+// SetAuthCodeCookie provides a mock function with given fields: ctx, writer, authRequestURL
+func (_m *CookieHandler) SetAuthCodeCookie(ctx context.Context, writer http.ResponseWriter, authRequestURL string) error {
+	ret := _m.Called(ctx, writer, authRequestURL)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, http.ResponseWriter, string) error); ok {
-		r0 = rf(ctx, writer, authRequestUrl)
+		r0 = rf(ctx, writer, authRequestURL)
 	} else {
 		r0 = ret.Error(0)
 	}
