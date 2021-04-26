@@ -363,10 +363,10 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
-	t.Run("Test_userAuth.cookie_hash_key_secret_name", func(t *testing.T) {
+	t.Run("Test_userAuth.cookieHashKeySecretName", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("userAuth.cookie_hash_key_secret_name"); err == nil {
+			if vString, err := cmdFlags.GetString("userAuth.cookieHashKeySecretName"); err == nil {
 				assert.Equal(t, string(DefaultConfig.UserAuth.CookieHashKeySecretName), vString)
 			} else {
 				assert.FailNow(t, err.Error())
@@ -376,8 +376,8 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("userAuth.cookie_hash_key_secret_name", testValue)
-			if vString, err := cmdFlags.GetString("userAuth.cookie_hash_key_secret_name"); err == nil {
+			cmdFlags.Set("userAuth.cookieHashKeySecretName", testValue)
+			if vString, err := cmdFlags.GetString("userAuth.cookieHashKeySecretName"); err == nil {
 				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.UserAuth.CookieHashKeySecretName)
 
 			} else {
@@ -385,10 +385,10 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
-	t.Run("Test_userAuth.cookie_block_key_secret_name", func(t *testing.T) {
+	t.Run("Test_userAuth.cookieBlockKeySecretName", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("userAuth.cookie_block_key_secret_name"); err == nil {
+			if vString, err := cmdFlags.GetString("userAuth.cookieBlockKeySecretName"); err == nil {
 				assert.Equal(t, string(DefaultConfig.UserAuth.CookieBlockKeySecretName), vString)
 			} else {
 				assert.FailNow(t, err.Error())
@@ -398,8 +398,8 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("userAuth.cookie_block_key_secret_name", testValue)
-			if vString, err := cmdFlags.GetString("userAuth.cookie_block_key_secret_name"); err == nil {
+			cmdFlags.Set("userAuth.cookieBlockKeySecretName", testValue)
+			if vString, err := cmdFlags.GetString("userAuth.cookieBlockKeySecretName"); err == nil {
 				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.UserAuth.CookieBlockKeySecretName)
 
 			} else {

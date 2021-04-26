@@ -207,8 +207,8 @@ type UserAuthConfig struct {
 	// Possibly add basicAuth & SAML/p support.
 
 	// Secret names, defaults are set in DefaultConfig variable above but are possible to override through configs.
-	CookieHashKeySecretName  string `json:"cookie_hash_key_secret_name" pflag:",OPTIONAL: Secret name to use for cookie hash key."`
-	CookieBlockKeySecretName string `json:"cookie_block_key_secret_name" pflag:",OPTIONAL: Secret name to use for cookie block key."`
+	CookieHashKeySecretName  string `json:"cookieHashKeySecretName" pflag:",OPTIONAL: Secret name to use for cookie hash key."`
+	CookieBlockKeySecretName string `json:"cookieBlockKeySecretName" pflag:",OPTIONAL: Secret name to use for cookie block key."`
 }
 
 type OpenIDOptions struct {
