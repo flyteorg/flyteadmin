@@ -52,14 +52,7 @@ func tokenEndpoint(authCtx interfaces.AuthenticationContext, rw http.ResponseWri
 	// If this is authorization_code, we should have consented the user for the requested scopes, so grant those too
 	if fositeAccessRequest.GetGrantTypes().HasOneOf(supportedGrantTypes...) {
 		requestedScopes := fositeAccessRequest.GetRequestedScopes()
-		//if !requestedScopes.Has(accessTokenScope) && !fositeAccessRequest.GetGrantedScopes().Has(accessTokenScope) {
-		//	logger.Infof(ctx, "Request doesn't have access_token required scope")
-		//	oauth2Provider.WriteAccessError(rw, fositeAccessRequest, fosite.ErrInvalidRequest)
-		//	return
-		//}
-
 		fositeAccessRequest.GrantedScope = fosite.Arguments{}
-
 		for _, scope := range requestedScopes {
 			fositeAccessRequest.GrantScope(strings.TrimPrefix(scope, requestedScopePrefix))
 		}
