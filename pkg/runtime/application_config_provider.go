@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
-
 	"github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flytestdlib/config"
 	"github.com/flyteorg/flytestdlib/logger"
@@ -20,19 +19,58 @@ const notifications = "notifications"
 const domains = "domains"
 const externalEvents = "externalEvents"
 
-var databaseConfig = config.MustRegisterSection(database, &interfaces.DbConfigSection{})
-var flyteAdminConfig = config.MustRegisterSection(flyteAdmin, &interfaces.ApplicationConfig{})
-var schedulerConfig = config.MustRegisterSection(scheduler, &interfaces.SchedulerConfig{})
+const postgres = "postgres"
 
-var defaultRemoteDataConfig = &interfaces.RemoteDataConfig{
-	Scheme:         common.Local,
+var databaseConfig = config.MustRegisterSection(database, &interfaces.DbConfigSection{
+	Port:         5432,
+	User:         postgres,
+	Host:         postgres,
+	DbName:       postgres,
+	ExtraOptions: "sslmode=disable",
+})
+var flyteAdminConfig = config.MustRegisterSection(flyteAdmin, &interfaces.ApplicationConfig{
+	ProfilerPort:          10254,
+	MetricsScope:          "flyte:",
+	MetadataStoragePrefix: []string{"metadata", "admin"},
+	EventVersion:          1,
+	AsyncEventsBufferSize: 100,
+})
+var schedulerConfig = config.MustRegisterSection(scheduler, &interfaces.SchedulerConfig{
+	EventSchedulerConfig: interfaces.EventSchedulerConfig{
+		Scheme: common.Local,
+	},
+	WorkflowExecutorConfig: interfaces.WorkflowExecutorConfig{
+		Scheme: common.Local,
+	},
+})
+var remoteDataConfig = config.MustRegisterSection(remoteData, &interfaces.RemoteDataConfig{
+	Scheme: common.Local,
+	Region: "us-east-1",
+	SignedURL: interfaces.SignedURL{
+		DurationMinutes: 3,
+	},
 	MaxSizeInBytes: 1048576, // 1 Mib
-}
-var remoteDataConfig = config.MustRegisterSection(remoteData, defaultRemoteDataConfig)
-
-var notificationsConfig = config.MustRegisterSection(notifications, &interfaces.NotificationsConfig{})
-var domainsConfig = config.MustRegisterSection(domains, &interfaces.DomainsConfig{})
-var externalEventsConfig = config.MustRegisterSection(externalEvents, &interfaces.ExternalEventsConfig{})
+})
+var notificationsConfig = config.MustRegisterSection(notifications, &interfaces.NotificationsConfig{
+	Type: common.Local,
+})
+var domainsConfig = config.MustRegisterSection(domains, &interfaces.DomainsConfig{
+	{
+		ID:   "development",
+		Name: "development",
+	},
+	{
+		ID:   "staging",
+		Name: "staging",
+	},
+	{
+		ID:   "production",
+		Name: "production",
+	},
+})
+var externalEventsConfig = config.MustRegisterSection(externalEvents, &interfaces.ExternalEventsConfig{
+	Type: common.Local,
+})
 
 // Implementation of an interfaces.ApplicationConfiguration
 type ApplicationConfigurationProvider struct{}
