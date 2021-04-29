@@ -58,10 +58,6 @@ var serveCmd = &cobra.Command{
 		serverConfig := config.GetConfig()
 
 		if serverConfig.Security.Secure {
-			// Override auth config to indicate we are serving over secure channels. This will be used to deduce the
-			// public facing url.
-			authConfig.GetConfig().Secure = true
-
 			return serveGatewaySecure(ctx, serverConfig, authConfig.GetConfig())
 		}
 

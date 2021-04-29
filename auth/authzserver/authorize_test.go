@@ -148,7 +148,7 @@ func TestGetIssuer(t *testing.T) {
 					Issuer: "my_issuer",
 				},
 			},
-			HTTPPublicURI: config2.URL{URL: *config.MustParseURL("http://localhost/")},
+			AuthorizedURIs: []config2.URL{{URL: *config.MustParseURL("http://localhost/")}},
 		})
 
 		assert.Equal(t, "my_issuer", issuer)
@@ -156,7 +156,7 @@ func TestGetIssuer(t *testing.T) {
 
 	t.Run("Fallback to http public uri", func(t *testing.T) {
 		issuer := GetIssuer(context.Background(), nil, &config.Config{
-			HTTPPublicURI: config2.URL{URL: *config.MustParseURL("http://localhost/")},
+			AuthorizedURIs: []config2.URL{{URL: *config.MustParseURL("http://localhost/")}},
 		})
 
 		assert.Equal(t, "http://localhost/", issuer)

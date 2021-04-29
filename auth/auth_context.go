@@ -140,7 +140,7 @@ func NewAuthenticationContext(ctx context.Context, sm core.SecretManager, oauth2
 	}
 
 	// Construct the golang OAuth2 library's own internal configuration object from this package's config
-	oauth2Config, err := GetOAuth2ClientConfig(ctx, options.UserAuth.OpenID, options.HTTPPublicURI.URL, provider.Endpoint(), sm)
+	oauth2Config, err := GetOAuth2ClientConfig(ctx, options.UserAuth.OpenID, provider.Endpoint(), sm)
 	if err != nil {
 		return Context{}, errors.Wrapf(ErrauthCtx, err, "Error creating OAuth2 library configuration")
 	}
@@ -182,7 +182,7 @@ func NewAuthenticationContext(ctx context.Context, sm core.SecretManager, oauth2
 }
 
 // This creates a oauth2 library config object, with values from the Flyte Admin config
-func GetOAuth2ClientConfig(ctx context.Context, options config.OpenIDOptions, publicHTTPBaseURL url.URL, providerEndpoints oauth2.Endpoint, sm core.SecretManager) (cfg oauth2.Config, err error) {
+func GetOAuth2ClientConfig(ctx context.Context, options config.OpenIDOptions, providerEndpoints oauth2.Endpoint, sm core.SecretManager) (cfg oauth2.Config, err error) {
 	var secret string
 	if len(options.DeprecatedClientSecretFile) > 0 {
 		secretBytes, err := ioutil.ReadFile(options.ClientSecretName)
@@ -201,7 +201,7 @@ func GetOAuth2ClientConfig(ctx context.Context, options config.OpenIDOptions, pu
 	secret = strings.TrimSuffix(secret, "\n")
 
 	return oauth2.Config{
-		RedirectURL:  publicHTTPBaseURL.ResolveReference(callbackRelativeURL).String(),
+		RedirectURL:  callbackRelativeURL.String(),
 		ClientID:     options.ClientID,
 		ClientSecret: secret,
 		Scopes:       options.Scopes,

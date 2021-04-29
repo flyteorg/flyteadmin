@@ -70,4 +70,4 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.0 // indirect
 )
 
-replace github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v0.18.40-0.20210426230906-81d7245e6316
+replace github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v0.18.40-0.20210429164157-c5e53ac332e7

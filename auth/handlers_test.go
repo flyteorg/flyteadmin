@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"strings"
 
+	"github.com/stretchr/testify/mock"
+
 	stdConfig "github.com/flyteorg/flytestdlib/config"
 
 	"github.com/flyteorg/flyteadmin/auth/config"
@@ -30,7 +32,8 @@ func TestGetLoginHandler(t *testing.T) {
 		Scopes:   []string{"openid", "other"},
 	}
 	mockAuthCtx := mocks.AuthenticationContext{}
-	mockAuthCtx.On("OAuth2Config").Return(&dummyOAuth2Config)
+	mockAuthCtx.OnOptions().Return(&config.Config{})
+	mockAuthCtx.OnOAuth2ClientConfigMatch(mock.Anything).Return(&dummyOAuth2Config)
 	handler := GetLoginHandler(ctx, &mockAuthCtx)
 	req, err := http.NewRequest("GET", "/login", nil)
 	assert.NoError(t, err)
@@ -49,7 +52,7 @@ func TestGetHTTPRequestCookieToMetadataHandler(t *testing.T) {
 	cookieManager, err := NewCookieManager(ctx, hashKeyEncoded, blockKeyEncoded)
 	assert.NoError(t, err)
 	mockAuthCtx := mocks.AuthenticationContext{}
-	mockAuthCtx.On("CookieManager").Return(&cookieManager)
+	mockAuthCtx.OnCookieManager().Return(&cookieManager)
 	mockAuthCtx.OnOptions().Return(&config.Config{})
 	handler := GetHTTPRequestCookieToMetadataHandler(&mockAuthCtx)
 	req, err := http.NewRequest("GET", "/api/v1/projects", nil)
@@ -63,7 +66,7 @@ func TestGetHTTPRequestCookieToMetadataHandler(t *testing.T) {
 	assert.NoError(t, err)
 	req.AddCookie(&idCookie)
 
-	assert.Equal(t, "Bearer a.b.c", handler(ctx, req)["authorization"][0])
+	assert.Equal(t, "IDToken a.b.c", handler(ctx, req)["authorization"][0])
 }
 
 func TestGetHTTPMetadataTaggingHandler(t *testing.T) {
@@ -106,12 +109,13 @@ func TestGetOIdCMetadataEndpointRedirectHandler(t *testing.T) {
 			},
 		},
 	})
-	mockAuthCtx.OnGetOAuth2MetadataURL().Return(&metadataPath)
+
+	mockAuthCtx.OnGetOIdCMetadataURL().Return(&metadataPath)
 	handler := GetOIdCMetadataEndpointRedirectHandler(ctx, &mockAuthCtx)
 	req, err := http.NewRequest("GET", "/xyz", nil)
 	assert.NoError(t, err)
 	w := httptest.NewRecorder()
 	handler(w, req)
 	assert.Equal(t, http.StatusSeeOther, w.Code)
-	assert.Equal(t, "http://www.google.com/.well-known/oauth-authorization-server", w.Header()["Location"][0])
+	assert.Equal(t, "http://www.google.com/.well-known/openid-configuration", w.Header()["Location"][0])
 }

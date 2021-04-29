@@ -187,44 +187,22 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
-	t.Run("Test_httpPublicUri", func(t *testing.T) {
+	t.Run("Test_authorizedUris", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("httpPublicUri"); err == nil {
-				assert.Equal(t, string(DefaultConfig.HTTPPublicURI.String()), vString)
+			if vStringSlice, err := cmdFlags.GetStringSlice("authorizedUris"); err == nil {
+				assert.Equal(t, []string([]string{}), vStringSlice)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 
 		t.Run("Override", func(t *testing.T) {
-			testValue := DefaultConfig.HTTPPublicURI.String()
+			testValue := "1,1"
 
-			cmdFlags.Set("httpPublicUri", testValue)
-			if vString, err := cmdFlags.GetString("httpPublicUri"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.HTTPPublicURI)
-
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-	})
-	t.Run("Test_secure", func(t *testing.T) {
-		t.Run("DefaultValue", func(t *testing.T) {
-			// Test that default value is set properly
-			if vBool, err := cmdFlags.GetBool("secure"); err == nil {
-				assert.Equal(t, bool(DefaultConfig.Secure), vBool)
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-
-		t.Run("Override", func(t *testing.T) {
-			testValue := "1"
-
-			cmdFlags.Set("secure", testValue)
-			if vBool, err := cmdFlags.GetBool("secure"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vBool), &actual.Secure)
+			cmdFlags.Set("authorizedUris", testValue)
+			if vStringSlice, err := cmdFlags.GetStringSlice("authorizedUris"); err == nil {
+				testDecodeSlice_Config(t, vStringSlice, &actual.AuthorizedURIs)
 
 			} else {
 				assert.FailNow(t, err.Error())

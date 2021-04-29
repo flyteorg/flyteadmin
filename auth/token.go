@@ -90,7 +90,7 @@ func GRPCGetIdentityFromAccessToken(ctx context.Context, authCtx interfaces.Auth
 		return nil, errors.Errorf(ErrJwtValidation, "%v token is blank", IDTokenScheme)
 	}
 
-	expectedAudience := GetPublicURL(ctx, authCtx.Options().Secure, &authCtx.Options().HTTPPublicURI.URL).String()
+	expectedAudience := GetPublicURL(ctx, nil, authCtx.Options()).String()
 	return authCtx.OAuth2ResourceServer().ValidateAccessToken(ctx, expectedAudience, tokenStr)
 }
 

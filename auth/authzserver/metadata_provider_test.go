@@ -30,7 +30,7 @@ func TestOAuth2MetadataProvider_FlyteClient(t *testing.T) {
 	})
 
 	ctx := context.Background()
-	resp, err := provider.FlyteClient(ctx, &service.FlyteClientRequest{})
+	resp, err := provider.GetPublicClientConfig(ctx, &service.PublicClientAuthConfigRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, "my-client", resp.ClientId)
 	assert.Equal(t, "client/", resp.RedirectUri)
@@ -40,11 +40,11 @@ func TestOAuth2MetadataProvider_FlyteClient(t *testing.T) {
 func TestOAuth2MetadataProvider_OAuth2Metadata(t *testing.T) {
 	t.Run("Self AuthServer", func(t *testing.T) {
 		provider := NewService(&authConfig.Config{
-			HTTPPublicURI: config2.URL{URL: *config.MustParseURL("https://issuer/")},
+			AuthorizedURIs: []config2.URL{{URL: *config.MustParseURL("https://issuer/")}},
 		})
 
 		ctx := context.Background()
-		resp, err := provider.OAuth2Metadata(ctx, &service.OAuth2MetadataRequest{})
+		resp, err := provider.GetOAuth2Metadata(ctx, &service.OAuth2MetadataRequest{})
 		assert.NoError(t, err)
 		assert.Equal(t, "https://issuer/", resp.Issuer)
 	})
@@ -75,7 +75,7 @@ func TestOAuth2MetadataProvider_OAuth2Metadata(t *testing.T) {
 
 	t.Run("External AuthServer", func(t *testing.T) {
 		provider := NewService(&authConfig.Config{
-			HTTPPublicURI: config2.URL{URL: *config.MustParseURL("https://issuer/")},
+			AuthorizedURIs: []config2.URL{{URL: *config.MustParseURL("https://issuer/")}},
 			AppAuth: authConfig.OAuth2Options{
 				AuthServerType: authConfig.AuthorizationServerTypeExternal,
 				ExternalAuthServer: authConfig.ExternalAuthorizationServer{
@@ -85,14 +85,14 @@ func TestOAuth2MetadataProvider_OAuth2Metadata(t *testing.T) {
 		})
 
 		ctx := context.Background()
-		resp, err := provider.OAuth2Metadata(ctx, &service.OAuth2MetadataRequest{})
+		resp, err := provider.GetOAuth2Metadata(ctx, &service.OAuth2MetadataRequest{})
 		assert.NoError(t, err)
 		assert.Equal(t, "https://dev-14186422.okta.com", resp.Issuer)
 	})
 
 	t.Run("External AuthServer fallback url", func(t *testing.T) {
 		provider := NewService(&authConfig.Config{
-			HTTPPublicURI: config2.URL{URL: *config.MustParseURL("https://issuer/")},
+			AuthorizedURIs: []config2.URL{{URL: *config.MustParseURL("https://issuer/")}},
 			AppAuth: authConfig.OAuth2Options{
 				AuthServerType: authConfig.AuthorizationServerTypeExternal,
 			},
@@ -104,7 +104,7 @@ func TestOAuth2MetadataProvider_OAuth2Metadata(t *testing.T) {
 		})
 
 		ctx := context.Background()
-		resp, err := provider.OAuth2Metadata(ctx, &service.OAuth2MetadataRequest{})
+		resp, err := provider.GetOAuth2Metadata(ctx, &service.OAuth2MetadataRequest{})
 		assert.NoError(t, err)
 		assert.Equal(t, "https://dev-14186422.okta.com", resp.Issuer)
 	})

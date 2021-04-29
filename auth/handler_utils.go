@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/flyteorg/flyteadmin/auth/config"
+
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 )
 
@@ -47,47 +49,93 @@ const (
 //	return oidc.NewProvider(ctx, issuer)
 //}
 
-func ReconstructRequestURL(req *http.Request) *url.URL {
+// URLFromRequest attempts to reconstruct the url from the request object. Or nil if not possible
+func URLFromRequest(req *http.Request) *url.URL {
 	if req == nil {
 		return nil
 	}
 
 	u, _ := url.ParseRequestURI(req.RequestURI)
-	if u.IsAbs() {
+	if u != nil && u.IsAbs() {
 		return u
 	}
 
-	scheme := "http://"
-	if req.TLS != nil {
-		scheme = "https://"
+	if len(req.Host) == 0 {
+		return nil
+	}
+
+	scheme := "https://"
+	if req.URL != nil && len(req.URL.Scheme) > 0 {
+		scheme = req.URL.Scheme + "://"
 	}
 
 	u, _ = url.Parse(scheme + req.Host)
 	return u
 }
 
-func GetPublicURL(ctx context.Context, isSecure bool, httpURLCfg *url.URL) *url.URL {
-	if httpURLCfg != nil && len(httpURLCfg.Host) > 0 {
-		return httpURLCfg
-	}
-
+// URLFromContext attempts to retrieve the original url from context. gRPC gateway sets metadata in context that refers
+// to the original host. Or nil if metadata isn't set.
+func URLFromContext(ctx context.Context) *url.URL {
 	md := metautils.ExtractIncoming(ctx)
-
 	forwardedHost := md.Get(metadataXForwardedHost)
 	if len(forwardedHost) == 0 {
 		forwardedHost = md.Get(metadataAuthority)
 	}
 
 	if len(forwardedHost) == 0 {
-		return httpURLCfg
+		return nil
 	}
 
-	if isSecure {
-		forwardedHost = "https://" + forwardedHost
-	} else {
-		forwardedHost = "http://" + forwardedHost
+	u, _ := url.Parse("https://" + forwardedHost)
+	return u
+}
+
+// FirstURL gets the first non-nil url from a list of given urls.
+func FirstURL(urls ...*url.URL) *url.URL {
+	for _, u := range urls {
+		if u != nil {
+			return u
+		}
 	}
 
-	u, _ := url.Parse(forwardedHost)
+	return nil
+}
+
+// GetPublicURL attempts to retrieve the public url of the service. If httpPublicUri is set in the config, it takes
+// precedence. If the request is not nil and has a host set, it comes second and lastly it attempts to retrieve the url
+// from context if set (e.g. by gRPC gateway).
+func GetPublicURL(ctx context.Context, req *http.Request, cfg *config.Config) *url.URL {
+	u := FirstURL(URLFromRequest(req), URLFromContext(ctx))
+	var hostMatching *url.URL
+	var hostAndPortMatching *url.URL
+	for _, authorized := range cfg.AuthorizedURIs {
+		if u == nil {
+			return &authorized.URL
+		}
+
+		if u.Hostname() == authorized.Hostname() {
+			hostMatching = &authorized.URL
+			if u.Port() == authorized.Port() {
+				hostAndPortMatching = &authorized.URL
+			}
+
+			if u.Scheme == authorized.Scheme {
+				return &authorized.URL
+			}
+		}
+	}
+
+	if hostAndPortMatching != nil {
+		return hostAndPortMatching
+	}
+
+	if hostMatching != nil {
+		return hostMatching
+	}
+
+	if len(cfg.AuthorizedURIs) > 0 {
+		return &cfg.AuthorizedURIs[0].URL
+	}
+
 	return u
 }

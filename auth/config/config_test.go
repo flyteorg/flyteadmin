@@ -14,5 +14,4 @@ func TestHashFlyteClientSecret(t *testing.T) {
 	res, err := hasher.Hash(context.Background(), []byte("foobar"))
 	assert.NoError(t, err)
 	t.Log(string(res))
-	t.FailNow()
 }

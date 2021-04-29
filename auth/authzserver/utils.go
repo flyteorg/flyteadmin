@@ -34,16 +34,7 @@ func GetIssuer(ctx context.Context, req *http.Request, cfg *config.Config) strin
 		return configIssuer
 	}
 
-	u := auth.GetPublicURL(ctx, cfg.Secure, &cfg.HTTPPublicURI.URL)
-	if u != nil && len(u.String()) > 0 {
-		return u.String()
-	}
-
-	if req == nil {
-		return ""
-	}
-
-	return auth.ReconstructRequestURL(req).String()
+	return auth.GetPublicURL(ctx, req, cfg).String()
 }
 
 func encryptString(plainTextCode string, blockKey [auth.SymmetricKeyLength]byte) (string, error) {

@@ -23,10 +23,10 @@ func (s OAuth2MetadataProvider) AuthFuncOverride(ctx context.Context, fullMethod
 	return ctx, nil
 }
 
-func (s OAuth2MetadataProvider) OAuth2Metadata(ctx context.Context, r *service.OAuth2MetadataRequest) (*service.OAuth2MetadataResponse, error) {
+func (s OAuth2MetadataProvider) GetOAuth2Metadata(ctx context.Context, r *service.OAuth2MetadataRequest) (*service.OAuth2MetadataResponse, error) {
 	switch s.cfg.AppAuth.AuthServerType {
 	case authConfig.AuthorizationServerTypeSelf:
-		u := auth.GetPublicURL(ctx, s.cfg.Secure, &s.cfg.HTTPPublicURI.URL)
+		u := auth.GetPublicURL(ctx, nil, s.cfg)
 		doc := &service.OAuth2MetadataResponse{
 			Issuer:                        GetIssuer(ctx, nil, s.cfg),
 			AuthorizationEndpoint:         u.ResolveReference(authorizeRelativeURL).String(),
@@ -74,8 +74,8 @@ func (s OAuth2MetadataProvider) OAuth2Metadata(ctx context.Context, r *service.O
 	}
 }
 
-func (s OAuth2MetadataProvider) FlyteClient(context.Context, *service.FlyteClientRequest) (*service.FlyteClientResponse, error) {
-	return &service.FlyteClientResponse{
+func (s OAuth2MetadataProvider) GetPublicClientConfig(context.Context, *service.PublicClientAuthConfigRequest) (*service.PublicClientAuthConfigResponse, error) {
+	return &service.PublicClientAuthConfigResponse{
 		ClientId:                 s.cfg.AppAuth.ThirdParty.FlyteClientConfig.ClientID,
 		RedirectUri:              s.cfg.AppAuth.ThirdParty.FlyteClientConfig.RedirectURI,
 		Scopes:                   s.cfg.AppAuth.ThirdParty.FlyteClientConfig.Scopes,

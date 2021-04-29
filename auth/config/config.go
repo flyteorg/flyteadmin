@@ -134,16 +134,12 @@ type Config struct {
 	DisableForHTTP bool `json:"disableForHttp" pflag:",Disables auth enforcement on HTTP Endpoints."`
 	DisableForGrpc bool `json:"disableForGrpc" pflag:",Disables auth enforcement on Grpc Endpoints."`
 
-	// Optional: The publicly accessible http endpoint. This is used to build absolute URLs for endpoints that are only
-	// exposed over http (e.g. /authorize and /token for OAuth2). If not provided, the url will be deduced based on the
-	// request url.
-	HTTPPublicURI config.URL `json:"httpPublicUri" pflag:",Optional: The publicly accessible http endpoint. This is used to build absolute URLs for endpoints that are only exposed over http (e.g. /authorize and /token for OAuth2). If not provided, the url will be deduced based on the request url."`
-
-	// Sets whether the system is serving over SSL/TLS. Setting it is optional. If the request URLs are served over SSL,
-	// this is only useful for Grpc calls where it's not possible to programmatically retrieve TLS status.
-	// The value of this field should be set from the serving command when the Grpc server is built rather than as a user
-	// controlled setting.
-	Secure bool `json:"secure" pflag:",Optional: Sets whether the system is serving over SSL/TLS."`
+	// AuthorizedURIs is optional and defines the set of URIs that clients are allowed to visit the service on. If set,
+	// the system will attempt to match the incoming host to the first authorized URIs and use that (including the scheme)
+	// when generating metadata endpoints and when validating audience and issuer claims. If no matching authorizedUri
+	// is found, it'll default to the first one. If not provided, the urls will be deduced based on the request url and
+	// the `secure` setting.
+	AuthorizedURIs []config.URL `json:"authorizedUris" pflag:",Optional: Defines the set of URIs that clients are allowed to visit the service on. If set, the system will attempt to match the incoming host to the first authorized URIs and use that (including the scheme) when generating metadata endpoints and when validating audience and issuer claims. If not provided, the urls will be deduced based on the request url and the 'secure' setting."`
 
 	// UserAuth settings used to authenticate end users in web-browsers.
 	UserAuth UserAuthConfig `json:"userAuth" pflag:",Defines Auth options for users."`

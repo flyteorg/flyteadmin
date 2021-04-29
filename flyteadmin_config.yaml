@@ -18,7 +18,9 @@ server:
       - "Content-Type"
 # Okta OIdC only
 auth:
-  httpPublicUri: http://efdf60eb2525.ngrok.io
+  authorizedUris:
+    - https://efdf60eb2525.ngrok.io
+    - http://flyteadmin:80
   userAuth:
     openId:
       # Put the URL of the OpenID Connect provider.
