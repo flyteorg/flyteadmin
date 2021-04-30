@@ -19,7 +19,6 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 
 	"github.com/flyteorg/flyteadmin/auth/interfaces"
-	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/errors"
 	"github.com/flyteorg/flytestdlib/logger"
 	"google.golang.org/grpc"
@@ -29,10 +28,9 @@ import (
 )
 
 const (
-	RedirectURLParameter                  = "redirect_url"
-	FromHTTPKey                           = "from_http"
-	FromHTTPVal                           = "true"
-	PrincipalContextKey  contextutils.Key = "principal"
+	RedirectURLParameter = "redirect_url"
+	FromHTTPKey          = "from_http"
+	FromHTTPVal          = "true"
 )
 
 type HTTPRequestToMetadataAnnotator func(ctx context.Context, request *http.Request) metadata.MD
