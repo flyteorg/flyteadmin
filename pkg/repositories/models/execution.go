@@ -11,9 +11,9 @@ import (
 
 // Execution primary key
 type ExecutionKey struct {
-	Project string `gorm:"primary_key;column:execution_project"`
-	Domain  string `gorm:"primary_key;column:execution_domain"`
-	Name    string `gorm:"primary_key;column:execution_name"`
+	Project string `gorm:"primary_key;column:execution_project" valid:"length(3|255)"`
+	Domain  string `gorm:"primary_key;column:execution_domain" valid:"length(3|255)"`
+	Name    string `gorm:"primary_key;column:execution_name" valid:"length(3|255)"`
 }
 
 // Database model to encapsulate a (workflow) execution.
@@ -23,7 +23,7 @@ type Execution struct {
 	LaunchPlanID uint   `gorm:"index"`
 	WorkflowID   uint   `gorm:"index"`
 	TaskID       uint   `gorm:"index"`
-	Phase        string `valid:"length(3|50)"`
+	Phase        string `valid:"length(3|255)"`
 	Closure      []byte
 	Spec         []byte `gorm:"not null"`
 	StartedAt    *time.Time

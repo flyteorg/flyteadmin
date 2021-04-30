@@ -2,9 +2,9 @@ package models
 
 // Launch plan primary key
 type LaunchPlanKey struct {
-	Project string `gorm:"primary_key;index:lp_project_domain_name_idx,lp_project_domain_idx" valid:"length(3|50)"`
-	Domain  string `gorm:"primary_key;index:lp_project_domain_name_idx,lp_project_domain_idx" valid:"length(3|50)"`
-	Name    string `gorm:"primary_key;index:lp_project_domain_name_idx" valid:"length(3|50)"`
+	Project string `gorm:"primary_key;index:lp_project_domain_name_idx,lp_project_domain_idx" valid:"length(3|255)"`
+	Domain  string `gorm:"primary_key;index:lp_project_domain_name_idx,lp_project_domain_idx" valid:"length(3|255)"`
+	Name    string `gorm:"primary_key;index:lp_project_domain_name_idx" valid:"length(3|255)"`
 	Version string `gorm:"primary_key" valid:"length(3|50)"`
 }
 

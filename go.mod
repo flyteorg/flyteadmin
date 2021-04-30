@@ -40,8 +40,9 @@ require (
 	github.com/pquerna/cachecontrol v0.0.0-20201205024021-ac21108117ac // indirect
 	github.com/prometheus/client_golang v1.9.0
 	github.com/prometheus/common v0.19.0 // indirect
-	github.com/qor/validations v0.0.0-20171228122639-f364bca61b46 // indirect
-	github.com/sirupsen/logrus v1.8.1
+	github.com/qor/qor v0.0.0-20200729071734-d587cffbbb93 // indirect
+	github.com/qor/validations v0.0.0-20171228122639-f364bca61b46
+	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
