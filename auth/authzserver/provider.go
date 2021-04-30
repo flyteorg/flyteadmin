@@ -42,6 +42,7 @@ const (
 	KeyIDClaim    = "key_id"
 )
 
+// Provider implements OAuth2 Authorization Server.
 type Provider struct {
 	fosite.OAuth2Provider
 	cfg       config.AuthorizationServer
@@ -166,11 +167,11 @@ func verifyClaims(expectedAudience string, claimsRaw map[string]interface{}) (in
 	return auth.NewIdentityContext(claims.Audience[0], claims.Subject, clientID, claims.IssuedAt, scopes, userInfo), nil
 }
 
-// Creates a new OAuth2 Provider that is able to do OAuth 2-legged and 3-legged flows.
-// It'll lookup auth.SecretNameClaimSymmetricKey and auth.SecretNameTokenSigningRSAKey secrets from the secret manager to use to sign
-// and generate hashes for tokens. The RSA Private key is expected to be in PEM format with the public key embedded.
+// NewProvider creates a new OAuth2 Provider that is able to do OAuth 2-legged and 3-legged flows. It'll lookup
+// config.SecretNameClaimSymmetricKey and config.SecretNameTokenSigningRSAKey secrets from the secret manager to use to
+// sign and generate hashes for tokens. The RSA Private key is expected to be in PEM format with the public key embedded.
 // Use auth.GetInitSecretsCommand() to generate new valid secrets that will be accepted by this provider.
-// The auth.SecretNameClaimSymmetricKey must be a 32-bytes long key in Base64Encoding.
+// The config.SecretNameClaimSymmetricKey must be a 32-bytes long key in Base64Encoding.
 func NewProvider(ctx context.Context, cfg config.AuthorizationServer, sm core.SecretManager) (Provider, error) {
 	// fosite requires four parameters for the server to get up and running:
 	// 1. config - for any enforcement you may desire, you can do this using `compose.Config`. You like PKCE, enforce it!

@@ -106,6 +106,8 @@ func RefreshTokensIfExists(ctx context.Context, authCtx interfaces.Authenticatio
 	}
 }
 
+// GetLoginHandler builds an http handler that handles authentication calls. Before redirecting to the authentication
+// provider, it saves a cookie that contains the redirect url for after the authentication flow is done.
 func GetLoginHandler(ctx context.Context, authCtx interfaces.AuthenticationContext) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		csrfCookie := NewCsrfCookie()
@@ -124,6 +126,7 @@ func GetLoginHandler(ctx context.Context, authCtx interfaces.AuthenticationConte
 				logger.Errorf(ctx, "Was not able to create a redirect cookie")
 			}
 		}
+
 		http.Redirect(writer, request, url, http.StatusTemporaryRedirect)
 	}
 }
@@ -183,11 +186,11 @@ func AuthenticationLoggingInterceptor(ctx context.Context, req interface{}, info
 	return handler(ctx, req)
 }
 
-// This function produces a gRPC middleware interceptor intended to be used when running authentication with non-default
-// gRPC headers (metadata). Because the default `authorization` header is reserved for use by Envoy, clients wishing
-// to pass tokens to Admin will need to use a different string, specified in this package's Config object. This interceptor
-// will scan for that arbitrary string, and then rename it to the default string, which the downstream auth/auditing
-// interceptors will detect and validate.
+// GetAuthenticationCustomMetadataInterceptor produces a gRPC middleware interceptor intended to be used when running
+// authentication with non-default gRPC headers (metadata). Because the default `authorization` header is reserved for
+// use by Envoy, clients wishing to pass tokens to Admin will need to use a different string, specified in this
+// package's Config object. This interceptor will scan for that arbitrary string, and then rename it to the default
+// string, which the downstream auth/auditing interceptors will detect and validate.
 func GetAuthenticationCustomMetadataInterceptor(authCtx interfaces.AuthenticationContext) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		if authCtx.Options().GrpcAuthorizationHeader != DefaultAuthorizationHeader {
@@ -219,7 +222,7 @@ func SetContextForIdentity(ctx context.Context, identityContext interfaces.Ident
 	return WithAuditFields(newCtx, identityContext.UserID(), []string{identityContext.AppID()}, identityContext.AuthenticatedAt())
 }
 
-// This is the function that chooses to enforce or not enforce authentication. It will attempt to get the token
+// GetAuthenticationInterceptor chooses to enforce or not enforce authentication. It will attempt to get the token
 // from the incoming context, validate it, and decide whether or not to let the request through.
 func GetAuthenticationInterceptor(authCtx interfaces.AuthenticationContext) func(context.Context) (context.Context, error) {
 	return func(ctx context.Context) (context.Context, error) {

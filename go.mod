@@ -16,7 +16,7 @@ require (
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/evanphx/json-patch v4.9.0+incompatible
-	github.com/flyteorg/flyteidl v0.18.38
+	github.com/flyteorg/flyteidl v0.18.40
 	github.com/flyteorg/flyteplugins v0.5.38
 	github.com/flyteorg/flytepropeller v0.7.8
 	github.com/flyteorg/flytestdlib v0.3.15
@@ -69,5 +69,3 @@ require (
 	sigs.k8s.io/controller-runtime v0.8.3
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.0 // indirect
 )
-
-replace github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v0.18.40-0.20210429164157-c5e53ac332e7

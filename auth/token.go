@@ -74,8 +74,8 @@ func ParseIDTokenAndValidate(ctx context.Context, clientID, rawIDToken string, p
 	return idToken, nil
 }
 
-// This function attempts to extract a token from the context, and will then call the validation function, passing up
-// any errors.
+// GRPCGetIdentityFromAccessToken attempts to extract a token from the context, and will then call the validation
+// function, passing up any errors.
 func GRPCGetIdentityFromAccessToken(ctx context.Context, authCtx interfaces.AuthenticationContext) (
 	interfaces.IdentityContext, error) {
 
@@ -94,8 +94,8 @@ func GRPCGetIdentityFromAccessToken(ctx context.Context, authCtx interfaces.Auth
 	return authCtx.OAuth2ResourceServer().ValidateAccessToken(ctx, expectedAudience, tokenStr)
 }
 
-// This function attempts to extract a token from the context, and will then call the validation function, passing up
-// any errors.
+// GRPCGetIdentityFromIDToken attempts to extract a token from the context, and will then call the validation function,
+// passing up any errors.
 func GRPCGetIdentityFromIDToken(ctx context.Context, clientID string, provider *oidc.Provider) (
 	interfaces.IdentityContext, error) {
 

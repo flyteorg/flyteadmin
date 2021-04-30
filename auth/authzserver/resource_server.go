@@ -21,6 +21,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
+// ResourceServer authorizes access requests issued by an external Authorization Server.
 type ResourceServer struct {
 	signatureVerifier oidc.KeySet
 }
@@ -98,6 +99,7 @@ func getJwksForIssuer(ctx context.Context, issuerBaseURL url.URL) (oidc.KeySet, 
 	return oidc.NewRemoteKeySet(ctx, p.JwksUri), nil
 }
 
+// NewOAuth2ResourceServer initializes a new OAuth2ResourceServer.
 func NewOAuth2ResourceServer(ctx context.Context, cfg authConfig.ExternalAuthorizationServer, fallbackBaseURL config.URL) (ResourceServer, error) {
 	u := cfg.BaseURL
 	if len(u.String()) == 0 {

@@ -1,3 +1,5 @@
+// Contains types needed to start up a standalone OAuth2 Authorization Server or delegate authentication to an external
+// provider. It supports OpenId connect for user authentication.
 package auth
 
 import (
@@ -185,7 +187,7 @@ func NewAuthenticationContext(ctx context.Context, sm core.SecretManager, oauth2
 func GetOAuth2ClientConfig(ctx context.Context, options config.OpenIDOptions, providerEndpoints oauth2.Endpoint, sm core.SecretManager) (cfg oauth2.Config, err error) {
 	var secret string
 	if len(options.DeprecatedClientSecretFile) > 0 {
-		secretBytes, err := ioutil.ReadFile(options.ClientSecretName)
+		secretBytes, err := ioutil.ReadFile(options.DeprecatedClientSecretFile)
 		if err != nil {
 			return oauth2.Config{}, err
 		}
