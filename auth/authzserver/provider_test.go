@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func newMockProvider(t testing.TB) Provider {
+func newMockProvider(t testing.TB) (Provider, auth.SecretsSet) {
 	secrets, err := auth.NewSecrets()
 	assert.NoError(t, err)
 
@@ -41,7 +41,7 @@ func newMockProvider(t testing.TB) Provider {
 
 	p, err := NewProvider(ctx, config.DefaultConfig.AppAuth.SelfAuthServer, sm)
 	assert.NoError(t, err)
-	return p
+	return p, secrets
 }
 
 func TestNewProvider(t *testing.T) {
@@ -49,12 +49,12 @@ func TestNewProvider(t *testing.T) {
 }
 
 func TestProvider_KeySet(t *testing.T) {
-	p := newMockProvider(t)
+	p, _ := newMockProvider(t)
 	assert.Equal(t, 1, p.KeySet().Len())
 }
 
 func TestProvider_NewJWTSessionToken(t *testing.T) {
-	p := newMockProvider(t)
+	p, _ := newMockProvider(t)
 	s := p.NewJWTSessionToken("userID", "appID", "my-issuer", "my-audience", &service.UserInfoResponse{
 		Email: "foo@localhost",
 	})
@@ -66,7 +66,7 @@ func TestProvider_NewJWTSessionToken(t *testing.T) {
 }
 
 func TestProvider_PublicKeys(t *testing.T) {
-	p := newMockProvider(t)
+	p, _ := newMockProvider(t)
 	assert.Len(t, p.PublicKeys(), 1)
 }
 
@@ -151,7 +151,7 @@ func TestProvider_findPublicKeyForTokenOrFirst(t *testing.T) {
 }
 
 func TestProvider_ValidateAccessToken(t *testing.T) {
-	p := newMockProvider(t)
+	p, _ := newMockProvider(t)
 	ctx := context.Background()
 
 	t.Run("Invalid JWT", func(t *testing.T) {
@@ -230,6 +230,7 @@ func Test_verifyClaims(t *testing.T) {
 			"client_id": "my-client",
 			"scp":       []interface{}{"all", "offline"},
 		})
+
 		assert.NoError(t, err)
 		assert.Equal(t, sets.NewString("all", "offline"), identityCtx.Scopes())
 		assert.Equal(t, "my-client", identityCtx.AppID())

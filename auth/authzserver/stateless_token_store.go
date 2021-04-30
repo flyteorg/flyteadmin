@@ -215,8 +215,14 @@ func (p StatelessCodeProvider) GenerateAuthorizeCode(ctx context.Context, reques
 	}
 
 	requester.GrantScope(accessTokenScope)
+
+	// Because all codes/tokens are issued as if they are access tokens (basically a signed JWT that has the information
+	// we need to carry around), we need to pretend to change the access token lifespan to affect the resulting jwt token
+	// then revert that change after.
 	rawRequest.GetSession().SetExpiresAt(fosite.AccessToken, time.Now().Add(p.authorizationCodeLifespan))
 	token, _, err = p.CoreStrategy.GenerateAccessToken(ctx, requester)
+	rawRequest.GetSession().SetExpiresAt(fosite.AccessToken, time.Now().Add(p.accessTokenLifespan))
+
 	return token, token, err
 }
 
@@ -247,9 +253,13 @@ func (p StatelessCodeProvider) GenerateRefreshToken(ctx context.Context, request
 		}
 	}
 
+	// Because all codes/tokens are issued as if they are access tokens (basically a signed JWT that has the information
+	// we need to carry around), we need to pretend to change the access token lifespan to affect the resulting jwt token
+	// then revert that change after.
 	rawRequest.GetSession().SetExpiresAt(fosite.AccessToken, time.Now().Add(p.refreshTokenLifespan))
-
 	token, _, err = p.CoreStrategy.GenerateAccessToken(ctx, requester)
+	rawRequest.GetSession().SetExpiresAt(fosite.AccessToken, time.Now().Add(p.accessTokenLifespan))
+
 	return token, token, err
 }
 

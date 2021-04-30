@@ -181,8 +181,10 @@ func NewProvider(ctx context.Context, cfg config.AuthorizationServer, sm core.Se
 	// 4. privateKey - required for id/jwt token generation.
 
 	composeConfig := &compose.Config{
-		AccessTokenLifespan: cfg.AccessTokenLifespan.Duration,
-		RefreshTokenScopes:  []string{refreshTokenScope},
+		AccessTokenLifespan:   cfg.AccessTokenLifespan.Duration,
+		RefreshTokenLifespan:  cfg.RefreshTokenLifespan.Duration,
+		AuthorizeCodeLifespan: cfg.AuthorizationCodeLifespan.Duration,
+		RefreshTokenScopes:    []string{refreshTokenScope},
 	}
 
 	// This secret is used to encryptString/decrypt challenge code to maintain a stateless authcode token.
