@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	oauth2TokenURL = "/oauth2/token"
+	oauth2TokenURL = "/oauth2/token" // #nosec
 )
 
 func TestWithUserEmail(t *testing.T) {
@@ -30,8 +30,8 @@ func TestWithUserEmail(t *testing.T) {
 	assert.Equal(t, "abc", ctx.Value(common.PrincipalContextKey))
 }
 
-func setupMockedAuthContextAtEndpoint(endpoint string) mocks.AuthenticationContext {
-	mockAuthCtx := mocks.AuthenticationContext{}
+func setupMockedAuthContextAtEndpoint(endpoint string) *mocks.AuthenticationContext {
+	mockAuthCtx := &mocks.AuthenticationContext{}
 	mockAuthCtx.OnOptions().Return(&config.Config{})
 	mockCookieHandler := new(mocks.CookieHandler)
 	dummyOAuth2Config := oauth2.Config{
@@ -74,7 +74,7 @@ func TestGetCallbackHandlerWithErrorOnToken(t *testing.T) {
 	defer localServer.Close()
 	http.DefaultClient = localServer.Client()
 	mockAuthCtx := setupMockedAuthContextAtEndpoint(localServer.URL)
-	callbackHandlerFunc := GetCallbackHandler(ctx, &mockAuthCtx)
+	callbackHandlerFunc := GetCallbackHandler(ctx, mockAuthCtx)
 	request := httptest.NewRequest("GET", localServer.URL+"/callback", nil)
 	addCsrfCookie(request)
 	addStateString(request)
@@ -95,7 +95,7 @@ func TestGetCallbackHandlerWithUnAuthorized(t *testing.T) {
 	defer localServer.Close()
 	http.DefaultClient = localServer.Client()
 	mockAuthCtx := setupMockedAuthContextAtEndpoint(localServer.URL)
-	callbackHandlerFunc := GetCallbackHandler(ctx, &mockAuthCtx)
+	callbackHandlerFunc := GetCallbackHandler(ctx, mockAuthCtx)
 	request := httptest.NewRequest("GET", localServer.URL+"/callback", nil)
 	writer := httptest.NewRecorder()
 	callbackHandlerFunc(writer, request)
@@ -146,7 +146,7 @@ func TestGetCallbackHandler(t *testing.T) {
 
 	t.Run("forbidden request when accessing user info", func(t *testing.T) {
 		mockAuthCtx := setupMockedAuthContextAtEndpoint(localServer.URL)
-		callbackHandlerFunc := GetCallbackHandler(ctx, &mockAuthCtx)
+		callbackHandlerFunc := GetCallbackHandler(ctx, mockAuthCtx)
 		request := httptest.NewRequest("GET", localServer.URL+"/callback", nil)
 		addCsrfCookie(request)
 		addStateString(request)
@@ -167,7 +167,7 @@ func TestGetCallbackHandler(t *testing.T) {
 
 	t.Run("successful callback and redirect", func(t *testing.T) {
 		mockAuthCtx := setupMockedAuthContextAtEndpoint(localServer.URL)
-		callbackHandlerFunc := GetCallbackHandler(ctx, &mockAuthCtx)
+		callbackHandlerFunc := GetCallbackHandler(ctx, mockAuthCtx)
 		request := httptest.NewRequest("GET", localServer.URL+"/callback", nil)
 		addCsrfCookie(request)
 		addStateString(request)
