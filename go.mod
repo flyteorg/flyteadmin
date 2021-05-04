@@ -19,7 +19,7 @@ require (
 	github.com/flyteorg/flyteidl v0.18.40
 	github.com/flyteorg/flyteplugins v0.5.38
 	github.com/flyteorg/flytepropeller v0.7.8
-	github.com/flyteorg/flytestdlib v0.3.18
+	github.com/flyteorg/flytestdlib v0.3.20
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
@@ -69,5 +69,3 @@ require (
 	sigs.k8s.io/controller-runtime v0.8.3
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.0 // indirect
 )
-
-replace github.com/flyteorg/flytestdlib => github.com/flyteorg/flytestdlib v0.3.20-0.20210504151146-8f9bb53cc000
