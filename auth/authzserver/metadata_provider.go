@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/flyteorg/flyteadmin/auth"
 
@@ -51,6 +52,10 @@ func (s OAuth2MetadataProvider) GetOAuth2Metadata(ctx context.Context, r *servic
 		if len(s.cfg.AppAuth.ExternalAuthServer.BaseURL.String()) > 0 {
 			baseUrl = s.cfg.AppAuth.ExternalAuthServer.BaseURL
 		}
+
+		// issuer urls, conventionally, do not end with a '/', however, metadata urls are usually relative of those.
+		// This adds a '/' to ensure ResolveReference behaves intuitively.
+		baseUrl.Path = strings.TrimSuffix(baseUrl.Path, "/") + "/"
 
 		var externalMetadataURL *url.URL
 		if len(s.cfg.AppAuth.ExternalAuthServer.MetadataEndpointURL.String()) > 0 {

@@ -9,7 +9,7 @@ server:
   kube-config: /Users/haythamabuelfutuh/kubeconfig/k3s/k3s.yaml
   security:
     secure: false
-    useAuth: false
+    useAuth: true
     allowCors: true
     allowedOrigins:
       # Accepting all domains for Sandbox installation
@@ -37,7 +37,7 @@ auth:
   userAuth:
     openId:
       # Put the URL of the OpenID Connect provider.
-      baseUrl: https://auth.usu-dev.katana.cloud/auth/realms/usu/
+      baseUrl: https://auth.usu-dev.katana.cloud/auth/realms/usu
       scopes:
         - profile
         - openid
