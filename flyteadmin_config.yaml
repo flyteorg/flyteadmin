@@ -19,18 +19,31 @@ server:
 # Okta OIdC only
 auth:
   authorizedUris:
-    - https://localhost:8088
+    - https://flyte.usu-dev.katana.cloud
+    - https://localhost:30081
     - http://flyteadmin:80
+    - http://flyteadmin.flyte.svc.cluster.local:80
+  appAuth:
+    authServerType: External
+    externalAuthServer:
+      metadataUrl: .well-known/openid-configuration
+    thirdPartyConfig:
+      flyteClient:
+        clientId: flytectl
+        redirectUri: https://localhost:53593/callback
+        scopes:
+          - offline
+          - all
   userAuth:
     openId:
       # Put the URL of the OpenID Connect provider.
-      baseUrl: https://dev-14186422.okta.com/oauth2/auskngnn7uBViQq6b5d6
+      baseUrl: https://auth.usu-dev.katana.cloud/auth/realms/usu/
       scopes:
         - profile
         - openid
         - offline_access # Uncomment if OIdC supports issuing refresh tokens.
       # Replace with the client id created for Flyte.
-      clientId: 0oakkheteNjCMERst5d6
+      clientId: flyte
 
 # Okta OIdC and OAuth2
 #auth:

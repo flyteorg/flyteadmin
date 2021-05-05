@@ -47,11 +47,16 @@ func (s OAuth2MetadataProvider) GetOAuth2Metadata(ctx context.Context, r *servic
 
 		return doc, nil
 	default:
-		var externalMetadataURL *url.URL
+		baseUrl := s.cfg.UserAuth.OpenID.BaseURL
 		if len(s.cfg.AppAuth.ExternalAuthServer.BaseURL.String()) > 0 {
-			externalMetadataURL = s.cfg.AppAuth.ExternalAuthServer.BaseURL.ResolveReference(oauth2MetadataEndpoint)
+			baseUrl = s.cfg.AppAuth.ExternalAuthServer.BaseURL
+		}
+
+		var externalMetadataURL *url.URL
+		if len(s.cfg.AppAuth.ExternalAuthServer.MetadataEndpointURL.String()) > 0 {
+			externalMetadataURL = baseUrl.ResolveReference(&s.cfg.AppAuth.ExternalAuthServer.MetadataEndpointURL.URL)
 		} else {
-			externalMetadataURL = s.cfg.UserAuth.OpenID.BaseURL.ResolveReference(oauth2MetadataEndpoint)
+			externalMetadataURL = baseUrl.ResolveReference(oauth2MetadataEndpoint)
 		}
 
 		response, err := http.Get(externalMetadataURL.String())
