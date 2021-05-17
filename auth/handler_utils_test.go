@@ -56,7 +56,8 @@ func TestGetPublicURL(t *testing.T) {
 		assert.Equal(t, "https://abc", u.String())
 	})
 
-	t.Run("Matching typical local setup", func(t *testing.T) {
+	t.Run("Matching testing setup but with ssl", func(t *testing.T) {
+		// req has https so that it's not a scheme match with the list below
 		req, err := http.NewRequest(http.MethodPost, "https://localhost:30081", nil)
 
 		assert.NoError(t, err)

@@ -55,6 +55,12 @@ func URLFromRequest(req *http.Request) *url.URL {
 		return nil
 	}
 
+	// from browser req.RequestURI is "/login" and u.scheme is ""
+	// from unit test req.RequestURI is "" and u is nil
+	// That means that this function, URLFromRequest(req) returns https://localhost:8088 even though there's no SSL,
+	// when the request is made from http://localhost:8088 in the web browser.
+	// Given how this function is used however, it's okay - we're only picking which option to use from the list of
+	// authorized URIs.
 	u, _ := url.ParseRequestURI(req.RequestURI)
 	if u != nil && u.IsAbs() {
 		return u
@@ -121,7 +127,7 @@ func GetPublicURL(ctx context.Context, req *http.Request, cfg *config.Config) *u
 			}
 
 			if u.Scheme == authorized.Scheme {
-				return &authorized.URL
+				return &cfg.AuthorizedURIs[i].URL
 			}
 		}
 	}
