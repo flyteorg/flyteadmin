@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	"github.com/flyteorg/flytestdlib/config"
 
 	"github.com/coreos/go-oidc"
@@ -22,6 +24,7 @@ import (
 // ResourceServer authorizes access requests issued by an external Authorization Server.
 type ResourceServer struct {
 	signatureVerifier oidc.KeySet
+	allowedAudience   []string
 }
 
 func (r ResourceServer) ValidateAccessToken(ctx context.Context, expectedAudience, tokenStr string) (interfaces.IdentityContext, error) {
@@ -35,7 +38,7 @@ func (r ResourceServer) ValidateAccessToken(ctx context.Context, expectedAudienc
 		return nil, fmt.Errorf("failed to unmarshal user info claim into UserInfo type. Error: %w", err)
 	}
 
-	return verifyClaims(expectedAudience, claimsRaw)
+	return verifyClaims(sets.NewString(append(r.allowedAudience, expectedAudience)...), claimsRaw)
 }
 
 func doRequest(ctx context.Context, req *http.Request) (*http.Response, error) {
@@ -112,5 +115,6 @@ func NewOAuth2ResourceServer(ctx context.Context, cfg authConfig.ExternalAuthori
 
 	return ResourceServer{
 		signatureVerifier: verifier,
+		allowedAudience:   cfg.AllowedAudience,
 	}, nil
 }

@@ -561,6 +561,28 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_appAuth.externalAuthServer.allowedAudience", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vStringSlice, err := cmdFlags.GetStringSlice("appAuth.externalAuthServer.allowedAudience"); err == nil {
+				assert.Equal(t, []string([]string{}), vStringSlice)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := join_Config("1,1", ",")
+
+			cmdFlags.Set("appAuth.externalAuthServer.allowedAudience", testValue)
+			if vStringSlice, err := cmdFlags.GetStringSlice("appAuth.externalAuthServer.allowedAudience"); err == nil {
+				testDecodeSlice_Config(t, join_Config(vStringSlice, ","), &actual.AppAuth.ExternalAuthServer.AllowedAudience)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 	t.Run("Test_appAuth.externalAuthServer.metadataUrl", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
