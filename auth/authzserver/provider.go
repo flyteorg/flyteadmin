@@ -137,7 +137,7 @@ func verifyClaims(expectedAudience sets.String, claimsRaw map[string]interface{}
 		return nil, fmt.Errorf("expected exactly one granted audience. found [%v]", len(claims.Audience))
 	}
 
-	if expectedAudience.Has(claims.Audience[0]) {
+	if !expectedAudience.Has(claims.Audience[0]) {
 		return nil, fmt.Errorf("invalid audience [%v]", claims.Audience[0])
 	}
 
