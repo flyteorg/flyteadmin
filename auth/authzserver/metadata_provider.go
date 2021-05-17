@@ -48,20 +48,20 @@ func (s OAuth2MetadataProvider) GetOAuth2Metadata(ctx context.Context, r *servic
 
 		return doc, nil
 	default:
-		baseUrl := s.cfg.UserAuth.OpenID.BaseURL
+		baseURL := s.cfg.UserAuth.OpenID.BaseURL
 		if len(s.cfg.AppAuth.ExternalAuthServer.BaseURL.String()) > 0 {
-			baseUrl = s.cfg.AppAuth.ExternalAuthServer.BaseURL
+			baseURL = s.cfg.AppAuth.ExternalAuthServer.BaseURL
 		}
 
 		// issuer urls, conventionally, do not end with a '/', however, metadata urls are usually relative of those.
 		// This adds a '/' to ensure ResolveReference behaves intuitively.
-		baseUrl.Path = strings.TrimSuffix(baseUrl.Path, "/") + "/"
+		baseURL.Path = strings.TrimSuffix(baseURL.Path, "/") + "/"
 
 		var externalMetadataURL *url.URL
 		if len(s.cfg.AppAuth.ExternalAuthServer.MetadataEndpointURL.String()) > 0 {
-			externalMetadataURL = baseUrl.ResolveReference(&s.cfg.AppAuth.ExternalAuthServer.MetadataEndpointURL.URL)
+			externalMetadataURL = baseURL.ResolveReference(&s.cfg.AppAuth.ExternalAuthServer.MetadataEndpointURL.URL)
 		} else {
-			externalMetadataURL = baseUrl.ResolveReference(oauth2MetadataEndpoint)
+			externalMetadataURL = baseURL.ResolveReference(oauth2MetadataEndpoint)
 		}
 
 		response, err := http.Get(externalMetadataURL.String())

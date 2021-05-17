@@ -59,11 +59,11 @@ func unmarshalResp(r *http.Response, body []byte, v interface{}) error {
 	return fmt.Errorf("expected Content-Type = application/json, got %q: %v", ct, err)
 }
 
-func getJwksForIssuer(ctx context.Context, issuerBaseURL url.URL, customMetadataUrl url.URL) (keySet oidc.KeySet, err error) {
+func getJwksForIssuer(ctx context.Context, issuerBaseURL url.URL, customMetadataURL url.URL) (keySet oidc.KeySet, err error) {
 	issuerBaseURL.Path = strings.TrimSuffix(issuerBaseURL.Path, "/") + "/"
 	var wellKnown *url.URL
-	if len(customMetadataUrl.String()) > 0 {
-		wellKnown = issuerBaseURL.ResolveReference(&customMetadataUrl)
+	if len(customMetadataURL.String()) > 0 {
+		wellKnown = issuerBaseURL.ResolveReference(&customMetadataURL)
 	} else {
 		wellKnown = issuerBaseURL.ResolveReference(oauth2MetadataEndpoint)
 	}
