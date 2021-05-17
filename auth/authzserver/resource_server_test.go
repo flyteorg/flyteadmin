@@ -129,7 +129,7 @@ func Test_getJwksForIssuer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getJwksForIssuer(tt.args.ctx, tt.args.issuerBaseURL)
+			got, err := getJwksForIssuer(tt.args.ctx, tt.args.issuerBaseURL, url.URL{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getJwksForIssuer() error = %v, wantErr %v", err, tt.wantErr)
 				return
