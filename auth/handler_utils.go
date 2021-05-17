@@ -108,15 +108,16 @@ func GetPublicURL(ctx context.Context, req *http.Request, cfg *config.Config) *u
 	u := FirstURL(URLFromRequest(req), URLFromContext(ctx))
 	var hostMatching *url.URL
 	var hostAndPortMatching *url.URL
-	for _, authorized := range cfg.AuthorizedURIs {
+
+	for i, authorized := range cfg.AuthorizedURIs {
 		if u == nil {
 			return &authorized.URL
 		}
 
 		if u.Hostname() == authorized.Hostname() {
-			hostMatching = &authorized.URL
+			hostMatching = &cfg.AuthorizedURIs[i].URL
 			if u.Port() == authorized.Port() {
-				hostAndPortMatching = &authorized.URL
+				hostAndPortMatching = &cfg.AuthorizedURIs[i].URL
 			}
 
 			if u.Scheme == authorized.Scheme {
