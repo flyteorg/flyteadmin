@@ -24,7 +24,7 @@ tools=(
 
 tmp_dir=$(mktemp -d -t gotooling-XXX)
 echo "Using temp directory ${tmp_dir}"
-cp -R boilerplate/flyteorg/golang_support_tools/* $tmp_dir
+cp -R boilerplate/flyte/golang_support_tools/* $tmp_dir
 pushd "$tmp_dir"
 
 for tool in "${tools[@]}"

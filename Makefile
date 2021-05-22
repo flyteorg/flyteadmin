@@ -1,7 +1,7 @@
 export REPOSITORY=flyteadmin
-include boilerplate/lyft/docker_build/Makefile
-include boilerplate/lyft/golang_test_targets/Makefile
-include boilerplate/lyft/end2end/Makefile
+include boilerplate/flyte/docker_build/Makefile
+include boilerplate/flyte/golang_test_targets/Makefile
+include boilerplate/flyte/end2end/Makefile
 
 GIT_VERSION := $(shell git describe --always --tags)
 GIT_HASH := $(shell git rev-parse --short HEAD)

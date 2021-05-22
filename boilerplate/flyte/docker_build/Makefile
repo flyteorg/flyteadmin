@@ -5,8 +5,8 @@
 
 .PHONY: docker_build
 docker_build:
-	IMAGE_NAME=$$REPOSITORY ./boilerplate/flyteorg/docker_build/docker_build.sh
+	IMAGE_NAME=$$REPOSITORY ./boilerplate/flyte/docker_build/docker_build.sh
 
 .PHONY: dockerhub_push
 dockerhub_push:
-	IMAGE_NAME=flyteorg/$$REPOSITORY REGISTRY=docker.io ./boilerplate/flyteorg/docker_build/docker_build.sh
+	IMAGE_NAME=flyteorg/$$REPOSITORY REGISTRY=docker.io ./boilerplate/flyte/docker_build/docker_build.sh
