@@ -5,7 +5,7 @@ Provides a Dockerfile that produces a small image.
 
 **To Enable:**
 
-Add ``lyft/golang_dockerfile`` to your ``boilerplate/update.cfg`` file.
+Add ``flyteorg/golang_dockerfile`` to your ``boilerplate/update.cfg`` file.
 
 Create and configure a ``make linux_compile`` target that compiles your go binaries to the ``/artifacts`` directory ::
 
