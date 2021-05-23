@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/flyteorg/flyteadmin/auth"
+
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/resources"
@@ -46,7 +48,6 @@ import (
 )
 
 const childContainerQueueKey = "child_queue"
-const principalContextKeyFormat = "%v"
 
 // Map of [project] -> map of [domain] -> stop watch
 type projectDomainScopedStopWatchMap = map[string]map[string]*promutils.StopWatch
@@ -101,11 +102,8 @@ func getExecutionContext(ctx context.Context, id *core.WorkflowExecutionIdentifi
 
 // Returns the unique string which identifies the authenticated end user (if any).
 func getUser(ctx context.Context) string {
-	principalContextUser := ctx.Value(common.PrincipalContextKey)
-	if principalContextUser != nil {
-		return fmt.Sprintf(principalContextKeyFormat, principalContextUser)
-	}
-	return ""
+	identityContext := auth.IdentityContextFromContext(ctx)
+	return identityContext.UserID()
 }
 
 func (m *ExecutionManager) populateExecutionQueue(
@@ -1108,7 +1106,8 @@ func (m *ExecutionManager) GetExecutionData(
 		Inputs:  &inputsURLBlob,
 	}
 	maxDataSize := m.config.ApplicationConfiguration().GetRemoteDataConfig().MaxSizeInBytes
-	if maxDataSize == 0 || inputsURLBlob.Bytes < maxDataSize {
+	remoteDataScheme := m.config.ApplicationConfiguration().GetRemoteDataConfig().Scheme
+	if remoteDataScheme == common.Local || inputsURLBlob.Bytes < maxDataSize {
 		var fullInputs core.LiteralMap
 		err := m.storageClient.ReadProtobuf(ctx, executionModel.InputsURI, &fullInputs)
 		if err != nil {
@@ -1116,7 +1115,7 @@ func (m *ExecutionManager) GetExecutionData(
 		}
 		response.FullInputs = &fullInputs
 	}
-	if maxDataSize == 0 || (signedOutputsURLBlob.Bytes < maxDataSize && execution.Closure.GetOutputs() != nil) {
+	if remoteDataScheme == common.Local || (signedOutputsURLBlob.Bytes < maxDataSize && execution.Closure.GetOutputs() != nil) {
 		var fullOutputs core.LiteralMap
 		outputsURI := execution.Closure.GetOutputs().GetUri()
 		err := m.storageClient.ReadProtobuf(ctx, storage.DataReference(outputsURI), &fullOutputs)
