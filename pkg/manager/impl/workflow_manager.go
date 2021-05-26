@@ -262,20 +262,16 @@ func (w *WorkflowManager) ListWorkflows(
 		InlineFilters: filters,
 		SortParameter: sortParameter,
 	}
-	output, err := w.db.WorkflowRepo().List(ctx, listWorkflowsInput)
-	if err != nil {
-		logger.Debugf(ctx, "Failed to list workflows with [%+v] with err %v", request.Id, err)
-		return nil, err
-	}
-	workflowList, err := transformers.FromWorkflowModels(output.Workflows)
+
+	workflowList, err := util.ListWorkflows(ctx, w.db, w.storageClient, listWorkflowsInput)
 	if err != nil {
 		logger.Errorf(ctx,
-			"Failed to transform workflow models [%+v] with err: %v", output.Workflows, err)
+			"Failed to transform workflow models [%+v] with err: %v", workflowList, err)
 		return nil, err
 	}
 	var token string
-	if len(output.Workflows) == int(request.Limit) {
-		token = strconv.Itoa(offset + len(output.Workflows))
+	if len(workflowList) == int(request.Limit) {
+		token = strconv.Itoa(offset + len(workflowList))
 	}
 	return &admin.WorkflowList{
 		Workflows: workflowList,

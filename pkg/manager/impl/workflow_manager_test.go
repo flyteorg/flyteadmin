@@ -416,7 +416,7 @@ func TestListWorkflows(t *testing.T) {
 	mockStorageClient.ComposedProtobufStore.(*commonMocks.TestDataStore).ReadProtobufCb =
 		func(ctx context.Context, reference storage.DataReference, msg proto.Message) error {
 			assert.Equal(t, remoteClosureIdentifier, reference.String())
-			assert.True(t, proto.Equal(testutils.GetWorkflowClosure(), msg))
+			assert.True(t, proto.Equal(&admin.WorkflowClosure{}, msg))
 			return nil
 		}
 	workflowManager := NewWorkflowManager(

@@ -56,6 +56,17 @@ func GetWorkflowModel(
 	return workflowModel, nil
 }
 
+// ListWorkflowModel lists the workflow model using the repo and passing in requested listing criteria.
+func ListWorkflowModel(
+	ctx context.Context, repo repositories.RepositoryInterface,
+	listResourceInput repoInterfaces.ListResourceInput) ([]models.Workflow, error) {
+	output, err := (repo).WorkflowRepo().List(ctx, listResourceInput)
+	if err != nil {
+		return []models.Workflow{}, err
+	}
+	return output.Workflows, nil
+}
+
 func FetchAndGetWorkflowClosure(ctx context.Context,
 	store *storage.DataStore,
 	remoteLocationIdentifier string) (*admin.WorkflowClosure, error) {
@@ -89,6 +100,28 @@ func GetWorkflow(
 	closure.CreatedAt = workflow.Closure.CreatedAt
 	workflow.Closure = closure
 	return &workflow, nil
+}
+
+// ListWorkflows lists the workflow admin objects using the repo and passing in requested listing criteria.
+func ListWorkflows(ctx context.Context, repo repositories.RepositoryInterface, store *storage.DataStore,
+	listResourceInput repoInterfaces.ListResourceInput) ([]*admin.Workflow, error) {
+	workflowModels, err := ListWorkflowModel(ctx, repo, listResourceInput)
+	if err != nil {
+		return nil, err
+	}
+	workflows, err := transformers.FromWorkflowModels(workflowModels)
+	if err != nil {
+		return nil, err
+	}
+	for idx, workflowModel := range workflowModels {
+		closure, err := FetchAndGetWorkflowClosure(ctx, store, workflowModel.RemoteClosureIdentifier)
+		if err != nil {
+			return nil, err
+		}
+		closure.CreatedAt = workflows[idx].Closure.CreatedAt
+		workflows[idx].Closure = closure
+	}
+	return workflows, nil
 }
 
 func GetLaunchPlanModel(
