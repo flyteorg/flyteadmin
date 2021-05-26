@@ -5,5 +5,4 @@
 
 .PHONY: end2end_execute
 end2end_execute:
-	chmod a+x ./boilerplate/flyte/end2end/end2end.sh
 	./boilerplate/flyte/end2end/end2end.sh
