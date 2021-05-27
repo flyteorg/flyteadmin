@@ -6,10 +6,10 @@ import (
 
 // NamedEntityMetadata primary key
 type NamedEntityMetadataKey struct {
-	ResourceType core.ResourceType `gorm:"primary_key;index:named_entity_metadata_type_project_domain_name_idx" valid:"length(1|200)"`
-	Project      string            `gorm:"primary_key;index:named_entity_metadata_type_project_domain_name_idx" valid:"length(1|200)"`
-	Domain       string            `gorm:"primary_key;index:named_entity_metadata_type_project_domain_name_idx" valid:"length(1|200)"`
-	Name         string            `gorm:"primary_key;index:named_entity_metadata_type_project_domain_name_idx" valid:"length(1|200)"`
+	ResourceType core.ResourceType `gorm:"primary_key;index:named_entity_metadata_type_project_domain_name_idx" valid:"length(0|255)"`
+	Project      string            `gorm:"primary_key;index:named_entity_metadata_type_project_domain_name_idx" valid:"length(0|255)"`
+	Domain       string            `gorm:"primary_key;index:named_entity_metadata_type_project_domain_name_idx" valid:"length(0|255)"`
+	Name         string            `gorm:"primary_key;index:named_entity_metadata_type_project_domain_name_idx" valid:"length(0|255)"`
 }
 
 // Fields to be composed into any named entity
@@ -30,9 +30,9 @@ type NamedEntityMetadata struct {
 // fields here should match the ones in NamedEntityMetadataKey.
 type NamedEntityKey struct {
 	ResourceType core.ResourceType
-	Project      string `valid:"length(1|200)"`
-	Domain       string `valid:"length(1|200)"`
-	Name         string `valid:"length(1|200)"`
+	Project      string `valid:"length(0|255)"`
+	Domain       string `valid:"length(0|255)"`
+	Name         string `valid:"length(0|255)"`
 }
 
 // Composes an identifier (NamedEntity) and its associated metadata fields
