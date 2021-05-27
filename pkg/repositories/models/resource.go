@@ -18,11 +18,11 @@ type Resource struct {
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 	DeletedAt    *time.Time `sql:"index"`
-	Project      string     `gorm:"unique_index:resource_idx" valid:"length(3|50)"`
-	Domain       string     `gorm:"unique_index:resource_idx" valid:"length(3|50)"`
-	Workflow     string     `gorm:"unique_index:resource_idx" valid:"length(3|50)"`
-	LaunchPlan   string     `gorm:"unique_index:resource_idx" valid:"length(3|50)"`
-	ResourceType string     `gorm:"unique_index:resource_idx" valid:"length(3|50)"`
+	Project      string     `gorm:"unique_index:resource_idx" valid:"length(1|50)"`
+	Domain       string     `gorm:"unique_index:resource_idx" valid:"length(1|50)"`
+	Workflow     string     `gorm:"unique_index:resource_idx" valid:"length(1|50)"`
+	LaunchPlan   string     `gorm:"unique_index:resource_idx" valid:"length(1|50)"`
+	ResourceType string     `gorm:"unique_index:resource_idx" valid:"length(1|50)"`
 	Priority     ResourcePriority
 	// Serialized flyteidl.admin.MatchingAttributes.
 	Attributes []byte

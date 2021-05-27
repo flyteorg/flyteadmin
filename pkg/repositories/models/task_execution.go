@@ -20,9 +20,9 @@ type TaskExecutionKey struct {
 type TaskExecution struct {
 	BaseModel
 	TaskExecutionKey
-	Phase        string `valid:"length(3|50)"`
+	Phase        string `valid:"length(1|50)"`
 	PhaseVersion uint32
-	InputURI     string `valid:"length(3|255)"`
+	InputURI     string `valid:"length(1|255)"`
 	Closure      []byte
 	StartedAt    *time.Time
 	// Corresponds to the CreatedAt field in the TaskExecution closure
