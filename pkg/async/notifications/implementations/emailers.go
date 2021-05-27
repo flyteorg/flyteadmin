@@ -1,6 +1,6 @@
 package implementations
 
-type ExternalEmailer string
+type ExternalEmailer = string
 
 const(
 	Sendgrid ExternalEmailer = "sendgrid"
