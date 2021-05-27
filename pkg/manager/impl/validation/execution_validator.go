@@ -166,7 +166,7 @@ func ValidateWorkflowExecutionIdentifier(identifier *core.WorkflowExecutionIdent
 // Because single task executions don't use launch plans, some parameters that are optional overrides for conventional
 // ExecutionCreateRequests are actually mandatory.
 func validateLaunchSingleTaskExecutionReq(request admin.ExecutionCreateRequest) error {
-	if request.Spec.AuthRole == nil || request.Spec.AuthRole.GetMethod() == nil {
+	if request.Spec.AuthRole == nil || (len(request.Spec.AuthRole.KubernetesServiceAccount) == 0 && len(request.Spec.AuthRole.AssumableIamRole) == 0) {
 		return shared.GetMissingArgumentError(shared.AuthRole)
 	}
 	return nil

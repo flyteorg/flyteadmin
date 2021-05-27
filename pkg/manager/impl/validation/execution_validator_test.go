@@ -73,9 +73,7 @@ func TestValidateSingleTaskExecution(t *testing.T) {
 	assert.EqualError(t, err, "missing auth_role")
 
 	request.Spec.AuthRole = &admin.AuthRole{
-		Method: &admin.AuthRole_KubernetesServiceAccount{
-			KubernetesServiceAccount: "foo",
-		},
+		KubernetesServiceAccount: "foo",
 	}
 	err = ValidateExecutionRequest(context.Background(), request, testutils.GetRepoWithDefaultProject(), execConfig)
 	assert.Nil(t, err)
