@@ -19,5 +19,5 @@ type Task struct {
 	// Hash of the compiled task closure
 	Digest []byte
 	// Task type (also stored in the closure put promoted as a column for filtering).
-	Type string `valid:"length(1|50)"`
+	Type string `valid:"length(1|200)"`
 }

@@ -37,7 +37,7 @@ type Execution struct {
 	ExecutionEvents    []ExecutionEvent
 	// In the case of an aborted execution this string may be non-empty.
 	// It should be ignored for any other value of phase other than aborted.
-	AbortCause string `valid:"length(1|50)"`
+	AbortCause string `valid:"length(1|200)"`
 	// Corresponds to the execution mode used to trigger this execution
 	Mode int32
 	// The "parent" execution (if there is one) that is related to this execution.
@@ -47,7 +47,7 @@ type Execution struct {
 	// The parent node execution if this was launched by a node
 	ParentNodeExecutionID uint
 	// Cluster where execution was triggered
-	Cluster string `valid:"length(1|50)"`
+	Cluster string `valid:"length(1|200)"`
 	// Offloaded location of inputs LiteralMap. These are the inputs evaluated and contain applied defaults.
 	InputsURI storage.DataReference
 	// User specified inputs. This map might be incomplete and not include defaults applied
@@ -55,8 +55,8 @@ type Execution struct {
 	// Execution Error Kind. nullable
 	ErrorKind *string `gorm:"index"`
 	// Execution Error Code nullable
-	ErrorCode *string `valid:"length(1|50)"`
+	ErrorCode *string `valid:"length(1|200)"`
 	// The user responsible for launching this execution.
 	// This is also stored in the spec but promoted as a column for filtering.
-	User string `gorm:"index" valid:"length(1|50)"`
+	User string `gorm:"index" valid:"length(1|200)"`
 }

@@ -20,7 +20,7 @@ type TaskExecutionKey struct {
 type TaskExecution struct {
 	BaseModel
 	TaskExecutionKey
-	Phase        string `valid:"length(1|50)"`
+	Phase        string `valid:"length(1|200)"`
 	PhaseVersion uint32
 	InputURI     string `valid:"length(1|255)"`
 	Closure      []byte
