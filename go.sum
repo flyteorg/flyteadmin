@@ -307,8 +307,11 @@ github.com/felixge/httpsnoop v1.0.1/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSw
 github.com/flyteorg/flyteidl v0.18.25/go.mod h1:b5Fq4Z8a5b0mF6pEwTd48ufvikUGVkWSjZiMT0ZtqKI=
 github.com/flyteorg/flyteidl v0.18.41 h1:aVDpCIhzab5iPpJZXofvQLKJvpLnZdWl/zdkU0SiQXI=
 github.com/flyteorg/flyteidl v0.18.41/go.mod h1:IJD02cc/95QMkGDBJNibsr5aWd6V7TlQiJ8Iz5mVZ28=
+github.com/flyteorg/flyteidl v0.18.48/go.mod h1:576W2ViEyjTpT+kEVHAGbrTP3HARNUZ/eCwrNPmdx9U=
+github.com/flyteorg/flyteidl v0.18.50/go.mod h1:576W2ViEyjTpT+kEVHAGbrTP3HARNUZ/eCwrNPmdx9U=
 github.com/flyteorg/flyteplugins v0.5.42 h1:G4DRR2r8LlmkV+orXloDi1ly+M5WuvAaNlWFgGGyy3A=
 github.com/flyteorg/flyteplugins v0.5.42/go.mod h1:ireF+bYk8xjw9BfcMbPN/hN5aZeBJpP0CoQYHkSRL+w=
+github.com/flyteorg/flyteplugins v0.5.49/go.mod h1:567WIA0Rr6QjmXsqvGsU+Cyb57Ia6qzddxIw//RPwYk=
 github.com/flyteorg/flytepropeller v0.7.1-0.20210525015833-94455a3f3b6e h1:OapKfLddWFQNergfwttza8BVRA8spcGbpWM7/YISwlI=
 github.com/flyteorg/flytepropeller v0.7.1-0.20210525015833-94455a3f3b6e/go.mod h1:enckmJ4KaQDopfaVcSw0WAs2pSYfl/pcvXBwvg+0U5Q=
 github.com/flyteorg/flytepropeller v0.10.11-0.20210521221321-ec39a4d88916 h1:vdfvOK9fJQJcLeR+51SnIs6Ij6DbCbB0Gy8cA0liMcY=
@@ -317,6 +320,8 @@ github.com/flyteorg/flytepropeller v0.10.11-0.20210524171221-733ace16a7b6 h1:f91
 github.com/flyteorg/flytepropeller v0.10.11-0.20210524171221-733ace16a7b6/go.mod h1:enckmJ4KaQDopfaVcSw0WAs2pSYfl/pcvXBwvg+0U5Q=
 github.com/flyteorg/flytepropeller v0.10.11-0.20210525223428-265aabe52d4f h1:n+j0KO3qy5epVZkPxLCvr7+gt87vn6zitBj9LSw1bbI=
 github.com/flyteorg/flytepropeller v0.10.11-0.20210525223428-265aabe52d4f/go.mod h1:enckmJ4KaQDopfaVcSw0WAs2pSYfl/pcvXBwvg+0U5Q=
+github.com/flyteorg/flytepropeller v0.10.14 h1:qXDP7DvHm62MFRrIcsGQDhvkm7bfBBRRpWOMP4HU8dc=
+github.com/flyteorg/flytepropeller v0.10.14/go.mod h1:D0WDyXfNqk5Ee2SBckXMHm18KMzqSQDCIHgGjScQVGM=
 github.com/flyteorg/flytestdlib v0.3.13/go.mod h1:Tz8JCECAbX6VWGwFT6cmEQ+RJpZ/6L9pswu3fzWs220=
 github.com/flyteorg/flytestdlib v0.3.17/go.mod h1:VlbQuHTE+z2N5qusfwi+6WEkeJoqr8Q0E4NtBAsdwkU=
 github.com/flyteorg/flytestdlib v0.3.22 h1:nJEPaCdxzXBaeg2p4fdo3I3Ua09NedFRaUwuLafLEdw=
