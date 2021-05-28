@@ -1,8 +1,12 @@
 package implementations
 
 import (
+	"io/ioutil"
+	"os"
+	"path"
 	"testing"
 
+	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/stretchr/testify/assert"
@@ -40,4 +44,55 @@ func TestCreateEmailer(t *testing.T) {
 
 	emailer := NewSendGridEmailer(cfg, promutils.NewTestScope())
 	assert.NotNil(t, emailer)
+}
+
+func TestReadAPIFromEnv(t *testing.T) {
+	envVar := "sendgrid_api_test_key"
+	usingEnv := runtimeInterfaces.EmailServerConfig{
+		ServiceName:  "test",
+		APIKeyEnvVar: envVar,
+	}
+	err := os.Setenv(envVar, "test_api_key")
+	assert.NoError(t, err)
+	assert.Equal(t, "test_api_key", getAPIKey(usingEnv))
+	_ = os.Setenv(envVar, "")
+}
+
+func TestReadAPIFromFile(t *testing.T) {
+	tmpFile, err := ioutil.TempFile(os.TempDir(), "api_key")
+	if err != nil {
+		t.Fatalf("Cannot create temporary file: %v", err)
+	}
+	defer tmpFile.Close()
+	_, err = tmpFile.WriteString("abc123\n")
+	if err != nil {
+		t.Fatalf("Cannot write to temporary file: %v", err)
+	}
+
+	usingFile := runtimeInterfaces.EmailServerConfig{
+		ServiceName:    "test",
+		APIKeyFilePath: tmpFile.Name(),
+	}
+	assert.NoError(t, err)
+	assert.Equal(t, "abc123", getAPIKey(usingFile))
+}
+
+func TestNoFile(t *testing.T) {
+	defer func() { r := recover(); assert.NotNil(t, r) }()
+
+	dir, err := ioutil.TempDir("", "test_prefix")
+	if err != nil {
+		t.Fatalf("Error creating random directory: %s", err)
+	}
+	defer os.RemoveAll(dir)
+	nonExistentFile := path.Join(dir, "doesnotexist")
+
+	doesNotExistConfig := runtimeInterfaces.EmailServerConfig{
+		ServiceName:    "test",
+		APIKeyFilePath: nonExistentFile,
+	}
+	getAPIKey(doesNotExistConfig)
+
+	// shouldn't reach here
+	t.Errorf("did not panic")
 }

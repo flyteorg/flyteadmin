@@ -2,7 +2,9 @@ package implementations
 
 import (
 	"context"
+	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
@@ -30,6 +32,8 @@ func getEmailAddresses(addresses []string) []*mail.Email {
 
 func getSendgridEmail(adminEmail admin.EmailMessage) *mail.SGMailV3 {
 	m := mail.NewV3Mail()
+	// This from email address is really here as a formality. For sendgrid specifically, the sender email is determined
+	// from the api key that's used, not what you send along here.
 	from := mail.NewEmail("Flyte Notifications", adminEmail.SenderEmail)
 	content := mail.NewContent("text/html", adminEmail.Body)
 	m.SetFrom(from)
@@ -42,6 +46,18 @@ func getSendgridEmail(adminEmail admin.EmailMessage) *mail.SGMailV3 {
 	m.AddPersonalizations(personalization)
 
 	return m
+}
+
+func getAPIKey(config runtimeInterfaces.EmailServerConfig) string {
+	if config.APIKeyEnvVar != "" {
+		return os.Getenv(config.APIKeyEnvVar)
+	}
+	// If environment variable not specified, assume the file is there.
+	apiKeyFile, err := ioutil.ReadFile(config.APIKeyFilePath)
+	if err != nil {
+		panic(err)
+	}
+	return strings.TrimSpace(string(apiKeyFile))
 }
 
 func (s SendgridEmailer) SendEmail(ctx context.Context, email admin.EmailMessage) error {
@@ -61,7 +77,7 @@ func (s SendgridEmailer) SendEmail(ctx context.Context, email admin.EmailMessage
 
 func NewSendGridEmailer(config runtimeInterfaces.NotificationsConfig, scope promutils.Scope) interfaces.Emailer {
 	return &SendgridEmailer{
-		client:        sendgrid.NewSendClient(os.Getenv(config.NotificationsEmailerConfig.EmailerConfig.APIKeyEnvVar)),
+		client:        sendgrid.NewSendClient(getAPIKey(config.NotificationsEmailerConfig.EmailerConfig)),
 		systemMetrics: newEmailMetrics(scope.NewSubScope("sendgrid")),
 	}
 }
