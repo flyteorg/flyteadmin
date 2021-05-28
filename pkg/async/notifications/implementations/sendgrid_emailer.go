@@ -30,7 +30,7 @@ func getEmailAddresses(addresses []string) []*mail.Email {
 func getSendgridEmail(adminEmail admin.EmailMessage) *mail.SGMailV3 {
 	m := mail.NewV3Mail()
 
-	from := mail.NewEmail("Flyte Notifications", "alice@example.org")
+	from := mail.NewEmail("Flyte Notifications", adminEmail.SenderEmail)
 	content := mail.NewContent("text/html", adminEmail.Body)
 	m.SetFrom(from)
 	m.AddContent(content)
