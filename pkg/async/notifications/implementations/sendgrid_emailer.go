@@ -2,9 +2,10 @@ package implementations
 
 import (
 	"context"
+	"os"
+
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
-	"os"
 
 	"github.com/flyteorg/flyteadmin/pkg/async/notifications/interfaces"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
@@ -18,27 +19,48 @@ type SendgridEmailer struct {
 	systemMetrics emailMetrics
 }
 
-func (s SendgridEmailer) SendEmail(ctx context.Context, email admin.EmailMessage) error {
+func getEmailAddresses(addresses []string) []*mail.Email {
+	sendgridAddresses := make([]*mail.Email, len(addresses))
+	for idx, email := range addresses {
+		sendgridAddresses[idx] = mail.NewEmail("", email)
+	}
+	return sendgridAddresses
+}
+
+func getSendgridEmail(adminEmail admin.EmailMessage) *mail.SGMailV3 {
+	m := mail.NewV3Mail()
+
 	from := mail.NewEmail("Flyte Notifications", "workflow-notifications@uniondemo.run")
-	subject := email.SubjectLine
-	to := mail.NewEmail("Sou", "souffle@example.com") // Change to your recipient
-	message := mail.NewSingleEmail(from, subject, to, "", email.Body)
+	content := mail.NewContent("text/html", adminEmail.Body)
+	m.SetFrom(from)
+	m.AddContent(content)
+
+	personalization := mail.NewPersonalization()
+	emailAddresses := getEmailAddresses(adminEmail.RecipientsEmail)
+	personalization.AddTos(emailAddresses...)
+	personalization.Subject = adminEmail.SubjectLine
+	m.AddPersonalizations(personalization)
+
+	return m
+}
+
+func (s SendgridEmailer) SendEmail(ctx context.Context, email admin.EmailMessage) error {
+	m := getSendgridEmail(email)
 	s.systemMetrics.SendTotal.Inc()
-	response, err := s.client.Send(message)
+	response, err := s.client.Send(m)
 	if err != nil {
 		logger.Errorf(ctx, "Sendgrid error sending %s", err)
 		s.systemMetrics.SendError.Inc()
 		return err
-	} else {
-		s.systemMetrics.SendSuccess.Inc()
-		logger.Debugf(ctx, "Sendgrid sent email %s", response.Body)
 	}
+	s.systemMetrics.SendSuccess.Inc()
+	logger.Debugf(ctx, "Sendgrid sent email %s", response.Body)
+
 	return nil
 }
 
 func NewSendGridEmailer(config runtimeInterfaces.NotificationsConfig, scope promutils.Scope) interfaces.Emailer {
 	return &SendgridEmailer{
-		//client:        sendgrid.NewSendClient(os.Getenv("SENDGRID_API_KEY")),
 		client:        sendgrid.NewSendClient(os.Getenv(config.NotificationsEmailerConfig.EmailerConfig.ApiKeyEnvVar)),
 		systemMetrics: newEmailMetrics(scope.NewSubScope("sendgrid")),
 	}

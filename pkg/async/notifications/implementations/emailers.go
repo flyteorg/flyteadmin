@@ -2,7 +2,6 @@ package implementations
 
 type ExternalEmailer = string
 
-const(
+const (
 	Sendgrid ExternalEmailer = "sendgrid"
 )
-
