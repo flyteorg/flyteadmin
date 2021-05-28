@@ -140,7 +140,7 @@ type NotificationsProcessorConfig struct {
 
 type EmailServerConfig struct {
 	ServiceName  string `json:"serviceName"`
-	ApiKeyEnvVar string `json:"apiKeyEnvVar"`
+	APIKeyEnvVar string `json:"apiKeyEnvVar"`
 }
 
 // This section handles the configuration of notifications emails.

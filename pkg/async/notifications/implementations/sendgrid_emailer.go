@@ -61,7 +61,7 @@ func (s SendgridEmailer) SendEmail(ctx context.Context, email admin.EmailMessage
 
 func NewSendGridEmailer(config runtimeInterfaces.NotificationsConfig, scope promutils.Scope) interfaces.Emailer {
 	return &SendgridEmailer{
-		client:        sendgrid.NewSendClient(os.Getenv(config.NotificationsEmailerConfig.EmailerConfig.ApiKeyEnvVar)),
+		client:        sendgrid.NewSendClient(os.Getenv(config.NotificationsEmailerConfig.EmailerConfig.APIKeyEnvVar)),
 		systemMetrics: newEmailMetrics(scope.NewSubScope("sendgrid")),
 	}
 }

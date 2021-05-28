@@ -2,7 +2,6 @@ package notifications
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -44,13 +43,12 @@ type EmailerConfig struct {
 
 func GetEmailer(config runtimeInterfaces.NotificationsConfig, scope promutils.Scope) interfaces.Emailer {
 	// If an external email service is specified use that first.
-
 	if config.NotificationsEmailerConfig.EmailerConfig.ServiceName != "" {
 		switch config.NotificationsEmailerConfig.EmailerConfig.ServiceName {
 		case implementations.Sendgrid:
 			return implementations.NewSendGridEmailer(config, scope)
 		default:
-			panic(errors.New(fmt.Sprintf("No matching email implementation for %s", config.NotificationsEmailerConfig.EmailerConfig.ServiceName)))
+			panic(fmt.Errorf("No matching email implementation for %s", config.NotificationsEmailerConfig.EmailerConfig.ServiceName))
 		}
 	}
 

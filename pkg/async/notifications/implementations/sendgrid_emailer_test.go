@@ -36,7 +36,7 @@ func TestGetEmail(t *testing.T) {
 
 func TestCreateEmailer(t *testing.T) {
 	cfg := getNotificationsConfig()
-	cfg.NotificationsEmailerConfig.EmailerConfig.ApiKeyEnvVar = "sendgrid_api_key"
+	cfg.NotificationsEmailerConfig.EmailerConfig.APIKeyEnvVar = "sendgrid_api_key"
 
 	emailer := NewSendGridEmailer(cfg, promutils.NewTestScope())
 	assert.NotNil(t, emailer)
