@@ -48,6 +48,7 @@ func TestCreateEmailer(t *testing.T) {
 
 func TestReadAPIFromEnv(t *testing.T) {
 	envVar := "sendgrid_api_test_key"
+	orig := os.Getenv(envVar)
 	usingEnv := runtimeInterfaces.EmailServerConfig{
 		ServiceName:  "test",
 		APIKeyEnvVar: envVar,
@@ -55,7 +56,7 @@ func TestReadAPIFromEnv(t *testing.T) {
 	err := os.Setenv(envVar, "test_api_key")
 	assert.NoError(t, err)
 	assert.Equal(t, "test_api_key", getAPIKey(usingEnv))
-	_ = os.Setenv(envVar, "")
+	_ = os.Setenv(envVar, orig)
 }
 
 func TestReadAPIFromFile(t *testing.T) {

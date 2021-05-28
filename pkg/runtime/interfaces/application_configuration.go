@@ -139,7 +139,8 @@ type NotificationsProcessorConfig struct {
 }
 
 type EmailServerConfig struct {
-	ServiceName    string `json:"serviceName"`
+	ServiceName string `json:"serviceName"`
+	// Only one of these should be set.
 	APIKeyEnvVar   string `json:"apiKeyEnvVar"`
 	APIKeyFilePath string `json:"apiKeyFilePath"`
 }
