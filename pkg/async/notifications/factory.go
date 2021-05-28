@@ -42,7 +42,7 @@ type EmailerConfig struct {
 }
 
 func GetEmailer(config runtimeInterfaces.NotificationsConfig, scope promutils.Scope) interfaces.Emailer {
-	// If an external email service is specified use that first.
+	// If an external email service is specified use that instead.
 	if config.NotificationsEmailerConfig.EmailerConfig.ServiceName != "" {
 		switch config.NotificationsEmailerConfig.EmailerConfig.ServiceName {
 		case implementations.Sendgrid:
