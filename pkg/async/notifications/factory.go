@@ -43,6 +43,7 @@ type EmailerConfig struct {
 
 func GetEmailer(config runtimeInterfaces.NotificationsConfig, scope promutils.Scope) interfaces.Emailer {
 	// If an external email service is specified use that instead.
+	// TODO: Handling of this is messy, see https://github.com/flyteorg/flyte/issues/1063
 	if config.NotificationsEmailerConfig.EmailerConfig.ServiceName != "" {
 		switch config.NotificationsEmailerConfig.EmailerConfig.ServiceName {
 		case implementations.Sendgrid:
