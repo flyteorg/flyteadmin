@@ -66,6 +66,9 @@ database:
   host: localhost
   dbname: postgres
   options: "sslmode=disable"
+  maxOpenConnection: 5
+  maxIdleConnection: 25
+  connectionMaxLifetime: 1000
 scheduler:
   eventScheduler:
     scheme: local

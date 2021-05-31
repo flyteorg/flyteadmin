@@ -1,5 +1,7 @@
 package interfaces
 
+import "time"
+
 // This configuration section is used to for initiating the database connection with the store that holds registered
 // entities (e.g. workflows, tasks, launch plans...)
 // This struct specifically maps to the flyteadmin config yaml structure.
@@ -20,6 +22,12 @@ type DbConfigSection struct {
 	ExtraOptions string `json:"options"`
 	// Whether or not to start the database connection with debug mode enabled.
 	Debug bool `json:"debug"`
+	// Max open connection in postgres
+	MaxOpenConnection     int           `json:"maxOpenConnection"`
+	// Max Idle connection
+	MaxIdleConnection     int           `json:"maxIdleConnection"`
+	// postgres connection Max lifetime
+	ConnectionMaxLifetime time.Duration `json:"connectionMaxLifetime"`
 }
 
 // This represents a configuration used for initiating database connections much like DbConfigSection, however the
