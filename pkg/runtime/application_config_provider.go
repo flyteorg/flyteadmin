@@ -44,7 +44,7 @@ var schedulerConfig = config.MustRegisterSection(scheduler, &interfaces.Schedule
 	},
 })
 var remoteDataConfig = config.MustRegisterSection(remoteData, &interfaces.RemoteDataConfig{
-	Scheme:         common.None,
+	Scheme: common.None,
 })
 var notificationsConfig = config.MustRegisterSection(notifications, &interfaces.NotificationsConfig{
 	Type: common.Local,
