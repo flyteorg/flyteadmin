@@ -432,38 +432,10 @@ func TestAddPermissions(t *testing.T) {
 	cluster := getFakeExecutionCluster()
 	propeller := getFlytePropellerForTest(cluster, &FlyteWorkflowBuilderTest{})
 	flyteWf := v1alpha1.FlyteWorkflow{}
-	propeller.addPermissions(admin.LaunchPlan{
-		Spec: &admin.LaunchPlanSpec{
-			Auth: &admin.Auth{
-				AssumableIamRole: "rollie-pollie",
-			},
-			Role: "ignore-me",
-		},
+	propeller.addPermissions(&admin.AuthRole{
+		AssumableIamRole:         "rollie-pollie",
+		KubernetesServiceAccount: "service-account",
 	}, &flyteWf)
-	assert.EqualValues(t, flyteWf.Annotations, map[string]string{
-		roleNameKey: "rollie-pollie",
-	})
-
-	flyteWf = v1alpha1.FlyteWorkflow{}
-	propeller.addPermissions(admin.LaunchPlan{
-		Spec: &admin.LaunchPlanSpec{
-			Role: "rollie-pollie",
-		},
-	}, &flyteWf)
-	assert.EqualValues(t, flyteWf.Annotations, map[string]string{
-		roleNameKey: "rollie-pollie",
-	})
-
-	flyteWf = v1alpha1.FlyteWorkflow{}
-	propeller.addPermissions(admin.LaunchPlan{
-		Spec: &admin.LaunchPlanSpec{
-			Auth: &admin.Auth{
-				KubernetesServiceAccount: "service-account",
-				AssumableIamRole:         "rollie-pollie",
-			},
-		},
-	}, &flyteWf)
-	assert.Equal(t, "service-account", flyteWf.ServiceAccountName)
 	assert.EqualValues(t, flyteWf.Annotations, map[string]string{
 		roleNameKey: "rollie-pollie",
 	})
