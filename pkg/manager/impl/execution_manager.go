@@ -611,12 +611,12 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 }
 
 func resolvePermissions(request *admin.ExecutionCreateRequest, launchPlan *admin.LaunchPlan) *admin.AuthRole {
-	// Set role permissions based on launch plan Auth values.
-	// The branched-ness of this check is due to the presence numerous deprecated fields
 	if request.Spec.AuthRole != nil {
 		return request.Spec.AuthRole
 	}
 
+	// Set role permissions based on launch plan Auth values.
+	// The branched-ness of this check is due to the presence numerous deprecated fields
 	if launchPlan.Spec.GetAuthRole() != nil {
 		return launchPlan.Spec.GetAuthRole()
 	} else if launchPlan.GetSpec().GetAuth() != nil {
