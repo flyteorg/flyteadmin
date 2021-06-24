@@ -152,7 +152,7 @@ func TestCreateTaskExecutionModelQueued(t *testing.T) {
 				InputUri:              "input uri",
 				OccurredAt:            taskEventOccurredAtProto,
 				Reason:                "Task was scheduled",
-				TaskType:              "dynamic",
+				TaskType:              "sidecar",
 			},
 		},
 	})
@@ -164,7 +164,7 @@ func TestCreateTaskExecutionModelQueued(t *testing.T) {
 		CreatedAt: taskEventOccurredAtProto,
 		UpdatedAt: taskEventOccurredAtProto,
 		Reason:    "Task was scheduled",
-		TaskType:  "dynamic",
+		TaskType:  "sidecar",
 	}
 
 	expectedClosureBytes, err := proto.Marshal(expectedClosure)
