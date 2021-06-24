@@ -151,6 +151,7 @@ func TestCreateTaskExecutionModelQueued(t *testing.T) {
 				RetryAttempt:          1,
 				InputUri:              "input uri",
 				OccurredAt:            taskEventOccurredAtProto,
+				Reason:                "Task was scheduled",
 			},
 		},
 	})
@@ -161,6 +162,7 @@ func TestCreateTaskExecutionModelQueued(t *testing.T) {
 		StartedAt: nil,
 		CreatedAt: taskEventOccurredAtProto,
 		UpdatedAt: taskEventOccurredAtProto,
+		Reason:    "Task was scheduled",
 	}
 
 	expectedClosureBytes, err := proto.Marshal(expectedClosure)
@@ -350,6 +352,7 @@ func TestUpdateTaskExecutionModelRunningToFailed(t *testing.T) {
 			CustomInfo: transformMapToStructPB(t, map[string]string{
 				"key1": "value1 updated",
 			}),
+			Reason: "task failed",
 		},
 	}
 
@@ -379,6 +382,7 @@ func TestUpdateTaskExecutionModelRunningToFailed(t *testing.T) {
 		CustomInfo: transformMapToStructPB(t, map[string]string{
 			"key1": "value1 updated",
 		}),
+		Reason: "task failed",
 	}
 
 	expectedClosureBytes, err := proto.Marshal(expectedClosure)
