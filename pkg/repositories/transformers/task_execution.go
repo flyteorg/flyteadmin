@@ -101,6 +101,7 @@ func CreateTaskExecutionModel(input CreateTaskExecutionModelInput) (*models.Task
 		Logs:       input.Request.Event.Logs,
 		CustomInfo: input.Request.Event.CustomInfo,
 		Reason:     input.Request.Event.Reason,
+		TaskType:   input.Request.Event.TaskType,
 	}
 
 	eventPhase := input.Request.Event.Phase
