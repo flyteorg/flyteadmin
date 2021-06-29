@@ -6,7 +6,7 @@ server:
   httpPort: 8088
   grpcPort: 8089
   grpcServerReflection: true
-  kube-config: /Users/haythamabuelfutuh/kubeconfig/k3s/k3s.yaml
+  kube-config: /Users/haythamabuelfutuh/.flyte/k3s/k3s.yaml
   security:
     secure: false
     useAuth: false
@@ -84,7 +84,7 @@ remoteData:
   signedUrls:
     durationMinutes: 3
 notifications:
-  type: local
+  type: aws
   region: "my-region"
   publisher:
     topicName: "foo"

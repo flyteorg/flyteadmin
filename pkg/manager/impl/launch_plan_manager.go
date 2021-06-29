@@ -127,6 +127,7 @@ func (m *LaunchPlanManager) updateLaunchPlanModelState(launchPlan *models.Launch
 		logger.Errorf(context.Background(), "failed to unmarshal launch plan closure: %v", err)
 		return errors.NewFlyteAdminErrorf(codes.Internal, "Failed to unmarshal launch plan closure: %v", err)
 	}
+
 	// Don't write the state in the closure - we store it only in the model column "State" and fill in the closure
 	// value when transforming from a model to an admin.LaunchPlan object
 	marshalledClosure, err := proto.Marshal(&launchPlanClosure)
@@ -134,6 +135,7 @@ func (m *LaunchPlanManager) updateLaunchPlanModelState(launchPlan *models.Launch
 		logger.Errorf(context.Background(), "Failed to marshal launch plan closure: %v", err)
 		return errors.NewFlyteAdminErrorf(codes.Internal, "Failed to marshal launch plan closure: %v", err)
 	}
+
 	launchPlan.Closure = marshalledClosure
 	stateInt := int32(state)
 	launchPlan.State = &stateInt
@@ -193,11 +195,13 @@ func (m *LaunchPlanManager) updateSchedules(
 		logger.Errorf(ctx, "failed to unmarshal newly enabled launch plan spec")
 		return errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal newly enabled launch plan spec")
 	}
+
 	launchPlanIdentifier := admin.NamedEntityIdentifier{
 		Project: newlyActiveLaunchPlan.Project,
 		Domain:  newlyActiveLaunchPlan.Domain,
 		Name:    newlyActiveLaunchPlan.Name,
 	}
+
 	var formerlyActiveLaunchPlanSpec admin.LaunchPlanSpec
 	if formerlyActiveLaunchPlan != nil {
 		err = proto.Unmarshal(formerlyActiveLaunchPlan.Spec, &formerlyActiveLaunchPlanSpec)
@@ -205,6 +209,7 @@ func (m *LaunchPlanManager) updateSchedules(
 			return errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal formerly enabled launch plan spec")
 		}
 	}
+
 	if proto.Equal(formerlyActiveLaunchPlanSpec.GetEntityMetadata().GetSchedule(),
 		newlyActiveLaunchPlanSpec.GetEntityMetadata().GetSchedule()) {
 		// Nothing to change/update.
@@ -212,20 +217,25 @@ func (m *LaunchPlanManager) updateSchedules(
 			"Not updating any schedules", launchPlanIdentifier)
 		return nil
 	}
+
 	if !isScheduleEmpty(formerlyActiveLaunchPlanSpec) {
 		// Disable previous schedule
 		if err = m.disableSchedule(ctx, launchPlanIdentifier); err != nil {
 			return err
 		}
+
 		logger.Infof(ctx, "Disabled schedules for deactivated launch plan [%+v]", launchPlanIdentifier)
 	}
+
 	if !isScheduleEmpty(newlyActiveLaunchPlanSpec) {
 		// Enable new schedule
 		if err = m.enableSchedule(ctx, launchPlanIdentifier, newlyActiveLaunchPlanSpec); err != nil {
 			return err
 		}
+
 		logger.Infof(ctx, "Enabled schedules for activated launch plan [%+v]", launchPlanIdentifier)
 	}
+
 	return nil
 }
 
@@ -289,6 +299,7 @@ func (m *LaunchPlanManager) enableLaunchPlan(ctx context.Context, request admin.
 		logger.Debugf(ctx, "Failed to find launch plan to enable with id [%+v] and err %v", request.Id, err)
 		return nil, err
 	}
+
 	// Set desired launch plan version to active:
 	err = m.updateLaunchPlanModelState(&newlyActiveLaunchPlanModel, admin.LaunchPlanState_ACTIVE)
 	if err != nil {
@@ -300,10 +311,12 @@ func (m *LaunchPlanManager) enableLaunchPlan(ctx context.Context, request admin.
 	if err != nil {
 		return nil, err
 	}
+
 	formerlyActiveLaunchPlanModelOutput, err := m.db.LaunchPlanRepo().List(ctx, repoInterfaces.ListResourceInput{
 		InlineFilters: filters,
 		Limit:         1,
 	})
+
 	var formerlyActiveLaunchPlanModel *models.LaunchPlan
 	if err != nil {
 		// Not found is fine, there isn't always a guaranteed active launch plan model.
@@ -322,6 +335,7 @@ func (m *LaunchPlanManager) enableLaunchPlan(ctx context.Context, request admin.
 			return nil, err
 		}
 	}
+
 	err = m.updateSchedules(ctx, newlyActiveLaunchPlanModel, formerlyActiveLaunchPlanModel)
 	if err != nil {
 		m.metrics.FailedScheduleUpdates.Inc()
@@ -348,8 +362,10 @@ func (m *LaunchPlanManager) UpdateLaunchPlan(ctx context.Context, request admin.
 	ctx = getLaunchPlanContext(ctx, request.Id)
 	switch request.State {
 	case admin.LaunchPlanState_INACTIVE:
+		logger.Debugf(ctx, "Disabling launch plan [%v].", request.Id)
 		return m.disableLaunchPlan(ctx, request)
 	case admin.LaunchPlanState_ACTIVE:
+		logger.Debugf(ctx, "Enabling launch plan [%v].", request.Id)
 		return m.enableLaunchPlan(ctx, request)
 	default:
 		return nil, errors.NewFlyteAdminErrorf(
