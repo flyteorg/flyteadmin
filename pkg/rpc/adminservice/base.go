@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"runtime/debug"
+	"runtime/pprof"
+
+	"github.com/flyteorg/flytestdlib/contextutils"
 
 	eventWriter "github.com/flyteorg/flyteadmin/pkg/async/events/implementations"
 
@@ -57,6 +60,7 @@ func (m *AdminService) interceptPanic(ctx context.Context, request proto.Message
 const defaultRetries = 3
 
 func NewAdminServer(kubeConfig, master string) *AdminService {
+	ctx := context.Background()
 	configuration := runtime.NewConfigurationProvider()
 	applicationConfiguration := configuration.ApplicationConfiguration().GetTopLevelConfig()
 
@@ -66,7 +70,7 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 		if err := recover(); err != nil {
 			adminScope.MustNewCounter("initialization_panic",
 				"panics encountered initializing the admin service").Inc()
-			logger.Fatalf(context.Background(), fmt.Sprintf("caught panic: %v [%+v]", err, string(debug.Stack())))
+			logger.Fatalf(ctx, fmt.Sprintf("caught panic: %v [%+v]", err, string(debug.Stack())))
 		}
 	}()
 
@@ -96,20 +100,21 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 		execCluster,
 		adminScope.NewSubScope("executor").NewSubScope("flytepropeller"),
 		configuration.NamespaceMappingConfiguration(), applicationConfiguration.EventVersion)
-	logger.Info(context.Background(), "Successfully created a workflow executor engine")
+	logger.Info(ctx, "Successfully created a workflow executor engine")
 	dataStorageClient, err := storage.NewDataStore(storeConfig, adminScope.NewSubScope("storage"))
 	if err != nil {
-		logger.Error(context.Background(), "Failed to initialize storage config")
+		logger.Error(ctx, "Failed to initialize storage config")
 		panic(err)
 	}
 
 	publisher := notifications.NewNotificationsPublisher(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope)
 	processor := notifications.NewNotificationsProcessor(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope)
 	eventPublisher := notifications.NewEventsPublisher(*configuration.ApplicationConfiguration().GetExternalEventsConfig(), adminScope)
-	go func() {
-		logger.Info(context.Background(), "Started processing notifications.")
-		processor.StartProcessing()
-	}()
+	go func(ctx context.Context) {
+		pprof.SetGoroutineLabels(ctx)
+		logger.Info(ctx, "Started processing notifications.")
+		processor.StartProcessing(ctx)
+	}(contextutils.WithGoroutineLabel(ctx, "notifications-processor"))
 
 	// Configure workflow scheduler async processes.
 	schedulerConfig := configuration.ApplicationConfiguration().GetSchedulerConfig()
@@ -140,9 +145,11 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 	namedEntityManager := manager.NewNamedEntityManager(db, configuration, adminScope.NewSubScope("named_entity_manager"))
 
 	executionEventWriter := eventWriter.NewWorkflowExecutionEventWriter(db, applicationConfiguration.AsyncEventsBufferSize)
-	go func() {
-		executionEventWriter.Run()
-	}()
+	go func(ctx context.Context) {
+		pprof.SetGoroutineLabels(ctx)
+		logger.Infof(ctx, "Starting node execution event writer")
+		executionEventWriter.Run(ctx)
+	}(contextutils.WithGoroutineLabel(ctx, "workflow-event-writer"))
 
 	executionManager := manager.NewExecutionManager(db, configuration, dataStorageClient, workflowExecutor,
 		adminScope.NewSubScope("execution_manager"), adminScope.NewSubScope("user_execution_metrics"),
@@ -150,25 +157,27 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 	versionManager := manager.NewVersionManager()
 
 	scheduledWorkflowExecutor := workflowScheduler.GetWorkflowExecutor(executionManager, launchPlanManager)
-	logger.Info(context.Background(), "Successfully initialized a new scheduled workflow executor")
-	go func() {
-		logger.Info(context.Background(), "Starting the scheduled workflow executor")
-		scheduledWorkflowExecutor.Run()
-	}()
+	logger.Info(ctx, "Successfully initialized a new scheduled workflow executor")
+	go func(ctx context.Context) {
+		pprof.SetGoroutineLabels(ctx)
+		logger.Info(ctx, "Starting the scheduled workflow executor")
+		scheduledWorkflowExecutor.Run(ctx)
+	}(contextutils.WithGoroutineLabel(ctx, "scheduled-executor"))
 
 	// Serve profiling endpoints.
 	go func() {
-		err := profutils.StartProfilingServerWithDefaultHandlers(
-			context.Background(), applicationConfiguration.ProfilerPort, nil)
+		err := profutils.StartProfilingServerWithDefaultHandlers(ctx, applicationConfiguration.ProfilerPort, nil)
 		if err != nil {
-			logger.Panicf(context.Background(), "Failed to Start profiling and Metrics server. Error, %v", err)
+			logger.Panicf(ctx, "Failed to Start profiling and Metrics server. Error, %v", err)
 		}
 	}()
 
 	nodeExecutionEventWriter := eventWriter.NewNodeExecutionEventWriter(db, applicationConfiguration.AsyncEventsBufferSize)
-	go func() {
-		nodeExecutionEventWriter.Run()
-	}()
+	go func(ctx context.Context) {
+		pprof.SetGoroutineLabels(ctx)
+		logger.Infof(ctx, "Starting node execution event writer")
+		nodeExecutionEventWriter.Run(ctx)
+	}(contextutils.WithGoroutineLabel(ctx, "event-writer"))
 
 	logger.Info(context.Background(), "Initializing a new AdminService")
 	return &AdminService{

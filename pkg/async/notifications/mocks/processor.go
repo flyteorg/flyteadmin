@@ -15,14 +15,14 @@ type MockSubscriber struct {
 	stopFunc StopFunc
 }
 
-func (m *MockSubscriber) Run() error {
+func (m *MockSubscriber) Run(ctx context.Context) error {
 	if m.runFunc != nil {
 		return m.runFunc()
 	}
 	return nil
 }
 
-func (m *MockSubscriber) Stop() error {
+func (m *MockSubscriber) Stop(ctx context.Context) error {
 	if m.stopFunc != nil {
 		return m.stopFunc()
 	}

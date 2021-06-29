@@ -1,12 +1,16 @@
 package noop
 
-import "github.com/flyteorg/flyteadmin/pkg/async/schedule/interfaces"
+import (
+	"context"
+
+	"github.com/flyteorg/flyteadmin/pkg/async/schedule/interfaces"
+)
 
 type workflowExecutor struct{}
 
-func (w *workflowExecutor) Run() {}
+func (w *workflowExecutor) Run(ctx context.Context) {}
 
-func (w *workflowExecutor) Stop() error {
+func (w *workflowExecutor) Stop(ctx context.Context) error {
 	return nil
 }
 

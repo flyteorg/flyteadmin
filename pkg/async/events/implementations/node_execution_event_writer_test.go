@@ -1,6 +1,7 @@
 package implementations
 
 import (
+	"context"
 	"testing"
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories/mocks"
@@ -32,6 +33,7 @@ func TestNodeExecutionEventWriter(t *testing.T) {
 	writer := NewNodeExecutionEventWriter(db, 100)
 	// Assert we can write an event using the buffered channel without holding up this process.
 	writer.Write(event)
-	go func() { writer.Run() }()
+	ctx := context.Background()
+	go func() { writer.Run(ctx) }()
 	close(writer.(*nodeExecutionEventWriter).events)
 }

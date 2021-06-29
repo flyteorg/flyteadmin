@@ -41,16 +41,16 @@ type Processor struct {
 // Currently only email is the supported notification because slack and pagerduty both use
 // email client to trigger those notifications.
 // When Pagerduty and other notifications are supported, a publisher per type should be created.
-func (p *Processor) StartProcessing() {
+func (p *Processor) StartProcessing(ctx context.Context) {
 	for {
-		logger.Warningf(context.Background(), "Starting notifications processor")
-		err := p.run()
-		logger.Errorf(context.Background(), "error with running processor err: [%v] ", err)
+		logger.Warningf(ctx, "Starting notifications processor")
+		err := p.run(ctx)
+		logger.Errorf(ctx, "error with running processor err: [%v] ", err)
 		time.Sleep(async.RetryDelay)
 	}
 }
 
-func (p *Processor) run() error {
+func (p *Processor) run(ctx context.Context) error {
 	var emailMessage admin.EmailMessage
 	var err error
 	for msg := range p.sub.Start() {
@@ -66,8 +66,8 @@ func (p *Processor) run() error {
 		// The notification published is stored in the message field after unmarshalling the SQS message.
 		if err := json.Unmarshal(msg.Message(), &snsJSONFormat); err != nil {
 			p.systemMetrics.MessageDecodingError.Inc()
-			logger.Errorf(context.Background(), "failed to unmarshall JSON message [%s] from processor with err: %v", stringMsg, err)
-			p.markMessageDone(msg)
+			logger.Errorf(ctx, "failed to unmarshall JSON message [%s] from processor with err: %v", stringMsg, err)
+			p.markMessageDone(ctx, msg)
 			continue
 		}
 
@@ -76,16 +76,16 @@ func (p *Processor) run() error {
 		var valueString string
 
 		if value, ok = snsJSONFormat["Message"]; !ok {
-			logger.Errorf(context.Background(), "failed to retrieve message from unmarshalled JSON object [%s]", stringMsg)
+			logger.Errorf(ctx, "failed to retrieve message from unmarshalled JSON object [%s]", stringMsg)
 			p.systemMetrics.MessageDataError.Inc()
-			p.markMessageDone(msg)
+			p.markMessageDone(ctx, msg)
 			continue
 		}
 
 		if valueString, ok = value.(string); !ok {
 			p.systemMetrics.MessageDataError.Inc()
-			logger.Errorf(context.Background(), "failed to retrieve notification message (in string format) from unmarshalled JSON object for message [%s]", stringMsg)
-			p.markMessageDone(msg)
+			logger.Errorf(ctx, "failed to retrieve notification message (in string format) from unmarshalled JSON object for message [%s]", stringMsg)
+			p.markMessageDone(ctx, msg)
 			continue
 		}
 
@@ -93,27 +93,27 @@ func (p *Processor) run() error {
 		// setting that as the message body for SNS. Do the inverse to retrieve the notification.
 		notificationBytes, err := base64.StdEncoding.DecodeString(valueString)
 		if err != nil {
-			logger.Errorf(context.Background(), "failed to Base64 decode from message string [%s] from message [%s] with err: %v", valueString, stringMsg, err)
+			logger.Errorf(ctx, "failed to Base64 decode from message string [%s] from message [%s] with err: %v", valueString, stringMsg, err)
 			p.systemMetrics.MessageDecodingError.Inc()
-			p.markMessageDone(msg)
+			p.markMessageDone(ctx, msg)
 			continue
 		}
 
 		if err = proto.Unmarshal(notificationBytes, &emailMessage); err != nil {
-			logger.Debugf(context.Background(), "failed to unmarshal to notification object from decoded string[%s] from message [%s] with err: %v", valueString, stringMsg, err)
+			logger.Debugf(ctx, "failed to unmarshal to notification object from decoded string[%s] from message [%s] with err: %v", valueString, stringMsg, err)
 			p.systemMetrics.MessageDecodingError.Inc()
-			p.markMessageDone(msg)
+			p.markMessageDone(ctx, msg)
 			continue
 		}
 
-		if err = p.email.SendEmail(context.Background(), emailMessage); err != nil {
+		if err = p.email.SendEmail(ctx, emailMessage); err != nil {
 			p.systemMetrics.MessageProcessorError.Inc()
-			logger.Errorf(context.Background(), "Error sending an email message for message [%s] with emailM with err: %v", emailMessage.String(), err)
+			logger.Errorf(ctx, "Error sending an email message for message [%s] with emailM with err: %v", emailMessage.String(), err)
 		} else {
 			p.systemMetrics.MessageSuccess.Inc()
 		}
 
-		p.markMessageDone(msg)
+		p.markMessageDone(ctx, msg)
 
 	}
 
@@ -122,27 +122,28 @@ func (p *Processor) run() error {
 	// there was an error in the channel or there are no more messages left (resulting in no errors when calling Err()).
 	if err = p.sub.Err(); err != nil {
 		p.systemMetrics.ChannelClosedError.Inc()
-		logger.Warningf(context.Background(), "The stream for the subscriber channel closed with err: %v", err)
+		logger.Warningf(ctx, "The stream for the subscriber channel closed with err: %v", err)
 	}
 
 	// If there are no errors, nil will be returned.
 	return err
 }
 
-func (p *Processor) markMessageDone(message pubsub.SubscriberMessage) {
+func (p *Processor) markMessageDone(ctx context.Context, message pubsub.SubscriberMessage) {
 	if err := message.Done(); err != nil {
 		p.systemMetrics.MessageDoneError.Inc()
-		logger.Errorf(context.Background(), "failed to mark message as Done() in processor with err: %v", err)
+		logger.Errorf(ctx, "failed to mark message as Done() in processor with err: %v", err)
 	}
 }
 
-func (p *Processor) StopProcessing() error {
+func (p *Processor) StopProcessing(ctx context.Context) error {
 	// Note: If the underlying channel is already closed, then Stop() will return an error.
 	err := p.sub.Stop()
 	if err != nil {
 		p.systemMetrics.StopError.Inc()
-		logger.Errorf(context.Background(), "Failed to stop the subscriber channel gracefully with err: %v", err)
+		logger.Errorf(ctx, "Failed to stop the subscriber channel gracefully with err: %v", err)
 	}
+
 	return err
 }
 

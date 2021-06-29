@@ -92,7 +92,8 @@ func TestResolveKickoffTimeArg(t *testing.T) {
 		},
 	}
 	testExecutor := newWorkflowExecutorForTest(nil, nil, nil)
-	err := testExecutor.resolveKickoffTimeArg(scheduleRequest, launchPlan, &executionRequest)
+	ctx := context.Background()
+	err := testExecutor.resolveKickoffTimeArg(ctx, scheduleRequest, launchPlan, &executionRequest)
 	assert.Nil(t, err)
 	assert.Contains(t, executionRequest.Inputs.Literals, testKickoffTime)
 	assert.Equal(t, testKickoffTimeProtoLiteral,
@@ -122,7 +123,8 @@ func TestResolveKickoffTimeArg_NoKickoffTimeArg(t *testing.T) {
 		},
 	}
 	testExecutor := newWorkflowExecutorForTest(nil, nil, nil)
-	err := testExecutor.resolveKickoffTimeArg(scheduleRequest, launchPlan, &executionRequest)
+	ctx := context.Background()
+	err := testExecutor.resolveKickoffTimeArg(ctx, scheduleRequest, launchPlan, &executionRequest)
 	assert.Nil(t, err)
 	assert.NotContains(t, executionRequest.Inputs.Literals, testKickoffTime)
 }
@@ -156,7 +158,8 @@ func TestGetActiveLaunchPlanVersion(t *testing.T) {
 			}, nil
 		})
 	testExecutor := newWorkflowExecutorForTest(nil, nil, launchPlanManager)
-	launchPlan, err := testExecutor.getActiveLaunchPlanVersion(launchPlanNamedIdentifier)
+	ctx := context.Background()
+	launchPlan, err := testExecutor.getActiveLaunchPlanVersion(ctx, launchPlanNamedIdentifier)
 	assert.Nil(t, err)
 	assert.True(t, proto.Equal(&launchPlanIdentifier, launchPlan.Id))
 }
@@ -176,7 +179,8 @@ func TestGetActiveLaunchPlanVersion_ManagerError(t *testing.T) {
 			return nil, expectedErr
 		})
 	testExecutor := newWorkflowExecutorForTest(nil, nil, launchPlanManager)
-	_, err := testExecutor.getActiveLaunchPlanVersion(launchPlanIdentifier)
+	ctx := context.Background()
+	_, err := testExecutor.getActiveLaunchPlanVersion(ctx, launchPlanIdentifier)
 	assert.EqualError(t, err, expectedErr.Error())
 }
 
@@ -199,7 +203,8 @@ func TestFormulateExecutionCreateRequest(t *testing.T) {
 		Id: &launchPlanIdentifier,
 	}
 	testExecutor := newWorkflowExecutorForTest(nil, nil, nil)
-	executionRequest := testExecutor.formulateExecutionCreateRequest(launchPlan, time.Unix(1543607788, 0))
+	ctx := context.Background()
+	executionRequest := testExecutor.formulateExecutionCreateRequest(ctx, launchPlan, time.Unix(1543607788, 0))
 	assert.Equal(t, "foo", executionRequest.Project)
 	assert.Equal(t, "bar", executionRequest.Domain)
 	assert.Equal(t, "o4219lgnsf", executionRequest.Name)
@@ -283,7 +288,8 @@ func TestRun(t *testing.T) {
 			}, nil
 		})
 	testExecutor := newWorkflowExecutorForTest(&testSubscriber, &testExecutionManager, launchPlanManager)
-	err := testExecutor.run()
+	ctx := context.Background()
+	err := testExecutor.run(ctx)
 	assert.Len(t, messages, messagesSeen)
 	assert.Nil(t, err)
 }
@@ -291,7 +297,8 @@ func TestRun(t *testing.T) {
 func TestStop(t *testing.T) {
 	testSubscriber := pubsubtest.TestSubscriber{}
 	testExecutor := newWorkflowExecutorForTest(&testSubscriber, nil, nil)
-	assert.Nil(t, testExecutor.Stop())
+	ctx := context.Background()
+	assert.Nil(t, testExecutor.Stop(ctx))
 }
 
 func TestStop_Error(t *testing.T) {
@@ -299,6 +306,7 @@ func TestStop_Error(t *testing.T) {
 		GivenStopError: errors.New("foo"),
 	}
 	testExecutor := newWorkflowExecutorForTest(&testSubscriber, nil, nil)
-	err := testExecutor.Stop()
+	ctx := context.Background()
+	err := testExecutor.Stop(ctx)
 	assert.Equal(t, codes.Internal, err.(flyteAdminErrors.FlyteAdminError).Code())
 }

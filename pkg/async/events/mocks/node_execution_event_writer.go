@@ -3,6 +3,8 @@
 package mocks
 
 import (
+	"context"
+
 	admin "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 
 	mock "github.com/stretchr/testify/mock"
@@ -14,7 +16,7 @@ type NodeExecutionEventWriter struct {
 }
 
 // Run provides a mock function with given fields:
-func (_m *NodeExecutionEventWriter) Run() {
+func (_m *NodeExecutionEventWriter) Run(ctx context.Context) {
 	_m.Called()
 }
 

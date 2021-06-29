@@ -64,11 +64,11 @@ var doNotconsumeBase64 = false
 
 // The kickoff time argument isn't required for scheduled workflows. However, if it exists we substitute the kick-off
 // time value for the input argument.
-func (e *workflowExecutor) resolveKickoffTimeArg(
+func (e *workflowExecutor) resolveKickoffTimeArg(ctx context.Context,
 	request ScheduledWorkflowExecutionRequest, launchPlan admin.LaunchPlan,
 	executionRequest *admin.ExecutionCreateRequest) error {
 	if request.KickoffTimeArg == "" || launchPlan.Closure.ExpectedInputs == nil {
-		logger.Debugf(context.Background(), "No kickoff time to resolve for scheduled workflow execution: [%s/%s/%s]",
+		logger.Debugf(ctx, "No kickoff time to resolve for scheduled workflow execution: [%s/%s/%s]",
 			executionRequest.Project, executionRequest.Domain, executionRequest.Name)
 		return nil
 	}
@@ -76,7 +76,7 @@ func (e *workflowExecutor) resolveKickoffTimeArg(
 		if name == request.KickoffTimeArg {
 			ts, err := ptypes.TimestampProto(request.KickoffTime)
 			if err != nil {
-				logger.Warningf(context.Background(),
+				logger.Warningf(ctx,
 					"failed to serialize kickoff time %+v to timestamp proto for scheduled workflow execution with "+
 						"launchPlan [%+v]", request.KickoffTime, launchPlan.Id)
 				return errors.NewFlyteAdminErrorf(
@@ -98,27 +98,27 @@ func (e *workflowExecutor) resolveKickoffTimeArg(
 			return nil
 		}
 	}
-	logger.Warningf(context.Background(),
+	logger.Warningf(ctx,
 		"expected kickoff time arg with launch plan [%+v] but did not find any matching expected input to resolve",
 		launchPlan.Id)
 	return nil
 }
 
-func (e *workflowExecutor) getActiveLaunchPlanVersion(launchPlanIdentifier *admin.NamedEntityIdentifier) (admin.LaunchPlan, error) {
-	launchPlans, err := e.launchPlanManager.ListLaunchPlans(context.Background(), admin.ResourceListRequest{
+func (e *workflowExecutor) getActiveLaunchPlanVersion(ctx context.Context, launchPlanIdentifier *admin.NamedEntityIdentifier) (admin.LaunchPlan, error) {
+	launchPlans, err := e.launchPlanManager.ListLaunchPlans(ctx, admin.ResourceListRequest{
 		Id:      launchPlanIdentifier,
 		Filters: activeLaunchPlanFilter,
 		Limit:   1,
 	})
 	if err != nil {
-		logger.Warningf(context.Background(), "failed to find active launch plan with identifier [%+v]",
+		logger.Warningf(ctx, "failed to find active launch plan with identifier [%+v]",
 			launchPlanIdentifier)
 		e.metrics.NoActiveLaunchPlanVersionsFound.Inc()
 		return admin.LaunchPlan{}, err
 	}
 	if len(launchPlans.LaunchPlans) != 1 {
 		e.metrics.GreaterThan1LaunchPlanVersionsFound.Inc()
-		logger.Warningf(context.Background(), "failed to get exactly one active launch plan for identifier: %+v",
+		logger.Warningf(ctx, "failed to get exactly one active launch plan for identifier: %+v",
 			launchPlanIdentifier)
 		return admin.LaunchPlan{}, errors.NewFlyteAdminErrorf(codes.Internal,
 			"failed to get exactly one active launch plan for identifier: %+v", launchPlanIdentifier)
@@ -136,11 +136,11 @@ func generateExecutionName(launchPlan admin.LaunchPlan, kickoffTime time.Time) s
 	return common.GetExecutionName(randomSeed)
 }
 
-func (e *workflowExecutor) formulateExecutionCreateRequest(
+func (e *workflowExecutor) formulateExecutionCreateRequest(ctx context.Context,
 	launchPlan admin.LaunchPlan, kickoffTime time.Time) admin.ExecutionCreateRequest {
 	// Deterministically assign a name based on the schedule kickoff time/launch plan definition.
 	name := generateExecutionName(launchPlan, kickoffTime)
-	logger.Debugf(context.Background(), "generated name [%s] for scheduled execution with launch plan [%+v]",
+	logger.Debugf(ctx, "generated name [%s] for scheduled execution with launch plan [%+v]",
 		name, launchPlan.Id)
 	kickoffTimeProto, err := ptypes.TimestampProto(kickoffTime)
 	if err != nil {
@@ -148,7 +148,7 @@ func (e *workflowExecutor) formulateExecutionCreateRequest(
 		// If, for whatever reason we fail to record the kickoff time in the metadata, that's fine,
 		// we don't fail the execution simply use an empty value instead.
 		kickoffTimeProto = &timestamp.Timestamp{}
-		logger.Warningf(context.Background(), "failed to serialize kickoff time [%v] to proto with err: %v",
+		logger.Warningf(ctx, "failed to serialize kickoff time [%v] to proto with err: %v",
 			kickoffTime, err)
 	}
 	executionRequest := admin.ExecutionCreateRequest{
@@ -171,34 +171,33 @@ func (e *workflowExecutor) formulateExecutionCreateRequest(
 	return executionRequest
 }
 
-func (e *workflowExecutor) Run() {
+func (e *workflowExecutor) Run(ctx context.Context) {
 	for {
-		logger.Warningf(context.Background(), "Starting workflow executor")
-		err := e.run()
-		logger.Errorf(context.Background(), "error with workflow executor err: [%v] ", err)
+		logger.Warningf(ctx, "Starting workflow executor")
+		err := e.run(ctx)
+		logger.Errorf(ctx, "error with workflow executor err: [%v] ", err)
 		time.Sleep(async.RetryDelay)
 	}
 }
 
-func (e *workflowExecutor) run() error {
+func (e *workflowExecutor) run(ctx context.Context) error {
 	for message := range e.subscriber.Start() {
 		scheduledWorkflowExecutionRequest, err := DeserializeScheduleWorkflowPayload(message.Message())
-		ctx := context.Background()
 		observedMessageTriggeredTime := time.Now()
 		if err != nil {
 			e.metrics.FailedPayloadDeserialization.Inc()
-			logger.Error(context.Background(), err.Error())
+			logger.Error(ctx, err.Error())
 			continue
 		}
 
-		logger.Debugf(context.Background(), "Processing scheduled workflow execution event: %+v",
+		logger.Debugf(ctx, "Processing scheduled workflow execution event: %+v",
 			scheduledWorkflowExecutionRequest)
-		launchPlan, err := e.getActiveLaunchPlanVersion(&scheduledWorkflowExecutionRequest.LaunchPlanIdentifier)
+		launchPlan, err := e.getActiveLaunchPlanVersion(ctx, &scheduledWorkflowExecutionRequest.LaunchPlanIdentifier)
 		if err != nil {
 			// In the rare case that a scheduled event fires right before a user disables the currently active launch
 			// plan version (and triggers deleting the schedule rule) there may be no active launch plans. This is fine,
 			// remove the message and move on.
-			logger.Infof(context.Background(),
+			logger.Infof(ctx,
 				"failed to get an active launch plan for scheduled workflow with launch plan identifier %v "+
 					"removing scheduled event message without triggering execution",
 				scheduledWorkflowExecutionRequest.LaunchPlanIdentifier)
@@ -210,33 +209,33 @@ func (e *workflowExecutor) run() error {
 			}
 			continue
 		}
-		executionRequest := e.formulateExecutionCreateRequest(launchPlan, scheduledWorkflowExecutionRequest.KickoffTime)
+		executionRequest := e.formulateExecutionCreateRequest(ctx, launchPlan, scheduledWorkflowExecutionRequest.KickoffTime)
 
 		ctx = contextutils.WithWorkflowID(ctx, fmt.Sprintf(workflowIdentifierFmt, executionRequest.Project,
 			executionRequest.Domain, executionRequest.Name))
-		err = e.resolveKickoffTimeArg(scheduledWorkflowExecutionRequest, launchPlan, &executionRequest)
+		err = e.resolveKickoffTimeArg(ctx, scheduledWorkflowExecutionRequest, launchPlan, &executionRequest)
 		if err != nil {
 			e.metrics.FailedResolveKickoffTimeArg.Inc()
-			logger.Error(context.Background(), err.Error())
+			logger.Error(ctx, err.Error())
 			continue
 		}
 		e.metrics.ScheduledEventProcessingDelay.Observe(ctx, scheduledWorkflowExecutionRequest.KickoffTime, time.Now())
 		var response *admin.ExecutionCreateResponse
 		e.metrics.CreateExecutionDuration.Time(ctx, func() {
 			response, err = e.executionManager.CreateExecution(
-				context.Background(), executionRequest, scheduledWorkflowExecutionRequest.KickoffTime)
+				ctx, executionRequest, scheduledWorkflowExecutionRequest.KickoffTime)
 		})
 
 		if err != nil {
 			ec, ok := err.(errors.FlyteAdminError)
 			if ok && ec.Code() != codes.AlreadyExists {
 				e.metrics.FailedKickoffExecution.Inc()
-				logger.Errorf(context.Background(), "failed to execute scheduled workflow [%s:%s:%s] with err: %v",
+				logger.Errorf(ctx, "failed to execute scheduled workflow [%s:%s:%s] with err: %v",
 					executionRequest.Project, executionRequest.Domain, executionRequest.Name, err)
 				continue
 			}
 		} else {
-			logger.Debugf(context.Background(), "created scheduled workflow execution %+v with kickoff time %+v",
+			logger.Debugf(ctx, "created scheduled workflow execution %+v with kickoff time %+v",
 				response.Id, scheduledWorkflowExecutionRequest.KickoffTime)
 		}
 		executionLaunchTime := time.Now()
@@ -245,7 +244,7 @@ func (e *workflowExecutor) run() error {
 		err = message.Done()
 		if err != nil {
 			e.metrics.FailedMarkMessageAsDone.Inc()
-			logger.Warningf(context.Background(), fmt.Sprintf(
+			logger.Warningf(ctx, fmt.Sprintf(
 				"failed to delete successfully created scheduled workflow execution from the queue with err: %v",
 				err))
 		}
@@ -263,10 +262,10 @@ func (e *workflowExecutor) run() error {
 	return err
 }
 
-func (e *workflowExecutor) Stop() error {
+func (e *workflowExecutor) Stop(ctx context.Context) error {
 	err := e.subscriber.Stop()
 	if err != nil {
-		logger.Warningf(context.Background(), "failed to stop workflow executor with err %v", err)
+		logger.Warningf(ctx, "failed to stop workflow executor with err %v", err)
 		e.metrics.Scope.MustNewCounter("stop_subscriber_failed",
 			"failures stopping the event subscriber").Inc()
 		return errors.NewFlyteAdminErrorf(codes.Internal, "failed to stop workflow executor with err %v", err)

@@ -39,12 +39,12 @@ func NewNoopPublish() interfaces.Publisher {
 
 type NoopProcess struct{}
 
-func (n *NoopProcess) StartProcessing() {
-	logger.Debug(context.Background(), "call to noop start processing.")
+func (n *NoopProcess) StartProcessing(ctx context.Context) {
+	logger.Debug(ctx, "call to noop start processing.")
 }
 
-func (n *NoopProcess) StopProcessing() error {
-	logger.Debug(context.Background(), "call to noop stop processing.")
+func (n *NoopProcess) StopProcessing(ctx context.Context) error {
+	logger.Debug(ctx, "call to noop stop processing.")
 	return nil
 }
 

@@ -21,18 +21,18 @@ func (w *nodeExecutionEventWriter) Write(event admin.NodeExecutionEventRequest) 
 	w.events <- event
 }
 
-func (w *nodeExecutionEventWriter) Run() {
+func (w *nodeExecutionEventWriter) Run(ctx context.Context) {
 	for event := range w.events {
 		eventModel, err := transformers.CreateNodeExecutionEventModel(event)
 		if err != nil {
-			logger.Warnf(context.TODO(), "Failed to transform event [%+v] to database model with err [%+v]", event, err)
+			logger.Warnf(ctx, "Failed to transform event [%+v] to database model with err [%+v]", event, err)
 			continue
 		}
-		err = w.db.NodeExecutionEventRepo().Create(context.TODO(), *eventModel)
+		err = w.db.NodeExecutionEventRepo().Create(ctx, *eventModel)
 		if err != nil {
 			// It's okay to be lossy here. These events aren't used to fetch execution state but rather as a convenience
 			// to replay and understand the event execution timeline.
-			logger.Warnf(context.TODO(), "Failed to write event [%+v] to database with err [%+v]", event, err)
+			logger.Warnf(ctx, "Failed to write event [%+v] to database with err [%+v]", event, err)
 		}
 	}
 }

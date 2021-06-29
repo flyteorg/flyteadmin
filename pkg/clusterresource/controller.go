@@ -68,7 +68,7 @@ const replaceAllInstancesOfString = -1
 // in the execution kubernetes cluster.
 type Controller interface {
 	Sync(ctx context.Context) error
-	Run()
+	Run(ctx context.Context)
 }
 
 type controllerMetrics struct {
@@ -513,8 +513,7 @@ func (c *controller) Sync(ctx context.Context) error {
 	return nil
 }
 
-func (c *controller) Run() {
-	ctx := context.Background()
+func (c *controller) Run(ctx context.Context) {
 	logger.Debugf(ctx, "Running ClusterResourceController")
 	interval := c.config.ClusterResourceConfiguration().GetRefreshInterval()
 	wait.Forever(func() {

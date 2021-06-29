@@ -21,18 +21,18 @@ func (w *workflowExecutionEventWriter) Write(event admin.WorkflowExecutionEventR
 	w.events <- event
 }
 
-func (w *workflowExecutionEventWriter) Run() {
+func (w *workflowExecutionEventWriter) Run(ctx context.Context) {
 	for event := range w.events {
 		eventModel, err := transformers.CreateExecutionEventModel(event)
 		if err != nil {
-			logger.Warnf(context.TODO(), "Failed to transform event [%+v] to database model with err [%+v]", event, err)
+			logger.Warnf(ctx, "Failed to transform event [%+v] to database model with err [%+v]", event, err)
 			continue
 		}
 		err = w.db.ExecutionEventRepo().Create(context.TODO(), *eventModel)
 		if err != nil {
 			// It's okay to be lossy here. These events aren't used to fetch execution state but rather as a convenience
 			// to replay and understand the event execution timeline.
-			logger.Warnf(context.TODO(), "Failed to write event [%+v] to database with err [%+v]", event, err)
+			logger.Warnf(ctx, "Failed to write event [%+v] to database with err [%+v]", event, err)
 		}
 	}
 }
