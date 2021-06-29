@@ -552,6 +552,36 @@ func TestMergeLogs(t *testing.T) {
 		{
 			existing: []*core.TaskLog{
 				{
+					Uri: "uri_a",
+				},
+				{
+					Uri: "uri_b",
+				},
+			},
+			latest: []*core.TaskLog{
+				{
+					Uri: "uri_b",
+				},
+				{
+					Uri: "uri_c",
+				},
+			},
+			expected: []*core.TaskLog{
+				{
+					Uri: "uri_b",
+				},
+				{
+					Uri: "uri_c",
+				},
+				{
+					Uri: "uri_a",
+				},
+			},
+			name: "Merge logs with empty names",
+		},
+		{
+			existing: []*core.TaskLog{
+				{
 					Uri:  "uri_a",
 					Name: "name_a",
 				},

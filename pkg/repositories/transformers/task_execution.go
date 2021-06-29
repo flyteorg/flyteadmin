@@ -157,7 +157,9 @@ func mergeLogs(existing, latest []*core.TaskLog) []*core.TaskLog {
 	latestSetByName := make(map[string]*core.TaskLog, len(latest))
 	for _, latestLog := range latest {
 		latestSetByUri[latestLog.Uri] = latestLog
-		latestSetByName[latestLog.Name] = latestLog
+		if len(latestLog.Name) > 0 {
+			latestSetByName[latestLog.Name] = latestLog
+		}
 	}
 
 	// Copy over the latest logs since names will change for existing logs as a task transitions across phases.
