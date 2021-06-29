@@ -556,6 +556,51 @@ func TestMergeLogs(t *testing.T) {
 					Name: "name_a",
 				},
 				{
+					Uri:  "uri_b_old",
+					Name: "name_b",
+				},
+				{
+					Uri:  "uri_c",
+					Name: "name_c",
+				},
+			},
+			latest: []*core.TaskLog{
+				{
+					Uri:  "uri_b",
+					Name: "name_b",
+				},
+				{
+					Uri:  "uri_d",
+					Name: "name_d",
+				},
+			},
+			expected: []*core.TaskLog{
+				{
+					Uri:  "uri_b",
+					Name: "name_b",
+				},
+				{
+					Uri:  "uri_d",
+					Name: "name_d",
+				},
+				{
+					Uri:  "uri_a",
+					Name: "name_a",
+				},
+				{
+					Uri:  "uri_c",
+					Name: "name_c",
+				},
+			},
+			name: "Merge unique logs by name",
+		},
+		{
+			existing: []*core.TaskLog{
+				{
+					Uri:  "uri_a",
+					Name: "name_a",
+				},
+				{
 					Uri:  "uri_b",
 					Name: "ignored_name_b",
 				},
