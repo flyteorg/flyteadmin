@@ -4,6 +4,7 @@ package tests
 
 import (
 	"context"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,6 +17,18 @@ func TestCreateProject(t *testing.T) {
 	ctx := context.Background()
 	client, conn := GetTestAdminServiceClient()
 	defer conn.Close()
+
+	task, err := client.GetTask(ctx, &admin.ObjectGetRequest{
+		Id: &core.Identifier{
+			Project: "potato",
+			Domain: "development",
+			Name: "tasky",
+			Version: "1234",
+			ResourceType: core.ResourceType_TASK,
+		},
+	})
+	assert.Nil(t, err)
+	assert.Empty(t, task)
 
 	req := admin.ProjectRegisterRequest{
 		Project: &admin.Project{
