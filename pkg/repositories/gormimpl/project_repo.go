@@ -45,6 +45,7 @@ func (r *ProjectRepo) Get(ctx context.Context, projectID string) (models.Project
 	if tx.RecordNotFound() {
 		return models.Project{}, flyteAdminErrors.NewFlyteAdminErrorf(codes.NotFound, "project [%s] not found", projectID)
 	}
+
 	return project, nil
 }
 
