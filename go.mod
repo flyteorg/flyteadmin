@@ -18,7 +18,7 @@ require (
 	github.com/evanphx/json-patch v4.9.0+incompatible
 	github.com/flyteorg/flyteidl v0.19.5
 	github.com/flyteorg/flyteplugins v0.5.56
-	github.com/flyteorg/flytepropeller v0.12.1
+	github.com/flyteorg/flytepropeller v0.12.9
 	github.com/flyteorg/flytestdlib v0.3.22
 	github.com/ghodss/yaml v1.0.0
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
@@ -70,5 +70,3 @@ require (
 	sigs.k8s.io/controller-runtime v0.8.3
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.0 // indirect
 )
-
-replace github.com/flyteorg/flytepropeller => github.com/flyteorg/flytepropeller v0.12.9-0.20210702212233-844b020b9331
