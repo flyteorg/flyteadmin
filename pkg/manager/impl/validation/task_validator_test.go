@@ -5,6 +5,10 @@ import (
 	"errors"
 	"testing"
 
+	"google.golang.org/protobuf/types/known/structpb"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/json"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"k8s.io/apimachinery/pkg/api/resource"
 
@@ -409,4 +413,68 @@ func TestIsWholeNumber(t *testing.T) {
 		assert.False(t, isWholeNumber(resource.MustParse(fraction)),
 			"%s should not be treated as a whole number", fraction)
 	}
+}
+
+func toPodSpecProto(t *testing.T, podSpec *v1.PodSpec) *structpb.Struct {
+	marshalled, err := json.Marshal(podSpec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	structObj := &structpb.Struct{}
+	if err := json.Unmarshal(marshalled, structObj); err != nil {
+		t.Fatal(err)
+	}
+	return structObj
+}
+
+func TestValidateK8sPodSpec(t *testing.T) {
+	t.Run("happy case", func(t *testing.T) {
+		var podSpec = v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Name: "primary",
+				},
+				{
+					Name: "secondary",
+				},
+			},
+		}
+
+		assert.NoError(t, validatedK8sPodSpec(&core.TaskTemplate{
+			Target: &core.TaskTemplate_K8SPod{
+				K8SPod: &core.K8SPod{
+					PodSpec: toPodSpecProto(t, &podSpec),
+				},
+			},
+		}))
+	})
+	t.Run("invalid container name", func(t *testing.T) {
+		var podSpec = v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Name: "primary",
+				},
+				{
+					Name: "$Up3R+Invalid",
+				},
+			},
+		}
+		err := validatedK8sPodSpec(&core.TaskTemplate{
+			Target: &core.TaskTemplate_K8SPod{
+				K8SPod: &core.K8SPod{
+					PodSpec: toPodSpecProto(t, &podSpec),
+				},
+			},
+		})
+		assert.NotEmpty(t, err)
+		assert.Contains(t, err.Error(), "Invalid container name [$Up3R+Invalid]")
+	})
+	t.Run("missing pod spec", func(t *testing.T) {
+		err := validatedK8sPodSpec(&core.TaskTemplate{
+			Target: &core.TaskTemplate_K8SPod{
+				K8SPod: &core.K8SPod{},
+			},
+		})
+		assert.EqualError(t, err, "K8sPod task type targets must specify a non-empty pod spec")
+	})
 }

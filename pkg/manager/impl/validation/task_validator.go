@@ -4,6 +4,10 @@ package validation
 import (
 	"context"
 
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/json"
+	"k8s.io/apimachinery/pkg/util/validation"
+
 	"github.com/flyteorg/flyteadmin/pkg/repositories"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
@@ -20,11 +24,6 @@ import (
 
 var whitelistedTaskErr = errors.NewFlyteAdminErrorf(codes.InvalidArgument, "task type must be whitelisted before use")
 
-// Sidecar tasks do not necessarily define a primary container for execution and are excluded from container validation.
-var containerlessTaskTypes = map[string]bool{
-	"sidecar": true,
-}
-
 // This is called for a task with a non-nil container.
 func validateContainer(task core.TaskTemplate, taskConfig runtime.TaskResourceConfiguration) error {
 	if err := ValidateEmptyStringField(task.GetContainer().Image, shared.Image); err != nil {
@@ -39,6 +38,26 @@ func validateContainer(task core.TaskTemplate, taskConfig runtime.TaskResourceCo
 		logger.Debugf(context.Background(), "encountered errors validating task resources for [%+v]: %v",
 			task.Id, err)
 		return err
+	}
+	return nil
+}
+
+func validatedK8sPodSpec(task *core.TaskTemplate) error {
+	if task.GetK8SPod().PodSpec == nil {
+		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "K8sPod task type targets must specify a non-empty pod spec")
+	}
+	var podSpec v1.PodSpec
+	jsonObj, err := json.Marshal(task.GetK8SPod().PodSpec)
+	if err != nil {
+		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Failed to json marshal K8sPod task type target with err: %v", err)
+	}
+	if err = json.Unmarshal(jsonObj, &podSpec); err != nil {
+		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Failed to json unmarshal K8sPod task type target with err: %v", err)
+	}
+	for _, container := range podSpec.Containers {
+		if errs := validation.IsDNS1123Label(container.Name); len(errs) > 0 {
+			return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Invalid container name [%s], err: %v", container.Name, errs)
+		}
 	}
 	return nil
 }
@@ -70,12 +89,11 @@ func validateTaskTemplate(taskID core.Identifier, task core.TaskTemplate,
 		// The actual interface proto has nothing to validate.
 		return shared.GetMissingArgumentError(shared.TypedInterface)
 	}
-	if containerlessTaskTypes[task.Type] {
-		// Nothing left to validate
-		return nil
-	}
 	if task.GetContainer() != nil {
 		return validateContainer(task, taskConfig)
+	}
+	if task.GetK8SPod() != nil {
+		return validatedK8sPodSpec(&task)
 	}
 	return nil
 }
