@@ -901,6 +901,67 @@ func (m *ExecutionManager) RelaunchExecution(
 	}, nil
 }
 
+func (m *ExecutionManager) RecoverExecution(
+	ctx context.Context, request admin.ExecutionRecoverRequest, requestedAt time.Time) (
+	*admin.ExecutionCreateResponse, error) {
+	existingExecutionModel, err := util.GetExecutionModel(ctx, m.db, *request.Id)
+	if err != nil {
+		logger.Debugf(ctx, "Failed to get execution model for request [%+v] with err %v", request, err)
+		return nil, err
+	}
+	existingExecution, err := transformers.FromExecutionModel(*existingExecutionModel)
+	if err != nil {
+		return nil, err
+	}
+
+	executionSpec := existingExecution.Spec
+	if executionSpec.Metadata == nil {
+		executionSpec.Metadata = &admin.ExecutionMetadata{}
+	}
+	var inputs *core.LiteralMap
+	if len(existingExecutionModel.UserInputsURI) > 0 {
+		inputs = &core.LiteralMap{}
+		if err := m.storageClient.ReadProtobuf(ctx, existingExecutionModel.UserInputsURI, inputs); err != nil {
+			return nil, err
+		}
+	}
+	executionSpec.Metadata.Mode = admin.ExecutionMetadata_RECOVERED
+	executionSpec.Metadata.ReferenceExecution = existingExecution.Id
+	var executionModel *models.Execution
+	ctx, executionModel, err = m.launchExecutionAndPrepareModel(ctx, admin.ExecutionCreateRequest{
+		Project: request.Id.Project,
+		Domain:  request.Id.Domain,
+		Name:    request.Name,
+		Spec:    executionSpec,
+		Inputs:  inputs,
+	}, requestedAt)
+	if err != nil {
+		return nil, err
+	}
+	executionModel.SourceExecutionID = existingExecutionModel.ID
+
+	if request.ParentNodeExecution != nil {
+		// In the case of a recovered execution launched by a recovered node, we want to capture this relationship too.
+		nodeExecution, err := m.db.NodeExecutionRepo().Get(ctx, repositoryInterfaces.NodeExecutionResource{
+			NodeExecutionIdentifier: *request.ParentNodeExecution,
+		})
+		if err != nil {
+			logger.Debugf(ctx, "failed to fetch parent node execution [%+v] for recovering execution [%+v]",
+				request.ParentNodeExecution, request.Name)
+		}
+		executionModel.ParentNodeExecutionID = nodeExecution.ID
+	}
+	workflowExecutionIdentifier, err := m.createExecutionModel(ctx, executionModel)
+	if err != nil {
+		return nil, err
+	}
+	logger.Debugf(ctx, "Successfully relaunched [%+v] as [%+v]", request.Id, workflowExecutionIdentifier)
+	return &admin.ExecutionCreateResponse{
+		Id: workflowExecutionIdentifier,
+	}, nil
+
+}
+
 func (m *ExecutionManager) emitScheduledWorkflowMetrics(
 	ctx context.Context, executionModel *models.Execution, runningEventTimeProto *timestamp.Timestamp) {
 	if executionModel == nil || runningEventTimeProto == nil {
