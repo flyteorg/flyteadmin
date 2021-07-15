@@ -753,6 +753,9 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	if overrides != nil {
 		executeWorkflowInputs.TaskPluginOverrides = overrides
 	}
+	if request.Spec.Metadata != nil && request.Spec.Metadata.ReferenceExecution != nil {
+		executeWorkflowInputs.RecoveryExecution = request.Spec.Metadata.ReferenceExecution
+	}
 
 	execInfo, err := m.workflowExecutor.ExecuteWorkflow(ctx, executeWorkflowInputs)
 	if err != nil {
