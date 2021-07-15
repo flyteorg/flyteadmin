@@ -753,7 +753,8 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	if overrides != nil {
 		executeWorkflowInputs.TaskPluginOverrides = overrides
 	}
-	if request.Spec.Metadata != nil && request.Spec.Metadata.ReferenceExecution != nil {
+	if request.Spec.Metadata != nil && request.Spec.Metadata.ReferenceExecution != nil && (request.Spec.Metadata.Mode == admin.ExecutionMetadata_RECOVERED ||
+		request.Spec.Metadata.Mode == admin.ExecutionMetadata_RECOVERED_CHILD_WORKFLOW) {
 		executeWorkflowInputs.RecoveryExecution = request.Spec.Metadata.ReferenceExecution
 	}
 
@@ -928,7 +929,12 @@ func (m *ExecutionManager) RecoverExecution(
 			return nil, err
 		}
 	}
-	executionSpec.Metadata.Mode = admin.ExecutionMetadata_RECOVERED
+	if request.ParentNodeExecution != nil {
+		executionSpec.Metadata.ParentNodeExecution = request.ParentNodeExecution
+		executionSpec.Metadata.Mode = admin.ExecutionMetadata_RECOVERED_CHILD_WORKFLOW
+	} else {
+		executionSpec.Metadata.Mode = admin.ExecutionMetadata_RECOVERED
+	}
 	executionSpec.Metadata.ReferenceExecution = existingExecution.Id
 	var executionModel *models.Execution
 	ctx, executionModel, err = m.launchExecutionAndPrepareModel(ctx, admin.ExecutionCreateRequest{
@@ -942,18 +948,6 @@ func (m *ExecutionManager) RecoverExecution(
 		return nil, err
 	}
 	executionModel.SourceExecutionID = existingExecutionModel.ID
-
-	if request.ParentNodeExecution != nil {
-		// In the case of a recovered execution launched by a recovered node, we want to capture this relationship too.
-		nodeExecution, err := m.db.NodeExecutionRepo().Get(ctx, repositoryInterfaces.NodeExecutionResource{
-			NodeExecutionIdentifier: *request.ParentNodeExecution,
-		})
-		if err != nil {
-			logger.Debugf(ctx, "failed to fetch parent node execution [%+v] for recovering execution [%+v]",
-				request.ParentNodeExecution, request.Name)
-		}
-		executionModel.ParentNodeExecutionID = nodeExecution.ID
-	}
 	workflowExecutionIdentifier, err := m.createExecutionModel(ctx, executionModel)
 	if err != nil {
 		return nil, err
@@ -962,7 +956,6 @@ func (m *ExecutionManager) RecoverExecution(
 	return &admin.ExecutionCreateResponse{
 		Id: workflowExecutionIdentifier,
 	}, nil
-
 }
 
 func (m *ExecutionManager) emitScheduledWorkflowMetrics(

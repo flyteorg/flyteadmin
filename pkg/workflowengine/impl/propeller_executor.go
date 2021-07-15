@@ -88,9 +88,9 @@ func (c *FlytePropeller) addPermissions(auth *admin.AuthRole, flyteWf *v1alpha1.
 func addExecutionOverrides(taskPluginOverrides []*admin.PluginOverride,
 	workflowExecutionConfig *admin.WorkflowExecutionConfig, recoveryExecution *core.WorkflowExecutionIdentifier, flyteWf *v1alpha1.FlyteWorkflow) {
 	executionConfig := v1alpha1.ExecutionConfig{
-		TaskPluginImpls:   make(map[string]v1alpha1.TaskPluginOverride),
+		TaskPluginImpls: make(map[string]v1alpha1.TaskPluginOverride),
 		RecoveryExecution: v1alpha1.WorkflowExecutionIdentifier{
-			recoveryExecution,
+			WorkflowExecutionIdentifier: recoveryExecution,
 		},
 	}
 	for _, override := range taskPluginOverrides {
