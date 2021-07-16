@@ -753,8 +753,8 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	if overrides != nil {
 		executeWorkflowInputs.TaskPluginOverrides = overrides
 	}
-	if request.Spec.Metadata != nil && request.Spec.Metadata.ReferenceExecution != nil && (request.Spec.Metadata.Mode == admin.ExecutionMetadata_RECOVERED ||
-		request.Spec.Metadata.Mode == admin.ExecutionMetadata_RECOVERED_CHILD_WORKFLOW) {
+	if request.Spec.Metadata != nil && request.Spec.Metadata.ReferenceExecution != nil &&
+		request.Spec.Metadata.Mode == admin.ExecutionMetadata_RECOVERED {
 		executeWorkflowInputs.RecoveryExecution = request.Spec.Metadata.ReferenceExecution
 	}
 
@@ -929,12 +929,10 @@ func (m *ExecutionManager) RecoverExecution(
 			return nil, err
 		}
 	}
-	if request.ParentNodeExecution != nil {
-		executionSpec.Metadata.ParentNodeExecution = request.ParentNodeExecution
-		executionSpec.Metadata.Mode = admin.ExecutionMetadata_RECOVERED_CHILD_WORKFLOW
-	} else {
-		executionSpec.Metadata.Mode = admin.ExecutionMetadata_RECOVERED
+	if request.Metadata != nil {
+		executionSpec.Metadata.ParentNodeExecution = request.Metadata.ParentNodeExecution
 	}
+	executionSpec.Metadata.Mode = admin.ExecutionMetadata_RECOVERED
 	executionSpec.Metadata.ReferenceExecution = existingExecution.Id
 	var executionModel *models.Execution
 	ctx, executionModel, err = m.launchExecutionAndPrepareModel(ctx, admin.ExecutionCreateRequest{

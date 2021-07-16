@@ -1049,8 +1049,8 @@ func TestRecoverExecution_RecoveredChildNode(t *testing.T) {
 		var spec admin.ExecutionSpec
 		err := proto.Unmarshal(input.Spec, &spec)
 		assert.Nil(t, err)
-		assert.Equal(t, admin.ExecutionMetadata_RECOVERED_CHILD_WORKFLOW, spec.Metadata.Mode)
-		assert.Equal(t, int32(admin.ExecutionMetadata_RECOVERED_CHILD_WORKFLOW), input.Mode)
+		assert.Equal(t, admin.ExecutionMetadata_RECOVERED, spec.Metadata.Mode)
+		assert.Equal(t, int32(admin.ExecutionMetadata_RECOVERED), input.Mode)
 		assert.Equal(t, parentNodeDatabaseID, input.ParentNodeExecutionID)
 		assert.Equal(t, referencedExecutionID, input.SourceExecutionID)
 
@@ -1083,8 +1083,10 @@ func TestRecoverExecution_RecoveredChildNode(t *testing.T) {
 			Domain:  "domain",
 			Name:    "name",
 		},
-		Name:                "recovered",
-		ParentNodeExecution: &parentNodeExecution,
+		Name: "recovered",
+		Metadata: &admin.ExecutionMetadata{
+			ParentNodeExecution: &parentNodeExecution,
+		},
 	}, requestedAt)
 
 	// And verify response.
