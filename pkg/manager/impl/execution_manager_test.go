@@ -1137,6 +1137,42 @@ func TestRecoverExecution_GetExistingFailure(t *testing.T) {
 	assert.False(t, createCalled)
 }
 
+func TestRecoverExecution_GetExistingInputsFailure(t *testing.T) {
+	// Set up mocks.
+	repository := getMockRepositoryForExecTest()
+	setDefaultLpCallbackForExecTest(repository)
+
+	expectedErr := errors.New("foo")
+	mockStorage := commonMocks.GetMockStorageClient()
+	mockStorage.ComposedProtobufStore.(*commonMocks.TestDataStore).ReadProtobufCb = func(
+		ctx context.Context, reference storage.DataReference, msg proto.Message) error {
+		return expectedErr
+	}
+	execManager := NewExecutionManager(repository, getMockExecutionsConfigProvider(), mockStorage, workflowengineMocks.NewMockExecutor(), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
+	startTime := time.Now()
+	startTimeProto, _ := ptypes.TimestampProto(startTime)
+	existingClosure := admin.ExecutionClosure{
+		Phase:     core.WorkflowExecution_SUCCEEDED,
+		StartedAt: startTimeProto,
+	}
+	existingClosureBytes, _ := proto.Marshal(&existingClosure)
+	executionGetFunc := makeExecutionGetFunc(t, existingClosureBytes, &startTime)
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
+
+	// Issue request.
+	_, err := execManager.RecoverExecution(context.Background(), admin.ExecutionRecoverRequest{
+		Id: &core.WorkflowExecutionIdentifier{
+			Project: "project",
+			Domain:  "domain",
+			Name:    "name",
+		},
+		Name: "recovered",
+	}, requestedAt)
+
+	// And verify response.
+	assert.EqualError(t, err, "Unable to read WorkflowClosure from location s3://flyte/metadata/admin/remote closure id : foo")
+}
+
 func TestCreateWorkflowEvent(t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
 	startTime := time.Now()

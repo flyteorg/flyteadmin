@@ -488,4 +488,14 @@ func TestAddExecutionOverrides(t *testing.T) {
 		addExecutionOverrides(nil, workflowExecutionConfig, nil, workflow)
 		assert.EqualValues(t, workflow.ExecutionConfig.MaxParallelism, uint32(100))
 	})
+	t.Run("recovery execution", func(t *testing.T) {
+		recoveryExecutionID := &core.WorkflowExecutionIdentifier{
+			Project: "p",
+			Domain:  "d",
+			Name:    "n",
+		}
+		workflow := &v1alpha1.FlyteWorkflow{}
+		addExecutionOverrides(nil, nil, recoveryExecutionID, workflow)
+		assert.True(t, proto.Equal(recoveryExecutionID, workflow.ExecutionConfig.RecoveryExecution.WorkflowExecutionIdentifier))
+	})
 }

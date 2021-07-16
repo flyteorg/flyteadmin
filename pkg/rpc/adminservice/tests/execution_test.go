@@ -193,6 +193,15 @@ func TestRecoverExecutionError(t *testing.T) {
 		"missing entity of type execution with identifier <nil>")
 }
 
+func TestRecoverExecution_InvalidRequest(t *testing.T) {
+	ctx := context.Background()
+	mockServer := NewMockAdminServer(NewMockAdminServerInput{})
+	resp, err := mockServer.RecoverExecution(ctx, nil)
+	assert.Nil(t, resp)
+	assert.EqualError(t, err,
+		"rpc error: code = InvalidArgument desc = Incorrect request, nil requests not allowed")
+}
+
 func TestCreateWorkflowEvent(t *testing.T) {
 	phase := core.WorkflowExecution_RUNNING
 	mockExecutionManager := mocks.MockExecutionManager{}
