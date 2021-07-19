@@ -950,7 +950,7 @@ func (m *ExecutionManager) RecoverExecution(
 	if err != nil {
 		return nil, err
 	}
-	logger.Debugf(ctx, "Successfully relaunched [%+v] as [%+v]", request.Id, workflowExecutionIdentifier)
+	logger.Infof(ctx, "Successfully recovered [%+v] as [%+v]", request.Id, workflowExecutionIdentifier)
 	return &admin.ExecutionCreateResponse{
 		Id: workflowExecutionIdentifier,
 	}, nil
