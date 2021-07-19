@@ -332,10 +332,19 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 		logger.Warningf(ctx, "Can't set default resources for nil task.")
 		return
 	}
-	if task.Template == nil || task.Template.GetContainer() == nil || task.Template.GetContainer().Resources == nil {
+	if task.Template == nil || task.Template.GetContainer() == nil {
 		// Nothing to do
 		logger.Debugf(ctx, "Not setting default resources for task [%+v], no container resources found to check", task)
 		return
+	}
+
+	if task.Template.GetContainer().Resources == nil {
+		// In case of no resources on the container, create empty requests and limits
+		// so the container will still have resources configure properly
+		task.Template.GetContainer().Resources = &core.Resources{
+			Requests: []*core.Resources_ResourceEntry{},
+			Limits:   []*core.Resources_ResourceEntry{},
+		}
 	}
 	resource, err := m.resourceManager.GetResource(ctx, interfaces.ResourceRequest{
 		Project:      task.Template.Id.Project,

@@ -77,6 +77,17 @@ var requestedAt = time.Now()
 var testCluster = "C1"
 var outputURI = "output uri"
 
+var resourceDefaults = runtimeInterfaces.TaskResourceSet{
+	CPU:    "200m",
+	GPU:    "8",
+	Memory: "200Gi",
+}
+var resourceLimits = runtimeInterfaces.TaskResourceSet{
+	CPU:    "300m",
+	GPU:    "8",
+	Memory: "500Gi",
+}
+
 func getLegacySpec() *admin.ExecutionSpec {
 	executionRequest := testutils.GetExecutionRequest()
 	legacySpec := executionRequest.Spec
@@ -113,7 +124,8 @@ func getMockExecutionsConfigProvider() runtimeInterfaces.Configuration {
 		testutils.GetApplicationConfigWithDefaultDomains(),
 		runtimeMocks.NewMockQueueConfigurationProvider(
 			[]runtimeInterfaces.ExecutionQueue{}, []runtimeInterfaces.WorkflowConfig{}),
-		nil, nil, nil, nil)
+		nil,
+		runtimeMocks.NewMockTaskResourceConfiguration(resourceDefaults, resourceLimits), nil, nil)
 	mockExecutionsConfigProvider.(*runtimeMocks.MockConfigurationProvider).AddRegistrationValidationConfiguration(
 		runtimeMocks.NewMockRegistrationValidationProvider())
 	return mockExecutionsConfigProvider
@@ -419,7 +431,8 @@ func TestCreateExecution_TaggedQueue(t *testing.T) {
 				Tags:   []string{"tag"},
 			},
 		}),
-		nil, nil, nil, nil)
+		nil,
+		runtimeMocks.NewMockTaskResourceConfiguration(resourceDefaults, resourceLimits), nil, nil)
 	configProvider.(*runtimeMocks.MockConfigurationProvider).AddRegistrationValidationConfiguration(
 		runtimeMocks.NewMockRegistrationValidationProvider())
 	mockExecutor := workflowengineMocks.NewMockExecutor()
