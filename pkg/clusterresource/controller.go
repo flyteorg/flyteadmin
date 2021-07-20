@@ -58,6 +58,10 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
+const namespaceVariable = "namespace"
+const projectVariable = "project"
+const domainVariable = "domain"
+const templateVariableFormat = "{{ %s }}"
 const replaceAllInstancesOfString = -1
 
 // The clusterresource Controller manages applying desired templatized kubernetes resource files as resources
@@ -85,6 +89,8 @@ type FileName = string
 type NamespaceName = string
 type LastModTimeCache = map[FileName]time.Time
 type NamespaceCache = map[NamespaceName]LastModTimeCache
+
+type templateValuesType = map[string]string
 
 type controller struct {
 	db                     repositories.RepositoryInterface
@@ -130,14 +136,58 @@ func (c *controller) templateAlreadyApplied(namespace NamespaceName, templateFil
 	return timestamp.Equal(templateFile.ModTime())
 }
 
+// Given a map of templatized variable names -> data source, this function produces an output that maps the same
+// variable names to their fully resolved values (from the specified data source).
+func populateTemplateValues(data map[string]runtimeInterfaces.DataSource) (templateValuesType, error) {
+	templateValues := make(templateValuesType, len(data))
+	collectedErrs := make([]error, 0)
+	for templateVar, dataSource := range data {
+		if templateVar == namespaceVariable || templateVar == projectVariable || templateVar == domainVariable {
+			// The namespace variable is specifically reserved for system use only.
+			collectedErrs = append(collectedErrs, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
+				"Cannot assign namespace template value in user data"))
+			continue
+		}
+		var dataValue string
+		if len(dataSource.Value) > 0 {
+			dataValue = dataSource.Value
+		} else if len(dataSource.ValueFrom.EnvVar) > 0 {
+			dataValue = os.Getenv(dataSource.ValueFrom.EnvVar)
+		} else if len(dataSource.ValueFrom.FilePath) > 0 {
+			templateFile, err := ioutil.ReadFile(dataSource.ValueFrom.FilePath)
+			if err != nil {
+				collectedErrs = append(collectedErrs, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
+					"failed to substitute parameterized value for %s: unable to read value from: [%+v] with err: %v",
+					templateVar, dataSource.ValueFrom.FilePath, err))
+				continue
+			}
+			dataValue = string(templateFile)
+		} else {
+			collectedErrs = append(collectedErrs, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
+				"failed to substitute parameterized value for %s: unset or unrecognized ValueFrom: [%+v]", templateVar, dataSource.ValueFrom))
+			continue
+		}
+		if len(dataValue) == 0 {
+			collectedErrs = append(collectedErrs, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
+				"failed to substitute parameterized value for %s: unset. ValueFrom: [%+v]", templateVar, dataSource.ValueFrom))
+			continue
+		}
+		templateValues[fmt.Sprintf(templateVariableFormat, templateVar)] = dataValue
+	}
+	if len(collectedErrs) > 0 {
+		return nil, errors.NewCollectedFlyteAdminError(codes.InvalidArgument, collectedErrs)
+	}
+	return templateValues, nil
+}
+
 // Produces a map of template variable names and their fully resolved values based on configured defaults for each
 // system-domain in the application config file.
 func populateDefaultTemplateValues(defaultData map[runtimeInterfaces.DomainName]runtimeInterfaces.TemplateData) (
-	map[string]common.TemplateValuesType, error) {
-	defaultTemplateValues := make(map[string]common.TemplateValuesType)
+	map[string]templateValuesType, error) {
+	defaultTemplateValues := make(map[string]templateValuesType)
 	collectedErrs := make([]error, 0)
 	for domainName, templateData := range defaultData {
-		domainSpecificTemplateValues, err := common.PopulateTemplateValues(templateData)
+		domainSpecificTemplateValues, err := populateTemplateValues(templateData)
 		if err != nil {
 			collectedErrs = append(collectedErrs, err)
 			continue
@@ -154,11 +204,11 @@ func populateDefaultTemplateValues(defaultData map[runtimeInterfaces.DomainName]
 // substitutions based on the input project and domain. These database values are overlaid on top of the configured
 // variable defaults for the specific domain as defined in the admin application config file.
 func (c *controller) getCustomTemplateValues(
-	ctx context.Context, project, domain string, domainTemplateValues common.TemplateValuesType) (common.TemplateValuesType, error) {
+	ctx context.Context, project, domain string, domainTemplateValues templateValuesType) (templateValuesType, error) {
 	if len(domainTemplateValues) == 0 {
-		domainTemplateValues = make(common.TemplateValuesType)
+		domainTemplateValues = make(templateValuesType)
 	}
-	customTemplateValues := make(common.TemplateValuesType)
+	customTemplateValues := make(templateValuesType)
 	for key, value := range domainTemplateValues {
 		customTemplateValues[key] = value
 	}
@@ -176,7 +226,7 @@ func (c *controller) getCustomTemplateValues(
 	}
 	if resource != nil && resource.Attributes != nil && resource.Attributes.GetClusterResourceAttributes() != nil {
 		for templateKey, templateValue := range resource.Attributes.GetClusterResourceAttributes().Attributes {
-			customTemplateValues[fmt.Sprintf(common.TemplateVariableFormat, templateKey)] = templateValue
+			customTemplateValues[fmt.Sprintf(templateVariableFormat, templateKey)] = templateValue
 		}
 	}
 	if len(collectedErrs) > 0 {
@@ -239,7 +289,7 @@ func prepareDynamicCreate(target executioncluster.ExecutionTarget, config string
 //   3) decode the output of the above into a kubernetes resource
 //   4) create the resource on the kubernetes cluster and cache successful outcomes
 func (c *controller) syncNamespace(ctx context.Context, project models.Project, domain runtimeInterfaces.Domain, namespace NamespaceName,
-	templateValues, customTemplateValues common.TemplateValuesType) error {
+	templateValues, customTemplateValues templateValuesType) error {
 	templateDir := c.config.ClusterResourceConfiguration().GetTemplatePath()
 	if c.lastAppliedTemplateDir != templateDir {
 		// Invalidate all caches
@@ -287,9 +337,9 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 		// 2) substitute templatized variables with their resolved values
 		// First, add the special case namespace template which is always substituted by the system
 		// rather than fetched via a user-specified source.
-		templateValues[fmt.Sprintf(common.TemplateVariableFormat, common.NamespaceVariable)] = namespace
-		templateValues[fmt.Sprintf(common.TemplateVariableFormat, common.ProjectVariable)] = project.Identifier
-		templateValues[fmt.Sprintf(common.TemplateVariableFormat, common.DomainVariable)] = domain.ID
+		templateValues[fmt.Sprintf(templateVariableFormat, namespaceVariable)] = namespace
+		templateValues[fmt.Sprintf(templateVariableFormat, projectVariable)] = project.Identifier
+		templateValues[fmt.Sprintf(templateVariableFormat, domainVariable)] = domain.ID
 
 		var config = string(template)
 		for templateKey, templateValue := range templateValues {
@@ -426,7 +476,7 @@ func (c *controller) Sync(ctx context.Context) error {
 	}
 	domains := c.config.ApplicationConfiguration().GetDomainsConfig()
 	var errs = make([]error, 0)
-	templateValues, err := common.PopulateTemplateValues(c.config.ClusterResourceConfiguration().GetTemplateData())
+	templateValues, err := populateTemplateValues(c.config.ClusterResourceConfiguration().GetTemplateData())
 	if err != nil {
 		logger.Warningf(ctx, "Failed to get templatized values specified in config: %v", err)
 		errs = append(errs, err)

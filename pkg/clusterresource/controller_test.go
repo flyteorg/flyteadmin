@@ -2,11 +2,10 @@ package clusterresource
 
 import (
 	"context"
+	"io/ioutil"
 	"os"
 	"testing"
 	"time"
-
-	"github.com/flyteorg/flyteadmin/pkg/common"
 
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
 
@@ -79,6 +78,46 @@ func TestTemplateAlreadyApplied(t *testing.T) {
 	assert.True(t, testController.templateAlreadyApplied(namespace, &mockFile))
 }
 
+func TestPopulateTemplateValues(t *testing.T) {
+	const testEnvVarName = "TEST_FOO"
+	tmpFile, err := ioutil.TempFile(os.TempDir(), "prefix-")
+	if err != nil {
+		t.Fatalf("Cannot create temporary file: %v", err)
+	}
+	defer tmpFile.Close()
+	_, err = tmpFile.WriteString("3")
+	if err != nil {
+		t.Fatalf("Cannot write to temporary file: %v", err)
+	}
+
+	data := map[string]runtimeInterfaces.DataSource{
+		"directValue": {
+			Value: "1",
+		},
+		"envValue": {
+			ValueFrom: runtimeInterfaces.DataSourceValueFrom{
+				EnvVar: testEnvVarName,
+			},
+		},
+		"filePath": {
+			ValueFrom: runtimeInterfaces.DataSourceValueFrom{
+				FilePath: tmpFile.Name(),
+			},
+		},
+	}
+	origEnvVar := os.Getenv(testEnvVarName)
+	defer os.Setenv(testEnvVarName, origEnvVar)
+	os.Setenv(testEnvVarName, "2")
+
+	templateValues, err := populateTemplateValues(data)
+	assert.NoError(t, err)
+	assert.EqualValues(t, map[string]string{
+		"{{ directValue }}": "1",
+		"{{ envValue }}":    "2",
+		"{{ filePath }}":    "3",
+	}, templateValues)
+}
+
 func TestPopulateDefaultTemplateValues(t *testing.T) {
 	testDefaultData := map[runtimeInterfaces.DomainName]runtimeInterfaces.TemplateData{
 		"production": {
@@ -100,7 +139,7 @@ func TestPopulateDefaultTemplateValues(t *testing.T) {
 	}
 	templateValues, err := populateDefaultTemplateValues(testDefaultData)
 	assert.Nil(t, err)
-	assert.EqualValues(t, map[string]common.TemplateValuesType{
+	assert.EqualValues(t, map[string]templateValuesType{
 		"production": {
 			"{{ var1 }}": "prod1",
 			"{{ var2 }}": "prod2",
@@ -138,14 +177,14 @@ func TestGetCustomTemplateValues(t *testing.T) {
 		db:              mockRepository,
 		resourceManager: resources.NewResourceManager(mockRepository, testutils.GetApplicationConfigWithDefaultDomains()),
 	}
-	domainTemplateValues := common.TemplateValuesType{
+	domainTemplateValues := templateValuesType{
 		"{{ var1 }}": "i'm getting overwritten",
 		"{{ var3 }}": "persist",
 	}
 	customTemplateValues, err := testController.getCustomTemplateValues(context.Background(), "project-foo",
 		"domain-bar", domainTemplateValues)
 	assert.Nil(t, err)
-	assert.EqualValues(t, common.TemplateValuesType{
+	assert.EqualValues(t, templateValuesType{
 		"{{ var1 }}": "val1",
 		"{{ var2 }}": "val2",
 		"{{ var3 }}": "persist",
@@ -160,12 +199,12 @@ func TestGetCustomTemplateValues_NothingToOverride(t *testing.T) {
 		db:              mockRepository,
 		resourceManager: resources.NewResourceManager(mockRepository, testutils.GetApplicationConfigWithDefaultDomains()),
 	}
-	customTemplateValues, err := testController.getCustomTemplateValues(context.Background(), "project-foo", "domain-bar", common.TemplateValuesType{
+	customTemplateValues, err := testController.getCustomTemplateValues(context.Background(), "project-foo", "domain-bar", templateValuesType{
 		"{{ var1 }}": "val1",
 		"{{ var2 }}": "val2",
 	})
 	assert.Nil(t, err)
-	assert.EqualValues(t, common.TemplateValuesType{
+	assert.EqualValues(t, templateValuesType{
 		"{{ var1 }}": "val1",
 		"{{ var2 }}": "val2",
 	}, customTemplateValues,
@@ -183,7 +222,7 @@ func TestGetCustomTemplateValues_InvalidDBModel(t *testing.T) {
 		db:              mockRepository,
 		resourceManager: resources.NewResourceManager(mockRepository, testutils.GetApplicationConfigWithDefaultDomains()),
 	}
-	_, err := testController.getCustomTemplateValues(context.Background(), "project-foo", "domain-bar", common.TemplateValuesType{
+	_, err := testController.getCustomTemplateValues(context.Background(), "project-foo", "domain-bar", templateValuesType{
 		"{{ var1 }}": "val1",
 		"{{ var2 }}": "val2",
 	})
