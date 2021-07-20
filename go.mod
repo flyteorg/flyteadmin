@@ -18,7 +18,7 @@ require (
 	github.com/evanphx/json-patch v4.9.0+incompatible
 	github.com/flyteorg/flyteidl v0.19.14
 	github.com/flyteorg/flyteplugins v0.5.59
-	github.com/flyteorg/flytepropeller v0.12.14-0.20210715214519-2260e0661cab
+	github.com/flyteorg/flytepropeller v0.13.3
 	github.com/flyteorg/flytestdlib v0.3.27
 	github.com/ghodss/yaml v1.0.0
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
