@@ -209,7 +209,8 @@ func (m *ExecutionManager) offloadInputs(ctx context.Context, literalMap *core.L
 	return inputsURI, nil
 }
 
-func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask) runtimeInterfaces.TaskResourceSet {
+func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask,
+	systemResourceLimits runtimeInterfaces.TaskResourceSet) runtimeInterfaces.TaskResourceSet {
 	// The values below should never be used (deduce it from the request; request should be set by the time we get here).
 	// Setting them here just in case we end up with requests not set. We are not adding to config because it would add
 	// more confusion as its mostly not used.
@@ -238,7 +239,19 @@ func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask) runti
 		memoryLimit = resourceEntries[memoryIndex].Value
 	}
 
-	return runtimeInterfaces.TaskResourceSet{CPU: cpuLimit, Memory: memoryLimit}
+	taskResourceLimits := runtimeInterfaces.TaskResourceSet{CPU: cpuLimit, Memory: memoryLimit}
+	// Use the limits from config
+	if systemResourceLimits.CPU != "" {
+		taskResourceLimits.CPU = systemResourceLimits.CPU
+	}
+	if systemResourceLimits.Memory != "" {
+		taskResourceLimits.Memory = systemResourceLimits.Memory
+	}
+	if systemResourceLimits.GPU != "" {
+		taskResourceLimits.GPU = systemResourceLimits.GPU
+	}
+
+	return taskResourceLimits
 }
 
 func assignResourcesIfUnset(ctx context.Context, identifier *core.Identifier,
@@ -371,7 +384,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 		taskResourceSpec = resource.Attributes.GetTaskResourceAttributes().Limits
 	}
 	task.Template.GetContainer().Resources.Limits = assignResourcesIfUnset(
-		ctx, task.Template.Id, createTaskDefaultLimits(ctx, task), task.Template.GetContainer().Resources.Limits,
+		ctx, task.Template.Id, createTaskDefaultLimits(ctx, task, m.config.TaskResourceConfiguration().GetLimits()), task.Template.GetContainer().Resources.Limits,
 		taskResourceSpec)
 	checkTaskRequestsLessThanLimits(ctx, task.Template.Id, task.Template.GetContainer().Resources)
 }
