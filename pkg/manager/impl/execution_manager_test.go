@@ -2719,7 +2719,7 @@ func TestSetDefaults_MissingDefaults(t *testing.T) {
 		task.Template.GetContainer()), fmt.Sprintf("%+v", task.Template.GetContainer()))
 }
 
-func TestCreateTaskDefaultLimitsMissingConfig(t *testing.T) {
+func TestCreateTaskDefaultLimits(t *testing.T) {
 	task := &core.CompiledTask{
 		Template: &core.TaskTemplate{
 			Target: &core.TaskTemplate_Container{
@@ -2747,7 +2747,7 @@ func TestCreateTaskDefaultLimitsMissingConfig(t *testing.T) {
 		assert.Equal(t, "200Mi", defaultLimits.Memory)
 		assert.Equal(t, "200m", defaultLimits.CPU)
 	})
-	t.Run("use_limit", func(t *testing.T) {
+	t.Run("use_limits_from_config", func(t *testing.T) {
 		defaultLimits := createTaskDefaultLimits(context.Background(), task, resourceLimits)
 		assert.Equal(t, "500Gi", defaultLimits.Memory)
 		assert.Equal(t, "300m", defaultLimits.CPU)
