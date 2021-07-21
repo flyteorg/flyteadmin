@@ -75,7 +75,7 @@ func (m *AdminService) RecoverExecution(
 	}
 	var response *admin.ExecutionCreateResponse
 	var err error
-	m.Metrics.executionEndpointMetrics.relaunch.Time(func() {
+	m.Metrics.executionEndpointMetrics.recover.Time(func() {
 		response, err = m.ExecutionManager.RecoverExecution(ctx, *request, requestedAt)
 	})
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
