@@ -2683,8 +2683,9 @@ func TestSetDefaults_MissingDefaults(t *testing.T) {
 		Memory: "200Gi",
 	}
 	taskConfig.Limits = runtimeInterfaces.TaskResourceSet{
-		CPU: "300m",
-		GPU: "8",
+		CPU:    "300m",
+		GPU:    "8",
+		Memory: "2Gi",
 	}
 	mockConfig := runtimeMocks.NewMockConfigurationProvider(
 		testutils.GetApplicationConfigWithDefaultDomains(), nil, nil, &taskConfig,
@@ -2701,7 +2702,7 @@ func TestSetDefaults_MissingDefaults(t *testing.T) {
 					},
 					{
 						Name:  core.Resources_MEMORY,
-						Value: "200Gi",
+						Value: "2Gi",
 					},
 				},
 				Limits: []*core.Resources_ResourceEntry{
@@ -2711,7 +2712,7 @@ func TestSetDefaults_MissingDefaults(t *testing.T) {
 					},
 					{
 						Name:  core.Resources_MEMORY,
-						Value: "200Gi",
+						Value: "2Gi",
 					},
 				},
 			},
@@ -2720,35 +2721,16 @@ func TestSetDefaults_MissingDefaults(t *testing.T) {
 }
 
 func TestCreateTaskDefaultLimits(t *testing.T) {
-	task := &core.CompiledTask{
-		Template: &core.TaskTemplate{
-			Target: &core.TaskTemplate_Container{
-				Container: &core.Container{
-					Resources: &core.Resources{
-						Requests: []*core.Resources_ResourceEntry{
-							{
-								Name:  core.Resources_CPU,
-								Value: "200m",
-							},
-							{
-								Name:  core.Resources_MEMORY,
-								Value: "200Mi",
-							},
-						},
-					},
-				},
-			},
-		},
-	}
+
 	t.Run("missing_limits_in_config", func(t *testing.T) {
 		limits := runtimeInterfaces.TaskResourceSet{}
 
-		defaultLimits := createTaskDefaultLimits(context.Background(), task, limits)
-		assert.Equal(t, "200Mi", defaultLimits.Memory)
-		assert.Equal(t, "200m", defaultLimits.CPU)
+		defaultLimits := createTaskDefaultLimits(limits)
+		assert.Equal(t, "500Mi", defaultLimits.Memory)
+		assert.Equal(t, "500m", defaultLimits.CPU)
 	})
 	t.Run("use_limits_from_config", func(t *testing.T) {
-		defaultLimits := createTaskDefaultLimits(context.Background(), task, resourceLimits)
+		defaultLimits := createTaskDefaultLimits(resourceLimits)
 		assert.Equal(t, "500Gi", defaultLimits.Memory)
 		assert.Equal(t, "300m", defaultLimits.CPU)
 	})
@@ -2756,8 +2738,8 @@ func TestCreateTaskDefaultLimits(t *testing.T) {
 		limits := runtimeInterfaces.TaskResourceSet{
 			CPU: "300m",
 		}
-		defaultLimits := createTaskDefaultLimits(context.Background(), task, limits)
-		assert.Equal(t, "200Mi", defaultLimits.Memory)
+		defaultLimits := createTaskDefaultLimits(limits)
+		assert.Equal(t, "500Mi", defaultLimits.Memory)
 		assert.Equal(t, "300m", defaultLimits.CPU)
 	})
 }
