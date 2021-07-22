@@ -209,12 +209,35 @@ func (m *ExecutionManager) offloadInputs(ctx context.Context, literalMap *core.L
 	return inputsURI, nil
 }
 
-func createTaskDefaultLimits(systemResourceLimits runtimeInterfaces.TaskResourceSet) runtimeInterfaces.TaskResourceSet {
+func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask,
+	systemResourceLimits runtimeInterfaces.TaskResourceSet) runtimeInterfaces.TaskResourceSet {
 	// The values below should never be used (deduce it from the request; request should be set by the time we get here).
 	// Setting them here just in case we end up with requests not set. We are not adding to config because it would add
 	// more confusion as its mostly not used.
 	cpuLimit := "500m"
 	memoryLimit := "500Mi"
+	resourceEntries := task.Template.GetContainer().Resources.Requests
+	var cpuIndex, memoryIndex = -1, -1
+	for idx, entry := range resourceEntries {
+		switch entry.Name {
+		case core.Resources_CPU:
+			cpuIndex = idx
+
+		case core.Resources_MEMORY:
+			memoryIndex = idx
+		}
+	}
+
+	if cpuIndex < 0 || memoryIndex < 0 {
+		logger.Errorf(ctx, "Cpu request and Memory request missing for %s", task.Template.Id)
+	}
+
+	if cpuIndex >= 0 {
+		cpuLimit = resourceEntries[cpuIndex].Value
+	}
+	if memoryIndex >= 0 {
+		memoryLimit = resourceEntries[memoryIndex].Value
+	}
 
 	taskResourceLimits := runtimeInterfaces.TaskResourceSet{CPU: cpuLimit, Memory: memoryLimit}
 	// Use the limits from config
@@ -223,6 +246,9 @@ func createTaskDefaultLimits(systemResourceLimits runtimeInterfaces.TaskResource
 	}
 	if systemResourceLimits.Memory != "" {
 		taskResourceLimits.Memory = systemResourceLimits.Memory
+	}
+	if systemResourceLimits.GPU != "" {
+		taskResourceLimits.GPU = systemResourceLimits.GPU
 	}
 
 	return taskResourceLimits
@@ -358,7 +384,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 		taskResourceSpec = resource.Attributes.GetTaskResourceAttributes().Limits
 	}
 	task.Template.GetContainer().Resources.Limits = assignResourcesIfUnset(
-		ctx, task.Template.Id, createTaskDefaultLimits(m.config.TaskResourceConfiguration().GetLimits()), task.Template.GetContainer().Resources.Limits,
+		ctx, task.Template.Id, createTaskDefaultLimits(ctx, task, m.config.TaskResourceConfiguration().GetLimits()), task.Template.GetContainer().Resources.Limits,
 		taskResourceSpec)
 	checkTaskRequestsLessThanLimits(ctx, task.Template.Id, task.Template.GetContainer().Resources)
 }
