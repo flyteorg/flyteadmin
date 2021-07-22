@@ -2742,6 +2742,14 @@ func TestCreateTaskDefaultLimits(t *testing.T) {
 		assert.Equal(t, "500Mi", defaultLimits.Memory)
 		assert.Equal(t, "300m", defaultLimits.CPU)
 	})
+	t.Run("use_limits_from_config", func(t *testing.T) {
+		limits := runtimeInterfaces.TaskResourceSet{
+			Memory: "300Mi",
+		}
+		defaultLimits := createTaskDefaultLimits(limits)
+		assert.Equal(t, "300Mi", defaultLimits.Memory)
+		assert.Equal(t, "500m", defaultLimits.CPU)
+	})
 }
 
 func TestCreateSingleTaskExecution(t *testing.T) {

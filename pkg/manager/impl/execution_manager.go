@@ -224,9 +224,6 @@ func createTaskDefaultLimits(systemResourceLimits runtimeInterfaces.TaskResource
 	if systemResourceLimits.Memory != "" {
 		taskResourceLimits.Memory = systemResourceLimits.Memory
 	}
-	if systemResourceLimits.GPU != "" {
-		taskResourceLimits.GPU = systemResourceLimits.GPU
-	}
 
 	return taskResourceLimits
 }
