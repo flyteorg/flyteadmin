@@ -7,28 +7,29 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lyft/flyteadmin/pkg/async/schedule/mocks"
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 
+	"github.com/flyteorg/flyteadmin/pkg/async/schedule/mocks"
+
+	scheduleInterfaces "github.com/flyteorg/flyteadmin/pkg/async/schedule/interfaces"
 	"github.com/golang/protobuf/ptypes"
-	scheduleInterfaces "github.com/lyft/flyteadmin/pkg/async/schedule/interfaces"
 
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	flyteAdminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
+	"github.com/flyteorg/flyteadmin/pkg/repositories"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	repositoryMocks "github.com/flyteorg/flyteadmin/pkg/repositories/mocks"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
 	"github.com/golang/protobuf/proto"
-	"github.com/lyft/flyteadmin/pkg/common"
-	flyteAdminErrors "github.com/lyft/flyteadmin/pkg/errors"
-	"github.com/lyft/flyteadmin/pkg/manager/impl/testutils"
-	"github.com/lyft/flyteadmin/pkg/repositories"
-	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
-	repositoryMocks "github.com/lyft/flyteadmin/pkg/repositories/mocks"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
-	"github.com/lyft/flyteadmin/pkg/repositories/transformers"
 
-	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
-	runtimeMocks "github.com/lyft/flyteadmin/pkg/runtime/mocks"
+	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	runtimeMocks "github.com/flyteorg/flyteadmin/pkg/runtime/mocks"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytepropeller/pkg/utils"
-	mockScope "github.com/lyft/flytestdlib/promutils"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	mockScope "github.com/flyteorg/flytestdlib/promutils"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 )
@@ -63,7 +64,7 @@ func getMockConfigForLpTest() runtimeInterfaces.Configuration {
 func setDefaultWorkflowCallbackForLpTest(repository repositories.RepositoryInterface) {
 	workflowSpec := testutils.GetSampleWorkflowSpecForTest()
 	typedInterface, _ := proto.Marshal(workflowSpec.Template.Interface)
-	workflowGetFunc := func(input interfaces.GetResourceInput) (models.Workflow, error) {
+	workflowGetFunc := func(input interfaces.Identifier) (models.Workflow, error) {
 		return models.Workflow{
 			WorkflowKey: models.WorkflowKey{
 				Project: input.Project,
@@ -80,7 +81,7 @@ func setDefaultWorkflowCallbackForLpTest(repository repositories.RepositoryInter
 func TestCreateLaunchPlan(t *testing.T) {
 	repository := getMockRepositoryForLpTest()
 	repository.LaunchPlanRepo().(*repositoryMocks.MockLaunchPlanRepo).SetGetCallback(
-		func(input interfaces.GetResourceInput) (models.LaunchPlan, error) {
+		func(input interfaces.Identifier) (models.LaunchPlan, error) {
 			return models.LaunchPlan{}, errors.New("foo")
 		})
 	var createCalled bool
@@ -116,7 +117,7 @@ func TestLaunchPlanManager_GetLaunchPlan(t *testing.T) {
 	specBytes, _ := proto.Marshal(lpRequest.Spec)
 	closureBytes, _ := proto.Marshal(&closure)
 
-	launchPlanGetFunc := func(input interfaces.GetResourceInput) (models.LaunchPlan, error) {
+	launchPlanGetFunc := func(input interfaces.Identifier) (models.LaunchPlan, error) {
 		return models.LaunchPlan{
 			LaunchPlanKey: models.LaunchPlanKey{
 				Project: input.Project,
@@ -242,7 +243,7 @@ func TestLaunchPlan_ValidationError(t *testing.T) {
 func TestLaunchPlan_DatabaseError(t *testing.T) {
 	repository := getMockRepositoryForLpTest()
 	repository.LaunchPlanRepo().(*repositoryMocks.MockLaunchPlanRepo).SetGetCallback(
-		func(input interfaces.GetResourceInput) (models.LaunchPlan, error) {
+		func(input interfaces.Identifier) (models.LaunchPlan, error) {
 			return models.LaunchPlan{}, errors.New("foo")
 		})
 	setDefaultWorkflowCallbackForLpTest(repository)
@@ -281,7 +282,7 @@ func TestCreateLaunchPlanInCompatibleInputs(t *testing.T) {
 func TestCreateLaunchPlanValidateCreate(t *testing.T) {
 	repository := getMockRepositoryForLpTest()
 	repository.LaunchPlanRepo().(*repositoryMocks.MockLaunchPlanRepo).SetGetCallback(
-		func(input interfaces.GetResourceInput) (models.LaunchPlan, error) {
+		func(input interfaces.Identifier) (models.LaunchPlan, error) {
 			return models.LaunchPlan{}, errors.New("foo")
 		})
 	setDefaultWorkflowCallbackForLpTest(repository)
@@ -299,7 +300,7 @@ func TestCreateLaunchPlanValidateCreate(t *testing.T) {
 						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 					},
 					Behavior: &core.Parameter_Default{
-						Default: utils.MustMakeLiteral("foo-value"),
+						Default: coreutils.MustMakeLiteral("foo-value"),
 					},
 				},
 			},
@@ -324,10 +325,10 @@ func TestCreateLaunchPlanValidateCreate(t *testing.T) {
 func TestCreateLaunchPlanNoWorkflowInterface(t *testing.T) {
 	repository := getMockRepositoryForLpTest()
 	repository.LaunchPlanRepo().(*repositoryMocks.MockLaunchPlanRepo).SetGetCallback(
-		func(input interfaces.GetResourceInput) (models.LaunchPlan, error) {
+		func(input interfaces.Identifier) (models.LaunchPlan, error) {
 			return models.LaunchPlan{}, errors.New("foo")
 		})
-	workflowGetFunc := func(input interfaces.GetResourceInput) (models.Workflow, error) {
+	workflowGetFunc := func(input interfaces.Identifier) (models.Workflow, error) {
 		return models.Workflow{
 			WorkflowKey: models.WorkflowKey{
 				Project: input.Project,
@@ -365,7 +366,7 @@ func TestCreateLaunchPlanNoWorkflowInterface(t *testing.T) {
 }
 
 func makeLaunchPlanRepoGetCallback(t *testing.T) repositoryMocks.GetLaunchPlanFunc {
-	return func(input interfaces.GetResourceInput) (models.LaunchPlan, error) {
+	return func(input interfaces.Identifier) (models.LaunchPlan, error) {
 		assert.Equal(t, project, input.Project)
 		assert.Equal(t, domain, input.Domain)
 		assert.Equal(t, name, input.Name)
@@ -756,7 +757,7 @@ func TestUpdateSchedules_EnableNoSchedule(t *testing.T) {
 func TestDisableLaunchPlan(t *testing.T) {
 	repository := getMockRepositoryForLpTest()
 
-	lpGetFunc := func(input interfaces.GetResourceInput) (models.LaunchPlan, error) {
+	lpGetFunc := func(input interfaces.Identifier) (models.LaunchPlan, error) {
 		assert.Equal(t, project, input.Project)
 		assert.Equal(t, domain, input.Domain)
 		assert.Equal(t, name, input.Name)
@@ -816,7 +817,7 @@ func TestDisableLaunchPlan_DatabaseError(t *testing.T) {
 	repository := getMockRepositoryForLpTest()
 	expectedError := errors.New("expected error")
 
-	lpGetFunc := func(input interfaces.GetResourceInput) (models.LaunchPlan, error) {
+	lpGetFunc := func(input interfaces.Identifier) (models.LaunchPlan, error) {
 		assert.Equal(t, project, input.Project)
 		assert.Equal(t, domain, input.Domain)
 		assert.Equal(t, name, input.Name)
@@ -832,7 +833,7 @@ func TestDisableLaunchPlan_DatabaseError(t *testing.T) {
 	assert.EqualError(t, err, expectedError.Error(),
 		"Failures on getting the existing launch plan should propagate")
 
-	lpGetFunc = func(input interfaces.GetResourceInput) (models.LaunchPlan, error) {
+	lpGetFunc = func(input interfaces.Identifier) (models.LaunchPlan, error) {
 		assert.Equal(t, project, input.Project)
 		assert.Equal(t, domain, input.Domain)
 		assert.Equal(t, name, input.Name)
@@ -955,7 +956,7 @@ func TestEnableLaunchPlan_DatabaseError(t *testing.T) {
 	repository := getMockRepositoryForLpTest()
 	expectedError := errors.New("expected error")
 
-	lpGetFunc := func(input interfaces.GetResourceInput) (models.LaunchPlan, error) {
+	lpGetFunc := func(input interfaces.Identifier) (models.LaunchPlan, error) {
 		assert.Equal(t, project, input.Project)
 		assert.Equal(t, domain, input.Domain)
 		assert.Equal(t, name, input.Name)

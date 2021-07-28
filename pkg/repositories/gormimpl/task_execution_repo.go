@@ -3,14 +3,14 @@ package gormimpl
 import (
 	"context"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
-	"github.com/lyft/flytestdlib/promutils"
+	"github.com/flyteorg/flytestdlib/promutils"
 
+	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/jinzhu/gorm"
-	"github.com/lyft/flyteadmin/pkg/repositories/errors"
-	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
 )
 
 // Implementation of TaskExecutionInterface.
@@ -51,7 +51,7 @@ func (r *TaskExecutionRepo) Get(ctx context.Context, input interfaces.GetTaskExe
 			},
 			RetryAttempt: &input.TaskExecutionID.RetryAttempt,
 		},
-	}).Preload("ChildNodeExecution").First(&taskExecution)
+	}).Preload("ChildNodeExecution").Take(&taskExecution)
 	timer.Stop()
 	if tx.Error != nil {
 		return models.TaskExecution{}, r.errorTransformer.ToFlyteAdminError(tx.Error)

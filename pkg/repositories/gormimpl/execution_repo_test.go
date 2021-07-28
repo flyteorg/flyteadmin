@@ -5,17 +5,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
-	mockScope "github.com/lyft/flytestdlib/promutils"
+	mockScope "github.com/flyteorg/flytestdlib/promutils"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 
 	mocket "github.com/Selvatico/go-mocket"
-	"github.com/lyft/flyteadmin/pkg/common"
-	"github.com/lyft/flyteadmin/pkg/repositories/errors"
-	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -41,51 +41,6 @@ func TestCreateExecution(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestUpdate(t *testing.T) {
-	executionRepo := NewExecutionRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
-	GlobalMock := mocket.Catcher.Reset()
-	executionEventQuery := GlobalMock.NewMock()
-	executionEventQuery.WithQuery(`INSERT INTO "execution_events" ("created_at","updated_at","deleted_at",` +
-		`"execution_project","execution_domain","execution_name","request_id","occurred_at","phase") VALUES ` +
-		`(?,?,?,?,?,?,?,?,?)`)
-	executionQuery := GlobalMock.NewMock()
-	executionQuery.WithQuery(`UPDATE "executions" SET "closure" = ?, "duration" = ?, "execution_created_at" = ?, ` +
-		`"execution_domain" = ?, "execution_name" = ?, "execution_project" = ?, "execution_updated_at" = ?, ` +
-		`"launch_plan_id" = ?, "mode" = ?, "phase" = ?, "spec" = ?, "started_at" = ?, "updated_at" = ?, ` +
-		`"workflow_id" = ?  WHERE "executions"."deleted_at" IS NULL`)
-	err := executionRepo.Update(context.Background(),
-		models.ExecutionEvent{
-			RequestID: "request id 1",
-			ExecutionKey: models.ExecutionKey{
-				Project: "project",
-				Domain:  "domain",
-				Name:    "1",
-			},
-			OccurredAt: time.Now(),
-			Phase:      core.WorkflowExecution_SUCCEEDED.String(),
-		},
-		models.Execution{
-			ExecutionKey: models.ExecutionKey{
-				Project: "project",
-				Domain:  "domain",
-				Name:    "1",
-			},
-			LaunchPlanID:       uint(2),
-			WorkflowID:         uint(3),
-			Phase:              core.WorkflowExecution_SUCCEEDED.String(),
-			Closure:            []byte{1, 2},
-			Spec:               []byte{3, 4},
-			StartedAt:          &executionStartedAt,
-			ExecutionCreatedAt: &createdAt,
-			ExecutionUpdatedAt: &executionUpdatedAt,
-			Duration:           time.Hour,
-			Mode:               1,
-		})
-	assert.NoError(t, err)
-	assert.True(t, executionEventQuery.Triggered)
-	assert.True(t, executionQuery.Triggered)
-}
-
 func TestUpdateExecution(t *testing.T) {
 	executionRepo := NewExecutionRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
 	GlobalMock := mocket.Catcher.Reset()
@@ -94,7 +49,7 @@ func TestUpdateExecution(t *testing.T) {
 		`"execution_domain" = ?, "execution_name" = ?, "execution_project" = ?, "execution_updated_at" = ?, ` +
 		`"launch_plan_id" = ?, "phase" = ?, "spec" = ?, "started_at" = ?, "updated_at" = ?, "workflow_id" = ?  ` +
 		`WHERE "executions"."deleted_at" IS NULL`)
-	err := executionRepo.UpdateExecution(context.Background(),
+	err := executionRepo.Update(context.Background(),
 		models.Execution{
 			ExecutionKey: models.ExecutionKey{
 				Project: "project",
@@ -163,46 +118,12 @@ func TestGetExecution(t *testing.T) {
 	// Only match on queries that append expected filters
 	GlobalMock.NewMock().WithQuery(`SELECT * FROM "executions"  WHERE "executions"."deleted_at" IS NULL AND ` +
 		`(("executions"."execution_project" = project) AND ("executions"."execution_domain" = domain) AND ` +
-		`("executions"."execution_name" = 1)) ORDER BY "executions"."id" ASC LIMIT 1`).WithReply(executions)
-	output, err := executionRepo.Get(context.Background(), interfaces.GetResourceInput{
+		`("executions"."execution_name" = 1)) LIMIT 1`).WithReply(executions)
+	output, err := executionRepo.Get(context.Background(), interfaces.Identifier{
 		Project: "project",
 		Domain:  "domain",
 		Name:    "1",
 	})
-	assert.NoError(t, err)
-	assert.EqualValues(t, expectedExecution, output)
-}
-
-func TestGetByIDExecution(t *testing.T) {
-	executionRepo := NewExecutionRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
-	expectedExecution := models.Execution{
-		BaseModel: models.BaseModel{
-			ID: uint(20),
-		},
-		ExecutionKey: models.ExecutionKey{
-			Project: "project",
-			Domain:  "domain",
-			Name:    "1",
-		},
-		LaunchPlanID:       uint(2),
-		Phase:              core.WorkflowExecution_SUCCEEDED.String(),
-		Closure:            []byte{1, 2},
-		WorkflowID:         uint(3),
-		Spec:               []byte{3, 4},
-		StartedAt:          &executionStartedAt,
-		ExecutionCreatedAt: &createdAt,
-		ExecutionUpdatedAt: &executionUpdatedAt,
-	}
-
-	executions := make([]map[string]interface{}, 0)
-	execution := getMockExecutionResponseFromDb(expectedExecution)
-	executions = append(executions, execution)
-
-	GlobalMock := mocket.Catcher.Reset()
-	// Only match on queries that append expected filters
-	GlobalMock.NewMock().WithQuery(`SELECT * FROM "executions"  WHERE "executions"."deleted_at" IS NULL AND ` +
-		`(("executions"."id" = 20)) ORDER BY "executions"."id" ASC LIMIT 1`).WithReply(executions)
-	output, err := executionRepo.GetByID(context.Background(), uint(20))
 	assert.NoError(t, err)
 	assert.EqualValues(t, expectedExecution, output)
 }
@@ -412,4 +333,40 @@ func TestListExecutionsForWorkflow(t *testing.T) {
 		assert.Equal(t, executionStartedAt, *execution.StartedAt)
 		assert.Equal(t, time.Hour, execution.Duration)
 	}
+}
+
+func TestExecutionExists(t *testing.T) {
+	executionRepo := NewExecutionRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
+	expectedExecution := models.Execution{
+		BaseModel: models.BaseModel{
+			ID: uint(20),
+		},
+		ExecutionKey: models.ExecutionKey{
+			Project: "project",
+			Domain:  "domain",
+			Name:    "1",
+		},
+		LaunchPlanID: uint(2),
+		Phase:        core.WorkflowExecution_SUCCEEDED.String(),
+		Closure:      []byte{1, 2},
+		WorkflowID:   uint(3),
+		Spec:         []byte{3, 4},
+	}
+
+	executions := make([]map[string]interface{}, 0)
+	execution := getMockExecutionResponseFromDb(expectedExecution)
+	executions = append(executions, execution)
+
+	GlobalMock := mocket.Catcher.Reset()
+	// Only match on queries that append expected filters
+	GlobalMock.NewMock().WithQuery(`SELECT id FROM "executions"  WHERE "executions"."deleted_at" IS NULL AND ` +
+		`(("executions"."execution_project" = project) AND ("executions"."execution_domain" = domain) AND ` +
+		`("executions"."execution_name" = 1)) LIMIT 1`).WithReply(executions)
+	exists, err := executionRepo.Exists(context.Background(), interfaces.Identifier{
+		Project: "project",
+		Domain:  "domain",
+		Name:    "1",
+	})
+	assert.NoError(t, err)
+	assert.True(t, exists)
 }

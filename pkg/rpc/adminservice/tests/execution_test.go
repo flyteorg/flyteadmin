@@ -6,16 +6,16 @@ import (
 	"testing"
 	"time"
 
-	flyteAdminErrors "github.com/lyft/flyteadmin/pkg/errors"
+	flyteAdminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
 	"google.golang.org/grpc/codes"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
+	"github.com/flyteorg/flyteadmin/pkg/manager/mocks"
+	repoErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/golang/protobuf/proto"
-	"github.com/lyft/flyteadmin/pkg/manager/mocks"
-	repoErrors "github.com/lyft/flyteadmin/pkg/repositories/errors"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -137,6 +137,69 @@ func TestRelaunchExecutionError(t *testing.T) {
 	assert.Nil(t, resp)
 	assert.EqualError(t, err,
 		"missing entity of type execution with identifier <nil>")
+}
+
+func TestRecoverExecutionHappyCase(t *testing.T) {
+	ctx := context.Background()
+
+	mockExecutionManager := mocks.MockExecutionManager{}
+	mockExecutionManager.RecoverExecutionFunc =
+		func(ctx context.Context,
+			request admin.ExecutionRecoverRequest, requestedAt time.Time) (*admin.ExecutionCreateResponse, error) {
+			return &admin.ExecutionCreateResponse{
+				Id: &core.WorkflowExecutionIdentifier{
+					Project: request.Id.Project,
+					Domain:  request.Id.Domain,
+					Name:    request.Name,
+				},
+			}, nil
+		}
+
+	mockServer := NewMockAdminServer(NewMockAdminServerInput{
+		executionManager: &mockExecutionManager,
+	})
+
+	resp, err := mockServer.RecoverExecution(ctx, &admin.ExecutionRecoverRequest{
+		Id: &core.WorkflowExecutionIdentifier{
+			Project: "project",
+			Domain:  "domain",
+		},
+		Name: "name",
+	})
+	assert.Equal(t, "project", resp.Id.Project)
+	assert.Equal(t, "domain", resp.Id.Domain)
+	assert.Equal(t, "name", resp.Id.Name)
+	assert.NoError(t, err)
+}
+
+func TestRecoverExecutionError(t *testing.T) {
+	ctx := context.Background()
+
+	mockExecutionManager := mocks.MockExecutionManager{}
+	mockExecutionManager.RecoverExecutionFunc =
+		func(ctx context.Context,
+			request admin.ExecutionRecoverRequest, requestedAt time.Time) (*admin.ExecutionCreateResponse, error) {
+			return nil, repoErrors.GetMissingEntityError("execution", request.Id)
+		}
+	mockServer := NewMockAdminServer(NewMockAdminServerInput{
+		executionManager: &mockExecutionManager,
+	})
+
+	resp, err := mockServer.RecoverExecution(ctx, &admin.ExecutionRecoverRequest{
+		Name: "Name",
+	})
+	assert.Nil(t, resp)
+	assert.EqualError(t, err,
+		"missing entity of type execution with identifier <nil>")
+}
+
+func TestRecoverExecution_InvalidRequest(t *testing.T) {
+	ctx := context.Background()
+	mockServer := NewMockAdminServer(NewMockAdminServerInput{})
+	resp, err := mockServer.RecoverExecution(ctx, nil)
+	assert.Nil(t, resp)
+	assert.EqualError(t, err,
+		"rpc error: code = InvalidArgument desc = Incorrect request, nil requests not allowed")
 }
 
 func TestCreateWorkflowEvent(t *testing.T) {

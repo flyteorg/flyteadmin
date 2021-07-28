@@ -5,12 +5,13 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 
-	"github.com/lyft/flyteadmin/pkg/manager/impl/testutils"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytepropeller/pkg/utils"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -65,22 +66,6 @@ func TestValidateExecInvalidProjectAndDomain(t *testing.T) {
 	assert.EqualError(t, err, "failed to validate that project [project] and domain [domain] are registered, err: [foo]")
 }
 
-func TestValidateSingleTaskExecution(t *testing.T) {
-	request := testutils.GetExecutionRequest()
-	request.Spec.LaunchPlan.ResourceType = core.ResourceType_TASK
-
-	err := ValidateExecutionRequest(context.Background(), request, testutils.GetRepoWithDefaultProject(), execConfig)
-	assert.EqualError(t, err, "missing auth_role")
-
-	request.Spec.AuthRole = &admin.AuthRole{
-		Method: &admin.AuthRole_KubernetesServiceAccount{
-			KubernetesServiceAccount: "foo",
-		},
-	}
-	err = ValidateExecutionRequest(context.Background(), request, testutils.GetRepoWithDefaultProject(), execConfig)
-	assert.Nil(t, err)
-}
-
 func TestGetExecutionInputs(t *testing.T) {
 	executionRequest := testutils.GetExecutionRequest()
 	lpRequest := testutils.GetLaunchPlanRequest()
@@ -92,8 +77,8 @@ func TestGetExecutionInputs(t *testing.T) {
 	)
 	expectedMap := core.LiteralMap{
 		Literals: map[string]*core.Literal{
-			"foo": utils.MustMakeLiteral("foo-value-1"),
-			"bar": utils.MustMakeLiteral("bar-value"),
+			"foo": coreutils.MustMakeLiteral("foo-value-1"),
+			"bar": coreutils.MustMakeLiteral("bar-value"),
 		},
 	}
 	assert.Nil(t, err)
@@ -106,7 +91,7 @@ func TestValidateExecInputsWrongType(t *testing.T) {
 	lpRequest := testutils.GetLaunchPlanRequest()
 	executionRequest.Inputs = &core.LiteralMap{
 		Literals: map[string]*core.Literal{
-			"foo": utils.MustMakeLiteral(1),
+			"foo": coreutils.MustMakeLiteral(1),
 		},
 	}
 	_, err := CheckAndFetchInputsForExecution(
@@ -122,8 +107,8 @@ func TestValidateExecInputsExtraInputs(t *testing.T) {
 	lpRequest := testutils.GetLaunchPlanRequest()
 	executionRequest.Inputs = &core.LiteralMap{
 		Literals: map[string]*core.Literal{
-			"foo":       utils.MustMakeLiteral("foo-value-1"),
-			"foo-extra": utils.MustMakeLiteral("foo-value-1"),
+			"foo":       coreutils.MustMakeLiteral("foo-value-1"),
+			"foo-extra": coreutils.MustMakeLiteral("foo-value-1"),
 		},
 	}
 	_, err := CheckAndFetchInputsForExecution(
@@ -139,8 +124,8 @@ func TestValidateExecInputsOverrideFixed(t *testing.T) {
 	lpRequest := testutils.GetLaunchPlanRequest()
 	executionRequest.Inputs = &core.LiteralMap{
 		Literals: map[string]*core.Literal{
-			"foo": utils.MustMakeLiteral("foo-value-1"),
-			"bar": utils.MustMakeLiteral("bar-value"),
+			"foo": coreutils.MustMakeLiteral("foo-value-1"),
+			"bar": coreutils.MustMakeLiteral("bar-value"),
 		},
 	}
 	_, err := CheckAndFetchInputsForExecution(
@@ -162,8 +147,8 @@ func TestValidateExecEmptyInputs(t *testing.T) {
 	)
 	expectedMap := core.LiteralMap{
 		Literals: map[string]*core.Literal{
-			"foo": utils.MustMakeLiteral("foo-value"),
-			"bar": utils.MustMakeLiteral("bar-value"),
+			"foo": coreutils.MustMakeLiteral("foo-value"),
+			"bar": coreutils.MustMakeLiteral("bar-value"),
 		},
 	}
 	assert.Nil(t, err)

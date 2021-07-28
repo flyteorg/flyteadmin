@@ -3,12 +3,13 @@ package validation
 import (
 	"testing"
 
-	"github.com/lyft/flyteadmin/pkg/common"
-	"github.com/lyft/flyteadmin/pkg/errors"
-	"github.com/lyft/flyteadmin/pkg/manager/impl/shared"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytepropeller/pkg/utils"
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
+
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteadmin/pkg/errors"
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 )
@@ -159,7 +160,7 @@ func TestValidateParameterMap(t *testing.T) {
 					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 				},
 				Behavior: &core.Parameter_Default{
-					Default: utils.MustMakeLiteral("foo-value"),
+					Default: coreutils.MustMakeLiteral("foo-value"),
 				},
 			},
 		},

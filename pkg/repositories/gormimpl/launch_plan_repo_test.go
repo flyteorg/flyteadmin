@@ -4,14 +4,14 @@ import (
 	"context"
 	"testing"
 
-	mockScope "github.com/lyft/flytestdlib/promutils"
+	mockScope "github.com/flyteorg/flytestdlib/promutils"
 
 	mocket "github.com/Selvatico/go-mocket"
-	"github.com/lyft/flyteadmin/pkg/common"
-	"github.com/lyft/flyteadmin/pkg/repositories/errors"
-	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -77,9 +77,8 @@ func TestGetLaunchPlan(t *testing.T) {
 	GlobalMock.NewMock().WithQuery(
 		`SELECT * FROM "launch_plans"  WHERE "launch_plans"."deleted_at" IS NULL AND ` +
 			`(("launch_plans"."project" = project) AND ("launch_plans"."domain" = domain) AND ` +
-			`("launch_plans"."name" = name) AND ("launch_plans"."version" = XYZ)) ORDER BY "launch_plans"."id" ` +
-			`ASC LIMIT 1`).WithReply(launchPlans)
-	output, err := launchPlanRepo.Get(context.Background(), interfaces.GetResourceInput{
+			`("launch_plans"."name" = name) AND ("launch_plans"."version" = XYZ)) LIMIT 1`).WithReply(launchPlans)
+	output, err := launchPlanRepo.Get(context.Background(), interfaces.Identifier{
 		Project: project,
 		Domain:  domain,
 		Name:    name,

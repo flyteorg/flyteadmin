@@ -1,11 +1,11 @@
 package interfaces
 
 import (
-	"github.com/lyft/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteadmin/pkg/common"
 )
 
 // Parameters for getting an individual resource.
-type GetResourceInput struct {
+type Identifier struct {
 	Project string
 	Domain  string
 	Name    string

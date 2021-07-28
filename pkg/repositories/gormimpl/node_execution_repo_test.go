@@ -5,16 +5,16 @@ import (
 	"testing"
 	"time"
 
-	mockScope "github.com/lyft/flytestdlib/promutils"
+	mockScope "github.com/flyteorg/flytestdlib/promutils"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	mocket "github.com/Selvatico/go-mocket"
-	"github.com/lyft/flyteadmin/pkg/common"
-	"github.com/lyft/flyteadmin/pkg/repositories/errors"
-	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,27 +32,10 @@ func TestCreateNodeExecution(t *testing.T) {
 	nodeExecutionQuery := GlobalMock.NewMock()
 	nodeExecutionQuery.WithQuery(`INSERT INTO "node_executions" ("id","created_at","updated_at","deleted_at",` +
 		`"execution_project","execution_domain","execution_name","node_id","phase","input_uri","closure","started_at",` +
-		`"node_execution_created_at","node_execution_updated_at","duration","node_execution_metadata","parent_id","error_kind","error_code","cache_status") VALUES ` +
-		`(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+		`"node_execution_created_at","node_execution_updated_at","duration","node_execution_metadata","parent_id",` +
+		`"error_kind","error_code","cache_status","dynamic_workflow_remote_closure_reference") ` +
+		`VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
 
-	nodeExecutionEventQuery := GlobalMock.NewMock()
-	nodeExecutionEventQuery.WithQuery(`INSERT INTO "node_execution_events" ("created_at","updated_at",` +
-		`"deleted_at","execution_project","execution_domain","execution_name","node_id","request_id","occurred_at",` +
-		`"phase") VALUES (?,?,?,?,?,?,?,?,?,?)`)
-
-	nodeExecutionEvent := models.NodeExecutionEvent{
-		NodeExecutionKey: models.NodeExecutionKey{
-			NodeID: "1",
-			ExecutionKey: models.ExecutionKey{
-				Project: "project",
-				Domain:  "domain",
-				Name:    "1",
-			},
-		},
-		RequestID:  "xxyzz",
-		Phase:      nodePhase,
-		OccurredAt: nodeStartedAt,
-	}
 	parentID := uint(10)
 	nodeExecution := models.NodeExecution{
 		BaseModel: models.BaseModel{
@@ -76,9 +59,8 @@ func TestCreateNodeExecution(t *testing.T) {
 		NodeExecutionUpdatedAt: &nodeCreatedAt,
 		ParentID:               &parentID,
 	}
-	err := nodeExecutionRepo.Create(context.Background(), &nodeExecutionEvent, &nodeExecution)
+	err := nodeExecutionRepo.Create(context.Background(), &nodeExecution)
 	assert.NoError(t, err)
-	assert.True(t, nodeExecutionEventQuery.Triggered)
 	assert.True(t, nodeExecutionQuery.Triggered)
 }
 
@@ -86,10 +68,6 @@ func TestUpdateNodeExecution(t *testing.T) {
 	nodeExecutionRepo := NewNodeExecutionRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
 	GlobalMock := mocket.Catcher.Reset()
 	// Only match on queries that append the name filter
-	nodeExecutionEventQuery := GlobalMock.NewMock()
-	nodeExecutionEventQuery.WithQuery(`INSERT INTO "node_execution_events" ("created_at","updated_at",` +
-		`"deleted_at","execution_project","execution_domain","execution_name","node_id","request_id","occurred_at",` +
-		`"phase") VALUES (?,?,?,?,?,?,?,?,?,?)`)
 	nodeExecutionQuery := GlobalMock.NewMock()
 	nodeExecutionQuery.WithQuery(`UPDATE "node_executions" SET "closure" = ?, "duration" = ?, ` +
 		`"execution_domain" = ?, "execution_name" = ?, "execution_project" = ?, "id" = ?, "input_uri" = ?, ` +
@@ -98,19 +76,6 @@ func TestUpdateNodeExecution(t *testing.T) {
 		`"execution_project" = ? AND "node_executions"."execution_domain" = ? AND "node_executions".` +
 		`"execution_name" = ? AND "node_executions"."node_id" = ?`)
 	err := nodeExecutionRepo.Update(context.Background(),
-		&models.NodeExecutionEvent{
-			NodeExecutionKey: models.NodeExecutionKey{
-				NodeID: "1",
-				ExecutionKey: models.ExecutionKey{
-					Project: "project",
-					Domain:  "domain",
-					Name:    "1",
-				},
-			},
-			RequestID:  "request id 1",
-			OccurredAt: time.Now(),
-			Phase:      nodePhase,
-		},
 		&models.NodeExecution{
 			BaseModel: models.BaseModel{ID: 1},
 			NodeExecutionKey: models.NodeExecutionKey{
@@ -130,7 +95,6 @@ func TestUpdateNodeExecution(t *testing.T) {
 			NodeExecutionUpdatedAt: &nodePlanUpdatedAt,
 		})
 	assert.NoError(t, err)
-	assert.True(t, nodeExecutionEventQuery.Triggered)
 	assert.True(t, nodeExecutionQuery.Triggered)
 }
 
@@ -186,8 +150,8 @@ func TestGetNodeExecution(t *testing.T) {
 		`SELECT * FROM "node_executions"  WHERE "node_executions"."deleted_at" IS NULL AND ` +
 			`(("node_executions"."execution_project" = execution_project) AND ("node_executions"."execution_domain" ` +
 			`= execution_domain) AND ("node_executions"."execution_name" = execution_name) AND ("node_executions".` +
-			`"node_id" = 1)) ORDER BY "node_executions"."id" ASC LIMIT 1`).WithReply(nodeExecutions)
-	output, err := nodeExecutionRepo.Get(context.Background(), interfaces.GetNodeExecutionInput{
+			`"node_id" = 1)) LIMIT 1`).WithReply(nodeExecutions)
+	output, err := nodeExecutionRepo.Get(context.Background(), interfaces.NodeExecutionResource{
 		NodeExecutionIdentifier: core.NodeExecutionIdentifier{
 			NodeId: "1",
 			ExecutionId: &core.WorkflowExecutionIdentifier{
@@ -431,4 +395,47 @@ func TestListNodeExecutionEvents_MissingParameters(t *testing.T) {
 		Limit: 20,
 	})
 	assert.EqualError(t, err, "missing and/or invalid parameters: filters")
+}
+
+func TestNodeExecutionExists(t *testing.T) {
+	nodeExecutionRepo := NewNodeExecutionRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
+	id := uint(10)
+	expectedNodeExecution := models.NodeExecution{
+		NodeExecutionKey: models.NodeExecutionKey{
+			NodeID: "1",
+			ExecutionKey: models.ExecutionKey{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "1",
+			},
+		},
+		BaseModel: models.BaseModel{
+			ID: id,
+		},
+		Phase:   nodePhase,
+		Closure: []byte("closure"),
+	}
+
+	nodeExecutions := make([]map[string]interface{}, 0)
+	nodeExecution := getMockNodeExecutionResponseFromDb(expectedNodeExecution)
+	nodeExecutions = append(nodeExecutions, nodeExecution)
+
+	GlobalMock := mocket.Catcher.Reset()
+	GlobalMock.NewMock().WithQuery(
+		`SELECT id FROM "node_executions"  WHERE "node_executions"."deleted_at" IS NULL AND ` +
+			`(("node_executions"."execution_project" = execution_project) AND ("node_executions"."execution_domain" = ` +
+			`execution_domain) AND ("node_executions"."execution_name" = execution_name) AND ` +
+			`("node_executions"."node_id" = 1)) LIMIT 1`).WithReply(nodeExecutions)
+	exists, err := nodeExecutionRepo.Exists(context.Background(), interfaces.NodeExecutionResource{
+		NodeExecutionIdentifier: core.NodeExecutionIdentifier{
+			NodeId: "1",
+			ExecutionId: &core.WorkflowExecutionIdentifier{
+				Project: "execution_project",
+				Domain:  "execution_domain",
+				Name:    "execution_name",
+			},
+		},
+	})
+	assert.NoError(t, err)
+	assert.True(t, exists)
 }

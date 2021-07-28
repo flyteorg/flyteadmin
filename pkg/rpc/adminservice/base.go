@@ -5,26 +5,31 @@ import (
 	"fmt"
 	"runtime/debug"
 
-	"github.com/lyft/flyteadmin/pkg/manager/impl/resources"
+	eventWriter "github.com/flyteorg/flyteadmin/pkg/async/events/implementations"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
+
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/resources"
+
+	"github.com/flyteorg/flyteadmin/pkg/async/notifications"
+	"github.com/flyteorg/flyteadmin/pkg/async/schedule"
+	"github.com/flyteorg/flyteadmin/pkg/data"
+	executionCluster "github.com/flyteorg/flyteadmin/pkg/executioncluster/impl"
+	manager "github.com/flyteorg/flyteadmin/pkg/manager/impl"
+	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/repositories"
+	repositoryConfig "github.com/flyteorg/flyteadmin/pkg/repositories/config"
+	"github.com/flyteorg/flyteadmin/pkg/runtime"
+	workflowengine "github.com/flyteorg/flyteadmin/pkg/workflowengine/impl"
+	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/profutils"
+	"github.com/flyteorg/flytestdlib/promutils"
+	"github.com/flyteorg/flytestdlib/storage"
 	"github.com/golang/protobuf/proto"
-	"github.com/lyft/flyteadmin/pkg/async/notifications"
-	"github.com/lyft/flyteadmin/pkg/async/schedule"
-	"github.com/lyft/flyteadmin/pkg/data"
-	executionCluster "github.com/lyft/flyteadmin/pkg/executioncluster/impl"
-	manager "github.com/lyft/flyteadmin/pkg/manager/impl"
-	"github.com/lyft/flyteadmin/pkg/manager/interfaces"
-	"github.com/lyft/flyteadmin/pkg/repositories"
-	repositoryConfig "github.com/lyft/flyteadmin/pkg/repositories/config"
-	"github.com/lyft/flyteadmin/pkg/runtime"
-	workflowengine "github.com/lyft/flyteadmin/pkg/workflowengine/impl"
-	"github.com/lyft/flytestdlib/logger"
-	"github.com/lyft/flytestdlib/profutils"
-	"github.com/lyft/flytestdlib/promutils"
-	"github.com/lyft/flytestdlib/storage"
 )
 
 type AdminService struct {
+	service.UnimplementedAdminServiceServer
 	TaskManager          interfaces.TaskInterface
 	WorkflowManager      interfaces.WorkflowInterface
 	LaunchPlanManager    interfaces.LaunchPlanInterface
@@ -34,6 +39,7 @@ type AdminService struct {
 	ProjectManager       interfaces.ProjectInterface
 	ResourceManager      interfaces.ResourceInterface
 	NamedEntityManager   interfaces.NamedEntityInterface
+	VersionManager       interfaces.VersionInterface
 	Metrics              AdminMetrics
 }
 
@@ -45,7 +51,7 @@ func (m *AdminService) interceptPanic(ctx context.Context, request proto.Message
 	}
 
 	m.Metrics.PanicCounter.Inc()
-	logger.Fatalf(ctx, "panic-ed for request: [%+v] with err: %v", request, err)
+	logger.Fatalf(ctx, "panic-ed for request: [%+v] with err: %v with Stack: %v", request, err, string(debug.Stack()))
 }
 
 const defaultRetries = 3
@@ -132,7 +138,16 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 		db, configuration, workflowengine.NewCompiler(), dataStorageClient, applicationConfiguration.MetadataStoragePrefix,
 		adminScope.NewSubScope("workflow_manager"))
 	namedEntityManager := manager.NewNamedEntityManager(db, configuration, adminScope.NewSubScope("named_entity_manager"))
-	executionManager := manager.NewExecutionManager(db, configuration, dataStorageClient, workflowExecutor, adminScope.NewSubScope("execution_manager"), adminScope.NewSubScope("user_execution_metrics"), publisher, urlData, workflowManager, namedEntityManager, eventPublisher)
+
+	executionEventWriter := eventWriter.NewWorkflowExecutionEventWriter(db, applicationConfiguration.AsyncEventsBufferSize)
+	go func() {
+		executionEventWriter.Run()
+	}()
+
+	executionManager := manager.NewExecutionManager(db, configuration, dataStorageClient, workflowExecutor,
+		adminScope.NewSubScope("execution_manager"), adminScope.NewSubScope("user_execution_metrics"),
+		publisher, urlData, workflowManager, namedEntityManager, eventPublisher, executionEventWriter)
+	versionManager := manager.NewVersionManager()
 
 	scheduledWorkflowExecutor := workflowScheduler.GetWorkflowExecutor(executionManager, launchPlanManager)
 	logger.Info(context.Background(), "Successfully initialized a new scheduled workflow executor")
@@ -150,6 +165,11 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 		}
 	}()
 
+	nodeExecutionEventWriter := eventWriter.NewNodeExecutionEventWriter(db, applicationConfiguration.AsyncEventsBufferSize)
+	go func() {
+		nodeExecutionEventWriter.Run()
+	}()
+
 	logger.Info(context.Background(), "Initializing a new AdminService")
 	return &AdminService{
 		TaskManager: manager.NewTaskManager(db, configuration, workflowengine.NewCompiler(),
@@ -158,8 +178,9 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 		LaunchPlanManager:  launchPlanManager,
 		ExecutionManager:   executionManager,
 		NamedEntityManager: namedEntityManager,
-		NodeExecutionManager: manager.NewNodeExecutionManager(db, configuration, dataStorageClient,
-			adminScope.NewSubScope("node_execution_manager"), urlData, eventPublisher),
+		VersionManager:     versionManager,
+		NodeExecutionManager: manager.NewNodeExecutionManager(db, configuration, applicationConfiguration.MetadataStoragePrefix, dataStorageClient,
+			adminScope.NewSubScope("node_execution_manager"), urlData, eventPublisher, nodeExecutionEventWriter),
 		TaskExecutionManager: manager.NewTaskExecutionManager(db, configuration, dataStorageClient,
 			adminScope.NewSubScope("task_execution_manager"), urlData, eventPublisher),
 		ProjectManager:  manager.NewProjectManager(db, configuration),

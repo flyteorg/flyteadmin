@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 )
 
 type ExecuteWorkflowInput struct {
@@ -19,6 +19,9 @@ type ExecuteWorkflowInput struct {
 	Annotations         map[string]string
 	QueueingBudget      time.Duration
 	TaskPluginOverrides []*admin.PluginOverride
+	ExecutionConfig     *admin.WorkflowExecutionConfig
+	Auth                *admin.AuthRole
+	RecoveryExecution   *core.WorkflowExecutionIdentifier
 }
 
 type ExecuteTaskInput struct {
@@ -32,6 +35,7 @@ type ExecuteTaskInput struct {
 	Annotations         map[string]string
 	QueueingBudget      time.Duration
 	TaskPluginOverrides []*admin.PluginOverride
+	ExecutionConfig     *admin.WorkflowExecutionConfig
 }
 
 type TerminateWorkflowInput struct {

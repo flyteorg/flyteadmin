@@ -5,12 +5,12 @@ import (
 	"testing"
 
 	mocket "github.com/Selvatico/go-mocket"
-	"github.com/lyft/flyteadmin/pkg/common"
-	"github.com/lyft/flyteadmin/pkg/repositories/errors"
-	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	mockScope "github.com/lyft/flytestdlib/promutils"
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	mockScope "github.com/flyteorg/flytestdlib/promutils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -56,7 +56,7 @@ func TestGetWorkflow(t *testing.T) {
 	GlobalMock.NewMock().WithQuery(
 		`(("workflows"."project" = project) AND ("workflows"."domain" = domain) AND ` +
 			`("workflows"."name" = name) AND ("workflows"."version" = XYZ))`).WithReply(workflows)
-	output, err := workflowRepo.Get(context.Background(), interfaces.GetResourceInput{
+	output, err := workflowRepo.Get(context.Background(), interfaces.Identifier{
 		Project: project,
 		Domain:  domain,
 		Name:    name,

@@ -4,12 +4,12 @@ package mocks
 import (
 	"context"
 
-	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 )
 
 type CreateWorkflowFunc func(input models.Workflow) error
-type GetWorkflowFunc func(input interfaces.GetResourceInput) (models.Workflow, error)
+type GetWorkflowFunc func(input interfaces.Identifier) (models.Workflow, error)
 type ListWorkflowFunc func(input interfaces.ListResourceInput) (interfaces.WorkflowCollectionOutput, error)
 type ListIdentifiersFunc func(input interfaces.ListResourceInput) (interfaces.WorkflowCollectionOutput, error)
 
@@ -31,7 +31,7 @@ func (r *MockWorkflowRepo) SetCreateCallback(createFunction CreateWorkflowFunc) 
 	r.createFunction = createFunction
 }
 
-func (r *MockWorkflowRepo) Get(ctx context.Context, input interfaces.GetResourceInput) (models.Workflow, error) {
+func (r *MockWorkflowRepo) Get(ctx context.Context, input interfaces.Identifier) (models.Workflow, error) {
 	if r.getFunction != nil {
 		return r.getFunction(input)
 	}

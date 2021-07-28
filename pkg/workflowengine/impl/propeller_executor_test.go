@@ -6,24 +6,26 @@ import (
 	"testing"
 	"time"
 
-	interfaces2 "github.com/lyft/flyteadmin/pkg/executioncluster/interfaces"
+	"github.com/golang/protobuf/proto"
 
-	"github.com/lyft/flyteadmin/pkg/executioncluster"
-	cluster_mock "github.com/lyft/flyteadmin/pkg/executioncluster/mocks"
-	"github.com/lyft/flyteadmin/pkg/runtime"
+	interfaces2 "github.com/flyteorg/flyteadmin/pkg/executioncluster/interfaces"
 
-	"github.com/lyft/flyteadmin/pkg/workflowengine/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/executioncluster"
+	cluster_mock "github.com/flyteorg/flyteadmin/pkg/executioncluster/mocks"
+	"github.com/flyteorg/flyteadmin/pkg/runtime"
 
-	"github.com/lyft/flytestdlib/promutils"
+	"github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
+
+	"github.com/flyteorg/flytestdlib/promutils"
 
 	"errors"
 
-	flyte_admin_error "github.com/lyft/flyteadmin/pkg/errors"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	flyteclient "github.com/lyft/flytepropeller/pkg/client/clientset/versioned"
-	v1alpha12 "github.com/lyft/flytepropeller/pkg/client/clientset/versioned/typed/flyteworkflow/v1alpha1"
+	flyte_admin_error "github.com/flyteorg/flyteadmin/pkg/errors"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	flyteclient "github.com/flyteorg/flytepropeller/pkg/client/clientset/versioned"
+	v1alpha12 "github.com/flyteorg/flytepropeller/pkg/client/clientset/versioned/typed/flyteworkflow/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 	k8_api_err "k8s.io/apimachinery/pkg/api/errors"
@@ -40,6 +42,9 @@ var roleNameKey = "iam.amazonaws.com/role"
 var clusterName = "C1"
 
 var acceptedAt = time.Now()
+
+const testRole = "role"
+const testK8sServiceAccount = "sa"
 
 func getFlytePropellerForTest(execCluster interfaces2.ClusterInterface, builder *FlyteWorkflowBuilderTest) *FlytePropeller {
 	return &FlytePropeller{
@@ -67,7 +72,7 @@ func (b *FlyteWorkflowBuilderTest) BuildFlyteWorkflow(
 	return &v1alpha1.FlyteWorkflow{}, nil
 }
 
-type createCallback func(*v1alpha1.FlyteWorkflow) (*v1alpha1.FlyteWorkflow, error)
+type createCallback func(*v1alpha1.FlyteWorkflow, v1.CreateOptions) (*v1alpha1.FlyteWorkflow, error)
 type deleteCallback func(name string, options *v1.DeleteOptions) error
 type FakeFlyteWorkflow struct {
 	v1alpha12.FlyteWorkflowInterface
@@ -75,16 +80,16 @@ type FakeFlyteWorkflow struct {
 	deleteCallback deleteCallback
 }
 
-func (b *FakeFlyteWorkflow) Create(wf *v1alpha1.FlyteWorkflow) (*v1alpha1.FlyteWorkflow, error) {
+func (b *FakeFlyteWorkflow) Create(ctx context.Context, wf *v1alpha1.FlyteWorkflow, opts v1.CreateOptions) (*v1alpha1.FlyteWorkflow, error) {
 	if b.createCallback != nil {
-		return b.createCallback(wf)
+		return b.createCallback(wf, opts)
 	}
 	return nil, nil
 }
 
-func (b *FakeFlyteWorkflow) Delete(name string, options *v1.DeleteOptions) error {
+func (b *FakeFlyteWorkflow) Delete(ctx context.Context, name string, options v1.DeleteOptions) error {
 	if b.deleteCallback != nil {
-		return b.deleteCallback(name, options)
+		return b.deleteCallback(name, &options)
 	}
 	return nil
 }
@@ -137,15 +142,20 @@ func TestExecuteWorkflowHappyCase(t *testing.T) {
 			FlyteClient: &FakeK8FlyteClient{},
 		}, nil
 	})
+	recoveryNodeExecutionID := &core.WorkflowExecutionIdentifier{
+		Project: "p",
+		Domain:  "d",
+		Name:    "original",
+	}
 	fakeFlyteWorkflow := FakeFlyteWorkflow{
-		createCallback: func(workflow *v1alpha1.FlyteWorkflow) (*v1alpha1.FlyteWorkflow, error) {
+		createCallback: func(workflow *v1alpha1.FlyteWorkflow, opts v1.CreateOptions) (*v1alpha1.FlyteWorkflow, error) {
 			assert.EqualValues(t, map[string]string{
 				"customlabel": "labelval",
 			}, workflow.Labels)
 			expectedAnnotations := map[string]string{
-				"iam.amazonaws.com/role":  "role-1",
-				"customannotation":        "annotationval",
+				"iam.amazonaws.com/role":  "pbatchworker-d",
 				"lyft.net/iamwait-inject": "required",
+				"customannotation": "annotationval",
 			}
 			assert.EqualValues(t, expectedAnnotations, workflow.Annotations)
 
@@ -155,6 +165,9 @@ func TestExecuteWorkflowHappyCase(t *testing.T) {
 					MissingPluginBehavior: admin.PluginOverride_USE_DEFAULT,
 				},
 			}, workflow.ExecutionConfig.TaskPluginImpls)
+			assert.Empty(t, opts)
+			assert.Equal(t, workflow.ServiceAccountName, testK8sServiceAccount)
+			assert.True(t, proto.Equal(recoveryNodeExecutionID, workflow.ExecutionConfig.RecoveryExecution.WorkflowExecutionIdentifier))
 			return nil, nil
 		},
 	}
@@ -179,7 +192,6 @@ func TestExecuteWorkflowHappyCase(t *testing.T) {
 					Domain:  "lp-d",
 				},
 				Spec: &admin.LaunchPlanSpec{
-					Role: "role-1",
 					WorkflowId: &core.Identifier{
 						Name: "wf",
 					},
@@ -199,6 +211,11 @@ func TestExecuteWorkflowHappyCase(t *testing.T) {
 					MissingPluginBehavior: admin.PluginOverride_USE_DEFAULT,
 				},
 			},
+			Auth: &admin.AuthRole{
+				AssumableIamRole:         testRole,
+				KubernetesServiceAccount: testK8sServiceAccount,
+			},
+			RecoveryExecution: recoveryNodeExecutionID,
 		})
 	assert.Nil(t, err)
 	assert.NotNil(t, execInfo)
@@ -208,12 +225,14 @@ func TestExecuteWorkflowHappyCase(t *testing.T) {
 func TestExecuteWorkflowCallFailed(t *testing.T) {
 	cluster := getFakeExecutionCluster()
 	fakeFlyteWorkflow := FakeFlyteWorkflow{
-		createCallback: func(workflow *v1alpha1.FlyteWorkflow) (*v1alpha1.FlyteWorkflow, error) {
+		createCallback: func(workflow *v1alpha1.FlyteWorkflow, opts v1.CreateOptions) (*v1alpha1.FlyteWorkflow, error) {
 			expectedAnnotations := map[string]string{
 				"iam.amazonaws.com/role":  "role-1",
 				"lyft.net/iamwait-inject": "required",
+				roleNameKey: testRole,
 			}
 			assert.EqualValues(t, expectedAnnotations, workflow.Annotations)
+			assert.Empty(t, opts)
 			return nil, errors.New("call failed")
 		},
 	}
@@ -242,13 +261,15 @@ func TestExecuteWorkflowCallFailed(t *testing.T) {
 					Domain:  "d",
 				},
 				Spec: &admin.LaunchPlanSpec{
-					Role: "role-1",
 					WorkflowId: &core.Identifier{
 						Name: "wf",
 					},
 				},
 			},
 			AcceptedAt: acceptedAt,
+			Auth: &admin.AuthRole{
+				AssumableIamRole: testRole,
+			},
 		})
 
 	assert.NotNil(t, err)
@@ -261,12 +282,13 @@ func TestExecuteWorkflowCallFailed(t *testing.T) {
 func TestExecuteWorkflowAlreadyExistsNoError(t *testing.T) {
 	cluster := getFakeExecutionCluster()
 	fakeFlyteWorkflow := FakeFlyteWorkflow{
-		createCallback: func(workflow *v1alpha1.FlyteWorkflow) (*v1alpha1.FlyteWorkflow, error) {
+		createCallback: func(workflow *v1alpha1.FlyteWorkflow, opts v1.CreateOptions) (*v1alpha1.FlyteWorkflow, error) {
 			expectedAnnotations := map[string]string{
 				"iam.amazonaws.com/role":  "role-1",
 				"lyft.net/iamwait-inject": "required",
 			}
 			assert.EqualValues(t, expectedAnnotations, workflow.Annotations)
+			assert.Empty(t, opts)
 			return nil, k8_api_err.NewAlreadyExists(schema.GroupResource{}, "")
 		},
 	}
@@ -295,13 +317,15 @@ func TestExecuteWorkflowAlreadyExistsNoError(t *testing.T) {
 					Domain:  "d",
 				},
 				Spec: &admin.LaunchPlanSpec{
-					Role: "role-1",
 					WorkflowId: &core.Identifier{
 						Name: "wf",
 					},
 				},
 			},
 			AcceptedAt: acceptedAt,
+			Auth: &admin.AuthRole{
+				AssumableIamRole: "role-1",
+			},
 		})
 
 	assert.Nil(t, err)
@@ -358,7 +382,7 @@ func TestExecuteWorkflowRoleKeyNotRequired(t *testing.T) {
 	builder := FlyteWorkflowBuilderTest{}
 
 	fakeFlyteWorkflow := FakeFlyteWorkflow{
-		createCallback: func(workflow *v1alpha1.FlyteWorkflow) (*v1alpha1.FlyteWorkflow, error) {
+		createCallback: func(workflow *v1alpha1.FlyteWorkflow, opts v1.CreateOptions) (*v1alpha1.FlyteWorkflow, error) {
 			return nil, nil
 		},
 	}
@@ -432,47 +456,72 @@ func TestAddPermissions(t *testing.T) {
 	cluster := getFakeExecutionCluster()
 	propeller := getFlytePropellerForTest(cluster, &FlyteWorkflowBuilderTest{})
 	flyteWf := v1alpha1.FlyteWorkflow{}
-	propeller.addPermissions(admin.LaunchPlan{
-		Spec: &admin.LaunchPlanSpec{
-			Auth: &admin.Auth{
-				Method: &admin.Auth_AssumableIamRole{
-					AssumableIamRole: "rollie-pollie",
-				},
-			},
-			Role: "ignore-me",
-		},
-	}, &flyteWf)
+	propeller.addPermissions(&admin.AuthRole{
+		AssumableIamRole:         testRole,
+		KubernetesServiceAccount: testK8sServiceAccount,
+	}, &flyteWf, "flyte", "staging")
 	assert.EqualValues(t, flyteWf.Annotations, map[string]string{
-		roleNameKey:               "rollie-pollie",
+		roleNameKey: "flytebatchworker-staging",
+		"lyft.net/iamwait-inject": "required",
+	})
+	assert.Equal(t, testK8sServiceAccount, flyteWf.ServiceAccountName)
+}
+
+func TestAddExecutionOverrides(t *testing.T) {
+	t.Run("task plugin overrides", func(t *testing.T) {
+		overrides := []*admin.PluginOverride{
+			{
+				TaskType:              "taskType1",
+				PluginId:              []string{"Plugin1", "Plugin2"},
+				MissingPluginBehavior: admin.PluginOverride_USE_DEFAULT,
+			},
+		}
+		workflow := &v1alpha1.FlyteWorkflow{}
+		addExecutionOverrides(overrides, nil, nil, workflow)
+		assert.EqualValues(t, workflow.ExecutionConfig.TaskPluginImpls, map[string]v1alpha1.TaskPluginOverride{
+			"taskType1": {
+				PluginIDs:             []string{"Plugin1", "Plugin2"},
+				MissingPluginBehavior: admin.PluginOverride_USE_DEFAULT,
+			},
+		})
+	})
+	t.Run("max parallelism", func(t *testing.T) {
+		workflowExecutionConfig := &admin.WorkflowExecutionConfig{
+			MaxParallelism: 100,
+		}
+		workflow := &v1alpha1.FlyteWorkflow{}
+		addExecutionOverrides(nil, workflowExecutionConfig, nil, workflow)
+		assert.EqualValues(t, workflow.ExecutionConfig.MaxParallelism, uint32(100))
+	})
+	t.Run("recovery execution", func(t *testing.T) {
+		recoveryExecutionID := &core.WorkflowExecutionIdentifier{
+			Project: "p",
+			Domain:  "d",
+			Name:    "n",
+		}
+		workflow := &v1alpha1.FlyteWorkflow{}
+		addExecutionOverrides(nil, nil, recoveryExecutionID, workflow)
+		assert.True(t, proto.Equal(recoveryExecutionID, workflow.ExecutionConfig.RecoveryExecution.WorkflowExecutionIdentifier))
+	})
+}
+
+func TestAddPermissionsLyft(t *testing.T) {
+	cluster := getFakeExecutionCluster()
+	propeller := getFlytePropellerForTest(cluster, &FlyteWorkflowBuilderTest{})
+	flyteWf := v1alpha1.FlyteWorkflow{}
+	propeller.addPermissions(&admin.AuthRole{
+		AssumableIamRole:         testRole,
+	}, &flyteWf, "flyte", "staging")
+	assert.EqualValues(t, flyteWf.Annotations, map[string]string{
+		roleNameKey:               testRole,
 		"lyft.net/iamwait-inject": "required",
 	})
 
 	flyteWf = v1alpha1.FlyteWorkflow{}
-	propeller.addPermissions(admin.LaunchPlan{
-		Spec: &admin.LaunchPlanSpec{
-			Role: "rollie-pollie",
-		},
-	}, &flyteWf)
-	assert.EqualValues(t, flyteWf.Annotations, map[string]string{
-		roleNameKey:               "rollie-pollie",
-		"lyft.net/iamwait-inject": "required",
-	})
-
-	flyteWf = v1alpha1.FlyteWorkflow{}
-	propeller.addPermissions(admin.LaunchPlan{
-		Id: &core.Identifier{
-			Name:    "lp",
-			Project: "flyte",
-			Domain:  "staging",
-		},
-		Spec: &admin.LaunchPlanSpec{
-			Auth: &admin.Auth{
-				Method: &admin.Auth_KubernetesServiceAccount{
-					KubernetesServiceAccount: "service-account",
-				},
-			},
-		},
-	}, &flyteWf)
+	propeller.addPermissions(
+		&admin.AuthRole{
+			KubernetesServiceAccount: "service-account",
+		}, &flyteWf, "flyte", "staging")
 	assert.Equal(t, "service-account", flyteWf.ServiceAccountName)
 	expectedAnnotations := map[string]string{
 		"iam.amazonaws.com/role": "flytebatchworker-staging",
@@ -481,20 +530,9 @@ func TestAddPermissions(t *testing.T) {
 	assert.NotEmpty(t, flyteWf.Annotations)
 
 	flyteWf = v1alpha1.FlyteWorkflow{}
-	propeller.addPermissions(admin.LaunchPlan{
-		Id: &core.Identifier{
-			Name:    "lp",
-			Project: "flyte",
-			Domain:  "staging",
-		},
-		Spec: &admin.LaunchPlanSpec{
-			Auth: &admin.Auth{
-				Method: &admin.Auth_KubernetesServiceAccount{
-					KubernetesServiceAccount: "service-account-iad",
-				},
-			},
-		},
-	}, &flyteWf)
+	propeller.addPermissions(&admin.AuthRole{
+		KubernetesServiceAccount: "service-account-iad",
+	}, &flyteWf, "flyte", "staging")
 	assert.Equal(t, "service-account-iad", flyteWf.ServiceAccountName)
 	expectedAnnotations = map[string]string{
 		"iam.amazonaws.com/role": "flytebatchworker-staging-iad",

@@ -7,24 +7,24 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lyft/flyteadmin/pkg/manager/impl/testutils"
-	"github.com/lyft/flytestdlib/storage"
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
+	"github.com/flyteorg/flytestdlib/storage"
 
-	"github.com/lyft/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteadmin/pkg/common"
 
+	commonMocks "github.com/flyteorg/flyteadmin/pkg/common/mocks"
+	dataMocks "github.com/flyteorg/flyteadmin/pkg/data/mocks"
+	flyteAdminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
+	"github.com/flyteorg/flyteadmin/pkg/repositories"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	repositoryMocks "github.com/flyteorg/flyteadmin/pkg/repositories/mocks"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+	mockScope "github.com/flyteorg/flytestdlib/promutils"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	commonMocks "github.com/lyft/flyteadmin/pkg/common/mocks"
-	dataMocks "github.com/lyft/flyteadmin/pkg/data/mocks"
-	flyteAdminErrors "github.com/lyft/flyteadmin/pkg/errors"
-	"github.com/lyft/flyteadmin/pkg/repositories"
-	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
-	repositoryMocks "github.com/lyft/flyteadmin/pkg/repositories/mocks"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
-	mockScope "github.com/lyft/flytestdlib/promutils"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 )
@@ -68,7 +68,7 @@ var retryAttemptValue = uint32(1)
 
 func addGetWorkflowExecutionCallback(repository repositories.RepositoryInterface) {
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(
-		func(ctx context.Context, input interfaces.GetResourceInput) (models.Execution, error) {
+		func(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
 			return models.Execution{
 				ExecutionKey: models.ExecutionKey{
 					Project: sampleNodeExecID.ExecutionId.Project,
@@ -83,7 +83,7 @@ func addGetWorkflowExecutionCallback(repository repositories.RepositoryInterface
 
 func addGetNodeExecutionCallback(repository repositories.RepositoryInterface) {
 	repository.NodeExecutionRepo().(*repositoryMocks.MockNodeExecutionRepo).SetGetCallback(
-		func(ctx context.Context, input interfaces.GetNodeExecutionInput) (models.NodeExecution, error) {
+		func(ctx context.Context, input interfaces.NodeExecutionResource) (models.NodeExecution, error) {
 			return models.NodeExecution{
 				NodeExecutionKey: models.NodeExecutionKey{
 					NodeID: sampleNodeExecID.NodeId,
@@ -100,7 +100,7 @@ func addGetNodeExecutionCallback(repository repositories.RepositoryInterface) {
 
 func addGetTaskCallback(repository repositories.RepositoryInterface) {
 	repository.TaskRepo().(*repositoryMocks.MockTaskRepo).SetGetCallback(
-		func(input interfaces.GetResourceInput) (models.Task, error) {
+		func(input interfaces.Identifier) (models.Task, error) {
 			return models.Task{
 				TaskKey: models.TaskKey{
 					Project: sampleTaskID.Project,
@@ -298,16 +298,30 @@ func TestCreateTaskEvent_Update(t *testing.T) {
 
 func TestCreateTaskEvent_MissingExecution(t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
-	expectedErr := errors.New("expected error")
-	repository.NodeExecutionRepo().(*repositoryMocks.MockNodeExecutionRepo).SetGetCallback(
-		func(ctx context.Context, input interfaces.GetNodeExecutionInput) (models.NodeExecution, error) {
-			return models.NodeExecution{}, expectedErr
+	expectedErr := flyteAdminErrors.NewFlyteAdminErrorf(codes.Internal, "expected error")
+	repository.TaskExecutionRepo().(*repositoryMocks.MockTaskExecutionRepo).SetGetCallback(
+		func(ctx context.Context, input interfaces.GetTaskExecutionInput) (models.TaskExecution, error) {
+			return models.TaskExecution{}, flyteAdminErrors.NewFlyteAdminError(codes.NotFound, "foo")
 		})
+	repository.NodeExecutionRepo().(*repositoryMocks.MockNodeExecutionRepo).ExistsFunction = func(
+		ctx context.Context, input interfaces.NodeExecutionResource) (bool, error) {
+		return false, expectedErr
+	}
 	taskExecManager := NewTaskExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockTaskExecutionRemoteURL, nil)
 	resp, err := taskExecManager.CreateTaskExecutionEvent(context.Background(), taskEventRequest)
-	assert.EqualError(t, err, "failed to get existing node execution id: [node_id:\"node-id\""+
+	assert.EqualError(t, err, "Failed to get existing node execution id: [node_id:\"node-id\""+
 		" execution_id:<project:\"project\" domain:\"domain\" name:\"name\" > ] "+
 		"with err: expected error")
+	assert.Nil(t, resp)
+
+	repository.NodeExecutionRepo().(*repositoryMocks.MockNodeExecutionRepo).ExistsFunction = func(
+		ctx context.Context, input interfaces.NodeExecutionResource) (bool, error) {
+		return false, nil
+	}
+	taskExecManager = NewTaskExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockTaskExecutionRemoteURL, nil)
+	resp, err = taskExecManager.CreateTaskExecutionEvent(context.Background(), taskEventRequest)
+	assert.EqualError(t, err, "failed to get existing node execution id: [node_id:\"node-id\""+
+		" execution_id:<project:\"project\" domain:\"domain\" name:\"name\" > ]")
 	assert.Nil(t, resp)
 }
 

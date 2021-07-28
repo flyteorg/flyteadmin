@@ -8,13 +8,13 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/lyft/flytepropeller/pkg/utils"
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
-	"github.com/lyft/flyteadmin/pkg/manager/impl/testutils"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/service"
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -142,7 +142,7 @@ func insertLaunchPlansForTests(t *testing.T, client service.AdminServiceClient) 
 											Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 										},
 										Behavior: &core.Parameter_Default{
-											Default: utils.MustMakeLiteral("foo-value"),
+											Default: coreutils.MustMakeLiteral("foo-value"),
 										},
 									},
 								},

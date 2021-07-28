@@ -1,8 +1,9 @@
 package testutils
 
 import (
-	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
-	runtimeMocks "github.com/lyft/flyteadmin/pkg/runtime/mocks"
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	runtimeMocks "github.com/flyteorg/flyteadmin/pkg/runtime/mocks"
 )
 
 func GetApplicationConfigWithDefaultDomains() runtimeInterfaces.ApplicationConfiguration {
@@ -25,5 +26,6 @@ func GetApplicationConfigWithDefaultDomains() runtimeInterfaces.ApplicationConfi
 			Name: "domain",
 		},
 	})
+	config.SetRemoteDataConfig(runtimeInterfaces.RemoteDataConfig{Scheme: common.Local})
 	return &config
 }

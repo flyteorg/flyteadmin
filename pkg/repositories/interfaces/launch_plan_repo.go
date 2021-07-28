@@ -3,9 +3,9 @@ package interfaces
 import (
 	"context"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 )
 
 // Defines the interface for interacting with launch plan models.
@@ -18,7 +18,7 @@ type LaunchPlanRepoInterface interface {
 	// (and deactivates the formerly active version if the toDisable model exists).
 	SetActive(ctx context.Context, toEnable models.LaunchPlan, toDisable *models.LaunchPlan) error
 	// Returns a matching launch plan if it exists.
-	Get(ctx context.Context, input GetResourceInput) (models.LaunchPlan, error)
+	Get(ctx context.Context, input Identifier) (models.LaunchPlan, error)
 	// Returns launch plan revisions matching query parameters. A limit must be provided for the results page size.
 	List(ctx context.Context, input ListResourceInput) (LaunchPlanCollectionOutput, error)
 	// Returns a list of identifiers for launch plans.  A limit must be provided for the results page size.

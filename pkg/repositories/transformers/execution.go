@@ -4,17 +4,17 @@ import (
 	"context"
 	"time"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/storage"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytestdlib/logger"
-	"github.com/lyft/flytestdlib/storage"
 	"google.golang.org/grpc/codes"
 
-	"github.com/lyft/flyteadmin/pkg/common"
-	"github.com/lyft/flyteadmin/pkg/errors"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteadmin/pkg/errors"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 )
 
 // Request parameters for calls to CreateExecutionModel.
@@ -33,7 +33,6 @@ type CreateExecutionModelInput struct {
 	Cluster               string
 	InputsURI             storage.DataReference
 	UserInputsURI         storage.DataReference
-	Principal             string
 }
 
 // Transforms a ExecutionCreateRequest to a Execution model
@@ -41,9 +40,6 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 	requestSpec := input.RequestSpec
 	if requestSpec.Metadata == nil {
 		requestSpec.Metadata = &admin.ExecutionMetadata{}
-	}
-	if len(input.Principal) > 0 {
-		requestSpec.Metadata.Principal = input.Principal
 	}
 	requestSpec.Metadata.SystemMetadata = &admin.SystemMetadata{
 		ExecutionCluster: input.Cluster,
@@ -225,19 +221,6 @@ func FromExecutionModel(executionModel models.Execution) (*admin.Execution, erro
 		Spec:    &spec,
 		Closure: &closure,
 	}, nil
-}
-
-func FromExecutionModelWithReferenceExecution(executionModel models.Execution, referenceExecutionID *core.WorkflowExecutionIdentifier) (
-	*admin.Execution, error) {
-	execution, err := FromExecutionModel(executionModel)
-	if err != nil {
-		return nil, err
-	}
-	if referenceExecutionID != nil && execution.Spec.Metadata != nil &&
-		execution.Spec.Metadata.Mode == admin.ExecutionMetadata_RELAUNCH {
-		execution.Spec.Metadata.ReferenceExecution = referenceExecutionID
-	}
-	return execution, nil
 }
 
 func FromExecutionModels(executionModels []models.Execution) ([]*admin.Execution, error) {

@@ -3,26 +3,27 @@ package transformers
 import (
 	"context"
 
-	"github.com/lyft/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/logger"
 
-	"github.com/lyft/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteadmin/pkg/common"
 
 	"github.com/golang/protobuf/proto"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"google.golang.org/grpc/codes"
 
-	"github.com/lyft/flyteadmin/pkg/errors"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteadmin/pkg/errors"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 )
 
 type ToNodeExecutionModelInput struct {
-	Request               *admin.NodeExecutionEventRequest
-	ParentTaskExecutionID uint
-	ParentID              *uint
+	Request                      *admin.NodeExecutionEventRequest
+	ParentTaskExecutionID        uint
+	ParentID                     *uint
+	DynamicWorkflowRemoteClosure string
 }
 
 func addNodeRunningState(request *admin.NodeExecutionEventRequest, nodeExecutionModel *models.NodeExecution,
@@ -132,12 +133,13 @@ func CreateNodeExecutionModel(input ToNodeExecutionModelInput) (*models.NodeExec
 		nodeExecution.ParentTaskExecutionID = input.ParentTaskExecutionID
 	}
 	nodeExecution.ParentID = input.ParentID
+	nodeExecution.DynamicWorkflowRemoteClosureReference = input.DynamicWorkflowRemoteClosure
 	return nodeExecution, nil
 }
 
 func UpdateNodeExecutionModel(
 	request *admin.NodeExecutionEventRequest, nodeExecutionModel *models.NodeExecution,
-	targetExecution *core.WorkflowExecutionIdentifier) error {
+	targetExecution *core.WorkflowExecutionIdentifier, dynamicWorkflowRemoteClosure string) error {
 	var nodeExecutionClosure admin.NodeExecutionClosure
 	err := proto.Unmarshal(nodeExecutionModel.Closure, &nodeExecutionClosure)
 	if err != nil {
@@ -171,14 +173,15 @@ func UpdateNodeExecutionModel(
 	}
 
 	// Update TaskNodeMetadata, which includes caching information today.
-	if request.Event.GetTaskNodeMetadata() != nil {
+	if request.Event.GetTaskNodeMetadata() != nil && request.Event.GetTaskNodeMetadata().CatalogKey != nil {
 		st := request.Event.GetTaskNodeMetadata().GetCacheStatus().String()
-		nodeExecutionClosure.TargetMetadata = &admin.NodeExecutionClosure_TaskNodeMetadata{
+		targetMetadata := &admin.NodeExecutionClosure_TaskNodeMetadata{
 			TaskNodeMetadata: &admin.TaskNodeMetadata{
 				CacheStatus: request.Event.GetTaskNodeMetadata().GetCacheStatus(),
 				CatalogKey:  request.Event.GetTaskNodeMetadata().GetCatalogKey(),
 			},
 		}
+		nodeExecutionClosure.TargetMetadata = targetMetadata
 		nodeExecutionModel.CacheStatus = &st
 	}
 
@@ -194,6 +197,7 @@ func UpdateNodeExecutionModel(
 		return errors.NewFlyteAdminErrorf(codes.Internal, "failed to parse updated at timestamp")
 	}
 	nodeExecutionModel.NodeExecutionUpdatedAt = &updatedAt
+	nodeExecutionModel.DynamicWorkflowRemoteClosureReference = dynamicWorkflowRemoteClosure
 	return nil
 }
 

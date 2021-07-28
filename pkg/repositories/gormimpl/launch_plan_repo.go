@@ -4,14 +4,14 @@ import (
 	"context"
 	"time"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytestdlib/promutils"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytestdlib/promutils"
 
+	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/jinzhu/gorm"
-	"github.com/lyft/flyteadmin/pkg/repositories/errors"
-	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
-	"github.com/lyft/flytestdlib/logger"
 )
 
 const launchPlanTableName = "launch_plans"
@@ -48,7 +48,7 @@ func (r *LaunchPlanRepo) Update(ctx context.Context, input models.LaunchPlan) er
 	return nil
 }
 
-func (r *LaunchPlanRepo) Get(ctx context.Context, input interfaces.GetResourceInput) (models.LaunchPlan, error) {
+func (r *LaunchPlanRepo) Get(ctx context.Context, input interfaces.Identifier) (models.LaunchPlan, error) {
 	var launchPlan models.LaunchPlan
 	timer := r.metrics.GetDuration.Start()
 	tx := r.db.Where(&models.LaunchPlan{
@@ -58,7 +58,7 @@ func (r *LaunchPlanRepo) Get(ctx context.Context, input interfaces.GetResourceIn
 			Name:    input.Name,
 			Version: input.Version,
 		},
-	}).First(&launchPlan)
+	}).Take(&launchPlan)
 	timer.Stop()
 	if tx.Error != nil {
 		return models.LaunchPlan{}, r.errorTransformer.ToFlyteAdminError(tx.Error)

@@ -5,30 +5,30 @@ import (
 	"fmt"
 	"strconv"
 
+	notificationInterfaces "github.com/flyteorg/flyteadmin/pkg/async/notifications/interfaces"
 	"github.com/golang/protobuf/proto"
-	notificationInterfaces "github.com/lyft/flyteadmin/pkg/async/notifications/interfaces"
 
-	"github.com/lyft/flytestdlib/storage"
+	"github.com/flyteorg/flytestdlib/storage"
 
-	"github.com/lyft/flytestdlib/contextutils"
+	"github.com/flyteorg/flytestdlib/contextutils"
 
-	"github.com/lyft/flytestdlib/promutils"
+	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/lyft/flyteadmin/pkg/common"
-	dataInterfaces "github.com/lyft/flyteadmin/pkg/data/interfaces"
-	"github.com/lyft/flyteadmin/pkg/errors"
-	"github.com/lyft/flyteadmin/pkg/manager/impl/util"
-	"github.com/lyft/flyteadmin/pkg/manager/impl/validation"
-	"github.com/lyft/flyteadmin/pkg/manager/interfaces"
-	"github.com/lyft/flyteadmin/pkg/repositories"
-	repoInterfaces "github.com/lyft/flyteadmin/pkg/repositories/interfaces"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
-	"github.com/lyft/flyteadmin/pkg/repositories/transformers"
-	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytestdlib/logger"
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	dataInterfaces "github.com/flyteorg/flyteadmin/pkg/data/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/errors"
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/util"
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/validation"
+	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/repositories"
+	repoInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
+	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytestdlib/logger"
 	"google.golang.org/grpc/codes"
 )
 
@@ -61,8 +61,24 @@ func getTaskExecutionContext(ctx context.Context, identifier *core.TaskExecution
 }
 
 func (m *TaskExecutionManager) createTaskExecution(
-	ctx context.Context, nodeExecutionModel *models.NodeExecution, request *admin.TaskExecutionEventRequest) (
+	ctx context.Context, request *admin.TaskExecutionEventRequest) (
 	models.TaskExecution, error) {
+
+	nodeExecutionID := request.Event.ParentNodeExecutionId
+	nodeExecutionExists, err := m.db.NodeExecutionRepo().Exists(ctx, repoInterfaces.NodeExecutionResource{
+		NodeExecutionIdentifier: *nodeExecutionID,
+	})
+	if err != nil || !nodeExecutionExists {
+		m.metrics.MissingTaskExecution.Inc()
+		logger.Debugf(ctx, "Failed to get existing node execution [%+v] with err %v", nodeExecutionID, err)
+		if err != nil {
+			if ferr, ok := err.(errors.FlyteAdminError); ok {
+				return models.TaskExecution{}, errors.NewFlyteAdminErrorf(ferr.Code(),
+					"Failed to get existing node execution id: [%+v] with err: %v", nodeExecutionID, err)
+			}
+		}
+		return models.TaskExecution{}, fmt.Errorf("failed to get existing node execution id: [%+v]", nodeExecutionID)
+	}
 
 	taskExecutionModel, err := transformers.CreateTaskExecutionModel(
 		transformers.CreateTaskExecutionModelInput{
@@ -73,13 +89,13 @@ func (m *TaskExecutionManager) createTaskExecution(
 		return models.TaskExecution{}, err
 	}
 	if err := m.db.TaskExecutionRepo().Create(ctx, *taskExecutionModel); err != nil {
-		logger.Debugf(ctx, "Failed to create task execution with task id [%+v] and node execution model [%+v] with err %v",
-			request.Event.TaskId, nodeExecutionModel, err)
+		logger.Debugf(ctx, "Failed to create task execution with task id [%+v] with err %v",
+			request.Event.TaskId, err)
 		return models.TaskExecution{}, err
 	}
 
 	m.metrics.TaskExecutionsCreated.Inc()
-	m.metrics.ClosureSizeBytes.Observe(float64(len(nodeExecutionModel.Closure)))
+	m.metrics.ClosureSizeBytes.Observe(float64(len(taskExecutionModel.Closure)))
 	logger.Debugf(ctx, "created task execution: %+v", request.Event.TaskId)
 	return *taskExecutionModel, nil
 }
@@ -116,16 +132,6 @@ func (m *TaskExecutionManager) CreateTaskExecutionEvent(ctx context.Context, req
 	ctx = getTaskExecutionContext(ctx, &taskExecutionID)
 	logger.Debugf(ctx, "Received task execution event for [%+v] transitioning to phase [%v]",
 		taskExecutionID, request.Event.Phase)
-	nodeExecutionModel, err := util.GetNodeExecutionModel(ctx, m.db, nodeExecutionID)
-	if err != nil {
-		m.metrics.MissingTaskExecution.Inc()
-		logger.Debugf(ctx, "Failed to get existing node execution [%+v] with err %v", nodeExecutionID, err)
-		if ferr, ok := err.(errors.FlyteAdminError); ok {
-			return nil, errors.NewFlyteAdminErrorf(ferr.Code(),
-				"Failed to get existing execution node id:[%+v] with err: %v", nodeExecutionID, err)
-		}
-		return nil, fmt.Errorf("failed to get existing node execution id: [%+v] with err: %v", nodeExecutionID, err)
-	}
 
 	// See if the task execution exists
 	// - if it does check if the new phase is applicable and then update
@@ -139,7 +145,7 @@ func (m *TaskExecutionManager) CreateTaskExecutionEvent(ctx context.Context, req
 			logger.Debugf(ctx, "Failed to find existing task execution [%+v] with err %v", taskExecutionID, err)
 			return nil, err
 		}
-		_, err := m.createTaskExecution(ctx, nodeExecutionModel, &request)
+		_, err := m.createTaskExecution(ctx, &request)
 		if err != nil {
 			return nil, err
 		}
@@ -296,8 +302,7 @@ func (m *TaskExecutionManager) GetTaskExecutionData(
 		Inputs:  &signedInputsURLBlob,
 		Outputs: &signedOutputsURLBlob,
 	}
-	maxDataSize := m.config.ApplicationConfiguration().GetRemoteDataConfig().MaxSizeInBytes
-	if maxDataSize == 0 || signedInputsURLBlob.Bytes < maxDataSize {
+	if util.ShouldFetchData(m.config.ApplicationConfiguration().GetRemoteDataConfig(), signedInputsURLBlob) {
 		var fullInputs core.LiteralMap
 		err := m.storageClient.ReadProtobuf(ctx, storage.DataReference(taskExecution.InputUri), &fullInputs)
 		if err != nil {
@@ -305,7 +310,8 @@ func (m *TaskExecutionManager) GetTaskExecutionData(
 		}
 		response.FullInputs = &fullInputs
 	}
-	if maxDataSize == 0 || (signedOutputsURLBlob.Bytes < maxDataSize && len(taskExecution.Closure.GetOutputUri()) > 0) {
+	if util.ShouldFetchOutputData(m.config.ApplicationConfiguration().GetRemoteDataConfig(), signedOutputsURLBlob,
+		taskExecution.Closure.GetOutputUri()) {
 		var fullOutputs core.LiteralMap
 		err := m.storageClient.ReadProtobuf(ctx, storage.DataReference(taskExecution.Closure.GetOutputUri()), &fullOutputs)
 		if err != nil {

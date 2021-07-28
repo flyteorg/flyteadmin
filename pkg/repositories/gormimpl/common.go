@@ -3,27 +3,21 @@ package gormimpl
 import (
 	"fmt"
 
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	adminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/jinzhu/gorm"
-	"github.com/lyft/flyteadmin/pkg/common"
-	adminErrors "github.com/lyft/flyteadmin/pkg/errors"
-	"github.com/lyft/flyteadmin/pkg/repositories/errors"
-	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
 	"google.golang.org/grpc/codes"
 )
 
 const Project = "project"
 const Domain = "domain"
 const Name = "name"
-const Version = "version"
-const Closure = "closure"
 const Description = "description"
 const ResourceType = "resource_type"
 const State = "state"
-
-const ProjectID = "project_id"
-const ProjectName = "project_name"
-const DomainID = "domain_id"
-const DomainName = "domain_name"
+const ID = "id"
 
 const executionTableName = "executions"
 const namedEntityMetadataTableName = "named_entity_metadata"

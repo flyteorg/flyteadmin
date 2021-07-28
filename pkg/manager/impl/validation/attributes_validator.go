@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lyft/flyteadmin/pkg/errors"
-	"github.com/lyft/flyteadmin/pkg/manager/impl/shared"
-	"github.com/lyft/flyteadmin/pkg/repositories"
-	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteadmin/pkg/errors"
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
+	"github.com/flyteorg/flyteadmin/pkg/repositories"
+	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"google.golang.org/grpc/codes"
 )
 
@@ -28,6 +28,8 @@ func validateMatchingAttributes(attributes *admin.MatchingAttributes, identifier
 		return admin.MatchableResource_EXECUTION_CLUSTER_LABEL, nil
 	} else if attributes.GetPluginOverrides() != nil {
 		return admin.MatchableResource_PLUGIN_OVERRIDE, nil
+	} else if attributes.GetWorkflowExecutionConfig() != nil {
+		return admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG, nil
 	}
 	return defaultMatchableResource, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
 		"Unrecognized matching attributes type for request %s", identifier)

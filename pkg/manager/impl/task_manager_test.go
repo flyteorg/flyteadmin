@@ -6,24 +6,24 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/lyft/flyteadmin/pkg/repositories"
+	"github.com/flyteorg/flyteadmin/pkg/repositories"
 
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	adminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	repositoryMocks "github.com/flyteorg/flyteadmin/pkg/repositories/mocks"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	runtimeMocks "github.com/flyteorg/flyteadmin/pkg/runtime/mocks"
+	"github.com/flyteorg/flytestdlib/promutils/labeled"
 	"github.com/golang/protobuf/proto"
-	"github.com/lyft/flyteadmin/pkg/common"
-	adminErrors "github.com/lyft/flyteadmin/pkg/errors"
-	"github.com/lyft/flyteadmin/pkg/manager/impl/testutils"
-	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
-	repositoryMocks "github.com/lyft/flyteadmin/pkg/repositories/mocks"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
-	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
-	runtimeMocks "github.com/lyft/flyteadmin/pkg/runtime/mocks"
-	"github.com/lyft/flytestdlib/promutils/labeled"
 
-	workflowengine "github.com/lyft/flyteadmin/pkg/workflowengine/interfaces"
-	workflowMocks "github.com/lyft/flyteadmin/pkg/workflowengine/mocks"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	mockScope "github.com/lyft/flytestdlib/promutils"
+	workflowengine "github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
+	workflowMocks "github.com/flyteorg/flyteadmin/pkg/workflowengine/mocks"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	mockScope "github.com/flyteorg/flytestdlib/promutils"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 )
@@ -71,7 +71,7 @@ func getMockTaskRepository() repositories.RepositoryInterface {
 func TestCreateTask(t *testing.T) {
 	mockRepository := getMockTaskRepository()
 	mockRepository.TaskRepo().(*repositoryMocks.MockTaskRepo).SetGetCallback(
-		func(input interfaces.GetResourceInput) (models.Task, error) {
+		func(input interfaces.Identifier) (models.Task, error) {
 			return models.Task{}, errors.New("foo")
 		})
 	var createCalled bool
@@ -123,7 +123,7 @@ func TestCreateTask_CompilerError(t *testing.T) {
 func TestCreateTask_DatabaseError(t *testing.T) {
 	repository := getMockTaskRepository()
 	repository.TaskRepo().(*repositoryMocks.MockTaskRepo).SetGetCallback(
-		func(input interfaces.GetResourceInput) (models.Task, error) {
+		func(input interfaces.Identifier) (models.Task, error) {
 			return models.Task{}, errors.New("foo")
 		})
 	expectedErr := errors.New("expected error")
@@ -141,7 +141,7 @@ func TestCreateTask_DatabaseError(t *testing.T) {
 
 func TestGetTask(t *testing.T) {
 	repository := getMockTaskRepository()
-	taskGetFunc := func(input interfaces.GetResourceInput) (models.Task, error) {
+	taskGetFunc := func(input interfaces.Identifier) (models.Task, error) {
 		assert.Equal(t, "project", input.Project)
 		assert.Equal(t, "domain", input.Domain)
 		assert.Equal(t, "name", input.Name)
@@ -176,7 +176,7 @@ func TestGetTask(t *testing.T) {
 func TestGetTask_DatabaseError(t *testing.T) {
 	repository := getMockTaskRepository()
 	expectedErr := errors.New("expected error")
-	taskGetFunc := func(input interfaces.GetResourceInput) (models.Task, error) {
+	taskGetFunc := func(input interfaces.Identifier) (models.Task, error) {
 		return models.Task{}, expectedErr
 	}
 	repository.TaskRepo().(*repositoryMocks.MockTaskRepo).SetGetCallback(taskGetFunc)
@@ -190,7 +190,7 @@ func TestGetTask_DatabaseError(t *testing.T) {
 
 func TestGetTask_TransformerError(t *testing.T) {
 	repository := getMockTaskRepository()
-	taskGetFunc := func(input interfaces.GetResourceInput) (models.Task, error) {
+	taskGetFunc := func(input interfaces.Identifier) (models.Task, error) {
 		assert.Equal(t, "project", input.Project)
 		assert.Equal(t, "domain", input.Domain)
 		assert.Equal(t, "name", input.Name)
