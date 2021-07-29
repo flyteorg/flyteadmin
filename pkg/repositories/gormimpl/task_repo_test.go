@@ -4,15 +4,15 @@ import (
 	"context"
 	"testing"
 
-	mockScope "github.com/lyft/flytestdlib/promutils"
+	mockScope "github.com/flyteorg/flytestdlib/promutils"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 
 	mocket "github.com/Selvatico/go-mocket"
-	"github.com/lyft/flyteadmin/pkg/common"
-	"github.com/lyft/flyteadmin/pkg/repositories/errors"
-	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -56,9 +56,9 @@ func TestGetTask(t *testing.T) {
 	// Only match on queries that append expected filters
 	GlobalMock.NewMock().WithQuery(
 		`SELECT * FROM "tasks"  WHERE "tasks"."deleted_at" IS NULL AND (("tasks"."project" = project) ` +
-			`AND ("tasks"."domain" = domain) AND ("tasks"."name" = name) AND ("tasks"."version" = XYZ)) ` +
-			`ORDER BY "tasks"."id" ASC LIMIT 1`).WithReply(tasks)
-	output, err := taskRepo.Get(context.Background(), interfaces.GetResourceInput{
+			`AND ("tasks"."domain" = domain) AND ("tasks"."name" = name) AND ("tasks"."version" = XYZ)) LIMIT 1`).
+		WithReply(tasks)
+	output, err := taskRepo.Get(context.Background(), interfaces.Identifier{
 		Project: project,
 		Domain:  domain,
 		Name:    name,

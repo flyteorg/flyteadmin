@@ -5,12 +5,12 @@ import (
 	"testing"
 
 	mocket "github.com/Selvatico/go-mocket"
-	"github.com/lyft/flyteadmin/pkg/common"
-	"github.com/lyft/flyteadmin/pkg/repositories/errors"
-	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	mockScope "github.com/lyft/flytestdlib/promutils"
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	mockScope "github.com/flyteorg/flytestdlib/promutils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -50,7 +50,7 @@ func TestGetProject(t *testing.T) {
 
 	query := GlobalMock.NewMock()
 	query.WithQuery(`SELECT * FROM "projects"  WHERE "projects"."deleted_at" IS NULL AND ` +
-		`(("projects"."identifier" = project_id)) ORDER BY "projects"."identifier" ASC LIMIT 1`).WithReply(
+		`(("projects"."identifier" = project_id)) LIMIT 1`).WithReply(
 		[]map[string]interface{}{
 			response,
 		})

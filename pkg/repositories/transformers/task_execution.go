@@ -3,16 +3,24 @@ package transformers
 import (
 	"context"
 
+	"google.golang.org/protobuf/encoding/protojson"
+
+	jsonpatch "github.com/evanphx/json-patch"
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteadmin/pkg/errors"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/lyft/flyteadmin/pkg/common"
-	"github.com/lyft/flyteadmin/pkg/errors"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytestdlib/logger"
+	_struct "github.com/golang/protobuf/ptypes/struct"
+
 	"google.golang.org/grpc/codes"
 )
+
+var empty _struct.Struct
+var jsonEmpty, _ = protojson.Marshal(&empty)
 
 type CreateTaskExecutionModelInput struct {
 	Request *admin.TaskExecutionEventRequest
@@ -92,6 +100,8 @@ func CreateTaskExecutionModel(input CreateTaskExecutionModelInput) (*models.Task
 		CreatedAt:  input.Request.Event.OccurredAt,
 		Logs:       input.Request.Event.Logs,
 		CustomInfo: input.Request.Event.CustomInfo,
+		Reason:     input.Request.Event.Reason,
+		TaskType:   input.Request.Event.TaskType,
 	}
 
 	eventPhase := input.Request.Event.Phase
@@ -129,27 +139,77 @@ func CreateTaskExecutionModel(input CreateTaskExecutionModelInput) (*models.Task
 	return taskExecution, nil
 }
 
-// Returns the unique list of logs across an existing list and the latest list sent in a task execution event update.
+// mergeLogs returns the unique list of logs across an existing list and the latest list sent in a task execution event
+// update.
+// It returns all the new logs receives + any existing log that hasn't been overwritten by a new log.
+// An existing logLink is said to have been overwritten if a new logLink with the same Uri or the same Name has been
+// received.
 func mergeLogs(existing, latest []*core.TaskLog) []*core.TaskLog {
 	if len(latest) == 0 {
 		return existing
 	}
+
 	if len(existing) == 0 {
 		return latest
 	}
-	latestSet := make(map[string]*core.TaskLog, len(latest))
+
+	latestSetByURI := make(map[string]*core.TaskLog, len(latest))
+	latestSetByName := make(map[string]*core.TaskLog, len(latest))
 	for _, latestLog := range latest {
-		latestSet[latestLog.Uri] = latestLog
+		latestSetByURI[latestLog.Uri] = latestLog
+		if len(latestLog.Name) > 0 {
+			latestSetByName[latestLog.Name] = latestLog
+		}
 	}
+
 	// Copy over the latest logs since names will change for existing logs as a task transitions across phases.
 	logs := latest
 	for _, existingLog := range existing {
-		if _, ok := latestSet[existingLog.Uri]; !ok {
-			// We haven't seen this log before: add it to the output result list.
-			logs = append(logs, existingLog)
+		if _, ok := latestSetByURI[existingLog.Uri]; !ok {
+			if _, ok = latestSetByName[existingLog.Name]; !ok {
+				// We haven't seen this log before: add it to the output result list.
+				logs = append(logs, existingLog)
+			}
 		}
 	}
+
 	return logs
+}
+
+func mergeCustom(existing, latest *_struct.Struct) (*_struct.Struct, error) {
+	if existing == nil {
+		return latest, nil
+	}
+	if latest == nil {
+		return existing, nil
+	}
+
+	// To merge latest into existing we first create a patch object that consists of applying changes from latest to
+	// an empty struct. Then we apply this patch to existing so that the values changed in latest take precedence but
+	// barring conflicts/overwrites the values in existing stay the same.
+	jsonExisting, err := protojson.Marshal(existing)
+	if err != nil {
+		return nil, err
+	}
+	jsonLatest, err := protojson.Marshal(latest)
+	if err != nil {
+		return nil, err
+	}
+	patch, err := jsonpatch.CreateMergePatch(jsonEmpty, jsonLatest)
+	if err != nil {
+		return nil, err
+	}
+	custom, err := jsonpatch.MergePatch(jsonExisting, patch)
+	if err != nil {
+		return nil, err
+	}
+	var response _struct.Struct
+
+	err = protojson.Unmarshal(custom, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response, nil
 }
 
 func UpdateTaskExecutionModel(request *admin.TaskExecutionEventRequest, taskExecutionModel *models.TaskExecution) error {
@@ -165,6 +225,9 @@ func UpdateTaskExecutionModel(request *admin.TaskExecutionEventRequest, taskExec
 	taskExecutionClosure.Phase = request.Event.Phase
 	taskExecutionClosure.UpdatedAt = request.Event.OccurredAt
 	taskExecutionClosure.Logs = mergeLogs(taskExecutionClosure.Logs, request.Event.Logs)
+	if len(request.Event.Reason) > 0 {
+		taskExecutionClosure.Reason = request.Event.Reason
+	}
 	if (existingTaskPhase == core.TaskExecution_QUEUED.String() || existingTaskPhase == core.TaskExecution_UNDEFINED.String()) && taskExecutionModel.Phase == core.TaskExecution_RUNNING.String() {
 		err = addTaskStartedState(request, taskExecutionModel, &taskExecutionClosure)
 		if err != nil {
@@ -178,7 +241,10 @@ func UpdateTaskExecutionModel(request *admin.TaskExecutionEventRequest, taskExec
 			return err
 		}
 	}
-	taskExecutionClosure.CustomInfo = request.Event.CustomInfo
+	taskExecutionClosure.CustomInfo, err = mergeCustom(taskExecutionClosure.CustomInfo, request.Event.CustomInfo)
+	if err != nil {
+		return errors.NewFlyteAdminErrorf(codes.Internal, "failed to merge task even custom_info with error: %v", err)
+	}
 	marshaledClosure, err := proto.Marshal(&taskExecutionClosure)
 	if err != nil {
 		return errors.NewFlyteAdminErrorf(

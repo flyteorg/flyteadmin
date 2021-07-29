@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 )
 
 type CreateExecutionFunc func(
@@ -12,6 +12,8 @@ type CreateExecutionFunc func(
 	*admin.ExecutionCreateResponse, error)
 type RelaunchExecutionFunc func(
 	ctx context.Context, request admin.ExecutionRelaunchRequest, requestedAt time.Time) (
+	*admin.ExecutionCreateResponse, error)
+type RecoverExecutionFunc func(ctx context.Context, request admin.ExecutionRecoverRequest, requestedAt time.Time) (
 	*admin.ExecutionCreateResponse, error)
 type CreateExecutionEventFunc func(ctx context.Context, request admin.WorkflowExecutionEventRequest) (
 	*admin.WorkflowExecutionEventResponse, error)
@@ -25,6 +27,7 @@ type TerminateExecutionFunc func(
 type MockExecutionManager struct {
 	createExecutionFunc      CreateExecutionFunc
 	relaunchExecutionFunc    RelaunchExecutionFunc
+	RecoverExecutionFunc     RecoverExecutionFunc
 	createExecutionEventFunc CreateExecutionEventFunc
 	getExecutionFunc         GetExecutionFunc
 	getExecutionDataFunc     GetExecutionDataFunc
@@ -60,6 +63,14 @@ func (m *MockExecutionManager) RelaunchExecution(
 
 func (m *MockExecutionManager) SetCreateEventCallback(createEventFunc CreateExecutionEventFunc) {
 	m.createExecutionEventFunc = createEventFunc
+}
+
+func (m *MockExecutionManager) RecoverExecution(ctx context.Context, request admin.ExecutionRecoverRequest, requestedAt time.Time) (
+	*admin.ExecutionCreateResponse, error) {
+	if m.RecoverExecutionFunc != nil {
+		return m.RecoverExecutionFunc(ctx, request, requestedAt)
+	}
+	return &admin.ExecutionCreateResponse{}, nil
 }
 
 func (m *MockExecutionManager) CreateWorkflowEvent(

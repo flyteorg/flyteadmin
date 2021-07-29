@@ -1,27 +1,22 @@
 package runtime
 
 import (
-	"context"
-
-	"github.com/lyft/flyteadmin/pkg/runtime/interfaces"
-	"github.com/lyft/flytestdlib/config"
-	"github.com/lyft/flytestdlib/logger"
+	"github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	"github.com/flyteorg/flytestdlib/config"
 )
 
 const whitelistKey = "task_type_whitelist"
 
-var whitelistConfig = config.MustRegisterSection(whitelistKey, &interfaces.TaskTypeWhitelist{})
+var whiteListProviderDefault = make(map[string][]interfaces.WhitelistScope)
+
+var whitelistConfig = config.MustRegisterSection(whitelistKey, &whiteListProviderDefault)
 
 // Implementation of an interfaces.QueueConfiguration
 type WhitelistConfigurationProvider struct{}
 
 func (p *WhitelistConfigurationProvider) GetTaskTypeWhitelist() interfaces.TaskTypeWhitelist {
-	if whitelistConfig != nil && whitelistConfig.GetConfig() != nil {
-		whitelists := whitelistConfig.GetConfig().(*interfaces.TaskTypeWhitelist)
-		return *whitelists
-	}
-	logger.Warningf(context.Background(), "Failed to find task type whitelist in config. Returning an empty slice")
-	return interfaces.TaskTypeWhitelist{}
+	whitelists := whitelistConfig.GetConfig().(*interfaces.TaskTypeWhitelist)
+	return *whitelists
 }
 
 func NewWhitelistConfigurationProvider() interfaces.WhitelistConfiguration {

@@ -5,25 +5,25 @@ import (
 	"fmt"
 	"strings"
 
-	interfaces2 "github.com/lyft/flyteadmin/pkg/executioncluster/interfaces"
+	interfaces2 "github.com/flyteorg/flyteadmin/pkg/executioncluster/interfaces"
 
-	"github.com/lyft/flyteadmin/pkg/common"
-	"github.com/lyft/flyteadmin/pkg/executioncluster"
-	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
-	"github.com/lyft/flyteadmin/pkg/workflowengine/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteadmin/pkg/executioncluster"
+	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
 
-	"github.com/lyft/flytestdlib/promutils"
+	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/prometheus/client_golang/prometheus"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/lyft/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/logger"
 
-	"github.com/lyft/flyteadmin/pkg/errors"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	"github.com/lyft/flytepropeller/pkg/compiler/transformers/k8s"
+	"github.com/flyteorg/flyteadmin/pkg/errors"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	"github.com/flyteorg/flytepropeller/pkg/compiler/transformers/k8s"
 	"google.golang.org/grpc/codes"
 	k8_api_err "k8s.io/apimachinery/pkg/api/errors"
 )
@@ -70,51 +70,42 @@ func addMapValues(overrides map[string]string, flyteWfValues map[string]string) 
 	return flyteWfValues
 }
 
-func (c *FlytePropeller) addPermissions(launchPlan admin.LaunchPlan, flyteWf *v1alpha1.FlyteWorkflow) {
+func (c *FlytePropeller) addPermissions(auth *admin.AuthRole, flyteWf *v1alpha1.FlyteWorkflow, project string, domain string) {
 	// Set role permissions based on launch plan Auth values.
 	// The branched-ness of this check is due to the presence numerous deprecated fields
-	var role string
-	var serviceAccountName string
-	if launchPlan.Spec.GetAuthRole() != nil && len(launchPlan.GetSpec().GetAuthRole().GetAssumableIamRole()) > 0 {
-		role = launchPlan.GetSpec().GetAuthRole().GetAssumableIamRole()
-	} else if launchPlan.GetSpec().GetAuth() != nil && len(launchPlan.GetSpec().GetAuth().GetAssumableIamRole()) > 0 {
-		role = launchPlan.GetSpec().GetAuth().GetAssumableIamRole()
-	} else if len(launchPlan.GetSpec().GetRole()) > 0 {
-		// Although deprecated, older launch plans may reference the role field instead of the Auth AssumableIamRole.
-		role = launchPlan.GetSpec().GetRole()
-	} else if launchPlan.GetSpec().GetAuthRole() != nil && len(launchPlan.GetSpec().GetAuthRole().GetKubernetesServiceAccount()) > 0 {
-		serviceAccountName = launchPlan.GetSpec().GetAuthRole().GetKubernetesServiceAccount()
-	} else if launchPlan.GetSpec().GetAuth() != nil && len(launchPlan.GetSpec().GetAuth().GetKubernetesServiceAccount()) > 0 {
-		serviceAccountName = launchPlan.GetSpec().GetAuth().GetKubernetesServiceAccount()
+	if auth == nil {
+		return
 	}
-	if len(role) > 0 {
+	if len(auth.AssumableIamRole) > 0 {
 		if flyteWf.Annotations == nil {
 			flyteWf.Annotations = map[string]string{}
 		}
-		flyteWf.Annotations[c.roleNameKey] = role
-		flyteWf.Annotations["iam.amazonaws.com/role"] = role
+		flyteWf.Annotations[c.roleNameKey] = auth.AssumableIamRole
+		flyteWf.Annotations["iam.amazonaws.com/role"] = auth.AssumableIamRole
 		flyteWf.Annotations["lyft.net/iamwait-inject"] = "required"
 	}
-	if len(serviceAccountName) > 0 {
-		flyteWf.ServiceAccountName = serviceAccountName
+
+	if len(auth.KubernetesServiceAccount) > 0 {
+		flyteWf.ServiceAccountName = auth.KubernetesServiceAccount
 		if flyteWf.Annotations == nil {
 			flyteWf.Annotations = map[string]string{}
 		}
 		// This is a hack for AWS Batch plugin. We can kill once securityContext is plumbed and flytekit is upgraded for all.
-		if strings.Contains(serviceAccountName, "iad") {
-			flyteWf.Annotations[c.roleNameKey] = fmt.Sprintf("%sbatchworker-%s-iad", launchPlan.GetId().GetProject(), launchPlan.GetId().GetDomain())
+		if strings.Contains(auth.KubernetesServiceAccount, "iad") {
+			flyteWf.Annotations[c.roleNameKey] = fmt.Sprintf("%sbatchworker-%s-iad", project, domain)
 		} else {
-			flyteWf.Annotations[c.roleNameKey] = fmt.Sprintf("%sbatchworker-%s", launchPlan.GetId().GetProject(), launchPlan.GetId().GetDomain())
+			flyteWf.Annotations[c.roleNameKey] = fmt.Sprintf("%sbatchworker-%s", project, domain)
 		}
 	}
 }
 
-func addExecutionOverrides(taskPluginOverrides []*admin.PluginOverride, flyteWf *v1alpha1.FlyteWorkflow) {
+func addExecutionOverrides(taskPluginOverrides []*admin.PluginOverride,
+	workflowExecutionConfig *admin.WorkflowExecutionConfig, recoveryExecution *core.WorkflowExecutionIdentifier, flyteWf *v1alpha1.FlyteWorkflow) {
 	executionConfig := v1alpha1.ExecutionConfig{
 		TaskPluginImpls: make(map[string]v1alpha1.TaskPluginOverride),
-	}
-	if len(taskPluginOverrides) == 0 {
-		return
+		RecoveryExecution: v1alpha1.WorkflowExecutionIdentifier{
+			WorkflowExecutionIdentifier: recoveryExecution,
+		},
 	}
 	for _, override := range taskPluginOverrides {
 		executionConfig.TaskPluginImpls[override.TaskType] = v1alpha1.TaskPluginOverride{
@@ -122,6 +113,9 @@ func addExecutionOverrides(taskPluginOverrides []*admin.PluginOverride, flyteWf 
 			MissingPluginBehavior: override.MissingPluginBehavior,
 		}
 
+	}
+	if workflowExecutionConfig != nil {
+		executionConfig.MaxParallelism = uint32(workflowExecutionConfig.MaxParallelism)
 	}
 	flyteWf.ExecutionConfig = executionConfig
 }
@@ -131,7 +125,7 @@ func (c *FlytePropeller) ExecuteWorkflow(ctx context.Context, input interfaces.E
 		c.metrics.InvalidExecutionID.Inc()
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "invalid execution id")
 	}
-	namespace := common.GetNamespaceName(c.config.GetNamespaceMappingConfig(), input.ExecutionID.GetProject(), input.ExecutionID.GetDomain())
+	namespace := common.GetNamespaceName(c.config.GetNamespaceTemplate(), input.ExecutionID.GetProject(), input.ExecutionID.GetDomain())
 	flyteWf, err := c.builder.BuildFlyteWorkflow(&input.WfClosure, input.Inputs, input.ExecutionID, namespace)
 	if err != nil {
 		c.metrics.WorkflowBuildFailure.Inc()
@@ -150,7 +144,7 @@ func (c *FlytePropeller) ExecuteWorkflow(ctx context.Context, input interfaces.E
 	acceptAtWrapper := v1.NewTime(input.AcceptedAt)
 	flyteWf.AcceptedAt = &acceptAtWrapper
 
-	c.addPermissions(input.Reference, flyteWf)
+	c.addPermissions(input.Auth, flyteWf, input.ExecutionID.GetProject(), input.ExecutionID.GetDomain())
 
 	labels := addMapValues(input.Labels, flyteWf.Labels)
 	flyteWf.Labels = labels
@@ -160,7 +154,7 @@ func (c *FlytePropeller) ExecuteWorkflow(ctx context.Context, input interfaces.E
 		flyteWf.WorkflowMeta = &v1alpha1.WorkflowMeta{}
 	}
 	flyteWf.WorkflowMeta.EventVersion = c.eventVersion
-	addExecutionOverrides(input.TaskPluginOverrides, flyteWf)
+	addExecutionOverrides(input.TaskPluginOverrides, input.ExecutionConfig, input.RecoveryExecution, flyteWf)
 
 	if input.Reference.Spec.RawOutputDataConfig != nil {
 		flyteWf.RawOutputDataConfig = v1alpha1.RawOutputDataConfig{
@@ -185,7 +179,7 @@ func (c *FlytePropeller) ExecuteWorkflow(ctx context.Context, input interfaces.E
 	if err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to create workflow in propeller %v", err)
 	}
-	_, err = targetCluster.FlyteClient.FlyteworkflowV1alpha1().FlyteWorkflows(namespace).Create(flyteWf)
+	_, err = targetCluster.FlyteClient.FlyteworkflowV1alpha1().FlyteWorkflows(namespace).Create(ctx, flyteWf, v1.CreateOptions{})
 	if err != nil {
 		if !k8_api_err.IsAlreadyExists(err) {
 			logger.Debugf(ctx, "failed to create workflow [%+v] in cluster %s %v",
@@ -208,7 +202,7 @@ func (c *FlytePropeller) ExecuteTask(ctx context.Context, input interfaces.Execu
 		c.metrics.InvalidExecutionID.Inc()
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "invalid execution id")
 	}
-	namespace := common.GetNamespaceName(c.config.GetNamespaceMappingConfig(), input.ExecutionID.GetProject(), input.ExecutionID.GetDomain())
+	namespace := common.GetNamespaceName(c.config.GetNamespaceTemplate(), input.ExecutionID.GetProject(), input.ExecutionID.GetDomain())
 	flyteWf, err := c.builder.BuildFlyteWorkflow(&input.WfClosure, input.Inputs, input.ExecutionID, namespace)
 	if err != nil {
 		c.metrics.WorkflowBuildFailure.Inc()
@@ -234,7 +228,8 @@ func (c *FlytePropeller) ExecuteTask(ctx context.Context, input interfaces.Execu
 			flyteWf.Annotations = map[string]string{}
 		}
 		flyteWf.Annotations[c.roleNameKey] = role
-	} else if input.Auth != nil && len(input.Auth.GetKubernetesServiceAccount()) > 0 {
+	}
+	if input.Auth != nil && len(input.Auth.GetKubernetesServiceAccount()) > 0 {
 		flyteWf.ServiceAccountName = input.Auth.GetKubernetesServiceAccount()
 	}
 
@@ -242,7 +237,7 @@ func (c *FlytePropeller) ExecuteTask(ctx context.Context, input interfaces.Execu
 	flyteWf.Labels = labels
 	annotations := addMapValues(input.Annotations, flyteWf.Annotations)
 	flyteWf.Annotations = annotations
-	addExecutionOverrides(input.TaskPluginOverrides, flyteWf)
+	addExecutionOverrides(input.TaskPluginOverrides, input.ExecutionConfig, nil, flyteWf)
 
 	/*
 		TODO(katrogan): uncomment once propeller has updated the flyte workflow CRD.
@@ -261,7 +256,7 @@ func (c *FlytePropeller) ExecuteTask(ctx context.Context, input interfaces.Execu
 	if err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to create workflow in propeller %v", err)
 	}
-	_, err = targetCluster.FlyteClient.FlyteworkflowV1alpha1().FlyteWorkflows(namespace).Create(flyteWf)
+	_, err = targetCluster.FlyteClient.FlyteworkflowV1alpha1().FlyteWorkflows(namespace).Create(ctx, flyteWf, v1.CreateOptions{})
 	if err != nil {
 		if !k8_api_err.IsAlreadyExists(err) {
 			logger.Debugf(ctx, "failed to create workflow [%+v] in cluster %s %v",
@@ -285,14 +280,14 @@ func (c *FlytePropeller) TerminateWorkflowExecution(
 		c.metrics.InvalidExecutionID.Inc()
 		return errors.NewFlyteAdminErrorf(codes.Internal, "invalid execution id")
 	}
-	namespace := common.GetNamespaceName(c.config.GetNamespaceMappingConfig(), input.ExecutionID.GetProject(), input.ExecutionID.GetDomain())
+	namespace := common.GetNamespaceName(c.config.GetNamespaceTemplate(), input.ExecutionID.GetProject(), input.ExecutionID.GetDomain())
 	target, err := c.executionCluster.GetTarget(ctx, &executioncluster.ExecutionTargetSpec{
 		TargetID: input.Cluster,
 	})
 	if err != nil {
 		return errors.NewFlyteAdminErrorf(codes.Internal, err.Error())
 	}
-	err = target.FlyteClient.FlyteworkflowV1alpha1().FlyteWorkflows(namespace).Delete(input.ExecutionID.GetName(), &v1.DeleteOptions{
+	err = target.FlyteClient.FlyteworkflowV1alpha1().FlyteWorkflows(namespace).Delete(ctx, input.ExecutionID.GetName(), v1.DeleteOptions{
 		PropagationPolicy: &deletePropagationBackground,
 	})
 	// An IsNotFound error indicates the resource is already deleted.

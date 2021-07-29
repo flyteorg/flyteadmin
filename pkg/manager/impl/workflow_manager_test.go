@@ -6,26 +6,26 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	commonMocks "github.com/flyteorg/flyteadmin/pkg/common/mocks"
+	adminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
+	"github.com/flyteorg/flyteadmin/pkg/repositories"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	repositoryMocks "github.com/flyteorg/flyteadmin/pkg/repositories/mocks"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/golang/protobuf/proto"
-	"github.com/lyft/flyteadmin/pkg/common"
-	commonMocks "github.com/lyft/flyteadmin/pkg/common/mocks"
-	adminErrors "github.com/lyft/flyteadmin/pkg/errors"
-	"github.com/lyft/flyteadmin/pkg/manager/impl/testutils"
-	"github.com/lyft/flyteadmin/pkg/repositories"
-	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
-	repositoryMocks "github.com/lyft/flyteadmin/pkg/repositories/mocks"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
 
-	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
-	runtimeMocks "github.com/lyft/flyteadmin/pkg/runtime/mocks"
-	workflowengineInterfaces "github.com/lyft/flyteadmin/pkg/workflowengine/interfaces"
-	workflowengineMocks "github.com/lyft/flyteadmin/pkg/workflowengine/mocks"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytepropeller/pkg/compiler"
-	engine "github.com/lyft/flytepropeller/pkg/compiler/common"
-	mockScope "github.com/lyft/flytestdlib/promutils"
-	"github.com/lyft/flytestdlib/storage"
+	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	runtimeMocks "github.com/flyteorg/flyteadmin/pkg/runtime/mocks"
+	workflowengineInterfaces "github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
+	workflowengineMocks "github.com/flyteorg/flyteadmin/pkg/workflowengine/mocks"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytepropeller/pkg/compiler"
+	engine "github.com/flyteorg/flytepropeller/pkg/compiler/common"
+	mockScope "github.com/flyteorg/flytestdlib/promutils"
+	"github.com/flyteorg/flytestdlib/storage"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 )
@@ -79,7 +79,7 @@ func getMockRepository(workflowOnGet bool) repositories.RepositoryInterface {
 	mockRepo := repositoryMocks.NewMockRepository()
 	if !workflowOnGet {
 		mockRepo.(*repositoryMocks.MockRepository).WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetGetCallback(
-			func(input interfaces.GetResourceInput) (models.Workflow, error) {
+			func(input interfaces.Identifier) (models.Workflow, error) {
 				return models.Workflow{}, adminErrors.NewFlyteAdminError(codes.NotFound, "not found")
 			})
 	}
@@ -261,7 +261,7 @@ func TestCreateWorkflow_DatabaseError(t *testing.T) {
 
 func TestGetWorkflow(t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
-	workflowGetFunc := func(input interfaces.GetResourceInput) (models.Workflow, error) {
+	workflowGetFunc := func(input interfaces.Identifier) (models.Workflow, error) {
 		assert.Equal(t, "project", input.Project)
 		assert.Equal(t, "domain", input.Domain)
 		assert.Equal(t, "name", input.Name)
@@ -308,7 +308,7 @@ func TestGetWorkflow(t *testing.T) {
 func TestGetWorkflow_DatabaseError(t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
 	expectedErr := errors.New("expected error")
-	workflowGetFunc := func(input interfaces.GetResourceInput) (models.Workflow, error) {
+	workflowGetFunc := func(input interfaces.Identifier) (models.Workflow, error) {
 		return models.Workflow{}, expectedErr
 	}
 	repository.WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetGetCallback(workflowGetFunc)
@@ -324,7 +324,7 @@ func TestGetWorkflow_DatabaseError(t *testing.T) {
 
 func TestGetWorkflow_TransformerError(t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
-	workflowGetFunc := func(input interfaces.GetResourceInput) (models.Workflow, error) {
+	workflowGetFunc := func(input interfaces.Identifier) (models.Workflow, error) {
 		assert.Equal(t, "project", input.Project)
 		assert.Equal(t, "domain", input.Domain)
 		assert.Equal(t, "name", input.Name)

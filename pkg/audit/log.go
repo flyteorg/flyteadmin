@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lyft/flyteadmin/pkg/common"
-	"github.com/lyft/flyteadmin/pkg/errors"
-	"github.com/lyft/flytestdlib/logger"
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteadmin/pkg/errors"
+	"github.com/flyteorg/flytestdlib/logger"
 	"google.golang.org/grpc/codes"
 )
 
@@ -26,17 +26,17 @@ type logBuilder struct {
 
 func (b *logBuilder) WithAuthenticatedCtx(ctx context.Context) LogBuilder {
 	clientMeta := ctx.Value(common.AuditFieldsContextKey)
-	switch clientMeta.(type) {
+	switch m := clientMeta.(type) {
 	case AuthenticatedClientMeta:
 		b.auditLog.Principal = Principal{
-			Subject:       ctx.Value(common.PrincipalContextKey).(string),
-			TokenIssuedAt: clientMeta.(AuthenticatedClientMeta).TokenIssuedAt,
+			Subject:       m.Subject,
+			TokenIssuedAt: m.TokenIssuedAt,
 		}
-		if len(clientMeta.(AuthenticatedClientMeta).ClientIds) > 0 {
-			b.auditLog.Principal.ClientID = clientMeta.(AuthenticatedClientMeta).ClientIds[0]
+		if len(m.ClientIds) > 0 {
+			b.auditLog.Principal.ClientID = m.ClientIds[0]
 		}
 		b.auditLog.Client = Client{
-			ClientIP: clientMeta.(AuthenticatedClientMeta).ClientIP,
+			ClientIP: m.ClientIP,
 		}
 	default:
 		logger.Warningf(ctx, "Failed to parse authenticated client metadata when creating audit log")

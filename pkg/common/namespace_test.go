@@ -8,18 +8,18 @@ import (
 
 func TestGetNamespaceName(t *testing.T) {
 	testCases := []struct {
-		mapping NamespaceMapping
-		project string
-		domain  string
-		want    string
+		template string
+		project  string
+		domain   string
+		want     string
 	}{
-		{ProjectDomain, "project", "production", "project-production"},
-		{20 /*Dummy enum value that is not supported*/, "project", "development", "project-development"},
-		{Domain, "project", "production", "production"},
+		{"prefix-{{ project }}-{{ domain }}", "flytesnacks", "production", "prefix-flytesnacks-production"},
+		{"{{ domain }}", "flytesnacks", "production", "production"},
+		{"{{ project }}", "flytesnacks", "production", "flytesnacks"},
 	}
 
 	for _, tc := range testCases {
-		got := GetNamespaceName(tc.mapping, tc.project, tc.domain)
+		got := GetNamespaceName(tc.template, tc.project, tc.domain)
 		assert.Equal(t, got, tc.want)
 	}
 }

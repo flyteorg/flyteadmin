@@ -1,18 +1,22 @@
 package transformers
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/jsonpb"
+	"google.golang.org/protobuf/types/known/structpb"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	ptypesStruct "github.com/golang/protobuf/ptypes/struct"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -46,6 +50,19 @@ var customInfo = ptypesStruct.Struct{
 			},
 		},
 	},
+}
+
+func transformMapToStructPB(t *testing.T, thing map[string]string) *structpb.Struct {
+	b, err := json.Marshal(thing)
+	if err != nil {
+		t.Fatal(t, err)
+	}
+
+	thingAsCustom := &structpb.Struct{}
+	if err := jsonpb.UnmarshalString(string(b), thingAsCustom); err != nil {
+		t.Fatal(t, err)
+	}
+	return thingAsCustom
 }
 
 func TestAddTaskStartedState(t *testing.T) {
@@ -134,6 +151,8 @@ func TestCreateTaskExecutionModelQueued(t *testing.T) {
 				RetryAttempt:          1,
 				InputUri:              "input uri",
 				OccurredAt:            taskEventOccurredAtProto,
+				Reason:                "Task was scheduled",
+				TaskType:              "sidecar",
 			},
 		},
 	})
@@ -144,6 +163,8 @@ func TestCreateTaskExecutionModelQueued(t *testing.T) {
 		StartedAt: nil,
 		CreatedAt: taskEventOccurredAtProto,
 		UpdatedAt: taskEventOccurredAtProto,
+		Reason:    "Task was scheduled",
+		TaskType:  "sidecar",
 	}
 
 	expectedClosureBytes, err := proto.Marshal(expectedClosure)
@@ -269,6 +290,9 @@ func TestUpdateTaskExecutionModelRunningToFailed(t *testing.T) {
 				Uri: "uri_b",
 			},
 		},
+		CustomInfo: transformMapToStructPB(t, map[string]string{
+			"key1": "value1",
+		}),
 	}
 
 	closureBytes, err := proto.Marshal(existingClosure)
@@ -327,7 +351,10 @@ func TestUpdateTaskExecutionModelRunningToFailed(t *testing.T) {
 					Uri: "uri_c",
 				},
 			},
-			CustomInfo: &customInfo,
+			CustomInfo: transformMapToStructPB(t, map[string]string{
+				"key1": "value1 updated",
+			}),
+			Reason: "task failed",
 		},
 	}
 
@@ -354,7 +381,10 @@ func TestUpdateTaskExecutionModelRunningToFailed(t *testing.T) {
 				Uri: "uri_a",
 			},
 		},
-		CustomInfo: &customInfo,
+		CustomInfo: transformMapToStructPB(t, map[string]string{
+			"key1": "value1 updated",
+		}),
+		Reason: "task failed",
 	}
 
 	expectedClosureBytes, err := proto.Marshal(expectedClosure)
@@ -522,6 +552,81 @@ func TestMergeLogs(t *testing.T) {
 		{
 			existing: []*core.TaskLog{
 				{
+					Uri: "uri_a",
+				},
+				{
+					Uri: "uri_b",
+				},
+			},
+			latest: []*core.TaskLog{
+				{
+					Uri: "uri_b",
+				},
+				{
+					Uri: "uri_c",
+				},
+			},
+			expected: []*core.TaskLog{
+				{
+					Uri: "uri_b",
+				},
+				{
+					Uri: "uri_c",
+				},
+				{
+					Uri: "uri_a",
+				},
+			},
+			name: "Merge logs with empty names",
+		},
+		{
+			existing: []*core.TaskLog{
+				{
+					Uri:  "uri_a",
+					Name: "name_a",
+				},
+				{
+					Uri:  "uri_b_old",
+					Name: "name_b",
+				},
+				{
+					Uri:  "uri_c",
+					Name: "name_c",
+				},
+			},
+			latest: []*core.TaskLog{
+				{
+					Uri:  "uri_b",
+					Name: "name_b",
+				},
+				{
+					Uri:  "uri_d",
+					Name: "name_d",
+				},
+			},
+			expected: []*core.TaskLog{
+				{
+					Uri:  "uri_b",
+					Name: "name_b",
+				},
+				{
+					Uri:  "uri_d",
+					Name: "name_d",
+				},
+				{
+					Uri:  "uri_a",
+					Name: "name_a",
+				},
+				{
+					Uri:  "uri_c",
+					Name: "name_c",
+				},
+			},
+			name: "Merge unique logs by name",
+		},
+		{
+			existing: []*core.TaskLog{
+				{
 					Uri:  "uri_a",
 					Name: "name_a",
 				},
@@ -605,4 +710,51 @@ func TestMergeLogs(t *testing.T) {
 			assert.True(t, proto.Equal(expectedLog, actual[idx]), fmt.Sprintf("%s failed", mergeTestCase.name))
 		}
 	}
+}
+
+func TestMergeCustoms(t *testing.T) {
+	t.Run("nothing to do", func(t *testing.T) {
+		custom, err := mergeCustom(nil, nil)
+		assert.NoError(t, err)
+		assert.Nil(t, custom)
+	})
+
+	// Turn JSON into a protobuf struct
+	existingCustom := transformMapToStructPB(t, map[string]string{
+		"foo": "bar",
+		"1":   "value1",
+	})
+	latestCustom := transformMapToStructPB(t, map[string]string{
+		"foo": "something different",
+		"2":   "value2",
+	})
+
+	t.Run("use existing", func(t *testing.T) {
+		mergedCustom, err := mergeCustom(existingCustom, nil)
+		assert.Nil(t, err)
+		assert.True(t, proto.Equal(mergedCustom, existingCustom))
+	})
+	t.Run("use latest", func(t *testing.T) {
+		mergedCustom, err := mergeCustom(nil, latestCustom)
+		assert.Nil(t, err)
+		assert.True(t, proto.Equal(mergedCustom, latestCustom))
+	})
+	t.Run("merge", func(t *testing.T) {
+		mergedCustom, err := mergeCustom(existingCustom, latestCustom)
+		assert.Nil(t, err)
+
+		var marshaler jsonpb.Marshaler
+		mergedJSON, err := marshaler.MarshalToString(mergedCustom)
+		assert.Nil(t, err)
+
+		var mergedMap map[string]string
+		err = json.Unmarshal([]byte(mergedJSON), &mergedMap)
+		assert.Nil(t, err)
+		assert.EqualValues(t, map[string]string{
+			"1":   "value1",
+			"foo": "something different",
+			"2":   "value2",
+		}, mergedMap)
+
+	})
 }

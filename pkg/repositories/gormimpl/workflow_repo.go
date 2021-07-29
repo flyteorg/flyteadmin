@@ -3,12 +3,12 @@ package gormimpl
 import (
 	"context"
 
+	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/jinzhu/gorm"
-	"github.com/lyft/flyteadmin/pkg/repositories/errors"
-	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytestdlib/promutils"
 )
 
 const workflowTableName = "workflows"
@@ -30,7 +30,7 @@ func (r *WorkflowRepo) Create(ctx context.Context, input models.Workflow) error 
 	return nil
 }
 
-func (r *WorkflowRepo) Get(ctx context.Context, input interfaces.GetResourceInput) (models.Workflow, error) {
+func (r *WorkflowRepo) Get(ctx context.Context, input interfaces.Identifier) (models.Workflow, error) {
 	var workflow models.Workflow
 	timer := r.metrics.GetDuration.Start()
 	tx := r.db.Where(&models.Workflow{
@@ -40,7 +40,7 @@ func (r *WorkflowRepo) Get(ctx context.Context, input interfaces.GetResourceInpu
 			Name:    input.Name,
 			Version: input.Version,
 		},
-	}).First(&workflow)
+	}).Take(&workflow)
 	timer.Stop()
 	if tx.Error != nil {
 		return models.Workflow{}, r.errorTransformer.ToFlyteAdminError(tx.Error)

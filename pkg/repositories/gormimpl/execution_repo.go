@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lyft/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteadmin/pkg/common"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
+	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/jinzhu/gorm"
-	"github.com/lyft/flyteadmin/pkg/repositories/errors"
-	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
-	"github.com/lyft/flytestdlib/promutils"
 )
 
 // Implementation of ExecutionInterface.
@@ -32,7 +32,7 @@ func (r *ExecutionRepo) Create(ctx context.Context, input models.Execution) erro
 	return nil
 }
 
-func (r *ExecutionRepo) Get(ctx context.Context, input interfaces.GetResourceInput) (models.Execution, error) {
+func (r *ExecutionRepo) Get(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
 	var execution models.Execution
 	timer := r.metrics.GetDuration.Start()
 	tx := r.db.Where(&models.Execution{
@@ -41,7 +41,7 @@ func (r *ExecutionRepo) Get(ctx context.Context, input interfaces.GetResourceInp
 			Domain:  input.Domain,
 			Name:    input.Name,
 		},
-	}).First(&execution)
+	}).Take(&execution)
 	timer.Stop()
 	if tx.Error != nil {
 		return models.Execution{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
@@ -56,44 +56,7 @@ func (r *ExecutionRepo) Get(ctx context.Context, input interfaces.GetResourceInp
 	return execution, nil
 }
 
-func (r *ExecutionRepo) GetByID(ctx context.Context, id uint) (models.Execution, error) {
-	var execution models.Execution
-	timer := r.metrics.GetDuration.Start()
-	tx := r.db.Where(&models.Execution{
-		BaseModel: models.BaseModel{
-			ID: id,
-		},
-	}).First(&execution)
-	timer.Stop()
-	if tx.Error != nil {
-		return models.Execution{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
-	}
-	if tx.RecordNotFound() {
-		return models.Execution{}, errors.GetMissingEntityByIDError("execution")
-	}
-	return execution, nil
-}
-
-func (r *ExecutionRepo) Update(ctx context.Context, event models.ExecutionEvent, execution models.Execution) error {
-	timer := r.metrics.UpdateDuration.Start()
-	defer timer.Stop()
-	// Use a transaction to guarantee no partial updates.
-	tx := r.db.Begin()
-	if err := tx.Create(&event).Error; err != nil {
-		tx.Rollback()
-		return r.errorTransformer.ToFlyteAdminError(err)
-	}
-	if err := r.db.Model(&execution).Updates(execution).Error; err != nil {
-		tx.Rollback()
-		return r.errorTransformer.ToFlyteAdminError(err)
-	}
-	if err := tx.Commit().Error; err != nil {
-		return r.errorTransformer.ToFlyteAdminError(err)
-	}
-	return nil
-}
-
-func (r *ExecutionRepo) UpdateExecution(ctx context.Context, execution models.Execution) error {
+func (r *ExecutionRepo) Update(ctx context.Context, execution models.Execution) error {
 	timer := r.metrics.UpdateDuration.Start()
 	tx := r.db.Model(&execution).Updates(execution)
 	timer.Stop()
@@ -145,6 +108,24 @@ func (r *ExecutionRepo) List(ctx context.Context, input interfaces.ListResourceI
 	return interfaces.ExecutionCollectionOutput{
 		Executions: executions,
 	}, nil
+}
+
+func (r *ExecutionRepo) Exists(ctx context.Context, input interfaces.Identifier) (bool, error) {
+	var execution models.Execution
+	timer := r.metrics.ExistsDuration.Start()
+	// Only select the id field (uint) to check for existence.
+	tx := r.db.Select(ID).Where(&models.Execution{
+		ExecutionKey: models.ExecutionKey{
+			Project: input.Project,
+			Domain:  input.Domain,
+			Name:    input.Name,
+		},
+	}).Take(&execution)
+	timer.Stop()
+	if tx.Error != nil {
+		return false, r.errorTransformer.ToFlyteAdminError(tx.Error)
+	}
+	return !tx.RecordNotFound(), nil
 }
 
 // Returns an instance of ExecutionRepoInterface

@@ -7,18 +7,18 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/flyteorg/flyteadmin/pkg/errors"
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/validation"
+	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/repositories"
+	repositoryInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
+	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/lyft/flyteadmin/pkg/errors"
-	"github.com/lyft/flyteadmin/pkg/manager/impl/validation"
-	"github.com/lyft/flyteadmin/pkg/manager/interfaces"
-	"github.com/lyft/flyteadmin/pkg/repositories"
-	repositoryInterfaces "github.com/lyft/flyteadmin/pkg/repositories/interfaces"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
-	"github.com/lyft/flyteadmin/pkg/repositories/transformers"
-	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytestdlib/logger"
 	"google.golang.org/grpc/codes"
 )
 
@@ -81,7 +81,7 @@ func CreateOrGetWorkflowModel(
 		Name:         generateWorkflowNameFromTask(taskIdentifier.Name),
 		Version:      taskIdentifier.Version,
 	}
-	workflowModel, err := db.WorkflowRepo().Get(ctx, repositoryInterfaces.GetResourceInput{
+	workflowModel, err := db.WorkflowRepo().Get(ctx, repositoryInterfaces.Identifier{
 		Project: workflowIdentifier.Project,
 		Domain:  workflowIdentifier.Domain,
 		Name:    workflowIdentifier.Name,
@@ -145,7 +145,7 @@ func CreateOrGetWorkflowModel(
 			logger.Warningf(ctx, "Failed to set skeleton workflow state to system-generated: %v", err)
 			return nil, err
 		}
-		workflowModel, err = db.WorkflowRepo().Get(ctx, repositoryInterfaces.GetResourceInput{
+		workflowModel, err = db.WorkflowRepo().Get(ctx, repositoryInterfaces.Identifier{
 			Project: workflowIdentifier.Project,
 			Domain:  workflowIdentifier.Domain,
 			Name:    workflowIdentifier.Name,

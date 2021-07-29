@@ -1,8 +1,8 @@
 package config
 
 import (
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/jinzhu/gorm"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
 	gormigrate "gopkg.in/gormigrate.v1"
 )
 
@@ -294,6 +294,15 @@ var Migrations = []*gormigrate.Migration{
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return tx.Model(&models.Execution{}).DropColumn("user").Error
+		},
+	},
+	{
+		ID: "2021-04-19-node-execution_dynamic-workflow",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&models.NodeExecution{}).Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Model(&models.NodeExecution{}).DropColumn("dynamic_workflow_remote_closure_reference").Error
 		},
 	},
 }

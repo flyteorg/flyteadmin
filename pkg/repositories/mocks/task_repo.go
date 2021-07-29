@@ -4,12 +4,12 @@ package mocks
 import (
 	"context"
 
-	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 )
 
 type CreateTaskFunc func(input models.Task) error
-type GetTaskFunc func(input interfaces.GetResourceInput) (models.Task, error)
+type GetTaskFunc func(input interfaces.Identifier) (models.Task, error)
 type ListTaskFunc func(input interfaces.ListResourceInput) (interfaces.TaskCollectionOutput, error)
 type ListTaskIdentifiersFunc func(input interfaces.ListResourceInput) (interfaces.TaskCollectionOutput, error)
 
@@ -31,7 +31,7 @@ func (r *MockTaskRepo) SetCreateCallback(createFunction CreateTaskFunc) {
 	r.createFunction = createFunction
 }
 
-func (r *MockTaskRepo) Get(ctx context.Context, input interfaces.GetResourceInput) (models.Task, error) {
+func (r *MockTaskRepo) Get(ctx context.Context, input interfaces.Identifier) (models.Task, error) {
 	if r.getFunction != nil {
 		return r.getFunction(input)
 	}

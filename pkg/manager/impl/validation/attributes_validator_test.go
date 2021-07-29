@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/lyft/flyteadmin/pkg/manager/impl/shared"
-	"github.com/lyft/flyteadmin/pkg/manager/impl/testutils"
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
 
-	"github.com/lyft/flyteadmin/pkg/errors"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteadmin/pkg/errors"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 )
@@ -83,6 +83,18 @@ func TestValidateMatchingAttributes(t *testing.T) {
 			},
 			"foo",
 			admin.MatchableResource_PLUGIN_OVERRIDE,
+			nil,
+		},
+		{
+			&admin.MatchingAttributes{
+				Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
+					WorkflowExecutionConfig: &admin.WorkflowExecutionConfig{
+						MaxParallelism: 100,
+					},
+				},
+			},
+			"foo",
+			admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
 			nil,
 		},
 	}

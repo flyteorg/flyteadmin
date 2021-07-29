@@ -50,6 +50,8 @@ type ApplicationConfig struct {
 	MetadataStoragePrefix []string `json:"metadataStoragePrefix"`
 	// Event version to be used for Flyte workflows
 	EventVersion int `json:"eventVersion"`
+	// Specifies the shared buffer size which is used to queue asynchronous event writes.
+	AsyncEventsBufferSize int `json:"asyncEventsBufferSize"`
 }
 
 // This section holds common config for AWS
@@ -136,8 +138,17 @@ type NotificationsProcessorConfig struct {
 	AccountID string `json:"accountId"`
 }
 
+type EmailServerConfig struct {
+	ServiceName string `json:"serviceName"`
+	// Only one of these should be set.
+	APIKeyEnvVar   string `json:"apiKeyEnvVar"`
+	APIKeyFilePath string `json:"apiKeyFilePath"`
+}
+
 // This section handles the configuration of notifications emails.
 type NotificationsEmailerConfig struct {
+	// For use with external email services (mailchimp/sendgrid)
+	EmailerConfig EmailServerConfig `json:"emailServerConfig"`
 	// The optionally templatized subject used in notification emails.
 	Subject string `json:"subject"`
 	// The optionally templatized sender used in notification emails.

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lyft/flyteadmin/pkg/common"
-	"github.com/lyft/flyteadmin/pkg/errors"
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 )
@@ -22,6 +22,7 @@ func TestLogBuilderLog(t *testing.T) {
 		ClientIds:     []string{"12345"},
 		TokenIssuedAt: tokenIssuedAt,
 		ClientIP:      "192.0.2.1:25",
+		Subject:       "prince",
 	})
 	builder := NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"my_method", map[string]string{

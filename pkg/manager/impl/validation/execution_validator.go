@@ -5,14 +5,14 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/lyft/flyteadmin/pkg/repositories"
+	"github.com/flyteorg/flyteadmin/pkg/repositories"
 
-	"github.com/lyft/flyteadmin/pkg/errors"
-	"github.com/lyft/flyteadmin/pkg/manager/impl/shared"
-	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytepropeller/pkg/compiler/validators"
+	"github.com/flyteorg/flyteadmin/pkg/errors"
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
+	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytepropeller/pkg/compiler/validators"
 	"google.golang.org/grpc/codes"
 )
 
@@ -50,7 +50,7 @@ func ValidateExecutionRequest(ctx context.Context, request admin.ExecutionCreate
 		return shared.GetMissingArgumentError(shared.Spec)
 	}
 	// TODO(katrogan): Change the name of Spec.LaunchPlan to something more generic to permit reference Tasks.
-	// https://github.com/lyft/flyte/issues/262
+	// https://github.com/flyteorg/flyte/issues/262
 	if err := ValidateIdentifierFieldsSet(request.Spec.LaunchPlan); err != nil {
 		return err
 	}
@@ -58,11 +58,6 @@ func ValidateExecutionRequest(ctx context.Context, request admin.ExecutionCreate
 		return errors.NewFlyteAdminErrorf(codes.InvalidArgument,
 			"Invalid reference entity resource type [%v], only [%+v] allowed",
 			request.Spec.LaunchPlan.ResourceType, acceptedReferenceLaunchTypes)
-	}
-	if request.Spec.LaunchPlan.ResourceType == core.ResourceType_TASK {
-		if err := validateLaunchSingleTaskExecutionReq(request); err != nil {
-			return err
-		}
 	}
 	if err := validateLiteralMap(request.Inputs, shared.Inputs); err != nil {
 		return err
@@ -159,15 +154,6 @@ func ValidateWorkflowExecutionIdentifier(identifier *core.WorkflowExecutionIdent
 	}
 	if err := ValidateEmptyStringField(identifier.Name, shared.Name); err != nil {
 		return err
-	}
-	return nil
-}
-
-// Because single task executions don't use launch plans, some parameters that are optional overrides for conventional
-// ExecutionCreateRequests are actually mandatory.
-func validateLaunchSingleTaskExecutionReq(request admin.ExecutionCreateRequest) error {
-	if request.Spec.AuthRole == nil || request.Spec.AuthRole.GetMethod() == nil {
-		return shared.GetMissingArgumentError(shared.AuthRole)
 	}
 	return nil
 }

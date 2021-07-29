@@ -5,21 +5,21 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/lyft/flyteadmin/pkg/manager/impl/testutils"
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
 
-	runtimeMocks "github.com/lyft/flyteadmin/pkg/runtime/mocks"
+	runtimeMocks "github.com/flyteorg/flyteadmin/pkg/runtime/mocks"
 
+	managerMocks "github.com/flyteorg/flyteadmin/pkg/manager/mocks"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	repositoryMocks "github.com/flyteorg/flyteadmin/pkg/repositories/mocks"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/golang/protobuf/proto"
-	managerMocks "github.com/lyft/flyteadmin/pkg/manager/mocks"
-	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
-	repositoryMocks "github.com/lyft/flyteadmin/pkg/repositories/mocks"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 
-	flyteAdminErrors "github.com/lyft/flyteadmin/pkg/errors"
+	flyteAdminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
 )
 
 func TestGenerateNodeNameFromTask(t *testing.T) {
@@ -78,7 +78,7 @@ func TestCreateOrGetWorkflowModel(t *testing.T) {
 	}
 	repository.WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetCreateCallback(workflowcreateFunc)
 
-	workflowGetFunc := func(input interfaces.GetResourceInput) (models.Workflow, error) {
+	workflowGetFunc := func(input interfaces.Identifier) (models.Workflow, error) {
 		if getCalledCount == 0 {
 			getCalledCount++
 			return models.Workflow{}, flyteAdminErrors.NewFlyteAdminErrorf(codes.NotFound, "not found")
@@ -176,7 +176,7 @@ func TestCreateOrGetLaunchPlan(t *testing.T) {
 	}
 	repository.LaunchPlanRepo().(*repositoryMocks.MockLaunchPlanRepo).SetCreateCallback(launchPlanCreateFunc)
 
-	launchPlanGetFunc := func(input interfaces.GetResourceInput) (models.LaunchPlan, error) {
+	launchPlanGetFunc := func(input interfaces.Identifier) (models.LaunchPlan, error) {
 		if getCalledCount == 0 {
 			getCalledCount++
 			return models.LaunchPlan{}, flyteAdminErrors.NewFlyteAdminErrorf(codes.NotFound, "not found")
@@ -223,7 +223,7 @@ func TestCreateOrGetLaunchPlan(t *testing.T) {
 	spec := admin.ExecutionSpec{
 		LaunchPlan: taskIdentifier,
 		AuthRole: &admin.AuthRole{
-			Method: &admin.AuthRole_AssumableIamRole{AssumableIamRole: "assumable_role"},
+			AssumableIamRole: "assumable_role",
 		},
 	}
 	launchPlan, err := CreateOrGetLaunchPlan(

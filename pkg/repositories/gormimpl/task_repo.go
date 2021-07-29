@@ -3,14 +3,14 @@ package gormimpl
 import (
 	"context"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
-	"github.com/lyft/flytestdlib/promutils"
+	"github.com/flyteorg/flytestdlib/promutils"
 
+	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/jinzhu/gorm"
-	"github.com/lyft/flyteadmin/pkg/repositories/errors"
-	"github.com/lyft/flyteadmin/pkg/repositories/interfaces"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
 )
 
 // Implementation of TaskRepoInterface.
@@ -30,7 +30,7 @@ func (r *TaskRepo) Create(ctx context.Context, input models.Task) error {
 	return nil
 }
 
-func (r *TaskRepo) Get(ctx context.Context, input interfaces.GetResourceInput) (models.Task, error) {
+func (r *TaskRepo) Get(ctx context.Context, input interfaces.Identifier) (models.Task, error) {
 	var task models.Task
 	timer := r.metrics.GetDuration.Start()
 	tx := r.db.Where(&models.Task{
@@ -40,7 +40,7 @@ func (r *TaskRepo) Get(ctx context.Context, input interfaces.GetResourceInput) (
 			Name:    input.Name,
 			Version: input.Version,
 		},
-	}).First(&task)
+	}).Take(&task)
 	timer.Stop()
 	if tx.Error != nil {
 		return models.Task{}, r.errorTransformer.ToFlyteAdminError(tx.Error)

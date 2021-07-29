@@ -5,16 +5,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/golang/protobuf/proto"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/lyft/flyteadmin/pkg/manager/impl/testutils"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 )
 
 func getRunningExecutionModel(specBytes []byte, existingClosureBytes []byte, startedAt time.Time) models.Execution {
@@ -38,8 +38,10 @@ func getRunningExecutionModel(specBytes []byte, existingClosureBytes []byte, sta
 
 func TestCreateExecutionModel(t *testing.T) {
 	execRequest := testutils.GetExecutionRequest()
+	principal := "principal"
 	execRequest.Spec.Metadata = &admin.ExecutionMetadata{
-		Mode: admin.ExecutionMetadata_SYSTEM,
+		Mode:      admin.ExecutionMetadata_SYSTEM,
+		Principal: principal,
 	}
 	lpID := uint(33)
 	wfID := uint(23)
@@ -53,7 +55,6 @@ func TestCreateExecutionModel(t *testing.T) {
 		Version: "version",
 	}
 
-	principal := "principal"
 	cluster := "cluster"
 	execution, err := CreateExecutionModel(CreateExecutionModelInput{
 		WorkflowExecutionID: core.WorkflowExecutionIdentifier{
@@ -69,7 +70,6 @@ func TestCreateExecutionModel(t *testing.T) {
 		WorkflowIdentifier:    workflowIdentifier,
 		ParentNodeExecutionID: nodeID,
 		SourceExecutionID:     sourceID,
-		Principal:             principal,
 		Cluster:               cluster,
 	})
 	assert.NoError(t, err)
@@ -418,57 +418,6 @@ func TestFromExecutionModel_Aborted(t *testing.T) {
 	execution, err = FromExecutionModel(executionModel)
 	assert.Nil(t, err)
 	assert.Empty(t, execution.Closure.GetAbortCause())
-}
-
-func TestFromExecutionModelWithReferenceExecution(t *testing.T) {
-	spec := testutils.GetExecutionRequest().Spec
-	spec.Metadata = &admin.ExecutionMetadata{
-		Mode: admin.ExecutionMetadata_RELAUNCH,
-	}
-	specBytes, _ := proto.Marshal(spec)
-	phase := core.WorkflowExecution_RUNNING.String()
-	startedAt := time.Date(2018, 8, 30, 0, 0, 0, 0, time.UTC)
-	startedAtProto, _ := ptypes.TimestampProto(startedAt)
-	closure := admin.ExecutionClosure{
-		ComputedInputs: spec.Inputs,
-		Phase:          core.WorkflowExecution_RUNNING,
-		StartedAt:      startedAtProto,
-	}
-	closureBytes, _ := proto.Marshal(&closure)
-
-	executionModel := models.Execution{
-		ExecutionKey: models.ExecutionKey{
-			Project: "project",
-			Domain:  "domain",
-			Name:    "name",
-		},
-		Spec:         specBytes,
-		Phase:        phase,
-		Closure:      closureBytes,
-		LaunchPlanID: uint(1),
-		WorkflowID:   uint(2),
-		StartedAt:    &startedAt,
-	}
-	execution, err := FromExecutionModelWithReferenceExecution(executionModel, nil)
-	assert.Nil(t, err)
-	assert.True(t, proto.Equal(&admin.Execution{
-		Id: &core.WorkflowExecutionIdentifier{
-			Project: "project",
-			Domain:  "domain",
-			Name:    "name",
-		},
-		Spec:    spec,
-		Closure: &closure,
-	}, execution))
-
-	referenceExecutionID := &core.WorkflowExecutionIdentifier{
-		Project: "ref_project",
-		Domain:  "ref_domain",
-		Name:    "ref_name",
-	}
-	execution, err = FromExecutionModelWithReferenceExecution(executionModel, referenceExecutionID)
-	assert.Nil(t, err)
-	assert.True(t, proto.Equal(referenceExecutionID, execution.Spec.Metadata.ReferenceExecution))
 }
 
 func TestFromExecutionModels(t *testing.T) {

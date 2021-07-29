@@ -3,12 +3,13 @@ package impl
 import (
 	"testing"
 
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
+
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytepropeller/pkg/compiler/common"
 	"github.com/golang/protobuf/proto"
-	"github.com/lyft/flyteadmin/pkg/repositories/models"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytepropeller/pkg/compiler/common"
-	"github.com/lyft/flytepropeller/pkg/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,7 +28,7 @@ var inputs = core.ParameterMap{
 				Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 			},
 			Behavior: &core.Parameter_Default{
-				Default: utils.MustMakeLiteral("foo-value"),
+				Default: coreutils.MustMakeLiteral("foo-value"),
 			},
 		},
 	},

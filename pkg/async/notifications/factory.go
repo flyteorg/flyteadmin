@@ -2,14 +2,15 @@ package notifications
 
 import (
 	"context"
+	"fmt"
 	"time"
 
-	"github.com/lyft/flyteadmin/pkg/async"
+	"github.com/flyteorg/flyteadmin/pkg/async"
 
-	"github.com/lyft/flyteadmin/pkg/async/notifications/implementations"
-	"github.com/lyft/flyteadmin/pkg/async/notifications/interfaces"
-	runtimeInterfaces "github.com/lyft/flyteadmin/pkg/runtime/interfaces"
-	"github.com/lyft/flytestdlib/logger"
+	"github.com/flyteorg/flyteadmin/pkg/async/notifications/implementations"
+	"github.com/flyteorg/flyteadmin/pkg/async/notifications/interfaces"
+	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	"github.com/flyteorg/flytestdlib/logger"
 
 	"github.com/NYTimes/gizmo/pubsub"
 	gizmoAWS "github.com/NYTimes/gizmo/pubsub/aws"
@@ -18,8 +19,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ses"
 
-	"github.com/lyft/flyteadmin/pkg/common"
-	"github.com/lyft/flytestdlib/promutils"
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	"github.com/flyteorg/flytestdlib/promutils"
 )
 
 const maxRetries = 3
@@ -41,6 +42,17 @@ type EmailerConfig struct {
 }
 
 func GetEmailer(config runtimeInterfaces.NotificationsConfig, scope promutils.Scope) interfaces.Emailer {
+	// If an external email service is specified use that instead.
+	// TODO: Handling of this is messy, see https://github.com/flyteorg/flyte/issues/1063
+	if config.NotificationsEmailerConfig.EmailerConfig.ServiceName != "" {
+		switch config.NotificationsEmailerConfig.EmailerConfig.ServiceName {
+		case implementations.Sendgrid:
+			return implementations.NewSendGridEmailer(config, scope)
+		default:
+			panic(fmt.Errorf("No matching email implementation for %s", config.NotificationsEmailerConfig.EmailerConfig.ServiceName))
+		}
+	}
+
 	switch config.Type {
 	case common.AWS:
 		awsConfig := aws.NewConfig().WithRegion(config.Region).WithMaxRetries(maxRetries)
@@ -81,6 +93,9 @@ func NewNotificationsProcessor(config runtimeInterfaces.NotificationsConfig, sco
 		var err error
 		err = async.Retry(reconnectAttempts, reconnectDelay, func() error {
 			sub, err = gizmoAWS.NewSubscriber(sqsConfig)
+			if err != nil {
+				logger.Warnf(context.TODO(), "Failed to initialize new gizmo aws subscriber with config [%+v] and err: %v", sqsConfig, err)
+			}
 			return err
 		})
 
