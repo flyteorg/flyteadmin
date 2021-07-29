@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreos/go-oidc/oidc"
+	"github.com/coreos/go-oidc"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/lestrrat-go/jwx/jwk"
