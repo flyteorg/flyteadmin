@@ -10,12 +10,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/coreos/go-oidc/oidc"
 	"github.com/flyteorg/flyteadmin/auth/config"
 	"github.com/flyteorg/flyteadmin/auth/interfaces/mocks"
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	stdConfig "github.com/flyteorg/flytestdlib/config"
 
-	"github.com/coreos/go-oidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"golang.org/x/oauth2"

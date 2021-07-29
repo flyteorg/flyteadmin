@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/coreos/go-oidc/oidc"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -15,7 +16,6 @@ import (
 	"github.com/ory/fosite"
 	fositeOAuth2 "github.com/ory/fosite/handler/oauth2"
 
-	"github.com/coreos/go-oidc"
 	"github.com/flyteorg/flyteadmin/auth/config"
 	"golang.org/x/oauth2"
 )

@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/go-oidc/oidc"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 
-	"github.com/coreos/go-oidc"
 	"github.com/flyteorg/flyteadmin/auth/config"
 	"github.com/flyteorg/flyteadmin/auth/interfaces"
 	"github.com/flyteorg/flytestdlib/errors"

@@ -155,7 +155,7 @@ func TestExecuteWorkflowHappyCase(t *testing.T) {
 			expectedAnnotations := map[string]string{
 				"iam.amazonaws.com/role":  "pbatchworker-d",
 				"lyft.net/iamwait-inject": "required",
-				"customannotation": "annotationval",
+				"customannotation":        "annotationval",
 			}
 			assert.EqualValues(t, expectedAnnotations, workflow.Annotations)
 
@@ -229,7 +229,7 @@ func TestExecuteWorkflowCallFailed(t *testing.T) {
 			expectedAnnotations := map[string]string{
 				"iam.amazonaws.com/role":  "role-1",
 				"lyft.net/iamwait-inject": "required",
-				roleNameKey: testRole,
+				roleNameKey:               testRole,
 			}
 			assert.EqualValues(t, expectedAnnotations, workflow.Annotations)
 			assert.Empty(t, opts)
@@ -461,7 +461,7 @@ func TestAddPermissions(t *testing.T) {
 		KubernetesServiceAccount: testK8sServiceAccount,
 	}, &flyteWf, "flyte", "staging")
 	assert.EqualValues(t, flyteWf.Annotations, map[string]string{
-		roleNameKey: "flytebatchworker-staging",
+		roleNameKey:               "flytebatchworker-staging",
 		"lyft.net/iamwait-inject": "required",
 	})
 	assert.Equal(t, testK8sServiceAccount, flyteWf.ServiceAccountName)
@@ -510,7 +510,7 @@ func TestAddPermissionsLyft(t *testing.T) {
 	propeller := getFlytePropellerForTest(cluster, &FlyteWorkflowBuilderTest{})
 	flyteWf := v1alpha1.FlyteWorkflow{}
 	propeller.addPermissions(&admin.AuthRole{
-		AssumableIamRole:         testRole,
+		AssumableIamRole: testRole,
 	}, &flyteWf, "flyte", "staging")
 	assert.EqualValues(t, flyteWf.Annotations, map[string]string{
 		roleNameKey:               testRole,

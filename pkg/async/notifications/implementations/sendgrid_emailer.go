@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 
 	"github.com/flyteorg/flyteadmin/pkg/async/notifications/interfaces"
