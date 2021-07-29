@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/go-oidc/oidc"
+	"github.com/coreos/go-oidc"
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"

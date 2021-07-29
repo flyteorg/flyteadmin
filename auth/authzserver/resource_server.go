@@ -12,7 +12,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/sets"
 
-	"github.com/coreos/go-oidc/oidc"
+	"github.com/coreos/go-oidc"
 	"github.com/flyteorg/flytestdlib/config"
 
 	authConfig "github.com/flyteorg/flyteadmin/auth/config"

@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/coreos/go-oidc/oidc"
+	"github.com/coreos/go-oidc"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 
 	"k8s.io/apimachinery/pkg/util/sets"

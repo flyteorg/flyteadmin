@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreos/go-oidc/oidc"
+	"github.com/coreos/go-oidc"
 	"github.com/flyteorg/flyteadmin/auth/config"
 	"github.com/flyteorg/flyteadmin/auth/interfaces/mocks"
 	"github.com/flyteorg/flyteadmin/pkg/common"
