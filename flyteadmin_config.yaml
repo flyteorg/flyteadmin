@@ -69,12 +69,15 @@ database:
 scheduler:
   eventScheduler:
     scheme: local
+    local:
     region: "my-region"
     scheduleRole: "arn:aws:iam::abc123:role/my-iam-role"
     targetName: "arn:aws:sqs:my-region:abc123:my-queue"
     scheduleNamePrefix: "flyte"
   workflowExecutor:
     scheme: local
+    local:
+      schedulerEpochTime:
     region: "my-region"
     scheduleQueueName: "won't-work-locally"
     accountId: "abc123"

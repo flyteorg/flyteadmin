@@ -3,13 +3,13 @@ package aws
 import (
 	"context"
 	"fmt"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"hash/fnv"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flytestdlib/logger"
 )
 
-func hashIdentifier(identifier admin.NamedEntityIdentifier) uint64 {
+func hashIdentifier(identifier core.Identifier) uint64 {
 	h := fnv.New64()
 	_, err := h.Write([]byte(fmt.Sprintf(scheduleNameInputsFormat,
 		identifier.Project, identifier.Domain, identifier.Name)))

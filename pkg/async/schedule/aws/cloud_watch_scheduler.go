@@ -3,6 +3,8 @@ package aws
 import (
 	"context"
 	"fmt"
+	appInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"strings"
 
 	"github.com/flyteorg/flyteadmin/pkg/async/schedule/aws/interfaces"
@@ -68,7 +70,7 @@ type cloudWatchScheduler struct {
 	metrics cloudWatchSchedulerMetrics
 }
 
-func getScheduleName(scheduleNamePrefix string, identifier admin.NamedEntityIdentifier) string {
+func getScheduleName(scheduleNamePrefix string, identifier core.Identifier) string {
 	hashedIdentifier := hashIdentifier(identifier)
 	if len(scheduleNamePrefix) > 0 {
 		return fmt.Sprintf(scheduleNameFormat, scheduleNamePrefix, hashedIdentifier)
@@ -76,7 +78,7 @@ func getScheduleName(scheduleNamePrefix string, identifier admin.NamedEntityIden
 	return fmt.Sprintf("%d", hashedIdentifier)
 }
 
-func getScheduleDescription(identifier admin.NamedEntityIdentifier) string {
+func getScheduleDescription(identifier core.Identifier) string {
 	return fmt.Sprintf(scheduleDescriptionFormat,
 		identifier.Project, identifier.Domain, identifier.Name)
 }
@@ -168,6 +170,33 @@ func (s *cloudWatchScheduler) AddSchedule(ctx context.Context, input scheduleInt
 	s.metrics.SchedulesAdded.Inc()
 	s.metrics.ActiveSchedules.Inc()
 	return nil
+}
+
+func (s *cloudWatchScheduler) CreateScheduleInput(ctx context.Context, appConfig *appInterfaces.SchedulerConfig,
+	identifier core.Identifier, schedule *admin.Schedule) (scheduleInterfaces.AddScheduleInput, error) {
+
+	payload, err := SerializeScheduleWorkflowPayload(
+		schedule.GetKickoffTimeInputArg(),
+		identifier)
+	if err != nil {
+		logger.Errorf(ctx, "failed to serialize schedule workflow payload for launch plan: %v with err: %v",
+			identifier, err)
+		return scheduleInterfaces.AddScheduleInput{}, err
+	}
+
+	// Backward compatible with old EvenSchedulerConfig structure
+	scheduleNamePrefix := appConfig.EventSchedulerConfig.ScheduleNamePrefix
+	if appConfig.EventSchedulerConfig.AWSSchedulerConfig != nil {
+		scheduleNamePrefix = appConfig.EventSchedulerConfig.AWSSchedulerConfig.ScheduleNamePrefix
+	}
+
+	addScheduleInput := scheduleInterfaces.AddScheduleInput{
+		Identifier:         identifier,
+		ScheduleExpression: *schedule,
+		Payload:            payload,
+		ScheduleNamePrefix: scheduleNamePrefix,
+	}
+	return addScheduleInput, nil
 }
 
 func isResourceNotFoundException(err error) bool {

@@ -1,5 +1,7 @@
 package interfaces
 
+import "time"
+
 // This configuration section is used to for initiating the database connection with the store that holds registered
 // entities (e.g. workflows, tasks, launch plans...)
 // This struct specifically maps to the flyteadmin config yaml structure.
@@ -69,6 +71,20 @@ type EventSchedulerConfig struct {
 	// Defines the cloud provider that backs the scheduler. In the absence of a specification the no-op, 'local'
 	// scheme is used.
 	Scheme string `json:"scheme"`
+
+	// Deprecated : Some cloud providers require a region to be set.
+	Region string `json:"region"`
+	// Deprecated : The role assumed to register and activate schedules.
+	ScheduleRole string `json:"scheduleRole"`
+	// Deprecated : The name of the queue for which scheduled events should enqueue.
+	TargetName string `json:"targetName"`
+	// Deprecated : Optional: The application-wide prefix to be applied for schedule names.
+	ScheduleNamePrefix string `json:"scheduleNamePrefix"`
+	AWSSchedulerConfig *AWSSchedulerConfig `json:"aws"`
+	FlyteSchedulerConfig *FlyteSchedulerConfig `json:"local"`
+}
+
+type AWSSchedulerConfig struct {
 	// Some cloud providers require a region to be set.
 	Region string `json:"region"`
 	// The role assumed to register and activate schedules.
@@ -79,11 +95,28 @@ type EventSchedulerConfig struct {
 	ScheduleNamePrefix string `json:"scheduleNamePrefix"`
 }
 
+// FlyteSchedulerConfig is the config for native or default flyte scheduler
+type FlyteSchedulerConfig struct {
+
+}
+
 // This section holds configuration for the executor that processes workflow scheduled events fired.
 type WorkflowExecutorConfig struct {
 	// Defines the cloud provider that backs the scheduler. In the absence of a specification the no-op, 'local'
 	// scheme is used.
 	Scheme string `json:"scheme"`
+	// Depecated : Some cloud providers require a region to be set.
+	Region string `json:"region"`
+	// Depecated : The name of the queue onto which scheduled events will enqueue.
+	ScheduleQueueName string `json:"scheduleQueueName"`
+	// Depecated : The account id (according to whichever cloud provider scheme is used) that has permission to read from the above
+	// queue.
+	AccountID string `json:"accountId"`
+	AWSWorkflowExecutorConfig *AWSWorkflowExecutorConfig `json:"aws"`
+	FlyteWorkflowExecutorConfig *FlyteWorkflowExecutorConfig `json:"local"`
+}
+
+type AWSWorkflowExecutorConfig struct {
 	// Some cloud providers require a region to be set.
 	Region string `json:"region"`
 	// The name of the queue onto which scheduled events will enqueue.
@@ -91,6 +124,11 @@ type WorkflowExecutorConfig struct {
 	// The account id (according to whichever cloud provider scheme is used) that has permission to read from the above
 	// queue.
 	AccountID string `json:"accountId"`
+}
+
+type FlyteWorkflowExecutorConfig struct {
+	SchedulerEpochTime *time.Time  `json:"schedulerEpochTime"`
+	ForceEpochTimeUsage bool		`json:"forceEpochTimeUsage"`
 }
 
 // This configuration is the base configuration for all scheduler-related set-up.

@@ -7,8 +7,6 @@ import (
 
 	"github.com/flyteorg/flytestdlib/contextutils"
 
-	"github.com/flyteorg/flyteadmin/pkg/async/schedule/aws"
-
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -157,28 +155,21 @@ func isScheduleEmpty(launchPlanSpec admin.LaunchPlanSpec) bool {
 	return true
 }
 
-func (m *LaunchPlanManager) enableSchedule(ctx context.Context, launchPlanIdentifier admin.NamedEntityIdentifier,
+func (m *LaunchPlanManager) enableSchedule(ctx context.Context, launchPlanIdentifier core.Identifier,
 	launchPlanSpec admin.LaunchPlanSpec) error {
 
-	payload, err := aws.SerializeScheduleWorkflowPayload(
-		launchPlanSpec.EntityMetadata.Schedule.GetKickoffTimeInputArg(),
-		launchPlanIdentifier)
+	addScheduleInput, err := m.scheduler.CreateScheduleInput(ctx,
+		m.config.ApplicationConfiguration().GetSchedulerConfig(), launchPlanIdentifier,
+		launchPlanSpec.EntityMetadata.Schedule)
 	if err != nil {
-		logger.Errorf(ctx, "failed to serialize schedule workflow payload for launch plan: %v with err: %v",
-			launchPlanIdentifier, err)
 		return err
 	}
-	addScheduleInput := scheduleInterfaces.AddScheduleInput{
-		Identifier:         launchPlanIdentifier,
-		ScheduleExpression: *launchPlanSpec.EntityMetadata.Schedule,
-		Payload:            payload,
-		ScheduleNamePrefix: m.config.ApplicationConfiguration().GetSchedulerConfig().EventSchedulerConfig.ScheduleNamePrefix,
-	}
+
 	return m.scheduler.AddSchedule(ctx, addScheduleInput)
 }
 
 func (m *LaunchPlanManager) disableSchedule(
-	ctx context.Context, launchPlanIdentifier admin.NamedEntityIdentifier) error {
+	ctx context.Context, launchPlanIdentifier core.Identifier) error {
 	return m.scheduler.RemoveSchedule(ctx, scheduleInterfaces.RemoveScheduleInput{
 		Identifier:         launchPlanIdentifier,
 		ScheduleNamePrefix: m.config.ApplicationConfiguration().GetSchedulerConfig().EventSchedulerConfig.ScheduleNamePrefix,
@@ -193,10 +184,11 @@ func (m *LaunchPlanManager) updateSchedules(
 		logger.Errorf(ctx, "failed to unmarshal newly enabled launch plan spec")
 		return errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal newly enabled launch plan spec")
 	}
-	launchPlanIdentifier := admin.NamedEntityIdentifier{
+	launchPlanIdentifier := core.Identifier{
 		Project: newlyActiveLaunchPlan.Project,
 		Domain:  newlyActiveLaunchPlan.Domain,
 		Name:    newlyActiveLaunchPlan.Name,
+		Version: newlyActiveLaunchPlan.Version,
 	}
 	var formerlyActiveLaunchPlanSpec admin.LaunchPlanSpec
 	if formerlyActiveLaunchPlan != nil {
@@ -259,10 +251,11 @@ func (m *LaunchPlanManager) disableLaunchPlan(ctx context.Context, request admin
 			"failed to unmarshal launch plan spec when disabling schedule for %+v", request.Id)
 	}
 	if launchPlanSpec.EntityMetadata != nil && launchPlanSpec.EntityMetadata.Schedule != nil {
-		err = m.disableSchedule(ctx, admin.NamedEntityIdentifier{
+		err = m.disableSchedule(ctx, core.Identifier{
 			Project: launchPlanModel.Project,
 			Domain:  launchPlanModel.Domain,
 			Name:    launchPlanModel.Name,
+			Version: launchPlanModel.Version,
 		})
 		if err != nil {
 			return nil, err
