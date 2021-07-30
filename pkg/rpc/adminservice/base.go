@@ -113,7 +113,7 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 
 	// Configure workflow scheduler async processes.
 	schedulerConfig := configuration.ApplicationConfiguration().GetSchedulerConfig()
-	workflowScheduler := schedule.NewWorkflowScheduler(schedule.WorkflowSchedulerConfig{
+	workflowScheduler := schedule.NewWorkflowScheduler(db, schedule.WorkflowSchedulerConfig{
 		Retries:         defaultRetries,
 		SchedulerConfig: *schedulerConfig,
 		Scope:           adminScope,
@@ -149,7 +149,7 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 		publisher, urlData, workflowManager, namedEntityManager, eventPublisher, executionEventWriter)
 	versionManager := manager.NewVersionManager()
 
-	scheduledWorkflowExecutor := workflowScheduler.GetWorkflowExecutor(executionManager, launchPlanManager)
+	scheduledWorkflowExecutor := workflowScheduler.GetWorkflowExecutor(db, executionManager, launchPlanManager, configuration)
 	logger.Info(context.Background(), "Successfully initialized a new scheduled workflow executor")
 	go func() {
 		logger.Info(context.Background(), "Starting the scheduled workflow executor")

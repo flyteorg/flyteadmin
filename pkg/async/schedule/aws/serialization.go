@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"time"
 
 	"github.com/flyteorg/flytestdlib/logger"
@@ -40,7 +41,7 @@ type ScheduledWorkflowExecutionRequest struct {
 
 // This produces a function that is used to serialize messages enqueued on the cloudwatch scheduler.
 func SerializeScheduleWorkflowPayload(
-	kickoffTimeArg string, launchPlanIdentifier admin.NamedEntityIdentifier) (*string, error) {
+	kickoffTimeArg string, launchPlanIdentifier core.Identifier) (*string, error) {
 	payload, err := proto.Marshal(&launchPlanIdentifier)
 	if err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "failed to marshall launch plan with err: %v", err)

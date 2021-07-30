@@ -305,4 +305,24 @@ var Migrations = []*gormigrate.Migration{
 			return tx.Model(&models.NodeExecution{}).DropColumn("dynamic_workflow_remote_closure_reference").Error
 		},
 	},
+
+	{
+		ID: "2021-06-22-schedulable_entities",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&models.SchedulableEntity{}).Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.DropTable("schedulable_entities").Error
+		},
+	},
+
+	{
+		ID: "2021-06-22-schedule_check_point",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&models.ScheduleCheckPoint{}).Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.DropTable("schedule_check_point").Error
+		},
+	},
 }
