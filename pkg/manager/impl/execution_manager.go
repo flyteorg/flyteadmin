@@ -611,25 +611,26 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 }
 
 func resolvePermissions(request *admin.ExecutionCreateRequest, launchPlan *admin.LaunchPlan) *admin.AuthRole {
-	if request.Spec.AuthRole != nil {
-		return request.Spec.AuthRole
+	authRole := admin.AuthRole{}
+
+	if request.Spec.AuthRole != nil && len(request.Spec.AuthRole.AssumableIamRole) > 0 {
+		authRole.AssumableIamRole = request.Spec.AuthRole.AssumableIamRole
+	} else if launchPlan.GetSpec().GetAuthRole() != nil && len(launchPlan.GetSpec().GetAuthRole().AssumableIamRole) > 0 {
+		authRole.AssumableIamRole = launchPlan.GetSpec().GetAuthRole().AssumableIamRole
+	} else if launchPlan.GetSpec().GetAuth() != nil && len(launchPlan.GetSpec().GetAuth().AssumableIamRole) > 0 {
+		authRole.AssumableIamRole = launchPlan.GetSpec().GetAuth().AssumableIamRole
+	} else if len(launchPlan.GetSpec().GetRole()) > 0 {
+		authRole.AssumableIamRole = launchPlan.GetSpec().GetRole()
 	}
 
-	// Set role permissions based on launch plan Auth values.
-	// The branched-ness of this check is due to the presence numerous deprecated fields
-	if launchPlan.Spec.GetAuthRole() != nil {
-		return launchPlan.Spec.GetAuthRole()
-	} else if launchPlan.GetSpec().GetAuth() != nil {
-		return &admin.AuthRole{
-			AssumableIamRole:         launchPlan.GetSpec().GetAuth().AssumableIamRole,
-			KubernetesServiceAccount: launchPlan.GetSpec().GetAuth().KubernetesServiceAccount,
-		}
-	} else if len(launchPlan.GetSpec().GetRole()) > 0 {
-		return &admin.AuthRole{
-			AssumableIamRole: launchPlan.GetSpec().GetRole(),
-		}
+	if request.Spec.AuthRole != nil && len(request.Spec.AuthRole.KubernetesServiceAccount) > 0 {
+		authRole.KubernetesServiceAccount = request.Spec.AuthRole.KubernetesServiceAccount
+	} else if launchPlan.GetSpec().GetAuthRole() != nil && len(launchPlan.GetSpec().GetAuthRole().AssumableIamRole) > 0 {
+		authRole.KubernetesServiceAccount = launchPlan.GetSpec().GetAuthRole().KubernetesServiceAccount
+	} else if launchPlan.GetSpec().GetAuth() != nil && len(launchPlan.GetSpec().GetAuth().AssumableIamRole) > 0 {
+		authRole.KubernetesServiceAccount = launchPlan.GetSpec().GetAuth().KubernetesServiceAccount
 	}
-	return &admin.AuthRole{}
+	return &authRole
 }
 
 func (m *ExecutionManager) launchExecutionAndPrepareModel(
