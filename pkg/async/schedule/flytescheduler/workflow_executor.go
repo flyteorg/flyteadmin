@@ -3,6 +3,7 @@ package flytescheduler
 import (
 	"context"
 	"fmt"
+	flyteSchedulerInterfaces "github.com/flyteorg/flyteadmin/pkg/async/schedule/flytescheduler/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/async/schedule/interfaces"
 	mgInterfaces "github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories"
@@ -11,233 +12,191 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/logger"
-	"github.com/gogf/gf/os/gcron"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"os"
 	"strings"
-	"sync"
-
-	"github.com/robfig/cron"
-
 	"time"
 )
 
 const executorSleepTime = 30
+
+const snapshotWriterSleepTime = 30
 const backOffSleepTime = 60
 
 type workflowExecutor struct {
-	db               repositories.RepositoryInterface
-	config           runtimeInterfaces.Configuration
-	executionManager mgInterfaces.ExecutionInterface
-	initialized      bool
+	db                   repositories.RepositoryInterface
+	config               runtimeInterfaces.Configuration
+	executionManager     mgInterfaces.ExecutionInterface
+	snapshot             flyteSchedulerInterfaces.Snapshot
+	snapShotReaderWriter flyteSchedulerInterfaces.SnapshotReaderWriter
+	goGfInterface        flyteSchedulerInterfaces.GoGFWrapper
 }
 
-type SyncerModuleCommandWithPayload struct {
-	SyncerModuleCommand
-	scheduleName string
-}
-
-type SyncerModuleCommand int
-
-const (
-	Incr SyncerModuleCommand = iota
-	Rm
-	Decr
-)
-
-
-var mapOfSchedules sync.Map
-
-type ScheduleRunTimeData struct {
-	ranInLastTick bool
-	lastTickScheduleTs time.Time
-}
-
-var SyncerModuleChannel chan SyncerModuleCommandWithPayload
-
-// Syncer module variables
-
-func CheckPointState(repo repositories.RepositoryInterface) {
-	mapOfSchedulesLocal := map[string]bool{}
-	oneRoundSchedulesMap := map[string]bool{}
-	for command := range SyncerModuleChannel {
-		switch command.SyncerModuleCommand {
-		case Incr:
-			mapOfSchedulesLocal[command.scheduleName] = true
-			oneRoundSchedulesMap[command.scheduleName] = true
-		case Rm:
-			delete(mapOfSchedulesLocal, command.scheduleName)
-			delete(oneRoundSchedulesMap, command.scheduleName)
-		case Decr:
-			delete(oneRoundSchedulesMap, command.scheduleName)
-			if len(oneRoundSchedulesMap) == 0 {
-				// Flush all the records to the DB with a checkpoint
-				checkPoint(time.Now(), repo)
-				// Copy mapOfSchedulesLocal for next round
-				for key, value := range mapOfSchedulesLocal {
-					oneRoundSchedulesMap[key] = value
-				}
+func (w *workflowExecutor) CheckPointState(ctx context.Context) {
+	workflowExecConfig := w.config.ApplicationConfiguration().GetSchedulerConfig().WorkflowExecutorConfig.FlyteWorkflowExecutorConfig
+	fileName := workflowExecConfig.SnapshotFileName
+	for true {
+		f, err := os.OpenFile(fileName, os.O_WRONLY | os.O_CREATE, 0644)
+		defer func(f *os.File) {
+			err := f.Close()
+			if err != nil {
+				logger.Errorf(ctx, "unable to close the file %v after writing due to %v", fileName, err)
 			}
+		}(f)
+		// Just log the error.
+		if err != nil {
+			logger.Errorf(ctx, "unable to create a writable snapshot file %v due to %v", fileName, err)
+		}
+		err = w.snapShotReaderWriter.WriteSnapshot(f, w.snapshot)
+		// Just log the error
+		if err != nil {
+			logger.Errorf(ctx, "unable to write the snapshot to file %v due to %v", fileName, err)
+		}
+		time.Sleep(snapshotWriterSleepTime * time.Second)
+	}
+}
+
+func (w *workflowExecutor) CatchUpAllSchedules(ctx context.Context, schedules []models.SchedulableEntity, toTime time.Time) error {
+	for _, s := range schedules {
+		err := w.CatchUpSingleSchedule(ctx, s, toTime)
+		if err != nil {
+			return err
 		}
 	}
+	return nil
 }
 
-func checkPoint(checkPointTime time.Time, repo repositories.RepositoryInterface) {
-	ctx := context.Background()
-	err := repo.ScheduleCheckPointRepo().Update(ctx, models.ScheduleCheckPoint{CheckPointTime: &checkPointTime})
-	if err != nil {
-		logger.Errorf(ctx, "Failed to update checkpoint time  %v due to %v", checkPointTime, err)
+
+func (w *workflowExecutor) CatchUpSingleSchedule(ctx context.Context, s models.SchedulableEntity, toTime time.Time) error {
+	nameOfSchedule := w.goGfInterface.GetScheduleName(s)
+	lastExecTime := w.snapshot.GetLastExecutionTime(nameOfSchedule)
+	// Get the jitter value
+	workflowExecConfig := w.config.ApplicationConfiguration().GetSchedulerConfig().WorkflowExecutorConfig.FlyteWorkflowExecutorConfig
+	jitter := time.Duration(workflowExecConfig.JitterValue) * time.Second
+	schedulerEpochTime := workflowExecConfig.SchedulerEpochTime
+
+	var fromTime time.Time
+	// If the scheduler epoch time ise set then use that to catch up till the current time
+	// else check the last exec time for the schedule and if that also is not set then use current time with
+	// configured jitter
+	if !schedulerEpochTime.IsZero() {
+		fromTime = schedulerEpochTime
+	} else {
+		if !lastExecTime.IsZero() {
+			fromTime = lastExecTime
+		} else {
+			fromTime = time.Now().Add(-jitter)
+		}
 	}
+
+	var catchUpTimes []time.Time
+	var err error
+	catchUpTimes, err = w.goGfInterface.GetCatchUpTimes(s, fromTime, toTime)
+	if err != nil {
+		return err
+	}
+	var catchupTime time.Time
+	for _, catchupTime = range catchUpTimes {
+		err := fire(ctx, w.executionManager, catchupTime, s)
+		if err != nil {
+			logger.Errorf(ctx, "unable to fire the schedule %v at %v time due to %v", s, catchupTime, err)
+		} else {
+			w.snapshot.UpdateLastExecutionTime(nameOfSchedule, catchupTime)
+		}
+	}
+
+	return nil
+}
+
+func fire(ctx context.Context, executionManager mgInterfaces.ExecutionInterface, scheduledTime time.Time,
+	s models.SchedulableEntity) error {
+
+	literalsInputMap := map[string]*core.Literal{}
+	literalsInputMap[s.KickoffTimeInputArg] = &core.Literal{
+		Value: &core.Literal_Scalar{
+			Scalar: &core.Scalar{
+				Value: &core.Scalar_Primitive{
+					Primitive: &core.Primitive{
+						Value: &core.Primitive_Datetime{
+							Datetime: timestamppb.New(scheduledTime),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	executionRequest := admin.ExecutionCreateRequest{
+		Project: s.Project,
+		Domain:  s.Domain,
+		Name:    "f" + strings.ReplaceAll(uuid.New().String(), "-", "")[:19],
+		Spec: &admin.ExecutionSpec{
+			LaunchPlan: &core.Identifier{
+				ResourceType: core.ResourceType_LAUNCH_PLAN,
+				Project:      s.Project,
+				Domain:       s.Domain,
+				Name:         s.Name,
+				Version:      s.Version,
+			},
+			Metadata: &admin.ExecutionMetadata{
+				Mode:        admin.ExecutionMetadata_SCHEDULED,
+				ScheduledAt: timestamppb.New(scheduledTime),
+			},
+			// No dynamic notifications are configured either.
+		},
+		// No additional inputs beyond the to-be-filled-out kickoff time arg are specified.
+		Inputs: &core.LiteralMap{
+			Literals: literalsInputMap,
+		},
+	}
+
+	_, err := executionManager.CreateExecution(context.Background(), executionRequest, scheduledTime)
+	if err != nil {
+		logger.Error(ctx, "failed to create  execution create  request due to %v", err)
+		return err
+	}
+	return nil
 }
 
 func (w *workflowExecutor) Run() {
 	ctx := context.Background()
-	SyncerModuleChannel = make(chan SyncerModuleCommandWithPayload)
-
-	c, err := w.db.SchedulableEntityRepo().GetAllActive(ctx)
+	c, err := w.db.SchedulableEntityRepo().GetAll(ctx)
 	if err != nil {
 		panic(fmt.Errorf("unable to run the workflow executor after reading the schedules due to %v", err))
 	}
+	// Start the go routine to write the snapshot map to the configured snapshot file
+	go w.CheckPointState(ctx)
+	catchUpTill := time.Now()
+	err = w.CatchUpAllSchedules(ctx, c.Entities, catchUpTill)
+	if err != nil {
+		panic(fmt.Errorf("unable to catch up on the schedules due to %v", err))
+	}
 
-	go CheckPointState(w.db)
 	defer logger.Infof(ctx, "Exiting Workflow executor")
 	for true {
 		for _, s := range c.Entities {
-			// e.CronExpression
-			// Run the 5 secs pattern
 			funcRef := func() {
-				nameOfSchedule := getNameForSchedule(s)
-				// This is the case where the schedule was deactivated from admin
-				// Worst case if this check succeeds and then schedule gets deactivated then it would run atmost once additionally after deactivation.
-				r,ok := mapOfSchedules.Load(nameOfSchedule)
-				if !ok {
-					logger.Errorf(ctx,"scheduler job %v doesn't exist as it must have been deleted", nameOfSchedule)
-					return
-				}
-				scheduleRunTimeData,ok := r.(ScheduleRunTimeData)
-				if !ok {
-					logger.Errorf(ctx,"incorrect type of %T stored in runtime data for the schedule", scheduleRunTimeData)
-					return
-				}
-				timeMarker := getTimeMarkerForLastWorkflow(scheduleRunTimeData, w.config)
-				scheduleTime, err := getScheduledTime(s.CronExpression, timeMarker) // Next schedule time from the timeMarker
+				nameOfSchedule := w.goGfInterface.GetScheduleName(s)
+				lastT := w.snapshot.GetLastExecutionTime(nameOfSchedule)
+				n := time.Now()
+				err = w.CatchUpSingleSchedule(ctx, s, n)
 				if err != nil {
-					logger.Errorf(ctx, "failed to get the next schedule time using cron expression %v with marker %v due to %v", s.CronExpression, timeMarker, err)
-					// Send a decrement command on the channel
-					SyncerModuleChannel <- SyncerModuleCommandWithPayload{Decr, nameOfSchedule}
-					return
+					logger.Errorf(ctx, "unable to catch on schedule %v from lastT %v to %v with jitter configured due to %v", s.Name, lastT, n, err)
 				}
-				literalsInputMap := map[string]*core.Literal{}
-				literalsInputMap[s.KickoffTimeInputArg] = &core.Literal{
-					Value: &core.Literal_Scalar{
-						Scalar: &core.Scalar{
-							Value: &core.Scalar_Primitive{
-								Primitive: &core.Primitive{
-									Value: &core.Primitive_Datetime{
-										Datetime: timestamppb.New(scheduleTime),
-									},
-								},
-							},
-						},
-					},
-				}
-				executionRequest := admin.ExecutionCreateRequest{
-					Project: s.Project,
-					Domain:  s.Domain,
-					Name:    "f" + strings.ReplaceAll(uuid.New().String(), "-", "")[:19],
-					Spec: &admin.ExecutionSpec{
-						LaunchPlan: &core.Identifier{
-							ResourceType: core.ResourceType_LAUNCH_PLAN,
-							Project:      s.Project,
-							Domain:       s.Domain,
-							Name:         s.Name,
-							Version:      s.Version,
-						},
-						Metadata: &admin.ExecutionMetadata{
-							Mode:        admin.ExecutionMetadata_SCHEDULED,
-							ScheduledAt: timestamppb.New(scheduleTime),
-						},
-						// No dynamic notifications are configured either.
-					},
-					// No additional inputs beyond the to-be-filled-out kickoff time arg are specified.
-					Inputs: &core.LiteralMap{
-						Literals: literalsInputMap,
-					},
-				}
-
-				_, err = w.executionManager.CreateExecution(context.Background(), executionRequest, scheduleTime)
-				if err != nil {
-					logger.Error(ctx, "failed to create  execution create  request due to %v", err)
-				}
-				// Same check here before updating the timestamp in the mapOfSchedules.
-				// This checks if the nameOfSchedule exists and if not just return without updating the run timestamp
-				if _,ok := mapOfSchedules.Load(nameOfSchedule); !ok {
-					logger.Errorf(ctx,"scheduler job %v doesn't exist as it must have been deleted", nameOfSchedule)
-					return
-				}
-				// Send a decrement command on the channel
-				SyncerModuleChannel <- SyncerModuleCommandWithPayload{Decr, nameOfSchedule}
-				mapOfSchedules.Store(nameOfSchedule, ScheduleRunTimeData{true, scheduleTime})
 			}
-			nameOfSchedule := getNameForSchedule(s)
-			if s.Active {
-				_, err = gcron.AddSingleton(s.CronExpression, funcRef, nameOfSchedule)
-				if err != nil {
-					if strings.HasSuffix(err.Error(), "already exists") {
-						// Do nothing here and ignore the error
-						return
-					}
-					logger.Errorf(ctx, "failed to add cron schedule %v due to %v", s, err)
-				} else {
-					SyncerModuleChannel <- SyncerModuleCommandWithPayload{Incr, nameOfSchedule}
-					mapOfSchedules.Store(nameOfSchedule, ScheduleRunTimeData{})
-				}
-			} else {
-				// Send a decrement command on the channel since we deleted a schedule
-				// Only send a decrement if it didn't run in last tick to avoid double decrement error.
-				val, ok := mapOfSchedules.Load(nameOfSchedule)
-				if ok {
-					if runTimeData,o := val.(ScheduleRunTimeData); o {
-						if !runTimeData.ranInLastTick {
-							SyncerModuleChannel <- SyncerModuleCommandWithPayload{Rm, nameOfSchedule}
-						}
-					}
-					mapOfSchedules.Delete(nameOfSchedule)
-				}
-				gcron.Remove(nameOfSchedule)
+			err := w.goGfInterface.Register(ctx, s, funcRef)
+			if err != nil {
+				logger.Errorf(ctx, "unable to register the schedule %v due to %v", s, err)
 			}
 		}
 		time.Sleep(executorSleepTime * time.Second)
-		c, err = w.db.SchedulableEntityRepo().GetAllActive(ctx)
+		c, err = w.db.SchedulableEntityRepo().GetAll(ctx)
 		if err != nil {
 			logger.Errorf(ctx, "going to sleep additional %v backoff time due to DB error %v", backOffSleepTime, err)
 			time.Sleep(backOffSleepTime * time.Second)
 		}
 	}
-}
-
-func getNameForSchedule(schedule models.SchedulableEntity) string {
-	return fmt.Sprintf("Project: %v Domain: %v Name: %v Version: %v", schedule.Project, schedule.Domain, schedule.Name, schedule.Version)
-}
-
-func getTimeMarkerForLastWorkflow(s ScheduleRunTimeData, config runtimeInterfaces.Configuration) time.Time {
-	if s.ranInLastTick {
-		return s.lastTickScheduleTs
-	}
-	if config.ApplicationConfiguration().GetSchedulerConfig().WorkflowExecutorConfig.FlyteWorkflowExecutorConfig.SchedulerEpochTime != nil {
-		return *config.ApplicationConfiguration().GetSchedulerConfig().WorkflowExecutorConfig.FlyteWorkflowExecutorConfig.SchedulerEpochTime
-	}
-	return time.Now()
-}
-
-func getScheduledTime(cronString string, fromTime time.Time) (time.Time, error) {
-	var secondParser = cron.NewParser(cron.Second | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.DowOptional | cron.Descriptor)
-	sched, err := secondParser.Parse(cronString)
-
-	if err != nil {
-		return time.Time{}, err
-	}
-	return sched.Next(fromTime), nil
 }
 
 func (w *workflowExecutor) Stop() error {
@@ -247,13 +206,29 @@ func (w *workflowExecutor) Stop() error {
 func NewWorkflowExecutor(db repositories.RepositoryInterface, executionManager mgInterfaces.ExecutionInterface,
 	config runtimeInterfaces.Configuration) interfaces.WorkflowExecutor {
 	ctx := context.Background()
-	checkPointData, err := db.ScheduleCheckPointRepo().Get(ctx)
+	workflowExecConfig := config.ApplicationConfiguration().GetSchedulerConfig().WorkflowExecutorConfig.FlyteWorkflowExecutorConfig
+	snapShotReaderWriter := VersionedSnapshot{version: workflowExecConfig.SnapshotVersion}
+	snapshot := readSnapShot(ctx, workflowExecConfig.SnapshotFileName, workflowExecConfig.SnapshotVersion)
+	return &workflowExecutor{db: db, executionManager: executionManager, config: config, snapshot: snapshot,
+		snapShotReaderWriter: &snapShotReaderWriter,
+		goGfInterface:        GoGF{}}
+}
+
+func readSnapShot(ctx context.Context, fileName string, version int) flyteSchedulerInterfaces.Snapshot {
+	var snapshot flyteSchedulerInterfaces.Snapshot
+	f, err := os.Open(fileName)
+	// Just log the error but dont interrupt the startup of the scheduler
 	if err != nil {
-		logger.Errorf(ctx, "failed to read checkpoint data due to %v", err)
+		logger.Errorf(ctx, "unable to read the snapshot file %v", fileName)
 	} else {
-		if checkPointData.CheckPointTime != nil {
-			config.ApplicationConfiguration().GetSchedulerConfig().WorkflowExecutorConfig.FlyteWorkflowExecutorConfig.SchedulerEpochTime = checkPointData.CheckPointTime
+		snapShotReaderWriter := VersionedSnapshot{version: version}
+		snapshot, err = snapShotReaderWriter.ReadSnapshot(f)
+		// Similarly just log the error but dont interrupt the startup of the scheduler
+		if err != nil {
+			logger.Errorf(ctx, "unable to construct the snapshot struct from the file due to %v", err)
+			return &SnapshotV1{LastTimes: map[string]time.Time{}}
 		}
+		return snapshot
 	}
-	return &workflowExecutor{db: db, executionManager: executionManager, config: config}
+	return &SnapshotV1{LastTimes: map[string]time.Time{}}
 }

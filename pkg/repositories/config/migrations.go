@@ -315,14 +315,4 @@ var Migrations = []*gormigrate.Migration{
 			return tx.DropTable("schedulable_entities").Error
 		},
 	},
-
-	{
-		ID: "2021-06-22-schedule_check_point",
-		Migrate: func(tx *gorm.DB) error {
-			return tx.AutoMigrate(&models.ScheduleCheckPoint{}).Error
-		},
-		Rollback: func(tx *gorm.DB) error {
-			return tx.DropTable("schedule_check_point").Error
-		},
-	},
 }

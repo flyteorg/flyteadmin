@@ -21,7 +21,6 @@ type PostgresRepo struct {
 	workflowRepo           interfaces.WorkflowRepoInterface
 	resourceRepo           interfaces.ResourceRepoInterface
 	schedulableEntityRepo  interfaces.SchedulableEntityRepoInterface
-	scheduleCheckPointRepo  interfaces.ScheduleCheckPointRepoInterface
 }
 
 func (p *PostgresRepo) ExecutionRepo() interfaces.ExecutionRepoInterface {
@@ -72,11 +71,6 @@ func (p *PostgresRepo) SchedulableEntityRepo() interfaces.SchedulableEntityRepoI
 	return p.schedulableEntityRepo
 }
 
-
-func (p *PostgresRepo) ScheduleCheckPointRepo() interfaces.ScheduleCheckPointRepoInterface {
-	return p.scheduleCheckPointRepo
-}
-
 func NewPostgresRepo(db *gorm.DB, errorTransformer errors.ErrorTransformer, scope promutils.Scope) RepositoryInterface {
 	return &PostgresRepo{
 		executionRepo:          gormimpl.NewExecutionRepo(db, errorTransformer, scope.NewSubScope("executions")),
@@ -91,6 +85,5 @@ func NewPostgresRepo(db *gorm.DB, errorTransformer errors.ErrorTransformer, scop
 		workflowRepo:           gormimpl.NewWorkflowRepo(db, errorTransformer, scope.NewSubScope("workflows")),
 		resourceRepo:           gormimpl.NewResourceRepo(db, errorTransformer, scope.NewSubScope("resources")),
 		schedulableEntityRepo:  gormimpl.NewSchedulableEntityRepo(db, errorTransformer, scope.NewSubScope("schedulable_entity")),
-		scheduleCheckPointRepo:  gormimpl.NewScheduleCheckPointRepo(db, errorTransformer, scope.NewSubScope("schedule_check_point")),
 	}
 }

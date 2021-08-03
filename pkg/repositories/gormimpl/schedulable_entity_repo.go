@@ -18,7 +18,7 @@ type SchedulableEntityRepo struct {
 	metrics          gormMetrics
 }
 
-func (r *SchedulableEntityRepo) GetAllActive(ctx context.Context) (models.SchedulableEntityCollectionOutput, error) {
+func (r *SchedulableEntityRepo) GetAll(ctx context.Context) (models.SchedulableEntityCollectionOutput, error) {
 	var schedulableEntities models.SchedulableEntityCollectionOutput
 	timer := r.metrics.GetDuration.Start()
 	tx := r.db.Take(&schedulableEntities.Entities)

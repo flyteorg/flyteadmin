@@ -71,7 +71,7 @@ type cloudWatchScheduler struct {
 }
 
 func getScheduleName(scheduleNamePrefix string, identifier core.Identifier) string {
-	hashedIdentifier := hashIdentifier(identifier)
+	hashedIdentifier := HashIdentifier(identifier)
 	if len(scheduleNamePrefix) > 0 {
 		return fmt.Sprintf(scheduleNameFormat, scheduleNamePrefix, hashedIdentifier)
 	}

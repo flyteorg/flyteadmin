@@ -108,20 +108,6 @@ func NewWorkflowScheduler(db repositories.RepositoryInterface,cfg WorkflowSchedu
 			cfg.SchedulerConfig.EventSchedulerConfig.Scheme)
 		eventScheduler = noop.NewNoopEventScheduler()
 	}
-
-	//switch cfg.SchedulerConfig.WorkflowExecutorConfig.Scheme {
-	//case common.AWS:
-	//	// Do nothing, this special case depends on the execution manager and launch plan manager having been
-	//	// initialized and is handled in GetWorkflowExecutor.
-	//	break
-	//case common.Local:
-	//	fallthrough
-	//default:
-	//	logger.Infof(context.Background(),
-	//		"Using default noop workflow executor implementation for cloud provider type [%s]",
-	//		cfg.SchedulerConfig.EventSchedulerConfig.Scheme)
-	//	workflowExecutor = noop.NewWorkflowExecutor()
-	//}
 	return &workflowScheduler{
 		cfg:              cfg,
 		eventScheduler:   eventScheduler,
