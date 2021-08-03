@@ -151,6 +151,8 @@ func TestCreateTaskExecutionModelQueued(t *testing.T) {
 				RetryAttempt:          1,
 				InputUri:              "input uri",
 				OccurredAt:            taskEventOccurredAtProto,
+				Reason:                "Task was scheduled",
+				TaskType:              "sidecar",
 			},
 		},
 	})
@@ -161,6 +163,8 @@ func TestCreateTaskExecutionModelQueued(t *testing.T) {
 		StartedAt: nil,
 		CreatedAt: taskEventOccurredAtProto,
 		UpdatedAt: taskEventOccurredAtProto,
+		Reason:    "Task was scheduled",
+		TaskType:  "sidecar",
 	}
 
 	expectedClosureBytes, err := proto.Marshal(expectedClosure)
@@ -350,6 +354,7 @@ func TestUpdateTaskExecutionModelRunningToFailed(t *testing.T) {
 			CustomInfo: transformMapToStructPB(t, map[string]string{
 				"key1": "value1 updated",
 			}),
+			Reason: "task failed",
 		},
 	}
 
@@ -379,6 +384,7 @@ func TestUpdateTaskExecutionModelRunningToFailed(t *testing.T) {
 		CustomInfo: transformMapToStructPB(t, map[string]string{
 			"key1": "value1 updated",
 		}),
+		Reason: "task failed",
 	}
 
 	expectedClosureBytes, err := proto.Marshal(expectedClosure)
@@ -543,6 +549,81 @@ func TestMergeLogs(t *testing.T) {
 	}
 
 	testCases := []testCase{
+		{
+			existing: []*core.TaskLog{
+				{
+					Uri: "uri_a",
+				},
+				{
+					Uri: "uri_b",
+				},
+			},
+			latest: []*core.TaskLog{
+				{
+					Uri: "uri_b",
+				},
+				{
+					Uri: "uri_c",
+				},
+			},
+			expected: []*core.TaskLog{
+				{
+					Uri: "uri_b",
+				},
+				{
+					Uri: "uri_c",
+				},
+				{
+					Uri: "uri_a",
+				},
+			},
+			name: "Merge logs with empty names",
+		},
+		{
+			existing: []*core.TaskLog{
+				{
+					Uri:  "uri_a",
+					Name: "name_a",
+				},
+				{
+					Uri:  "uri_b_old",
+					Name: "name_b",
+				},
+				{
+					Uri:  "uri_c",
+					Name: "name_c",
+				},
+			},
+			latest: []*core.TaskLog{
+				{
+					Uri:  "uri_b",
+					Name: "name_b",
+				},
+				{
+					Uri:  "uri_d",
+					Name: "name_d",
+				},
+			},
+			expected: []*core.TaskLog{
+				{
+					Uri:  "uri_b",
+					Name: "name_b",
+				},
+				{
+					Uri:  "uri_d",
+					Name: "name_d",
+				},
+				{
+					Uri:  "uri_a",
+					Name: "name_a",
+				},
+				{
+					Uri:  "uri_c",
+					Name: "name_c",
+				},
+			},
+			name: "Merge unique logs by name",
+		},
 		{
 			existing: []*core.TaskLog{
 				{

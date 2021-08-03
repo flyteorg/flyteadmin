@@ -1,9 +1,9 @@
 package testutils
 
 import (
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flytepropeller/pkg/utils"
 	"github.com/golang/protobuf/proto"
 )
 
@@ -18,6 +18,13 @@ func GetValidTaskRequest() admin.TaskCreateRequest {
 		},
 		Spec: &admin.TaskSpec{
 			Template: &core.TaskTemplate{
+				Id: &core.Identifier{
+					ResourceType: core.ResourceType_TASK,
+					Project:      "project",
+					Domain:       "domain",
+					Name:         "name",
+					Version:      "version",
+				},
 				Type: "type",
 				Metadata: &core.TaskMetadata{
 					Runtime: &core.RuntimeMetadata{
@@ -140,14 +147,14 @@ func GetLaunchPlanRequest() admin.LaunchPlanCreateRequest {
 							Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 						},
 						Behavior: &core.Parameter_Default{
-							Default: utils.MustMakeLiteral("foo-value"),
+							Default: coreutils.MustMakeLiteral("foo-value"),
 						},
 					},
 				},
 			},
 			FixedInputs: &core.LiteralMap{
 				Literals: map[string]*core.Literal{
-					"bar": utils.MustMakeLiteral("bar-value"),
+					"bar": coreutils.MustMakeLiteral("bar-value"),
 				},
 			},
 		},
@@ -214,7 +221,7 @@ func GetExecutionRequest() admin.ExecutionCreateRequest {
 		},
 		Inputs: &core.LiteralMap{
 			Literals: map[string]*core.Literal{
-				"foo": utils.MustMakeLiteral("foo-value-1"),
+				"foo": coreutils.MustMakeLiteral("foo-value-1"),
 			},
 		},
 	}
@@ -255,14 +262,14 @@ func GetSampleLpSpecForTest() admin.LaunchPlanSpec {
 						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 					},
 					Behavior: &core.Parameter_Default{
-						Default: utils.MustMakeLiteral("foo-value"),
+						Default: coreutils.MustMakeLiteral("foo-value"),
 					},
 				},
 			},
 		},
 		FixedInputs: &core.LiteralMap{
 			Literals: map[string]*core.Literal{
-				"bar": utils.MustMakeLiteral("bar-value"),
+				"bar": coreutils.MustMakeLiteral("bar-value"),
 			},
 		},
 		EntityMetadata: &admin.LaunchPlanMetadata{

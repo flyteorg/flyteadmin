@@ -209,7 +209,8 @@ func (m *ExecutionManager) offloadInputs(ctx context.Context, literalMap *core.L
 	return inputsURI, nil
 }
 
-func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask) runtimeInterfaces.TaskResourceSet {
+func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask,
+	systemResourceLimits runtimeInterfaces.TaskResourceSet) runtimeInterfaces.TaskResourceSet {
 	// The values below should never be used (deduce it from the request; request should be set by the time we get here).
 	// Setting them here just in case we end up with requests not set. We are not adding to config because it would add
 	// more confusion as its mostly not used.
@@ -238,7 +239,19 @@ func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask) runti
 		memoryLimit = resourceEntries[memoryIndex].Value
 	}
 
-	return runtimeInterfaces.TaskResourceSet{CPU: cpuLimit, Memory: memoryLimit}
+	taskResourceLimits := runtimeInterfaces.TaskResourceSet{CPU: cpuLimit, Memory: memoryLimit}
+	// Use the limits from config
+	if systemResourceLimits.CPU != "" {
+		taskResourceLimits.CPU = systemResourceLimits.CPU
+	}
+	if systemResourceLimits.Memory != "" {
+		taskResourceLimits.Memory = systemResourceLimits.Memory
+	}
+	if systemResourceLimits.GPU != "" {
+		taskResourceLimits.GPU = systemResourceLimits.GPU
+	}
+
+	return taskResourceLimits
 }
 
 func assignResourcesIfUnset(ctx context.Context, identifier *core.Identifier,
@@ -332,10 +345,19 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 		logger.Warningf(ctx, "Can't set default resources for nil task.")
 		return
 	}
-	if task.Template == nil || task.Template.GetContainer() == nil || task.Template.GetContainer().Resources == nil {
+	if task.Template == nil || task.Template.GetContainer() == nil {
 		// Nothing to do
 		logger.Debugf(ctx, "Not setting default resources for task [%+v], no container resources found to check", task)
 		return
+	}
+
+	if task.Template.GetContainer().Resources == nil {
+		// In case of no resources on the container, create empty requests and limits
+		// so the container will still have resources configure properly
+		task.Template.GetContainer().Resources = &core.Resources{
+			Requests: []*core.Resources_ResourceEntry{},
+			Limits:   []*core.Resources_ResourceEntry{},
+		}
 	}
 	resource, err := m.resourceManager.GetResource(ctx, interfaces.ResourceRequest{
 		Project:      task.Template.Id.Project,
@@ -362,7 +384,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 		taskResourceSpec = resource.Attributes.GetTaskResourceAttributes().Limits
 	}
 	task.Template.GetContainer().Resources.Limits = assignResourcesIfUnset(
-		ctx, task.Template.Id, createTaskDefaultLimits(ctx, task), task.Template.GetContainer().Resources.Limits,
+		ctx, task.Template.Id, createTaskDefaultLimits(ctx, task, m.config.TaskResourceConfiguration().GetLimits()), task.Template.GetContainer().Resources.Limits,
 		taskResourceSpec)
 	checkTaskRequestsLessThanLimits(ctx, task.Template.Id, task.Template.GetContainer().Resources)
 }
@@ -402,6 +424,39 @@ func (m *ExecutionManager) getInheritedExecMetadata(ctx context.Context, request
 		requestSpec.Metadata.Nesting = 1
 	}
 	return parentNodeExecutionID, sourceExecutionID, nil
+}
+
+// Produces execution-time attributes for workflow execution.
+// Defaults to overridable execution values set in the execution create request, then looks at the launch plan values
+// (if any) before defaulting to values set in the matchable resource db.
+func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admin.ExecutionCreateRequest,
+	launchPlan *admin.LaunchPlan) (*admin.WorkflowExecutionConfig, error) {
+	if request.Spec.MaxParallelism > 0 {
+		return &admin.WorkflowExecutionConfig{
+			MaxParallelism: request.Spec.MaxParallelism,
+		}, nil
+	}
+	if launchPlan != nil && launchPlan.Spec.MaxParallelism > 0 {
+		return &admin.WorkflowExecutionConfig{
+			MaxParallelism: launchPlan.Spec.MaxParallelism,
+		}, nil
+	}
+
+	resource, err := m.resourceManager.GetResource(ctx, interfaces.ResourceRequest{
+		Project:      request.Project,
+		Domain:       request.Domain,
+		ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
+	})
+	if err != nil {
+		if flyteAdminError, ok := err.(errors.FlyteAdminError); !ok || flyteAdminError.Code() != codes.NotFound {
+			logger.Errorf(ctx, "Failed to get workflow execution config overrides with error: %v", err)
+			return nil, err
+		}
+	}
+	if resource != nil && resource.Attributes.GetWorkflowExecutionConfig() != nil {
+		return resource.Attributes.GetWorkflowExecutionConfig(), nil
+	}
+	return nil, nil
 }
 
 func (m *ExecutionManager) launchSingleTaskExecution(
@@ -494,14 +549,19 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		logger.Errorf(ctx, "Failed to get quality of service for [%+v] with error: %v", workflowExecutionID, err)
 		return nil, nil, err
 	}
+	executionConfig, err := m.getExecutionConfig(ctx, &request, nil)
+	if err != nil {
+		return nil, nil, err
+	}
 	executeTaskInputs := workflowengineInterfaces.ExecuteTaskInput{
-		ExecutionID:    &workflowExecutionID,
-		WfClosure:      *workflow.Closure.CompiledWorkflow,
-		Inputs:         request.Inputs,
-		ReferenceName:  taskIdentifier.Name,
-		AcceptedAt:     requestedAt,
-		Auth:           requestSpec.AuthRole,
-		QueueingBudget: qualityOfService.QueuingBudget,
+		ExecutionID:     &workflowExecutionID,
+		WfClosure:       *workflow.Closure.CompiledWorkflow,
+		Inputs:          request.Inputs,
+		ReferenceName:   taskIdentifier.Name,
+		AcceptedAt:      requestedAt,
+		Auth:            requestSpec.AuthRole,
+		QueueingBudget:  qualityOfService.QueuingBudget,
+		ExecutionConfig: executionConfig,
 	}
 	if requestSpec.Labels != nil {
 		executeTaskInputs.Labels = requestSpec.Labels.Values
@@ -570,6 +630,28 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	}
 	return ctx, executionModel, nil
 
+}
+
+func resolvePermissions(request *admin.ExecutionCreateRequest, launchPlan *admin.LaunchPlan) *admin.AuthRole {
+	if request.Spec.AuthRole != nil {
+		return request.Spec.AuthRole
+	}
+
+	// Set role permissions based on launch plan Auth values.
+	// The branched-ness of this check is due to the presence numerous deprecated fields
+	if launchPlan.Spec.GetAuthRole() != nil {
+		return launchPlan.Spec.GetAuthRole()
+	} else if launchPlan.GetSpec().GetAuth() != nil {
+		return &admin.AuthRole{
+			AssumableIamRole:         launchPlan.GetSpec().GetAuth().AssumableIamRole,
+			KubernetesServiceAccount: launchPlan.GetSpec().GetAuth().KubernetesServiceAccount,
+		}
+	} else if len(launchPlan.GetSpec().GetRole()) > 0 {
+		return &admin.AuthRole{
+			AssumableIamRole: launchPlan.GetSpec().GetRole(),
+		}
+	}
+	return &admin.AuthRole{}
 }
 
 func (m *ExecutionManager) launchExecutionAndPrepareModel(
@@ -661,15 +743,21 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		logger.Errorf(ctx, "Failed to get quality of service for [%+v] with error: %v", workflowExecutionID, err)
 		return nil, nil, err
 	}
+	executionConfig, err := m.getExecutionConfig(ctx, &request, launchPlan)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// TODO: Reduce CRD size and use offloaded input URI to blob store instead.
 	executeWorkflowInputs := workflowengineInterfaces.ExecuteWorkflowInput{
-		ExecutionID:    &workflowExecutionID,
-		WfClosure:      *workflow.Closure.CompiledWorkflow,
-		Inputs:         executionInputs,
-		Reference:      *launchPlan,
-		AcceptedAt:     requestedAt,
-		QueueingBudget: qualityOfService.QueuingBudget,
+		ExecutionID:     &workflowExecutionID,
+		WfClosure:       *workflow.Closure.CompiledWorkflow,
+		Inputs:          executionInputs,
+		Reference:       *launchPlan,
+		AcceptedAt:      requestedAt,
+		QueueingBudget:  qualityOfService.QueuingBudget,
+		ExecutionConfig: executionConfig,
+		Auth:            resolvePermissions(&request, launchPlan),
 	}
 	err = m.addLabelsAndAnnotations(request.Spec, &executeWorkflowInputs)
 	if err != nil {
@@ -686,6 +774,10 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	}
 	if overrides != nil {
 		executeWorkflowInputs.TaskPluginOverrides = overrides
+	}
+	if request.Spec.Metadata != nil && request.Spec.Metadata.ReferenceExecution != nil &&
+		request.Spec.Metadata.Mode == admin.ExecutionMetadata_RECOVERED {
+		executeWorkflowInputs.RecoveryExecution = request.Spec.Metadata.ReferenceExecution
 	}
 
 	execInfo, err := m.workflowExecutor.ExecuteWorkflow(ctx, executeWorkflowInputs)
@@ -830,6 +922,57 @@ func (m *ExecutionManager) RelaunchExecution(
 		return nil, err
 	}
 	logger.Debugf(ctx, "Successfully relaunched [%+v] as [%+v]", request.Id, workflowExecutionIdentifier)
+	return &admin.ExecutionCreateResponse{
+		Id: workflowExecutionIdentifier,
+	}, nil
+}
+
+func (m *ExecutionManager) RecoverExecution(
+	ctx context.Context, request admin.ExecutionRecoverRequest, requestedAt time.Time) (
+	*admin.ExecutionCreateResponse, error) {
+	existingExecutionModel, err := util.GetExecutionModel(ctx, m.db, *request.Id)
+	if err != nil {
+		logger.Debugf(ctx, "Failed to get execution model for request [%+v] with err %v", request, err)
+		return nil, err
+	}
+	existingExecution, err := transformers.FromExecutionModel(*existingExecutionModel)
+	if err != nil {
+		return nil, err
+	}
+
+	executionSpec := existingExecution.Spec
+	if executionSpec.Metadata == nil {
+		executionSpec.Metadata = &admin.ExecutionMetadata{}
+	}
+	var inputs *core.LiteralMap
+	if len(existingExecutionModel.UserInputsURI) > 0 {
+		inputs = &core.LiteralMap{}
+		if err := m.storageClient.ReadProtobuf(ctx, existingExecutionModel.UserInputsURI, inputs); err != nil {
+			return nil, err
+		}
+	}
+	if request.Metadata != nil {
+		executionSpec.Metadata.ParentNodeExecution = request.Metadata.ParentNodeExecution
+	}
+	executionSpec.Metadata.Mode = admin.ExecutionMetadata_RECOVERED
+	executionSpec.Metadata.ReferenceExecution = existingExecution.Id
+	var executionModel *models.Execution
+	ctx, executionModel, err = m.launchExecutionAndPrepareModel(ctx, admin.ExecutionCreateRequest{
+		Project: request.Id.Project,
+		Domain:  request.Id.Domain,
+		Name:    request.Name,
+		Spec:    executionSpec,
+		Inputs:  inputs,
+	}, requestedAt)
+	if err != nil {
+		return nil, err
+	}
+	executionModel.SourceExecutionID = existingExecutionModel.ID
+	workflowExecutionIdentifier, err := m.createExecutionModel(ctx, executionModel)
+	if err != nil {
+		return nil, err
+	}
+	logger.Infof(ctx, "Successfully recovered [%+v] as [%+v]", request.Id, workflowExecutionIdentifier)
 	return &admin.ExecutionCreateResponse{
 		Id: workflowExecutionIdentifier,
 	}, nil
@@ -1107,7 +1250,7 @@ func (m *ExecutionManager) GetExecutionData(
 	}
 	maxDataSize := m.config.ApplicationConfiguration().GetRemoteDataConfig().MaxSizeInBytes
 	remoteDataScheme := m.config.ApplicationConfiguration().GetRemoteDataConfig().Scheme
-	if remoteDataScheme == common.Local || inputsURLBlob.Bytes < maxDataSize {
+	if util.ShouldFetchData(m.config.ApplicationConfiguration().GetRemoteDataConfig(), inputsURLBlob) {
 		var fullInputs core.LiteralMap
 		err := m.storageClient.ReadProtobuf(ctx, executionModel.InputsURI, &fullInputs)
 		if err != nil {
@@ -1115,7 +1258,7 @@ func (m *ExecutionManager) GetExecutionData(
 		}
 		response.FullInputs = &fullInputs
 	}
-	if remoteDataScheme == common.Local || (signedOutputsURLBlob.Bytes < maxDataSize && execution.Closure.GetOutputs() != nil) {
+	if remoteDataScheme == common.Local || remoteDataScheme == common.None || (signedOutputsURLBlob.Bytes < maxDataSize && execution.Closure.GetOutputs() != nil) {
 		var fullOutputs core.LiteralMap
 		outputsURI := execution.Closure.GetOutputs().GetUri()
 		err := m.storageClient.ReadProtobuf(ctx, storage.DataReference(outputsURI), &fullOutputs)
