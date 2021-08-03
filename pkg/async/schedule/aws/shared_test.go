@@ -13,6 +13,6 @@ func TestHashIdentifier(t *testing.T) {
 		Domain:  "domain",
 		Name:    "name",
 	}
-	hashedValue := hashIdentifier(identifier)
+	hashedValue := HashIdentifier(identifier)
 	assert.Equal(t, uint64(16301494360130577061), hashedValue)
 }
