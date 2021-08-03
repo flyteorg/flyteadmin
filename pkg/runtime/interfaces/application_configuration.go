@@ -127,8 +127,10 @@ type AWSWorkflowExecutorConfig struct {
 }
 
 type FlyteWorkflowExecutorConfig struct {
-	SchedulerEpochTime *time.Time  `json:"schedulerEpochTime"`
-	ForceEpochTimeUsage bool		`json:"forceEpochTimeUsage"`
+	SchedulerEpochTime time.Time  `json:"schedulerEpochTime"`
+	SnapshotFileName string `json:"snapshotFileName"`
+	SnapshotVersion int `json:"snapshotVersion"`
+	JitterValue int `json:"jitterValue"`
 }
 
 // This configuration is the base configuration for all scheduler-related set-up.

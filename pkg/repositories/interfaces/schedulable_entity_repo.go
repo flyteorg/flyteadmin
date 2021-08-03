@@ -14,8 +14,8 @@ type SchedulableEntityRepoInterface interface {
 	// Get a schedulable entity from the database store using the schedulable entity id.
 	Get(ctx context.Context, ID models.SchedulableEntityKey) (models.SchedulableEntity, error)
 
-	// GetAllActive Gets all the active schedulable entities from the db
-	GetAllActive(ctx context.Context) (models.SchedulableEntityCollectionOutput, error)
+	// GetAll Gets all the active schedulable entities from the db
+	GetAll(ctx context.Context) (models.SchedulableEntityCollectionOutput, error)
 
 	// Update a schedulable entity with
 	UpdateLastExecution(ctx context.Context, input models.SchedulableEntity) error
