@@ -111,7 +111,7 @@ func taskResourceSetToMap(
 		gpuQuantity := resource.MustParse(resourceSet.GPU)
 		resourceMap[core.Resources_GPU] = &gpuQuantity
 	}
-	if resourceSet.GPU != "" {
+	if resourceSet.EphemeralStorage != "" {
 		ephemeralStorageQuantity := resource.MustParse(resourceSet.EphemeralStorage)
 		resourceMap[core.Resources_EPHEMERAL_STORAGE] = &ephemeralStorageQuantity
 	}
