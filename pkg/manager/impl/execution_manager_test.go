@@ -3204,7 +3204,7 @@ func TestResolvePermissions(t *testing.T) {
 	k8sServiceAccount := "sa"
 
 	t.Run("use request values", func(t *testing.T) {
-		auth := resolvePermissions(&admin.ExecutionCreateRequest{
+		auth := resolvePermissions(context.Background(), &admin.ExecutionCreateRequest{
 			Spec: &admin.ExecutionSpec{
 				AuthRole: &admin.AuthRole{
 					AssumableIamRole:         assumableIamRole,
@@ -3223,7 +3223,7 @@ func TestResolvePermissions(t *testing.T) {
 		assert.Equal(t, k8sServiceAccount, auth.KubernetesServiceAccount)
 	})
 	t.Run("prefer lp auth role over auth", func(t *testing.T) {
-		auth := resolvePermissions(&admin.ExecutionCreateRequest{
+		auth := resolvePermissions(context.Background(), &admin.ExecutionCreateRequest{
 			Spec: &admin.ExecutionSpec{},
 		}, &admin.LaunchPlan{
 			Spec: &admin.LaunchPlanSpec{
@@ -3241,7 +3241,7 @@ func TestResolvePermissions(t *testing.T) {
 		assert.Equal(t, k8sServiceAccount, auth.KubernetesServiceAccount)
 	})
 	t.Run("prefer lp auth over role", func(t *testing.T) {
-		auth := resolvePermissions(&admin.ExecutionCreateRequest{
+		auth := resolvePermissions(context.Background(), &admin.ExecutionCreateRequest{
 			Spec: &admin.ExecutionSpec{},
 		}, &admin.LaunchPlan{
 			Spec: &admin.LaunchPlanSpec{

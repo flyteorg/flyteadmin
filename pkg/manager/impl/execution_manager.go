@@ -610,7 +610,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 
 }
 
-func resolvePermissions(request *admin.ExecutionCreateRequest, launchPlan *admin.LaunchPlan) *admin.AuthRole {
+func resolvePermissions(ctx context.Context, request *admin.ExecutionCreateRequest, launchPlan *admin.LaunchPlan) *admin.AuthRole {
 	authRole := admin.AuthRole{}
 
 	if request.Spec.AuthRole != nil && len(request.Spec.AuthRole.AssumableIamRole) > 0 {
@@ -621,6 +621,8 @@ func resolvePermissions(request *admin.ExecutionCreateRequest, launchPlan *admin
 		authRole.AssumableIamRole = launchPlan.GetSpec().GetAuth().AssumableIamRole
 	} else if len(launchPlan.GetSpec().GetRole()) > 0 {
 		authRole.AssumableIamRole = launchPlan.GetSpec().GetRole()
+	} else {
+		logger.Warning(ctx, "AssumableIamRole not set.")
 	}
 
 	if request.Spec.AuthRole != nil && len(request.Spec.AuthRole.KubernetesServiceAccount) > 0 {
@@ -629,7 +631,12 @@ func resolvePermissions(request *admin.ExecutionCreateRequest, launchPlan *admin
 		authRole.KubernetesServiceAccount = launchPlan.GetSpec().GetAuthRole().KubernetesServiceAccount
 	} else if launchPlan.GetSpec().GetAuth() != nil && len(launchPlan.GetSpec().GetAuth().AssumableIamRole) > 0 {
 		authRole.KubernetesServiceAccount = launchPlan.GetSpec().GetAuth().KubernetesServiceAccount
+	} else {
+		logger.Warning(ctx, "KubernetesServiceAccount not set.")
 	}
+
+	logger.Infof(ctx, "AssumableIamRole: %s", authRole.GetAssumableIamRole())
+	logger.Infof(ctx, "KubernetesServiceAccount: %s", authRole.GetKubernetesServiceAccount())
 	return &authRole
 }
 
@@ -736,7 +743,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		AcceptedAt:      requestedAt,
 		QueueingBudget:  qualityOfService.QueuingBudget,
 		ExecutionConfig: executionConfig,
-		Auth:            resolvePermissions(&request, launchPlan),
+		Auth:            resolvePermissions(ctx, &request, launchPlan),
 	}
 	err = m.addLabelsAndAnnotations(request.Spec, &executeWorkflowInputs)
 	if err != nil {
