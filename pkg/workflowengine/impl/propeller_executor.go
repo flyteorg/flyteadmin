@@ -96,6 +96,9 @@ func (c *FlytePropeller) addPermissions(auth *admin.AuthRole, flyteWf *v1alpha1.
 		} else {
 			flyteWf.Annotations[c.roleNameKey] = fmt.Sprintf("%sbatchworker-%s", project, domain)
 		}
+
+		// To be removed after plugins update
+		flyteWf.Annotations["iam.amazonaws.com/role"] = flyteWf.Annotations[c.roleNameKey]
 	}
 }
 
