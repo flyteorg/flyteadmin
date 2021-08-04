@@ -612,18 +612,6 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 
 func resolvePermissions(ctx context.Context, request *admin.ExecutionCreateRequest, launchPlan *admin.LaunchPlan) *admin.AuthRole {
 	authRole := admin.AuthRole{}
-	if launchPlan.Spec.GetAuthRole() != nil && len(launchPlan.GetSpec().GetAuthRole().GetAssumableIamRole()) > 0 {
-		role = launchPlan.GetSpec().GetAuthRole().GetAssumableIamRole()
-	} else if launchPlan.GetSpec().GetAuth() != nil && len(launchPlan.GetSpec().GetAuth().GetAssumableIamRole()) > 0 {
-		role = launchPlan.GetSpec().GetAuth().GetAssumableIamRole()
-	} else if len(launchPlan.GetSpec().GetRole()) > 0 {
-		// Although deprecated, older launch plans may reference the role field instead of the Auth AssumableIamRole.
-		role = launchPlan.GetSpec().GetRole()
-	} else if launchPlan.GetSpec().GetAuthRole() != nil && len(launchPlan.GetSpec().GetAuthRole().GetKubernetesServiceAccount()) > 0 {
-		serviceAccountName = launchPlan.GetSpec().GetAuthRole().GetKubernetesServiceAccount()
-	} else if launchPlan.GetSpec().GetAuth() != nil && len(launchPlan.GetSpec().GetAuth().GetKubernetesServiceAccount()) > 0 {
-		serviceAccountName = launchPlan.GetSpec().GetAuth().GetKubernetesServiceAccount()
-	}
 	if request.Spec.AuthRole != nil && len(request.Spec.AuthRole.AssumableIamRole) > 0 {
 		authRole.AssumableIamRole = request.Spec.AuthRole.AssumableIamRole
 	} else if launchPlan.GetSpec().GetAuthRole() != nil && len(launchPlan.GetSpec().GetAuthRole().AssumableIamRole) > 0 {
