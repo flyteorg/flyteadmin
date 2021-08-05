@@ -185,9 +185,9 @@ func (s *cloudWatchScheduler) CreateScheduleInput(ctx context.Context, appConfig
 	}
 
 	// Backward compatible with old EvenSchedulerConfig structure
-	scheduleNamePrefix := appConfig.EventSchedulerConfig.ScheduleNamePrefix
-	if appConfig.EventSchedulerConfig.AWSSchedulerConfig != nil {
-		scheduleNamePrefix = appConfig.EventSchedulerConfig.AWSSchedulerConfig.ScheduleNamePrefix
+	scheduleNamePrefix := appConfig.EventSchedulerConfig.GetScheduleNamePrefix()
+	if appConfig.EventSchedulerConfig.GetAWSSchedulerConfig() != nil {
+		scheduleNamePrefix = appConfig.EventSchedulerConfig.GetAWSSchedulerConfig().GetScheduleNamePrefix()
 	}
 
 	addScheduleInput := scheduleInterfaces.AddScheduleInput{
