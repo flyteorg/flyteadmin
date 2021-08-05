@@ -210,7 +210,7 @@ func (m *ExecutionManager) offloadInputs(ctx context.Context, literalMap *core.L
 }
 
 func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask,
-	systemResourceLimits runtimeInterfaces.TaskResourceSet) runtimeInterfaces.TaskResourceSet {
+	configResourceLimits runtimeInterfaces.TaskResourceSet) runtimeInterfaces.TaskResourceSet {
 	// The values below should never be used (deduce it from the request; request should be set by the time we get here).
 	// Setting them here just in case we end up with requests not set. We are not adding to config because it would add
 	// more confusion as its mostly not used.
@@ -235,24 +235,24 @@ func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask,
 	taskResourceLimits := runtimeInterfaces.TaskResourceSet{}
 
 	// For resource values, we prefer to use the limits set in the application config over the set resource values.
-	if len(systemResourceLimits.CPU) > 0 {
-		cpuLimit = systemResourceLimits.CPU
+	if len(configResourceLimits.CPU) > 0 {
+		cpuLimit = configResourceLimits.CPU
 	} else if cpuIndex >= 0 {
 		cpuLimit = resourceRequestEntries[cpuIndex].Value
 	}
 	taskResourceLimits.CPU = cpuLimit
-	if len(systemResourceLimits.Memory) > 0 {
-		memoryLimit = systemResourceLimits.CPU
+	if len(configResourceLimits.Memory) > 0 {
+		memoryLimit = configResourceLimits.Memory
 	} else if memoryIndex >= 0 {
 		memoryLimit = resourceRequestEntries[memoryIndex].Value
 	}
 	taskResourceLimits.Memory = memoryLimit
-	if len(taskResourceLimits.GPU) == 0 && len(systemResourceLimits.GPU) > 0 {
+	if len(taskResourceLimits.GPU) == 0 && len(configResourceLimits.GPU) > 0 {
 		// When a platform default for GPU exists, but one isn't set in the task resources, use the platform value.
-		taskResourceLimits.GPU = systemResourceLimits.GPU
+		taskResourceLimits.GPU = configResourceLimits.GPU
 	}
-	if len(systemResourceLimits.EphemeralStorage) > 0 {
-		taskResourceLimits.EphemeralStorage = systemResourceLimits.EphemeralStorage
+	if len(configResourceLimits.EphemeralStorage) > 0 {
+		taskResourceLimits.EphemeralStorage = configResourceLimits.EphemeralStorage
 	} else if ephemeralStorageIndex >= 0 {
 		taskResourceLimits.EphemeralStorage = resourceRequestEntries[ephemeralStorageIndex].Value
 	}
