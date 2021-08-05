@@ -35,6 +35,7 @@ type RepositoryInterface interface {
 	TaskExecutionRepo() interfaces.TaskExecutionRepoInterface
 	NamedEntityRepo() interfaces.NamedEntityRepoInterface
 	SchedulableEntityRepo() interfaces.SchedulableEntityRepoInterface
+	ScheduleEntitiesSnapshotRepo() interfaces.ScheduleEntitiesSnapShotRepoInterface
 }
 
 func GetRepository(repoType RepoConfig, dbConfig config.DbConfig, scope promutils.Scope) RepositoryInterface {

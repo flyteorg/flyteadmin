@@ -1,6 +1,7 @@
 package flytescheduler
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	flyteSchedulerInterfaces "github.com/flyteorg/flyteadmin/pkg/async/schedule/flytescheduler/interfaces"
@@ -13,8 +14,8 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/google/uuid"
+	"go.uber.org/ratelimit"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"os"
 	"strings"
 	"time"
 )
@@ -24,35 +25,38 @@ const executorSleepTime = 30
 const snapshotWriterSleepTime = 30
 const backOffSleepTime = 60
 
+// workflowExecutor used for executing the schedules saved by the native flyte scheduler in the database.
 type workflowExecutor struct {
-	db                   repositories.RepositoryInterface
-	config               runtimeInterfaces.Configuration
-	executionManager     mgInterfaces.ExecutionInterface
-	snapshot             flyteSchedulerInterfaces.Snapshot
-	snapShotReaderWriter flyteSchedulerInterfaces.SnapshotReaderWriter
-	goGfInterface        flyteSchedulerInterfaces.GoGFWrapper
+	db                      repositories.RepositoryInterface
+	config                  runtimeInterfaces.Configuration
+	executionManager        mgInterfaces.ExecutionInterface
+	snapshot                flyteSchedulerInterfaces.Snapshot
+	snapShotReaderWriter    flyteSchedulerInterfaces.SnapshotReaderWriter
+	goGfInterface           flyteSchedulerInterfaces.GoGFWrapper
+	executionRequestsPerSec int
+	rateLimiter             ratelimit.Limiter
 }
 
 func (w *workflowExecutor) CheckPointState(ctx context.Context) {
-	workflowExecConfig := w.config.ApplicationConfiguration().GetSchedulerConfig().WorkflowExecutorConfig.FlyteWorkflowExecutorConfig
-	fileName := workflowExecConfig.SnapshotFileName
+	var prevSnapshot flyteSchedulerInterfaces.Snapshot
 	for true {
-		f, err := os.OpenFile(fileName, os.O_WRONLY | os.O_CREATE, 0644)
-		defer func(f *os.File) {
-			err := f.Close()
+		var bytesArray []byte
+		f := bytes.NewBuffer(bytesArray)
+		// Only write if the snapshot has contents and not equal to the previous snapshot
+		if !w.snapshot.IsEmpty() && !w.snapshot.AreEqual(prevSnapshot) {
+			err := w.snapShotReaderWriter.WriteSnapshot(f, w.snapshot)
+			// Just log the error
 			if err != nil {
-				logger.Errorf(ctx, "unable to close the file %v after writing due to %v", fileName, err)
+				logger.Errorf(ctx, "unable to write the snapshot to buffer due to %v", err)
 			}
-		}(f)
-		// Just log the error.
-		if err != nil {
-			logger.Errorf(ctx, "unable to create a writable snapshot file %v due to %v", fileName, err)
+			err = w.db.ScheduleEntitiesSnapshotRepo().CreateSnapShot(ctx, models.ScheduleEntitiesSnapshot{
+				Snapshot: f.Bytes(),
+			})
+			if err != nil {
+				logger.Errorf(ctx, "unable to save the snapshot to the database due to %v", err)
+			}
 		}
-		err = w.snapShotReaderWriter.WriteSnapshot(f, w.snapshot)
-		// Just log the error
-		if err != nil {
-			logger.Errorf(ctx, "unable to write the snapshot to file %v due to %v", fileName, err)
-		}
+		prevSnapshot = w.snapshot
 		time.Sleep(snapshotWriterSleepTime * time.Second)
 	}
 }
@@ -67,12 +71,11 @@ func (w *workflowExecutor) CatchUpAllSchedules(ctx context.Context, schedules []
 	return nil
 }
 
-
 func (w *workflowExecutor) CatchUpSingleSchedule(ctx context.Context, s models.SchedulableEntity, toTime time.Time) error {
 	nameOfSchedule := w.goGfInterface.GetScheduleName(s)
 	lastExecTime := w.snapshot.GetLastExecutionTime(nameOfSchedule)
 	// Get the jitter value
-	workflowExecConfig := w.config.ApplicationConfiguration().GetSchedulerConfig().WorkflowExecutorConfig.FlyteWorkflowExecutorConfig
+	workflowExecConfig := w.config.ApplicationConfiguration().GetSchedulerConfig().WorkflowExecutorConfig.GetFlyteWorkflowExecutorConfig()
 	jitter := time.Duration(workflowExecConfig.JitterValue) * time.Second
 	schedulerEpochTime := workflowExecConfig.SchedulerEpochTime
 
@@ -98,9 +101,11 @@ func (w *workflowExecutor) CatchUpSingleSchedule(ctx context.Context, s models.S
 	}
 	var catchupTime time.Time
 	for _, catchupTime = range catchUpTimes {
+		_ = w.rateLimiter.Take()
 		err := fire(ctx, w.executionManager, catchupTime, s)
 		if err != nil {
 			logger.Errorf(ctx, "unable to fire the schedule %v at %v time due to %v", s, catchupTime, err)
+			return err
 		} else {
 			w.snapshot.UpdateLastExecutionTime(nameOfSchedule, catchupTime)
 		}
@@ -177,6 +182,10 @@ func (w *workflowExecutor) Run() {
 	for true {
 		for _, s := range c.Entities {
 			funcRef := func() {
+				// If the schedule has been deactivated and then the inflight schedules can stop at the beggining
+				if !*s.Active {
+					return
+				}
 				nameOfSchedule := w.goGfInterface.GetScheduleName(s)
 				lastT := w.snapshot.GetLastExecutionTime(nameOfSchedule)
 				n := time.Now()
@@ -208,19 +217,22 @@ func NewWorkflowExecutor(db repositories.RepositoryInterface, executionManager m
 	ctx := context.Background()
 	workflowExecConfig := config.ApplicationConfiguration().GetSchedulerConfig().WorkflowExecutorConfig.FlyteWorkflowExecutorConfig
 	snapShotReaderWriter := VersionedSnapshot{version: workflowExecConfig.SnapshotVersion}
-	snapshot := readSnapShot(ctx, workflowExecConfig.SnapshotFileName, workflowExecConfig.SnapshotVersion)
+	rateLimiter := ratelimit.New(workflowExecConfig.AdminFireReqRateLimit)
+	snapshot := readSnapShot(ctx, db, workflowExecConfig.SnapshotVersion)
 	return &workflowExecutor{db: db, executionManager: executionManager, config: config, snapshot: snapshot,
 		snapShotReaderWriter: &snapShotReaderWriter,
-		goGfInterface:        GoGF{}}
+		goGfInterface:        GoGF{},
+		rateLimiter:          rateLimiter}
 }
 
-func readSnapShot(ctx context.Context, fileName string, version int) flyteSchedulerInterfaces.Snapshot {
+func readSnapShot(ctx context.Context, db repositories.RepositoryInterface, version int) flyteSchedulerInterfaces.Snapshot {
 	var snapshot flyteSchedulerInterfaces.Snapshot
-	f, err := os.Open(fileName)
+	scheduleEntitiesSnapShot, err := db.ScheduleEntitiesSnapshotRepo().GetLatestSnapShot(ctx)
 	// Just log the error but dont interrupt the startup of the scheduler
 	if err != nil {
-		logger.Errorf(ctx, "unable to read the snapshot file %v", fileName)
+		logger.Errorf(ctx, "unable to read the snapshot from the DB due to %v", err)
 	} else {
+		f := bytes.NewReader(scheduleEntitiesSnapShot.Snapshot)
 		snapShotReaderWriter := VersionedSnapshot{version: version}
 		snapshot, err = snapShotReaderWriter.ReadSnapshot(f)
 		// Similarly just log the error but dont interrupt the startup of the scheduler
