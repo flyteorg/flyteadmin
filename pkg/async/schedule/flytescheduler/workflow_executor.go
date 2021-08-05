@@ -215,7 +215,7 @@ func (w *workflowExecutor) Stop() error {
 func NewWorkflowExecutor(db repositories.RepositoryInterface, executionManager mgInterfaces.ExecutionInterface,
 	config runtimeInterfaces.Configuration) interfaces.WorkflowExecutor {
 	ctx := context.Background()
-	workflowExecConfig := config.ApplicationConfiguration().GetSchedulerConfig().WorkflowExecutorConfig.FlyteWorkflowExecutorConfig
+	workflowExecConfig := config.ApplicationConfiguration().GetSchedulerConfig().WorkflowExecutorConfig.GetFlyteWorkflowExecutorConfig()
 	snapShotReaderWriter := VersionedSnapshot{version: workflowExecConfig.SnapshotVersion}
 	rateLimiter := ratelimit.New(workflowExecConfig.AdminFireReqRateLimit)
 	snapshot := readSnapShot(ctx, db, workflowExecConfig.SnapshotVersion)
