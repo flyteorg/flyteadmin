@@ -10,7 +10,7 @@ import (
 
 type VersionedSnapshot struct {
 	version int
-	Ser []byte
+	Ser     []byte
 }
 
 func (s *VersionedSnapshot) WriteSnapshot(w io.Writer, snapshot interfaces.Snapshot) error {
@@ -24,7 +24,7 @@ func (s *VersionedSnapshot) WriteSnapshot(w io.Writer, snapshot interfaces.Snaps
 	return enc.Encode(s)
 }
 
-func (s* VersionedSnapshot) ReadSnapshot(r io.Reader) (interfaces.Snapshot, error) {
+func (s *VersionedSnapshot) ReadSnapshot(r io.Reader) (interfaces.Snapshot, error) {
 	err := gob.NewDecoder(r).Decode(s)
 	if err != nil {
 		return nil, err
@@ -39,4 +39,3 @@ func (s* VersionedSnapshot) ReadSnapshot(r io.Reader) (interfaces.Snapshot, erro
 	}
 	return nil, fmt.Errorf("unsupported version %v", s.version)
 }
-

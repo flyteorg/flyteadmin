@@ -307,12 +307,22 @@ var Migrations = []*gormigrate.Migration{
 	},
 
 	{
-		ID: "2021-06-22-schedulable_entities",
+		ID: "2021-07-22-schedulable_entities",
 		Migrate: func(tx *gorm.DB) error {
 			return tx.AutoMigrate(&models.SchedulableEntity{}).Error
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return tx.DropTable("schedulable_entities").Error
+		},
+	},
+
+	{
+		ID: "2021-08-05-schedulable_entities_snapshot",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&models.ScheduleEntitiesSnapshot{}).Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.DropTable("schedulable_entities_snapshot").Error
 		},
 	},
 }

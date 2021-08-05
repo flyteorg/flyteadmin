@@ -9,4 +9,6 @@ type Snapshot interface {
 	CreateSnapshot() ([]byte, error)
 	BootstrapFrom(snapshot []byte) error
 	GetVersion() int
+	IsEmpty() bool
+	AreEqual(snapshot Snapshot) bool
 }

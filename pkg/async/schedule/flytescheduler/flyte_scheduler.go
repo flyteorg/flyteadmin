@@ -14,6 +14,7 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 )
 
+// FlyteScheduler used for saving the scheduler entries after launch plans are enabled or disabled.
 type FlyteScheduler struct {
 	db repositories.RepositoryInterface
 }
@@ -29,11 +30,14 @@ func (s *FlyteScheduler) CreateScheduleInput(ctx context.Context, appConfig *run
 }
 
 func (s *FlyteScheduler) AddSchedule(ctx context.Context, input interfaces.AddScheduleInput) error {
-	logger.Debugf(ctx, "Received call to add schedule [%+v]", input)
+	logger.Infof(ctx, "Received call to add schedule [%+v]", input)
 	var cronString string
+	var fixedRateValue uint32
+	var fixedRateUnit admin.FixedRateUnit
 	switch v := input.ScheduleExpression.GetScheduleExpression().(type) {
 	case *admin.Schedule_Rate:
-		cronString = fmt.Sprintf("*/%v * * * * *", v.Rate.Value)
+		fixedRateValue = v.Rate.Value
+		fixedRateUnit = v.Rate.Unit
 	case *admin.Schedule_CronSchedule:
 		cronString = v.CronSchedule.Schedule
 	case *admin.Schedule_CronExpression:
@@ -41,41 +45,42 @@ func (s *FlyteScheduler) AddSchedule(ctx context.Context, input interfaces.AddSc
 	default:
 		return fmt.Errorf("failed adding schedule for unknown schedule expression type %v", v)
 	}
+	active := true
 	modelInput := models.SchedulableEntity{
-		CronExpression: cronString,
+		CronExpression:      cronString,
+		FixedRateValue:      fixedRateValue,
+		Unit:                fixedRateUnit,
 		KickoffTimeInputArg: input.ScheduleExpression.KickoffTimeInputArg,
-		Active: true,
+		Active:              &active,
 		SchedulableEntityKey: models.SchedulableEntityKey{
 			Project: input.Identifier.Project,
-			Domain: input.Identifier.Domain,
-			Name: input.Identifier.Name,
+			Domain:  input.Identifier.Domain,
+			Name:    input.Identifier.Name,
 			Version: input.Identifier.Version,
 		},
-		//BaseModel: models.BaseModel{
-		//
-		//},
 	}
-	err := s.db.SchedulableEntityRepo().Create(ctx, modelInput)
+	err := s.db.SchedulableEntityRepo().Activate(ctx, modelInput)
 	if err != nil {
 		return err
 	}
-	logger.Debug(ctx, "Created a scheduled entity for %v ", input)
+	logger.Infof(ctx, "Activated scheduled entity for %v ", input)
 	return nil
 }
 
 func (s *FlyteScheduler) RemoveSchedule(ctx context.Context, input interfaces.RemoveScheduleInput) error {
-	logger.Debugf(ctx, "Received call to remove schedule [%+v]", input.Identifier)
+	logger.Infof(ctx, "Received call to remove schedule [%+v]. Will deactivate it in the scheduler", input.Identifier)
 
-	//schedulableEntity, err := s.db.SchedulableEntityRepo().Get(ctx, models.SchedulableEntityKey{
-	//	Project: input.Identifier.Project,
-	//	Domain: input.Identifier.Domain,
-	//	Name: input.Identifier.Name,
-	//	Version: input.Identifier.Version,
-	//})
-	//if err != nil {
-	//	return err
-	//}
-	logger.Debug(ctx, "Not scheduling anything")
+	err := s.db.SchedulableEntityRepo().Deactivate(ctx, models.SchedulableEntityKey{
+		Project: input.Identifier.Project,
+		Domain:  input.Identifier.Domain,
+		Name:    input.Identifier.Name,
+		Version: input.Identifier.Version,
+	})
+
+	if err != nil {
+		return err
+	}
+	logger.Infof(ctx, "Deactivated the schedule %v in the scheduler", input)
 	return nil
 }
 
