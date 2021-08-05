@@ -9,18 +9,19 @@ import (
 )
 
 type PostgresRepo struct {
-	executionRepo          interfaces.ExecutionRepoInterface
-	executionEventRepo     interfaces.ExecutionEventRepoInterface
-	namedEntityRepo        interfaces.NamedEntityRepoInterface
-	launchPlanRepo         interfaces.LaunchPlanRepoInterface
-	projectRepo            interfaces.ProjectRepoInterface
-	nodeExecutionRepo      interfaces.NodeExecutionRepoInterface
-	nodeExecutionEventRepo interfaces.NodeExecutionEventRepoInterface
-	taskRepo               interfaces.TaskRepoInterface
-	taskExecutionRepo      interfaces.TaskExecutionRepoInterface
-	workflowRepo           interfaces.WorkflowRepoInterface
-	resourceRepo           interfaces.ResourceRepoInterface
-	schedulableEntityRepo  interfaces.SchedulableEntityRepoInterface
+	executionRepo                interfaces.ExecutionRepoInterface
+	executionEventRepo           interfaces.ExecutionEventRepoInterface
+	namedEntityRepo              interfaces.NamedEntityRepoInterface
+	launchPlanRepo               interfaces.LaunchPlanRepoInterface
+	projectRepo                  interfaces.ProjectRepoInterface
+	nodeExecutionRepo            interfaces.NodeExecutionRepoInterface
+	nodeExecutionEventRepo       interfaces.NodeExecutionEventRepoInterface
+	taskRepo                     interfaces.TaskRepoInterface
+	taskExecutionRepo            interfaces.TaskExecutionRepoInterface
+	workflowRepo                 interfaces.WorkflowRepoInterface
+	resourceRepo                 interfaces.ResourceRepoInterface
+	schedulableEntityRepo        interfaces.SchedulableEntityRepoInterface
+	scheduleEntitiesSnapshotRepo interfaces.ScheduleEntitiesSnapShotRepoInterface
 }
 
 func (p *PostgresRepo) ExecutionRepo() interfaces.ExecutionRepoInterface {
@@ -71,19 +72,24 @@ func (p *PostgresRepo) SchedulableEntityRepo() interfaces.SchedulableEntityRepoI
 	return p.schedulableEntityRepo
 }
 
+func (p *PostgresRepo) ScheduleEntitiesSnapshotRepo() interfaces.ScheduleEntitiesSnapShotRepoInterface {
+	return p.scheduleEntitiesSnapshotRepo
+}
+
 func NewPostgresRepo(db *gorm.DB, errorTransformer errors.ErrorTransformer, scope promutils.Scope) RepositoryInterface {
 	return &PostgresRepo{
-		executionRepo:          gormimpl.NewExecutionRepo(db, errorTransformer, scope.NewSubScope("executions")),
-		executionEventRepo:     gormimpl.NewExecutionEventRepo(db, errorTransformer, scope.NewSubScope("execution_events")),
-		launchPlanRepo:         gormimpl.NewLaunchPlanRepo(db, errorTransformer, scope.NewSubScope("launch_plans")),
-		projectRepo:            gormimpl.NewProjectRepo(db, errorTransformer, scope.NewSubScope("project")),
-		namedEntityRepo:        gormimpl.NewNamedEntityRepo(db, errorTransformer, scope.NewSubScope("named_entity")),
-		nodeExecutionRepo:      gormimpl.NewNodeExecutionRepo(db, errorTransformer, scope.NewSubScope("node_executions")),
-		nodeExecutionEventRepo: gormimpl.NewNodeExecutionEventRepo(db, errorTransformer, scope.NewSubScope("node_execution_events")),
-		taskRepo:               gormimpl.NewTaskRepo(db, errorTransformer, scope.NewSubScope("tasks")),
-		taskExecutionRepo:      gormimpl.NewTaskExecutionRepo(db, errorTransformer, scope.NewSubScope("task_executions")),
-		workflowRepo:           gormimpl.NewWorkflowRepo(db, errorTransformer, scope.NewSubScope("workflows")),
-		resourceRepo:           gormimpl.NewResourceRepo(db, errorTransformer, scope.NewSubScope("resources")),
-		schedulableEntityRepo:  gormimpl.NewSchedulableEntityRepo(db, errorTransformer, scope.NewSubScope("schedulable_entity")),
+		executionRepo:                gormimpl.NewExecutionRepo(db, errorTransformer, scope.NewSubScope("executions")),
+		executionEventRepo:           gormimpl.NewExecutionEventRepo(db, errorTransformer, scope.NewSubScope("execution_events")),
+		launchPlanRepo:               gormimpl.NewLaunchPlanRepo(db, errorTransformer, scope.NewSubScope("launch_plans")),
+		projectRepo:                  gormimpl.NewProjectRepo(db, errorTransformer, scope.NewSubScope("project")),
+		namedEntityRepo:              gormimpl.NewNamedEntityRepo(db, errorTransformer, scope.NewSubScope("named_entity")),
+		nodeExecutionRepo:            gormimpl.NewNodeExecutionRepo(db, errorTransformer, scope.NewSubScope("node_executions")),
+		nodeExecutionEventRepo:       gormimpl.NewNodeExecutionEventRepo(db, errorTransformer, scope.NewSubScope("node_execution_events")),
+		taskRepo:                     gormimpl.NewTaskRepo(db, errorTransformer, scope.NewSubScope("tasks")),
+		taskExecutionRepo:            gormimpl.NewTaskExecutionRepo(db, errorTransformer, scope.NewSubScope("task_executions")),
+		workflowRepo:                 gormimpl.NewWorkflowRepo(db, errorTransformer, scope.NewSubScope("workflows")),
+		resourceRepo:                 gormimpl.NewResourceRepo(db, errorTransformer, scope.NewSubScope("resources")),
+		schedulableEntityRepo:        gormimpl.NewSchedulableEntityRepo(db, errorTransformer, scope.NewSubScope("schedulable_entity")),
+		scheduleEntitiesSnapshotRepo: gormimpl.NewScheduleEntitiesSnapshotRepo(db, errorTransformer, scope.NewSubScope("schedule_entities_snapshot")),
 	}
 }

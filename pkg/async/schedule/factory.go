@@ -73,7 +73,7 @@ func (w *workflowScheduler) GetWorkflowExecutor(
 	return w.workflowExecutor
 }
 
-func NewWorkflowScheduler(db repositories.RepositoryInterface,cfg WorkflowSchedulerConfig) WorkflowScheduler {
+func NewWorkflowScheduler(db repositories.RepositoryInterface, cfg WorkflowSchedulerConfig) WorkflowScheduler {
 	var eventScheduler interfaces.EventScheduler
 	var workflowExecutor interfaces.WorkflowExecutor
 

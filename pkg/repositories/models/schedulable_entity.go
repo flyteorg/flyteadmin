@@ -2,7 +2,6 @@ package models
 
 import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
-	"time"
 )
 
 // Database model to encapsulate metadata associated with a SchedulableEntity
@@ -10,13 +9,11 @@ type SchedulableEntity struct {
 	BaseModel
 	SchedulableEntityKey
 	CronExpression      string
-	FixedRateValue		uint32
+	FixedRateValue      uint32
 	Unit                admin.FixedRateUnit
-	LastExecutionTime   *time.Time
 	KickoffTimeInputArg string
-	Active              bool
+	Active              *bool
 }
-
 
 type SchedulableEntityCollectionOutput struct {
 	Entities []SchedulableEntity

@@ -79,9 +79,37 @@ type EventSchedulerConfig struct {
 	// Deprecated : The name of the queue for which scheduled events should enqueue.
 	TargetName string `json:"targetName"`
 	// Deprecated : Optional: The application-wide prefix to be applied for schedule names.
-	ScheduleNamePrefix string `json:"scheduleNamePrefix"`
-	AWSSchedulerConfig *AWSSchedulerConfig `json:"aws"`
+	ScheduleNamePrefix   string                `json:"scheduleNamePrefix"`
+	AWSSchedulerConfig   *AWSSchedulerConfig   `json:"aws"`
 	FlyteSchedulerConfig *FlyteSchedulerConfig `json:"local"`
+}
+
+func (e *EventSchedulerConfig) GetScheme() string {
+	return e.Scheme
+}
+
+func (e *EventSchedulerConfig) GetRegion() string {
+	return e.Region
+}
+
+func (e *EventSchedulerConfig) GetScheduleRole() string {
+	return e.ScheduleRole
+}
+
+func (e *EventSchedulerConfig) GetTargetName() string {
+	return e.TargetName
+}
+
+func (e *EventSchedulerConfig) GetScheduleNamePrefix() string {
+	return e.ScheduleNamePrefix
+}
+
+func (e *EventSchedulerConfig) GetAWSSchedulerConfig() *AWSSchedulerConfig {
+	return e.AWSSchedulerConfig
+}
+
+func (e *EventSchedulerConfig) GetFlyteSchedulerConfig() *FlyteSchedulerConfig {
+	return e.FlyteSchedulerConfig
 }
 
 type AWSSchedulerConfig struct {
@@ -95,9 +123,24 @@ type AWSSchedulerConfig struct {
 	ScheduleNamePrefix string `json:"scheduleNamePrefix"`
 }
 
+func (a *AWSSchedulerConfig) GetRegion() string {
+	return a.Region
+}
+
+func (a *AWSSchedulerConfig) GetScheduleRole() string {
+	return a.ScheduleRole
+}
+
+func (a *AWSSchedulerConfig) GetTargetName() string {
+	return a.TargetName
+}
+
+func (a *AWSSchedulerConfig) GetScheduleNamePrefix() string {
+	return a.ScheduleNamePrefix
+}
+
 // FlyteSchedulerConfig is the config for native or default flyte scheduler
 type FlyteSchedulerConfig struct {
-
 }
 
 // This section holds configuration for the executor that processes workflow scheduled events fired.
@@ -105,15 +148,39 @@ type WorkflowExecutorConfig struct {
 	// Defines the cloud provider that backs the scheduler. In the absence of a specification the no-op, 'local'
 	// scheme is used.
 	Scheme string `json:"scheme"`
-	// Depecated : Some cloud providers require a region to be set.
+	// Deprecated : Some cloud providers require a region to be set.
 	Region string `json:"region"`
-	// Depecated : The name of the queue onto which scheduled events will enqueue.
+	// Deprecated : The name of the queue onto which scheduled events will enqueue.
 	ScheduleQueueName string `json:"scheduleQueueName"`
-	// Depecated : The account id (according to whichever cloud provider scheme is used) that has permission to read from the above
+	// Deprecated : The account id (according to whichever cloud provider scheme is used) that has permission to read from the above
 	// queue.
-	AccountID string `json:"accountId"`
-	AWSWorkflowExecutorConfig *AWSWorkflowExecutorConfig `json:"aws"`
+	AccountID                   string                       `json:"accountId"`
+	AWSWorkflowExecutorConfig   *AWSWorkflowExecutorConfig   `json:"aws"`
 	FlyteWorkflowExecutorConfig *FlyteWorkflowExecutorConfig `json:"local"`
+}
+
+func (w *WorkflowExecutorConfig) GetScheme() string {
+	return w.Scheme
+}
+
+func (w *WorkflowExecutorConfig) GetRegion() string {
+	return w.Region
+}
+
+func (w *WorkflowExecutorConfig) GetScheduleScheduleQueueName() string {
+	return w.ScheduleQueueName
+}
+
+func (w *WorkflowExecutorConfig) GetAccountID() string {
+	return w.AccountID
+}
+
+func (w *WorkflowExecutorConfig) GetAWSWorkflowExecutorConfig() *AWSWorkflowExecutorConfig {
+	return w.AWSWorkflowExecutorConfig
+}
+
+func (w *WorkflowExecutorConfig) GetFlyteWorkflowExecutorConfig() *FlyteWorkflowExecutorConfig {
+	return w.FlyteWorkflowExecutorConfig
 }
 
 type AWSWorkflowExecutorConfig struct {
@@ -126,11 +193,54 @@ type AWSWorkflowExecutorConfig struct {
 	AccountID string `json:"accountId"`
 }
 
+func (a *AWSWorkflowExecutorConfig) GetRegion() string {
+	return a.Region
+}
+
+func (a *AWSWorkflowExecutorConfig) GetScheduleScheduleQueueName() string {
+	return a.ScheduleQueueName
+}
+
+func (a *AWSWorkflowExecutorConfig) GetAccountID() string {
+	return a.AccountID
+}
+
+// FlyteWorkflowExecutorConfig specifies the workflow executor configuration for the native flyte scheduler
 type FlyteWorkflowExecutorConfig struct {
-	SchedulerEpochTime time.Time  `json:"schedulerEpochTime"`
-	SnapshotFileName string `json:"snapshotFileName"`
+	// Specifies the epoch time to use when the scheduler starts up if it is set.
+	// This allows the scheduler to be started from any time for scheduling workflows.
+	SchedulerEpochTime time.Time `json:"schedulerEpochTime"`
+
+	// Version number of the snapshot used for writing the GOB format of the snapshot
 	SnapshotVersion int `json:"snapshotVersion"`
+	// Delta time value to be used from the timestamp for finding the next schedule times.
+	// This allows to avoid schedule misses.
+	// Assumes a func getNextTimeFrom(schedule, marker)
+	// eg: if the scheduler schedules a call to the function every 5 mins  starting at minute :00, of every hour (0 0/5 * * * ? *)
+	// And the actual call to function lets say comes at 11:05:30 sec, then when we try to compute
+	// getNextTimeFrom("0 0/5 * * * ? *", 11:05:30 ) => will give 11:10:00 instead of 11:05 which is incorrect.
+	// Adding a small jitter delta avoid this
 	JitterValue int `json:"jitterValue"`
+	// This allows to control the number of TPS that hit admin using the scheduler.
+	// eg : 100 TPS will send at the max 100 schedule requests to admin per sec.
+	// This value is in TPS.
+	AdminFireReqRateLimit int `json:"adminFireReqRateLimit"`
+}
+
+func (f *FlyteWorkflowExecutorConfig) GetSchedulerEpochTime() time.Time {
+	return f.SchedulerEpochTime
+}
+
+func (f *FlyteWorkflowExecutorConfig) GetSnapshotVersion() int {
+	return f.SnapshotVersion
+}
+
+func (f *FlyteWorkflowExecutorConfig) GetJitterValue() int {
+	return f.JitterValue
+}
+
+func (f *FlyteWorkflowExecutorConfig) GetAdminFireReqRateLimit() int {
+	return f.AdminFireReqRateLimit
 }
 
 // This configuration is the base configuration for all scheduler-related set-up.

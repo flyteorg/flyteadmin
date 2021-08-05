@@ -22,7 +22,7 @@ require (
 	github.com/flyteorg/flytestdlib v0.3.34
 	github.com/ghodss/yaml v1.0.0
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
-	github.com/gogf/gf v1.16.4
+	github.com/gogf/gf v1.16.5
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.4.3
@@ -37,10 +37,11 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/gtank/cryptopasta v0.0.0-20170601214702-1f550f6f2f69
 	github.com/imdario/mergo v0.3.12 // indirect
-	github.com/jinzhu/gorm v1.9.16
+	github.com/jinzhu/gorm v1.9.15
+	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.2 // indirect
 	github.com/lestrrat-go/jwx v1.1.6
-	github.com/lib/pq v1.10.0
+	github.com/lib/pq v1.10.2
 	github.com/magiconair/properties v1.8.4
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/ory/fosite v0.39.0
@@ -58,8 +59,10 @@ require (
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
-	golang.org/x/crypto v0.0.0-20210314154223-e6e6c4f2bb5b // indirect
+	go.uber.org/ratelimit v0.2.0
+	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97 // indirect
 	golang.org/x/oauth2 v0.0.0-20210313182246-cd4f82c27b84
+	golang.org/x/text v0.3.6 // indirect
 	golang.org/x/tools v0.1.2 // indirect
 	google.golang.org/api v0.42.0
 	google.golang.org/genproto v0.0.0-20210315173758-2651cd453018

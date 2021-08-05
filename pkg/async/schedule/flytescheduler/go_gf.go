@@ -8,14 +8,15 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/gogf/gf/errors/gerror"
 	"github.com/gogf/gf/os/gcron"
 	"github.com/gogf/gf/os/gtimer"
 	"github.com/robfig/cron"
 	"strconv"
-	"strings"
 	"time"
 )
 
+// Struct implmenting the GoGfwrapper which is used by the scheduler for adding and removing schedules
 type GoGF struct {
 }
 
@@ -31,9 +32,9 @@ func (g GoGF) GetScheduleName(s models.SchedulableEntity) string {
 func (g GoGF) Register(ctx context.Context, s models.SchedulableEntity, funcRef func()) error {
 	nameOfSchedule := g.GetScheduleName(s)
 
-	if s.Active {
+	if *s.Active {
 		if len(s.CronExpression) > 0 {
-			err := addCronJob(s.CronExpression,funcRef,nameOfSchedule)
+			err := addCronJob(s.CronExpression, funcRef, nameOfSchedule)
 			if err != nil {
 				logger.Errorf(ctx, "failed to add cron schedule %v due to %v", s, err)
 			}
@@ -61,7 +62,7 @@ func (g GoGF) GetScheduledTime(s models.SchedulableEntity, fromTime time.Time) (
 	}
 }
 
-func (g GoGF) GetCatchUpTimes(schedule models.SchedulableEntity, from time.Time, to time.Time) ([]time.Time, error){
+func (g GoGF) GetCatchUpTimes(schedule models.SchedulableEntity, from time.Time, to time.Time) ([]time.Time, error) {
 	var scheduledTimes []time.Time
 	currFrom := from
 	for currFrom.Before(to) {
@@ -77,7 +78,7 @@ func (g GoGF) GetCatchUpTimes(schedule models.SchedulableEntity, from time.Time,
 
 func addCronJob(cronExpression string, job func(), nameOfSchedule string) error {
 	_, err := gcron.AddSingleton(cronExpression, job, nameOfSchedule)
-	if err != nil && strings.HasSuffix(err.Error(), "already exists"){
+	if err != nil && gerror.Code(err) == gerror.CodeInvalidOperation {
 		return nil
 	}
 	return err
@@ -110,7 +111,6 @@ func getCronScheduledTime(cronString string, fromTime time.Time) (time.Time, err
 	}
 	return sched.Next(fromTime), nil
 }
-
 
 func getFixedIntervalScheduledTime(unit admin.FixedRateUnit, fixedRateValue uint32, fromTime time.Time) (time.Time, error) {
 	d, err := getFixedRateDurationFromSchedule(unit, fixedRateValue)
