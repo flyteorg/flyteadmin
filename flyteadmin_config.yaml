@@ -77,8 +77,6 @@ scheduler:
   workflowExecutor:
     scheme: local
     local:
-      schedulerEpochTime: #2021-08-03T13:44:35Z set this if you want to run from specific time
-      snapshotFileName: schedules-snapshot # file containing the snapshot of schedule and its last exec timestamp
       snapshotVersion: 1 # version of the snapshot
       jitterValue: 30 # jitter or delta from the current time to use for finding the schedule
       adminFireReqRateLimit: 1 #per sec how many requests to send to admin

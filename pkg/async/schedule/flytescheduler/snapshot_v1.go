@@ -34,7 +34,7 @@ func (s *SnapshotV1) IsEmpty() bool {
 	return len(s.LastTimes) == 0
 }
 
-func (s *SnapshotV1) AreEqual(prevSnapshot interfaces.Snapshot) bool {
+func (s *SnapshotV1) AreEqual(prevSnapshot interfaces.Snapshoter) bool {
 	if prevSnapshotV1, ok := prevSnapshot.(*SnapshotV1); !ok {
 		return false
 	} else {

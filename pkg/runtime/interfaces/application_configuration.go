@@ -1,7 +1,5 @@
 package interfaces
 
-import "time"
-
 // This configuration section is used to for initiating the database connection with the store that holds registered
 // entities (e.g. workflows, tasks, launch plans...)
 // This struct specifically maps to the flyteadmin config yaml structure.
@@ -207,10 +205,6 @@ func (a *AWSWorkflowExecutorConfig) GetAccountID() string {
 
 // FlyteWorkflowExecutorConfig specifies the workflow executor configuration for the native flyte scheduler
 type FlyteWorkflowExecutorConfig struct {
-	// Specifies the epoch time to use when the scheduler starts up if it is set.
-	// This allows the scheduler to be started from any time for scheduling workflows.
-	SchedulerEpochTime time.Time `json:"schedulerEpochTime"`
-
 	// Version number of the snapshot used for writing the GOB format of the snapshot
 	SnapshotVersion int `json:"snapshotVersion"`
 	// Delta time value to be used from the timestamp for finding the next schedule times.
@@ -225,10 +219,6 @@ type FlyteWorkflowExecutorConfig struct {
 	// eg : 100 TPS will send at the max 100 schedule requests to admin per sec.
 	// This value is in TPS.
 	AdminFireReqRateLimit int `json:"adminFireReqRateLimit"`
-}
-
-func (f *FlyteWorkflowExecutorConfig) GetSchedulerEpochTime() time.Time {
-	return f.SchedulerEpochTime
 }
 
 func (f *FlyteWorkflowExecutorConfig) GetSnapshotVersion() int {
