@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-// Struct implmenting the GoGfwrapper which is used by the scheduler for adding and removing schedules
+// GoGF Struct implementing the GoGfwrapper which is used by the scheduler for adding and removing schedules
 type GoGF struct {
 }
 
@@ -85,8 +85,10 @@ func addCronJob(cronExpression string, job func(), nameOfSchedule string) error 
 }
 
 func removeCronJob(ctx context.Context, nameOfSchedule string) {
-	gcron.Remove(nameOfSchedule)
-	logger.Infof(ctx, "successfully removed the schedule %v from scheduler", nameOfSchedule)
+	if e := gcron.Search(nameOfSchedule); e != nil {
+		gcron.Remove(nameOfSchedule)
+		logger.Infof(ctx, "successfully removed the schedule %v from scheduler", nameOfSchedule)
+	}
 }
 
 func addFixedIntervalJob(unit admin.FixedRateUnit, fixedRateValue uint32, job func()) error {
