@@ -207,14 +207,6 @@ func (a *AWSWorkflowExecutorConfig) GetAccountID() string {
 type FlyteWorkflowExecutorConfig struct {
 	// Version number of the snapshot used for writing the GOB format of the snapshot
 	SnapshotVersion int `json:"snapshotVersion"`
-	// Delta time value to be used from the timestamp for finding the next schedule times.
-	// This allows to avoid schedule misses.
-	// Assumes a func getNextTimeFrom(schedule, marker)
-	// eg: if the scheduler schedules a call to the function every 5 mins  starting at minute :00, of every hour (0 0/5 * * * ? *)
-	// And the actual call to function lets say comes at 11:05:30 sec, then when we try to compute
-	// getNextTimeFrom("0 0/5 * * * ? *", 11:05:30 ) => will give 11:10:00 instead of 11:05 which is incorrect.
-	// Adding a small jitter delta avoid this
-	JitterValue int `json:"jitterValue"`
 	// This allows to control the number of TPS that hit admin using the scheduler.
 	// eg : 100 TPS will send at the max 100 schedule requests to admin per sec.
 	// This value is in TPS.
@@ -223,10 +215,6 @@ type FlyteWorkflowExecutorConfig struct {
 
 func (f *FlyteWorkflowExecutorConfig) GetSnapshotVersion() int {
 	return f.SnapshotVersion
-}
-
-func (f *FlyteWorkflowExecutorConfig) GetJitterValue() int {
-	return f.JitterValue
 }
 
 func (f *FlyteWorkflowExecutorConfig) GetAdminFireReqRateLimit() int {

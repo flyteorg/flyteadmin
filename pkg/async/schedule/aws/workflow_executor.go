@@ -127,7 +127,7 @@ func (e *workflowExecutor) getActiveLaunchPlanVersion(launchPlanIdentifier *admi
 }
 
 func generateExecutionName(launchPlan admin.LaunchPlan, kickoffTime time.Time) string {
-	hashedIdentifier := HashIdentifier(core.Identifier{
+	hashedIdentifier := hashIdentifier(core.Identifier{
 		Project: launchPlan.Id.Project,
 		Domain:  launchPlan.Id.Domain,
 		Name:    launchPlan.Id.Name,

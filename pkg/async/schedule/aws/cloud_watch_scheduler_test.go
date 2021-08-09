@@ -3,6 +3,7 @@ package aws
 import (
 	"context"
 	"fmt"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/flyteorg/flyteadmin/pkg/async/schedule/aws/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/async/schedule/aws/mocks"
@@ -28,10 +29,11 @@ var expectedError = flyteAdminErrors.NewFlyteAdminError(codes.Internal, "foo")
 
 var testSerializedPayload = fmt.Sprintf("event triggered at '%s'", awsTimestampPlaceholder)
 
-var testSchedulerIdentifier = admin.NamedEntityIdentifier{
+var testSchedulerIdentifier = core.Identifier{
 	Project: "project",
 	Domain:  "domain",
 	Name:    "name",
+	Version: "ignored",
 }
 
 var scope = promutils.NewScope("test_scheduler")

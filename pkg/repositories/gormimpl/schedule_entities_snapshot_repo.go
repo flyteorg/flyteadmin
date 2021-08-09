@@ -31,7 +31,7 @@ func (r *ScheduleEntitiesSnapshotRepo) CreateSnapShot(ctx context.Context, input
 func (r *ScheduleEntitiesSnapshotRepo) GetLatestSnapShot(ctx context.Context) (models.ScheduleEntitiesSnapshot, error) {
 	var schedulableEntitiesSnapshot models.ScheduleEntitiesSnapshot
 	timer := r.metrics.GetDuration.Start()
-	tx := r.db.Take(&schedulableEntitiesSnapshot).Order("id desc").Limit(1)
+	tx := r.db.Last(&schedulableEntitiesSnapshot)
 	timer.Stop()
 
 	if tx.Error != nil {

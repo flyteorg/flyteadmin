@@ -38,6 +38,11 @@ type RepositoryInterface interface {
 	ScheduleEntitiesSnapshotRepo() interfaces.ScheduleEntitiesSnapShotRepoInterface
 }
 
+type SchedulerRepoInterface interface {
+	SchedulableEntityRepo() interfaces.SchedulableEntityRepoInterface
+	ScheduleEntitiesSnapshotRepo() interfaces.ScheduleEntitiesSnapShotRepoInterface
+}
+
 func GetRepository(repoType RepoConfig, dbConfig config.DbConfig, scope promutils.Scope) RepositoryInterface {
 	switch repoType {
 	case POSTGRES:
