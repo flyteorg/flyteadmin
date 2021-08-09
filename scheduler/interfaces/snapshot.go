@@ -18,4 +18,6 @@ type Snapshoter interface {
 	IsEmpty() bool
 	// AreEqual returns true if the prevSnapshot equals the schedules of the current snapshot
 	AreEqual(prevSnapshot Snapshoter) bool
+	// Clone returns copy of the current in memory snapshot
+	Clone() Snapshoter
 }

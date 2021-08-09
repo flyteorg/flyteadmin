@@ -1,20 +1,22 @@
-package flytescheduler
+package scheduler
 
 import (
 	"bytes"
 	"context"
 	"fmt"
-	flyteSchedulerInterfaces "github.com/flyteorg/flyteadmin/pkg/async/schedule/flytescheduler/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/async/schedule/interfaces"
 	mgInterfaces "github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	interfaces2 "github.com/flyteorg/flyteadmin/scheduler/interfaces"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/logger"
-	"github.com/google/uuid"
+	"github.com/gogf/gf/os/gtimer"
 	"go.uber.org/ratelimit"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"strings"
 	"time"
@@ -27,23 +29,21 @@ const backOffSleepTime = 60
 
 // workflowExecutor used for executing the schedules saved by the native flyte scheduler in the database.
 type workflowExecutor struct {
-	db                      repositories.RepositoryInterface
-	config                  runtimeInterfaces.Configuration
-	executionManager        mgInterfaces.ExecutionInterface
-	snapshot                flyteSchedulerInterfaces.Snapshoter
-	snapShotReaderWriter    flyteSchedulerInterfaces.SnapshotReaderWriter
-	goGfInterface           flyteSchedulerInterfaces.GoGFWrapper
-	executionRequestsPerSec int
-	rateLimiter             ratelimit.Limiter
+	db                   repositories.SchedulerRepoInterface
+	config               runtimeInterfaces.Configuration
+	executionManager     mgInterfaces.ExecutionInterface
+	snapshot             interfaces2.Snapshoter
+	snapShotReaderWriter interfaces2.SnapshotReaderWriter
+	goGfInterface        interfaces2.GoGFWrapper
+	rateLimiter          ratelimit.Limiter
 }
 
 func (w *workflowExecutor) CheckPointState(ctx context.Context) {
-	var prevSnapshot flyteSchedulerInterfaces.Snapshoter
 	for true {
 		var bytesArray []byte
 		f := bytes.NewBuffer(bytesArray)
 		// Only write if the snapshot has contents and not equal to the previous snapshot
-		if !w.snapshot.IsEmpty() && !w.snapshot.AreEqual(prevSnapshot) {
+		if !w.snapshot.IsEmpty() {
 			err := w.snapShotReaderWriter.WriteSnapshot(f, w.snapshot)
 			// Just log the error
 			if err != nil {
@@ -56,34 +56,42 @@ func (w *workflowExecutor) CheckPointState(ctx context.Context) {
 				logger.Errorf(ctx, "unable to save the snapshot to the database due to %v", err)
 			}
 		}
-		prevSnapshot = w.snapshot
 		time.Sleep(snapshotWriterSleepTime * time.Second)
 	}
 }
 
 func (w *workflowExecutor) CatchUpAllSchedules(ctx context.Context, schedules []models.SchedulableEntity, toTime time.Time) error {
+	logger.Debugf(ctx, "catching up [%v] schedules until time %v", len(schedules), toTime)
 	for _, s := range schedules {
 		fromTime := time.Now()
 		// If the schedule is not active, don't do anything else use the updateAt timestamp to find when the schedule became active
 		// We support catchup only from the last active state
 		// i.e if the schedule was Active(t1)-Archive(t2)-Active(t3)-Archive(t4)-Active-(t5)
-		// And if the scheduler was down during t1-t5 , then when it comesback up it would use t5 timestamp
+		// And if the scheduler was down during t1-t5 , then when it comes back up it would use t5 timestamp
 		// to catch up until the current timestamp
 		if !*s.Active {
+			logger.Debugf(ctx, "schedule %+v was inactive during catchup", s)
 			continue
 		} else {
 			fromTime = s.UpdatedAt
 		}
+		nameOfSchedule := GetScheduleName(s)
+		lastT := w.snapshot.GetLastExecutionTime(nameOfSchedule)
+		if !lastT.IsZero() && lastT.After(s.UpdatedAt) {
+			fromTime = lastT
+		}
+		logger.Debugf(ctx, "catching up schedule %+v from %v to %v", s, fromTime, toTime)
 		err := w.CatchUpSingleSchedule(ctx, s, fromTime, toTime)
 		if err != nil {
 			return err
 		}
+		logger.Debugf(ctx, "caught up successfully on the schedule %+v from %v to %v", s, fromTime, toTime)
 	}
 	return nil
 }
 
 func (w *workflowExecutor) CatchUpSingleSchedule(ctx context.Context, s models.SchedulableEntity, fromTime time.Time, toTime time.Time) error {
-	nameOfSchedule := w.goGfInterface.GetScheduleName(s)
+	nameOfSchedule := GetScheduleName(s)
 	var catchUpTimes []time.Time
 	var err error
 	catchUpTimes, err = w.goGfInterface.GetCatchUpTimes(s, fromTime, toTime)
@@ -95,7 +103,7 @@ func (w *workflowExecutor) CatchUpSingleSchedule(ctx context.Context, s models.S
 		_ = w.rateLimiter.Take()
 		err := fire(ctx, w.executionManager, catchupTime, s)
 		if err != nil {
-			logger.Errorf(ctx, "unable to fire the schedule %v at %v time due to %v", s.Name, catchupTime, err)
+			logger.Errorf(ctx, "unable to fire the schedule %+v at %v time due to %v", s, catchupTime, err)
 			return err
 		} else {
 			w.snapshot.UpdateLastExecutionTime(nameOfSchedule, catchupTime)
@@ -123,10 +131,23 @@ func fire(ctx context.Context, executionManager mgInterfaces.ExecutionInterface,
 		},
 	}
 
+	// Making the identifier deterministic using the hash of the identifier and scheduled time
+	executionIdentifier, err := GetExecutionIdentifier(core.Identifier{
+		Project: s.Project,
+		Domain: s.Domain,
+		Name: s.Name,
+		Version: s.Version,
+	}, scheduledTime)
+
+	if err != nil {
+		logger.Error(ctx, "failed to generate execution identifier for schedule %+v due to %v", s, err)
+		return err
+	}
+
 	executionRequest := admin.ExecutionCreateRequest{
 		Project: s.Project,
 		Domain:  s.Domain,
-		Name:    "f" + strings.ReplaceAll(uuid.New().String(), "-", "")[:19],
+		Name:    "f" + strings.ReplaceAll(executionIdentifier.String(), "-", "")[:19],
 		Spec: &admin.ExecutionSpec{
 			LaunchPlan: &core.Identifier{
 				ResourceType: core.ResourceType_LAUNCH_PLAN,
@@ -148,12 +169,19 @@ func fire(ctx context.Context, executionManager mgInterfaces.ExecutionInterface,
 	}
 	if !*s.Active {
 		// no longer active
-		logger.Debugf(ctx, "schedule %v is no longer active", s.Name)
+		logger.Debugf(ctx, "schedule %+v is no longer active", s)
 		return nil
 	}
-	_, err := executionManager.CreateExecution(context.Background(), executionRequest, scheduledTime)
+	_, err = executionManager.CreateExecution(context.Background(), executionRequest, scheduledTime)
 	if err != nil {
-		logger.Error(ctx, "failed to create execution create request %v due to %v", executionRequest, err)
+		// For idempotent behavior ignore the AlreadyExists error which happens if we try to schedule a launchplan
+		// for execution at the same time which is already available in admin.
+		// This is possible since idempotency gurantees are using the schedule time and the identifier
+		if grpcError := status.Code(err); grpcError == codes.AlreadyExists {
+			logger.Debugf(ctx, "duplicate schedule %+v already exists for schedule", s)
+			return nil
+		}
+		logger.Error(ctx, "failed to create execution create request %+v due to %v", executionRequest, err)
 		return err
 	}
 	return nil
@@ -161,51 +189,51 @@ func fire(ctx context.Context, executionManager mgInterfaces.ExecutionInterface,
 
 func (w *workflowExecutor) Run() {
 	ctx := context.Background()
-	c, err := w.db.SchedulableEntityRepo().GetAll(ctx)
+	schedules, err := w.db.SchedulableEntityRepo().GetAll(ctx)
 	if err != nil {
 		panic(fmt.Errorf("unable to run the workflow executor after reading the schedules due to %v", err))
 	}
-	// Start the go routine to write the snapshot map to the configured snapshot file
-	go w.CheckPointState(ctx)
 	catchUpTill := time.Now()
-	err = w.CatchUpAllSchedules(ctx, c.Entities, catchUpTill)
+	err = w.CatchUpAllSchedules(ctx, schedules, catchUpTill)
 	if err != nil {
 		panic(fmt.Errorf("unable to catch up on the schedules due to %v", err))
 	}
 
+	// Start the go routine to write the snapshot map to the configured snapshot file
+	go w.CheckPointState(ctx)
+
 	defer logger.Infof(ctx, "Exiting Workflow executor")
 	for true {
-		for _, s := range c.Entities {
-			funcRef := func() {
+		for _, s := range schedules {
+			funcRef := func(ctx context.Context, schedule models.SchedulableEntity, jitterValue int) {
 				// If the schedule has been deactivated and then the inflight schedules can stop
-				if !*s.Active {
+				if !*schedule.Active {
 					return
 				}
 				// Get the jitter value
-				workflowExecConfig := w.config.ApplicationConfiguration().GetSchedulerConfig().WorkflowExecutorConfig.GetFlyteWorkflowExecutorConfig()
-				jitter := time.Duration(workflowExecConfig.JitterValue) * time.Second
-				nameOfSchedule := w.goGfInterface.GetScheduleName(s)
+				jitter := time.Duration(jitterValue) * time.Second
+				nameOfSchedule := GetScheduleName(schedule)
 				lastT := w.snapshot.GetLastExecutionTime(nameOfSchedule)
-				fromTime := s.UpdatedAt
+				fromTime := schedule.UpdatedAt
 				n := time.Now()
 				n = n.Add(-jitter)
 				// If the last execution time exists in the snapshot then use it only if that value is after the schedules activation time
 				// else use the latest schedules activation time for the fromTime
-				if !lastT.IsZero() && lastT.After(s.UpdatedAt) {
+				if !lastT.IsZero() && lastT.After(schedule.UpdatedAt) {
 					fromTime = lastT
 				}
-				err = w.CatchUpSingleSchedule(ctx, s, fromTime, n)
+				err = w.CatchUpSingleSchedule(ctx, schedule, fromTime, n)
 				if err != nil {
-					logger.Errorf(ctx, "unable to catch on schedule %v from %v to %v with jitter configured due to %v", s.Name, fromTime, n, err)
+					logger.Errorf(ctx, "unable to catch on schedule %+v from %v to %v with jitter configured due to %v", s, fromTime, n, err)
 				}
 			}
 			err := w.goGfInterface.Register(ctx, s, funcRef)
 			if err != nil {
-				logger.Errorf(ctx, "unable to register the schedule %v due to %v", s, err)
+				logger.Errorf(ctx, "unable to register the schedule %+v due to %v", s, err)
 			}
 		}
 		time.Sleep(executorSleepTime * time.Second)
-		c, err = w.db.SchedulableEntityRepo().GetAll(ctx)
+		schedules, err = w.db.SchedulableEntityRepo().GetAll(ctx)
 		if err != nil {
 			logger.Errorf(ctx, "going to sleep additional %v backoff time due to DB error %v", backOffSleepTime, err)
 			time.Sleep(backOffSleepTime * time.Second)
@@ -217,7 +245,7 @@ func (w *workflowExecutor) Stop() error {
 	return nil
 }
 
-func NewWorkflowExecutor(db repositories.RepositoryInterface, executionManager mgInterfaces.ExecutionInterface,
+func NewWorkflowExecutor(db repositories.SchedulerRepoInterface, executionManager mgInterfaces.ExecutionInterface,
 	config runtimeInterfaces.Configuration) interfaces.WorkflowExecutor {
 	ctx := context.Background()
 	workflowExecConfig := config.ApplicationConfiguration().GetSchedulerConfig().WorkflowExecutorConfig.GetFlyteWorkflowExecutorConfig()
@@ -226,12 +254,12 @@ func NewWorkflowExecutor(db repositories.RepositoryInterface, executionManager m
 	snapshot := readSnapShot(ctx, db, workflowExecConfig.SnapshotVersion)
 	return &workflowExecutor{db: db, executionManager: executionManager, config: config, snapshot: snapshot,
 		snapShotReaderWriter: &snapShotReaderWriter,
-		goGfInterface:        GoGF{},
+		goGfInterface:        GoGF{fixedIntervalEntries: map[string]*gtimer.Entry{}},
 		rateLimiter:          rateLimiter}
 }
 
-func readSnapShot(ctx context.Context, db repositories.RepositoryInterface, version int) flyteSchedulerInterfaces.Snapshoter {
-	var snapshot flyteSchedulerInterfaces.Snapshoter
+func readSnapShot(ctx context.Context, db repositories.SchedulerRepoInterface, version int) interfaces2.Snapshoter {
+	var snapshot interfaces2.Snapshoter
 	scheduleEntitiesSnapShot, err := db.ScheduleEntitiesSnapshotRepo().GetLatestSnapShot(ctx)
 	// Just log the error but dont interrupt the startup of the scheduler
 	if err != nil {
