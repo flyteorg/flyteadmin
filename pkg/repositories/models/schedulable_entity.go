@@ -15,10 +15,6 @@ type SchedulableEntity struct {
 	Active              *bool
 }
 
-type SchedulableEntityCollectionOutput struct {
-	Entities []SchedulableEntity
-}
-
 // Schedulable entity primary key
 type SchedulableEntityKey struct {
 	Project string `gorm:"primary_key"`

@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/flyteorg/flyteadmin/pkg/async/schedule/flytescheduler"
 	"github.com/flyteorg/flyteadmin/pkg/repositories"
+	"github.com/flyteorg/flyteadmin/scheduler"
 	"time"
 
 	"github.com/flyteorg/flyteadmin/pkg/async"
@@ -29,7 +30,7 @@ type WorkflowSchedulerConfig struct {
 
 type WorkflowScheduler interface {
 	GetEventScheduler() interfaces.EventScheduler
-	GetWorkflowExecutor(db repositories.RepositoryInterface, executionManager managerInterfaces.ExecutionInterface,
+	GetWorkflowExecutor(db repositories.SchedulerRepoInterface, executionManager managerInterfaces.ExecutionInterface,
 		launchPlanManager managerInterfaces.LaunchPlanInterface, config runtimeInterfaces.Configuration) interfaces.WorkflowExecutor
 }
 
@@ -44,7 +45,7 @@ func (w *workflowScheduler) GetEventScheduler() interfaces.EventScheduler {
 }
 
 func (w *workflowScheduler) GetWorkflowExecutor(
-	db repositories.RepositoryInterface,
+	db repositories.SchedulerRepoInterface,
 	executionManager managerInterfaces.ExecutionInterface,
 	launchPlanManager managerInterfaces.LaunchPlanInterface, config runtimeInterfaces.Configuration) interfaces.WorkflowExecutor {
 	if w.workflowExecutor == nil {
@@ -60,9 +61,8 @@ func (w *workflowScheduler) GetWorkflowExecutor(
 			break
 		case common.Local:
 			logger.Infof(context.Background(),
-				"Using default flyte workflow executor implementation for cloud provider type [%s]",
-				w.cfg.SchedulerConfig.EventSchedulerConfig.Scheme)
-			w.workflowExecutor = flytescheduler.NewWorkflowExecutor(db, executionManager, config)
+				"Using default flyte workflow executor implementation")
+			w.workflowExecutor = scheduler.NewWorkflowExecutor(db, executionManager, config)
 		default:
 			logger.Infof(context.Background(),
 				"Using default noop workflow executor implementation for cloud provider type [%s]",
@@ -99,8 +99,7 @@ func NewWorkflowScheduler(db repositories.RepositoryInterface, cfg WorkflowSched
 			cfg.Scope.NewSubScope("cloudwatch_scheduler"))
 	case common.Local:
 		logger.Infof(context.Background(),
-			"Using default flyte scheduler implementation for cloud provider type [%s]",
-			cfg.SchedulerConfig.EventSchedulerConfig.Scheme)
+			"Using default flyte scheduler implementation")
 		eventScheduler = flytescheduler.NewFlyteScheduler(db)
 	default:
 		logger.Infof(context.Background(),

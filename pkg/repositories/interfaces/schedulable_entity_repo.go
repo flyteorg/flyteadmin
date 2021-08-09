@@ -23,5 +23,5 @@ type SchedulableEntityRepoInterface interface {
 	Get(ctx context.Context, ID models.SchedulableEntityKey) (models.SchedulableEntity, error)
 
 	// GetAll Gets all the active schedulable entities from the db
-	GetAll(ctx context.Context) (models.SchedulableEntityCollectionOutput, error)
+	GetAll(ctx context.Context) ([]models.SchedulableEntity, error)
 }

@@ -78,7 +78,6 @@ scheduler:
     scheme: local
     local:
       snapshotVersion: 1 # version of the snapshot
-      jitterValue: 30 # jitter or delta from the current time to use for finding the schedule
       adminFireReqRateLimit: 1 #per sec how many requests to send to admin
     region: "my-region"
     scheduleQueueName: "won't-work-locally"

@@ -60,18 +60,20 @@ func (r *SchedulableEntityRepo) Deactivate(ctx context.Context, ID models.Schedu
 	return activateOrDeactivate(r, ID, false)
 }
 
-func (r *SchedulableEntityRepo) GetAll(ctx context.Context) (models.SchedulableEntityCollectionOutput, error) {
-	var schedulableEntities models.SchedulableEntityCollectionOutput
+func (r *SchedulableEntityRepo) GetAll(ctx context.Context) ([]models.SchedulableEntity, error) {
+	var schedulableEntities []models.SchedulableEntity
 	timer := r.metrics.GetDuration.Start()
-	tx := r.db.Take(&schedulableEntities.Entities)
+
+	tx := r.db.Find(&schedulableEntities)
+
 	timer.Stop()
 
 	if tx.Error != nil {
 		if tx.RecordNotFound() {
-			return models.SchedulableEntityCollectionOutput{},
+			return nil,
 				fmt.Errorf("no active schedulable entities found")
 		}
-		return models.SchedulableEntityCollectionOutput{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
+		return nil, r.errorTransformer.ToFlyteAdminError(tx.Error)
 	}
 
 	return schedulableEntities, nil
