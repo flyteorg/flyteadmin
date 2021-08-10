@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
-	interfaces2 "github.com/flyteorg/flyteadmin/scheduler/interfaces"
+	schedinterfaces "github.com/flyteorg/flyteadmin/scheduler/interfaces"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/gogf/gf/errors/gerror"
@@ -14,38 +14,33 @@ import (
 	"time"
 )
 
-
-const (
-	// Delta time value to be used from the timestamp for finding the next schedule times.
-	// This allows to avoid schedule misses.
-	// Assumes a func getNextTimeFrom(schedule, marker)
-	// eg: if the scheduler schedules a call to the function every 5 mins  starting at minute :00, of every hour (0 0/5 * * * ? *)
-	// And the actual call to function lets say comes at 11:05:30 sec, then when we try to compute
-	// getNextTimeFrom("0 0/5 * * * ? *", 11:05:30 ) => will give 11:10:00 instead of 11:05 which is incorrect.
-	// Adding a small jitter delta avoid this
-	jitterValue = 30
-)
-
 // GoGF Struct implementing the GoGFWrapper which is used by the scheduler for adding and removing schedules
 type GoGF struct {
 	fixedIntervalEntries map[string]*gtimer.Entry
 }
 
-func (g GoGF) Register(ctx context.Context, s models.SchedulableEntity, registerFuncRef interfaces2.RegisterFuncRef) error {
+func (g GoGF) Register(ctx context.Context, s models.SchedulableEntity, registerFuncRef schedinterfaces.RegisterFuncRef) error {
 	nameOfSchedule := GetScheduleName(s)
 
-	jobFunc := func() {
-		registerFuncRef(ctx, s, jitterValue)
+	jobFunc := func(ticks int64) {
+		d := time.Duration(ticks) * time.Millisecond * 100
+		fromTime := s.UpdatedAt.Add(d)
+		scheduledTime, err := g.GetScheduledTime(s, fromTime)
+		if err != nil {
+			logger.Errorf(ctx, "unable to get scheduled time from cron expression for %+v schedule due to %v", s, err)
+			return
+		}
+		registerFuncRef(ctx, s, scheduledTime)
 	}
 	// Register activation record by adding a new schedule if it doesn't exist
 	if *s.Active {
 		if len(s.CronExpression) > 0 {
-			err := addCronJob(ctx, s.CronExpression, jobFunc, nameOfSchedule)
+			err :=g.addCronJob(ctx, s.CronExpression, jobFunc, nameOfSchedule)
 			if err != nil {
 				logger.Errorf(ctx, "failed to add cron schedule %v due to %v", s, err)
 			}
 		} else {
-			err := g.addFixedIntervalJob(s.Unit, s.FixedRateValue, jobFunc, nameOfSchedule)
+			err := g.addFixedIntervalJob(ctx, s.Unit, s.FixedRateValue, jobFunc, nameOfSchedule)
 			if err != nil {
 				logger.Errorf(ctx, "failed to add fixed rate schedule %v due to %v", s, err)
 			}
@@ -53,7 +48,7 @@ func (g GoGF) Register(ctx context.Context, s models.SchedulableEntity, register
 	} else {
 		// Register deactivation record by removing the schedule if it exists
 		if len(s.CronExpression) > 0 {
-			removeCronJob(ctx, nameOfSchedule)
+			g.removeCronJob(ctx, nameOfSchedule)
 		} else {
 			g.removeFixedIntervalJob(ctx, nameOfSchedule)
 		}
@@ -83,25 +78,25 @@ func (g GoGF) GetCatchUpTimes(schedule models.SchedulableEntity, from time.Time,
 	return scheduledTimes, nil
 }
 
-func addCronJob(ctx context.Context, cronExpression string, job func(), nameOfSchedule string) error {
-	_, err := gcron.Add(cronExpression, job, nameOfSchedule)
+func (g GoGF) addCronJob(ctx context.Context, cronExpression string, job func(int64), nameOfSchedule string) error {
+	_, err := gcron.AddTimedJob(cronExpression, job, nameOfSchedule)
 	if err != nil && gerror.Code(err) == gerror.CodeInvalidOperation {
 		return nil
 	}
 	if err == nil {
-		logger.Infof(ctx, "successfully added the schedule %s from scheduler", nameOfSchedule)
+		logger.Infof(ctx, "successfully added the schedule %s to the scheduler", nameOfSchedule)
 	}
 	return err
 }
 
-func removeCronJob(ctx context.Context, nameOfSchedule string) {
+func (g GoGF) removeCronJob(ctx context.Context, nameOfSchedule string) {
 	if e := gcron.Search(nameOfSchedule); e != nil {
 		gcron.Remove(nameOfSchedule)
 		logger.Infof(ctx, "successfully removed the schedule %s from scheduler", nameOfSchedule)
 	}
 }
 
-func (g GoGF) addFixedIntervalJob(unit admin.FixedRateUnit, fixedRateValue uint32, job func(), nameOfSchedule string) error {
+func (g GoGF) addFixedIntervalJob(ctx context.Context, unit admin.FixedRateUnit, fixedRateValue uint32, job func(int64), nameOfSchedule string) error {
 	if g.fixedIntervalEntries[nameOfSchedule] != nil {
 		// Already exists
 		return nil
@@ -111,7 +106,9 @@ func (g GoGF) addFixedIntervalJob(unit admin.FixedRateUnit, fixedRateValue uint3
 		return err
 	}
 
-	g.fixedIntervalEntries[nameOfSchedule] = gtimer.AddSingleton(d, job)
+	logger.Infof(ctx, "successfully added the fixed rate schedule %s to the scheduler", nameOfSchedule)
+
+	g.fixedIntervalEntries[nameOfSchedule] = gtimer.AddTimedJob(d, job)
 	return nil
 }
 
@@ -148,7 +145,7 @@ func getFixedRateDurationFromSchedule(unit admin.FixedRateUnit, fixedRateValue u
 	d := time.Duration(fixedRateValue)
 	switch unit {
 	case admin.FixedRateUnit_MINUTE:
-		d = d * time.Second
+		d = d * time.Minute
 	case admin.FixedRateUnit_HOUR:
 		d = d * time.Hour
 	case admin.FixedRateUnit_DAY:
