@@ -79,3 +79,5 @@ require (
 	sigs.k8s.io/controller-runtime v0.8.3
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.0 // indirect
 )
+
+replace github.com/gogf/gf => /Users/praful/gf

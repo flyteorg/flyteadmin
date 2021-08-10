@@ -205,26 +205,19 @@ func (w *workflowExecutor) Run() {
 	defer logger.Infof(ctx, "Exiting Workflow executor")
 	for true {
 		for _, s := range schedules {
-			funcRef := func(ctx context.Context, schedule models.SchedulableEntity, jitterValue int) {
+			funcRef := func(ctx context.Context, schedule models.SchedulableEntity, scheduleTime time.Time) {
 				// If the schedule has been deactivated and then the inflight schedules can stop
 				if !*schedule.Active {
 					return
 				}
-				// Get the jitter value
-				jitter := time.Duration(jitterValue) * time.Second
 				nameOfSchedule := GetScheduleName(schedule)
-				lastT := w.snapshot.GetLastExecutionTime(nameOfSchedule)
-				fromTime := schedule.UpdatedAt
-				n := time.Now()
-				n = n.Add(-jitter)
-				// If the last execution time exists in the snapshot then use it only if that value is after the schedules activation time
-				// else use the latest schedules activation time for the fromTime
-				if !lastT.IsZero() && lastT.After(schedule.UpdatedAt) {
-					fromTime = lastT
-				}
-				err = w.CatchUpSingleSchedule(ctx, schedule, fromTime, n)
+				_ = w.rateLimiter.Take()
+				err := fire(ctx, w.executionManager, scheduleTime, s)
 				if err != nil {
-					logger.Errorf(ctx, "unable to catch on schedule %+v from %v to %v with jitter configured due to %v", s, fromTime, n, err)
+					logger.Errorf(ctx, "unable to fire the schedule %+v at %v time due to %v", s, scheduleTime, err)
+					return
+				} else {
+					w.snapshot.UpdateLastExecutionTime(nameOfSchedule, scheduleTime)
 				}
 			}
 			err := w.goGfInterface.Register(ctx, s, funcRef)
