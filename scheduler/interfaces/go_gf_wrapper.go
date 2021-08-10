@@ -7,7 +7,7 @@ import (
 )
 
 
-type RegisterFuncRef func(ctx context.Context, schedule models.SchedulableEntity, jitterValue int)
+type RegisterFuncRef func(ctx context.Context, schedule models.SchedulableEntity, scheduledTime time.Time)
 
 // GoGFWrapper Wrapper interface to the gogf framework which is used for scheduler
 type GoGFWrapper interface {
