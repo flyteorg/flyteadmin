@@ -648,8 +648,6 @@ github.com/gofrs/uuid v3.2.0+incompatible/go.mod h1:b2aQJv3Z4Fp6yNu3cdSllBxTCLRx
 github.com/gofrs/uuid v4.0.0+incompatible h1:1SD/1F5pU8p29ybwgQSwpQk+mwdRrXCYuPhW6m+TnJw=
 github.com/gofrs/uuid v4.0.0+incompatible/go.mod h1:b2aQJv3Z4Fp6yNu3cdSllBxTCLRxnplIgP/c0N/04lM=
 github.com/gofrs/uuid/v3 v3.1.2/go.mod h1:xPwMqoocQ1L5G6pXX5BcE7N5jlzn2o19oqAKxwZW/kI=
-github.com/gogf/gf v1.16.5 h1:Fh+w+YSbRIGt9nsDcggVLWfMn0Dqemg5rXTtFZRSSpk=
-github.com/gogf/gf v1.16.5/go.mod h1:QaYTIiafVdCo5aF/TV/sduU2jLmwJ7JphVCjkZ5v+Jg=
 github.com/gogf/mysql v1.6.1-0.20210603073548-16164ae25579 h1:pP/uEy52biKDytlgK/ug8kiYPAiYu6KajKVUHfGrtyw=
 github.com/gogf/mysql v1.6.1-0.20210603073548-16164ae25579/go.mod h1:52e6mXyNnHAsFrXrSnj5JPRSKsZKpHylVtA3j4AtMz8=
 github.com/gogo/googleapis v1.1.0/go.mod h1:gf4bu3Q80BeJ6H1S1vYPm8/ELATdvryBaNFGgqEef3s=
@@ -1341,6 +1339,8 @@ github.com/uber/jaeger-lib v1.5.0/go.mod h1:ComeNDZlWwrWnDv8aPp0Ba6+uUTzImX/Aaua
 github.com/uber/jaeger-lib v2.2.0+incompatible/go.mod h1:ComeNDZlWwrWnDv8aPp0Ba6+uUTzImX/AauajbLI56U=
 github.com/ugorji/go v1.1.4/go.mod h1:uQMGLiO92mf5W77hV/PUCpI3pbzQx3CRekS0kk+RGrc=
 github.com/ugorji/go/codec v0.0.0-20181204163529-d75b2dcb6bc8/go.mod h1:VFNgLljTbGfSG7qAOspJ7OScBnGdDN/yBr0sguwnwf0=
+github.com/unionai/gf v1.16.6-0.20210810134827-dfdf472b5d00 h1:6kL9qqC9Gm5hoQQPg2ESF43rKx+xqu1SoU7T0Gb10gY=
+github.com/unionai/gf v1.16.6-0.20210810134827-dfdf472b5d00/go.mod h1:QaYTIiafVdCo5aF/TV/sduU2jLmwJ7JphVCjkZ5v+Jg=
 github.com/unrolled/secure v0.0.0-20180918153822-f340ee86eb8b/go.mod h1:mnPT77IAdsi/kV7+Es7y+pXALeV3h7G6dQF6mNYjcLA=
 github.com/unrolled/secure v0.0.0-20181005190816-ff9db2ff917f/go.mod h1:mnPT77IAdsi/kV7+Es7y+pXALeV3h7G6dQF6mNYjcLA=
 github.com/urfave/cli v1.20.0/go.mod h1:70zkFmudgCuE/ngEzBv17Jvp/497gISqfk5gWijbERA=
