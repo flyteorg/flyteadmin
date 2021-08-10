@@ -80,4 +80,4 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.0 // indirect
 )
 
-replace github.com/gogf/gf => /Users/praful/gf
+replace github.com/gogf/gf => github.com/unionai/gf v1.16.6-0.20210810134827-dfdf472b5d00
