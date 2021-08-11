@@ -9,11 +9,10 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
-	interfaces2 "github.com/flyteorg/flyteadmin/scheduler/interfaces"
+	schedInterfaces "github.com/flyteorg/flyteadmin/scheduler/interfaces"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/logger"
-	"github.com/gogf/gf/os/gtimer"
 	"go.uber.org/ratelimit"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -32,9 +31,9 @@ type workflowExecutor struct {
 	db                   repositories.SchedulerRepoInterface
 	config               runtimeInterfaces.Configuration
 	executionManager     mgInterfaces.ExecutionInterface
-	snapshot             interfaces2.Snapshoter
-	snapShotReaderWriter interfaces2.SnapshotReaderWriter
-	goGfInterface        interfaces2.GoGFWrapper
+	snapshot             schedInterfaces.Snapshoter
+	snapShotReaderWriter schedInterfaces.SnapshotReaderWriter
+	goGfInterface        schedInterfaces.GoGFWrapper
 	rateLimiter          ratelimit.Limiter
 }
 
@@ -212,7 +211,7 @@ func (w *workflowExecutor) Run() {
 				}
 				nameOfSchedule := GetScheduleName(schedule)
 				_ = w.rateLimiter.Take()
-				err := fire(ctx, w.executionManager, scheduleTime, s)
+				err := fire(ctx, w.executionManager, scheduleTime, schedule)
 				if err != nil {
 					logger.Errorf(ctx, "unable to fire the schedule %+v at %v time due to %v", s, scheduleTime, err)
 					return
@@ -220,9 +219,21 @@ func (w *workflowExecutor) Run() {
 					w.snapshot.UpdateLastExecutionTime(nameOfSchedule, scheduleTime)
 				}
 			}
-			err := w.goGfInterface.Register(ctx, s, funcRef)
-			if err != nil {
-				logger.Errorf(ctx, "unable to register the schedule %+v due to %v", s, err)
+
+			// Register or deregister the schedule from the scheduler
+			if !*s.Active {
+				w.goGfInterface.DeRegister(ctx, s)
+			} else {
+				asOfTime := s.UpdatedAt
+				nameOfSchedule := GetScheduleName(s)
+				lastT := w.snapshot.GetLastExecutionTime(nameOfSchedule)
+				if !lastT.IsZero() && lastT.After(s.UpdatedAt) {
+					asOfTime = lastT
+				}
+				err := w.goGfInterface.Register(ctx, s, asOfTime, funcRef)
+				if err != nil {
+					logger.Errorf(ctx, "unable to register the schedule %+v due to %v", s, err)
+				}
 			}
 		}
 		time.Sleep(executorSleepTime * time.Second)
@@ -247,12 +258,12 @@ func NewWorkflowExecutor(db repositories.SchedulerRepoInterface, executionManage
 	snapshot := readSnapShot(ctx, db, workflowExecConfig.SnapshotVersion)
 	return &workflowExecutor{db: db, executionManager: executionManager, config: config, snapshot: snapshot,
 		snapShotReaderWriter: &snapShotReaderWriter,
-		goGfInterface:        GoGF{fixedIntervalEntries: map[string]*gtimer.Entry{}},
+		goGfInterface:        GoGF{jobsMap: map[string]schedInterfaces.GoGFJobWrapper{}},
 		rateLimiter:          rateLimiter}
 }
 
-func readSnapShot(ctx context.Context, db repositories.SchedulerRepoInterface, version int) interfaces2.Snapshoter {
-	var snapshot interfaces2.Snapshoter
+func readSnapShot(ctx context.Context, db repositories.SchedulerRepoInterface, version int) schedInterfaces.Snapshoter {
+	var snapshot schedInterfaces.Snapshoter
 	scheduleEntitiesSnapShot, err := db.ScheduleEntitiesSnapshotRepo().GetLatestSnapShot(ctx)
 	// Just log the error but dont interrupt the startup of the scheduler
 	if err != nil {
