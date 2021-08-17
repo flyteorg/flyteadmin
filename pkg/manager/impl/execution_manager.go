@@ -610,7 +610,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 
 }
 
-func resolvePermissions(ctx context.Context, request *admin.ExecutionCreateRequest, launchPlan *admin.LaunchPlan) *admin.AuthRole {
+func resolvePermissions(ctx context.Context, launchPlan *admin.LaunchPlan) *admin.AuthRole {
 	authRole := admin.AuthRole{}
 
 	// If we are launching SubWorkflows defined in a different project and domain via dynamic task,
@@ -742,7 +742,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		AcceptedAt:      requestedAt,
 		QueueingBudget:  qualityOfService.QueuingBudget,
 		ExecutionConfig: executionConfig,
-		Auth:            resolvePermissions(ctx, &request, launchPlan),
+		Auth:            resolvePermissions(ctx, launchPlan),
 	}
 	err = m.addLabelsAndAnnotations(request.Spec, &executeWorkflowInputs)
 	if err != nil {
