@@ -612,9 +612,11 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 
 func resolvePermissions(ctx context.Context, request *admin.ExecutionCreateRequest, launchPlan *admin.LaunchPlan) *admin.AuthRole {
 	authRole := admin.AuthRole{}
-	if request.Spec.AuthRole != nil && len(request.Spec.AuthRole.AssumableIamRole) > 0 {
-		authRole.AssumableIamRole = request.Spec.AuthRole.AssumableIamRole
-	} else if launchPlan.GetSpec().GetAuthRole() != nil && len(launchPlan.GetSpec().GetAuthRole().AssumableIamRole) > 0 {
+
+	// If we are launching SubWorkflows defined in a different project and domain via dynamic task,
+	// We want to make sure SubWorkflows are using the auth role defined in their LaunchPlan
+	// instead of the auth role defined in the request (parent's auth role).
+	if launchPlan.GetSpec().GetAuthRole() != nil && len(launchPlan.GetSpec().GetAuthRole().AssumableIamRole) > 0 {
 		authRole.AssumableIamRole = launchPlan.GetSpec().GetAuthRole().AssumableIamRole
 	} else if launchPlan.GetSpec().GetAuth() != nil && len(launchPlan.GetSpec().GetAuth().AssumableIamRole) > 0 {
 		authRole.AssumableIamRole = launchPlan.GetSpec().GetAuth().AssumableIamRole
@@ -624,9 +626,7 @@ func resolvePermissions(ctx context.Context, request *admin.ExecutionCreateReque
 		logger.Warning(ctx, "AssumableIamRole not set.")
 	}
 
-	if request.Spec.AuthRole != nil && len(request.Spec.AuthRole.KubernetesServiceAccount) > 0 {
-		authRole.KubernetesServiceAccount = request.Spec.AuthRole.KubernetesServiceAccount
-	} else if launchPlan.GetSpec().GetAuthRole() != nil && len(launchPlan.GetSpec().GetAuthRole().KubernetesServiceAccount) > 0 {
+	if launchPlan.GetSpec().GetAuthRole() != nil && len(launchPlan.GetSpec().GetAuthRole().KubernetesServiceAccount) > 0 {
 		authRole.KubernetesServiceAccount = launchPlan.GetSpec().GetAuthRole().KubernetesServiceAccount
 	} else if launchPlan.GetSpec().GetAuth() != nil && len(launchPlan.GetSpec().GetAuth().KubernetesServiceAccount) > 0 {
 		authRole.KubernetesServiceAccount = launchPlan.GetSpec().GetAuth().KubernetesServiceAccount
