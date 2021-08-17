@@ -47,9 +47,12 @@ func getWorkflowCreateRequest() admin.WorkflowCreateRequest {
 				},
 				Interface: &core.TypedInterface{
 					Inputs: &core.VariableMap{
-						Variables: map[string]*core.Variable{
-							"foo": {
-								Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+						Variables: []*core.VariableMapFieldEntry{
+							{
+								Key: "foo",
+								Value: &core.Variable{
+									Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+								},
 							},
 						},
 					},
@@ -93,13 +96,16 @@ func getLaunchPlanCreateRequest(workflowIdentifier *core.Identifier) admin.Launc
 		Spec: &admin.LaunchPlanSpec{
 			WorkflowId: workflowIdentifier,
 			DefaultInputs: &core.ParameterMap{
-				Parameters: map[string]*core.Parameter{
-					"foo": {
-						Var: &core.Variable{
-							Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
-						},
-						Behavior: &core.Parameter_Default{
-							Default: coreutils.MustMakeLiteral("foo-value"),
+				Parameters: []*core.ParameterMapFieldEntry{
+					{
+						Key: "foo",
+						Value: &core.Parameter{
+							Var: &core.Variable{
+								Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+							},
+							Behavior: &core.Parameter_Default{
+								Default: coreutils.MustMakeLiteral("foo-value"),
+							},
 						},
 					},
 				},
