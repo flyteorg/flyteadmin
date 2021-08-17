@@ -274,6 +274,9 @@ func (m *NodeExecutionManager) CreateNodeEvent(ctx context.Context, request admi
 	} else if common.IsNodeExecutionTerminal(request.Event.Phase) {
 		m.metrics.ActiveNodeExecutions.Dec()
 		m.metrics.NodeExecutionsTerminated.Inc()
+		if request.Event.GetOutputData() != nil {
+			m.metrics.NodeExecutionOutputBytes.Observe(float64(proto.Size(request.Event.GetOutputData())))
+		}
 	}
 	m.metrics.NodeExecutionEventsCreated.Inc()
 
@@ -460,16 +463,18 @@ func (m *NodeExecutionManager) GetNodeExecutionData(
 		}
 		response.FullInputs = &fullInputs
 	}
+	var fullOutputs = &core.LiteralMap{}
 	if util.ShouldFetchOutputData(m.config.ApplicationConfiguration().GetRemoteDataConfig(), signedOutputsURLBlob,
 		nodeExecution.Closure.GetOutputUri()) {
-		var fullOutputs core.LiteralMap
-		err := m.storageClient.ReadProtobuf(ctx, storage.DataReference(nodeExecution.Closure.GetOutputUri()), &fullOutputs)
+		err := m.storageClient.ReadProtobuf(ctx, storage.DataReference(nodeExecution.Closure.GetOutputUri()), fullOutputs)
 		if err != nil {
 			logger.Warningf(ctx, "Failed to read outputs from URI [%s] with err: %v",
 				nodeExecution.Closure.GetOutputUri(), err)
 		}
-		response.FullOutputs = &fullOutputs
+	} else if nodeExecution.Closure.GetOutputData() != nil && int64(proto.Size(nodeExecution.Closure.GetOutputData())) < m.config.ApplicationConfiguration().GetRemoteDataConfig().MaxSizeInBytes {
+		fullOutputs = nodeExecution.Closure.GetOutputData()
 	}
+	response.FullOutputs = fullOutputs
 
 	if len(nodeExecutionModel.DynamicWorkflowRemoteClosureReference) > 0 {
 		closure := &core.CompiledWorkflowClosure{}
@@ -485,7 +490,11 @@ func (m *NodeExecutionManager) GetNodeExecutionData(
 	}
 
 	m.metrics.NodeExecutionInputBytes.Observe(float64(response.Inputs.Bytes))
-	m.metrics.NodeExecutionOutputBytes.Observe(float64(response.Outputs.Bytes))
+	if response.Outputs.Bytes > 0 {
+		m.metrics.NodeExecutionOutputBytes.Observe(float64(response.Outputs.Bytes))
+	} else if fullOutputs != nil {
+		m.metrics.NodeExecutionOutputBytes.Observe(float64(proto.Size(fullOutputs)))
+	}
 
 	return response, nil
 }

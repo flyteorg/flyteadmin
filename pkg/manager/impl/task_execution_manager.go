@@ -182,6 +182,9 @@ func (m *TaskExecutionManager) CreateTaskExecutionEvent(ctx context.Context, req
 	} else if common.IsTaskExecutionTerminal(request.Event.Phase) && request.Event.PhaseVersion == 0 {
 		m.metrics.ActiveTaskExecutions.Dec()
 		m.metrics.TaskExecutionsTerminated.Inc()
+		if request.Event.GetOutputData() != nil {
+			m.metrics.TaskExecutionOutputBytes.Observe(float64(proto.Size(request.Event.GetOutputData())))
+		}
 	}
 
 	if err = m.notificationClient.Publish(ctx, proto.MessageName(&request), &request); err != nil {
@@ -310,19 +313,24 @@ func (m *TaskExecutionManager) GetTaskExecutionData(
 		}
 		response.FullInputs = &fullInputs
 	}
+	var fullOutputs = &core.LiteralMap{}
 	if util.ShouldFetchOutputData(m.config.ApplicationConfiguration().GetRemoteDataConfig(), signedOutputsURLBlob,
 		taskExecution.Closure.GetOutputUri()) {
-		var fullOutputs core.LiteralMap
-		err := m.storageClient.ReadProtobuf(ctx, storage.DataReference(taskExecution.Closure.GetOutputUri()), &fullOutputs)
+		err := m.storageClient.ReadProtobuf(ctx, storage.DataReference(taskExecution.Closure.GetOutputUri()), fullOutputs)
 		if err != nil {
 			logger.Warningf(ctx, "Failed to read outputs from URI [%s] with err: %v",
 				taskExecution.Closure.GetOutputUri(), err)
 		}
-		response.FullOutputs = &fullOutputs
+	} else if taskExecution.Closure.GetOutputData() != nil {
+		fullOutputs = taskExecution.Closure.GetOutputData()
 	}
-
+	response.FullOutputs = fullOutputs
 	m.metrics.TaskExecutionInputBytes.Observe(float64(response.Inputs.Bytes))
-	m.metrics.TaskExecutionOutputBytes.Observe(float64(response.Outputs.Bytes))
+	if response.Outputs.Bytes > 0 {
+		m.metrics.TaskExecutionOutputBytes.Observe(float64(response.Outputs.Bytes))
+	} else if fullOutputs != nil && int64(proto.Size(fullOutputs)) < m.config.ApplicationConfiguration().GetRemoteDataConfig().MaxSizeInBytes {
+		m.metrics.TaskExecutionOutputBytes.Observe(float64(proto.Size(fullOutputs)))
+	}
 	return response, nil
 }
 

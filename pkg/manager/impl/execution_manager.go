@@ -654,8 +654,8 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 			workflowExecutionID, err)
 		return nil, nil, err
 	}
+	m.userMetrics.WorkflowExecutionInputBytes.Observe(float64(proto.Size(request.Inputs)))
 	return ctx, executionModel, nil
-
 }
 
 func resolvePermissions(request *admin.ExecutionCreateRequest, launchPlan *admin.LaunchPlan) *admin.AuthRole {
@@ -1188,6 +1188,9 @@ func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admi
 		m.systemMetrics.ActiveExecutions.Dec()
 		m.systemMetrics.ExecutionsTerminated.Inc()
 		go m.emitOverallWorkflowExecutionTime(executionModel, request.Event.OccurredAt)
+		if request.Event.GetOutputData() != nil {
+			m.userMetrics.WorkflowExecutionOutputBytes.Observe(float64(proto.Size(request.Event.GetOutputData())))
+		}
 
 		err = m.publishNotifications(ctx, request, *executionModel)
 		if err != nil {
@@ -1286,16 +1289,24 @@ func (m *ExecutionManager) GetExecutionData(
 	}
 	if remoteDataScheme == common.Local || remoteDataScheme == common.None || (signedOutputsURLBlob.Bytes < maxDataSize && execution.Closure.GetOutputs() != nil) {
 		var fullOutputs core.LiteralMap
-		outputsURI := execution.Closure.GetOutputs().GetUri()
-		err := m.storageClient.ReadProtobuf(ctx, storage.DataReference(outputsURI), &fullOutputs)
-		if err != nil {
-			logger.Warningf(ctx, "Failed to read outputs from URI [%s] with err: %v", outputsURI, err)
+		if execution.Closure.GetOutputs() != nil {
+			outputsURI := execution.Closure.GetOutputs().GetUri()
+			err := m.storageClient.ReadProtobuf(ctx, storage.DataReference(outputsURI), &fullOutputs)
+			if err != nil {
+				logger.Warningf(ctx, "Failed to read outputs from URI [%s] with err: %v", outputsURI, err)
+			}
+		} else if execution.Closure.GetOutputData() != nil && int64(proto.Size(execution.Closure.GetOutputData())) < maxDataSize {
+			fullOutputs = *execution.Closure.GetOutputData()
 		}
 		response.FullOutputs = &fullOutputs
 	}
 
 	m.userMetrics.WorkflowExecutionInputBytes.Observe(float64(response.Inputs.Bytes))
-	m.userMetrics.WorkflowExecutionOutputBytes.Observe(float64(response.Outputs.Bytes))
+	if response.Outputs.Bytes > 0 {
+		m.userMetrics.WorkflowExecutionOutputBytes.Observe(float64(response.Outputs.Bytes))
+	} else if response.FullOutputs != nil {
+		m.userMetrics.WorkflowExecutionOutputBytes.Observe(float64(proto.Size(response.FullOutputs)))
+	}
 	return response, nil
 }
 

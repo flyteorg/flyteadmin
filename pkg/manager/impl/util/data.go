@@ -11,5 +11,5 @@ func ShouldFetchData(config *interfaces.RemoteDataConfig, urlBlob admin.UrlBlob)
 }
 
 func ShouldFetchOutputData(config *interfaces.RemoteDataConfig, urlBlob admin.UrlBlob, outputURI string) bool {
-	return ShouldFetchData(config, urlBlob) && len(outputURI) > 0
+	return len(outputURI) > 0 && ShouldFetchData(config, urlBlob)
 }
