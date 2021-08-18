@@ -1,7 +1,7 @@
 package interfaces
 
-// GoGFJobWrapper Wrapper interface to add or remove jobs from the scheduler
-type GoGFJobWrapper interface {
+// GoCronJobWrapper Wrapper interface to add or remove jobs from the scheduler
+type GoCronJobWrapper interface {
 	// ScheduleJob Wrapper method to schedule cron or fixed interval jobs
 	ScheduleJob()
 	// DeScheduleJob Wrapper method to deschedule cron or fixed interval jobs

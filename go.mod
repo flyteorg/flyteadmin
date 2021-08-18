@@ -22,10 +22,10 @@ require (
 	github.com/flyteorg/flytestdlib v0.3.34
 	github.com/ghodss/yaml v1.0.0
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
-	github.com/gogf/gf v1.16.5
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.4.3
+	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/google/uuid v1.2.0
 	github.com/googleapis/gax-go/v2 v2.0.5
 	github.com/googleapis/gnostic v0.5.4 // indirect
@@ -80,4 +80,4 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.0 // indirect
 )
 
-replace github.com/gogf/gf => github.com/unionai/gf v1.16.6-0.20210810134827-dfdf472b5d00
+replace github.com/robfig/cron => /Users/praful/cron
