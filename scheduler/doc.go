@@ -51,7 +51,7 @@
 //   			- Descriptors, e.g. "@midnight", "@every 1h30m"
 //		d) Job function :
 //			The job function accepts the scheduleTime and the schedule which is used for creating an execution request
-//			to the admin. Each job fuction is tied to schedule which gets executed in separate go routine by the gogf
+//			to the admin. Each job function is tied to schedule which gets executed in separate go routine by the gogf
 // 			framework in according the schedule cadence.
 
 package scheduler
