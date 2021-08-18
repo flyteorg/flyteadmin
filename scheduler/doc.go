@@ -12,7 +12,7 @@
 // 2] Scheduler
 //    This component is a singleton and has its source in the current folder and is responsible for reading the schedules
 //    from the DB and running them at the cadence defined by there schedule
-//    The lowest granularity supported is secs for scheduling through cron and minutes using the fixed rate scheduler
+//    The lowest granularity supported is minutes for scheduling through cron and fixed rate scheduler
 // 	  The scheduler should be running in one replica , two at the most during redeployment. Multiple replicas will just
 // 	  duplicate the work since each execution for a scheduleTime will have unique identifier derived from schedule name
 //	  and time of the schedule. The idempotency aspect of the admin for same identifier prevents duplication on the admin
