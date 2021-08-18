@@ -34,7 +34,7 @@ type workflowExecutor struct {
 	executionManager     mgInterfaces.ExecutionInterface
 	snapshot             schedInterfaces.Snapshoter
 	snapShotReaderWriter schedInterfaces.SnapshotReaderWriter
-	goGfInterface        schedInterfaces.GoGFWrapper
+	goGfInterface        schedInterfaces.GoCronWrapper
 	rateLimiter          ratelimit.Limiter
 }
 
@@ -226,13 +226,7 @@ func (w *workflowExecutor) Run() {
 			if !*s.Active {
 				w.goGfInterface.DeRegister(ctx, s)
 			} else {
-				asOfTime := s.UpdatedAt
-				nameOfSchedule := GetScheduleName(s)
-				lastT := w.snapshot.GetLastExecutionTime(nameOfSchedule)
-				if !lastT.IsZero() && lastT.After(s.UpdatedAt) {
-					asOfTime = lastT
-				}
-				err := w.goGfInterface.Register(ctx, s, asOfTime, funcRef)
+				err := w.goGfInterface.Register(ctx, s, funcRef)
 				if err != nil {
 					logger.Errorf(ctx, "unable to register the schedule %+v due to %v", s, err)
 				}
