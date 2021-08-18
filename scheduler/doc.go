@@ -35,12 +35,20 @@
 //			The scheduler is not run until all the schedules have been caught up.
 //			The current design is also not to snapshot until all the schedules are caught up.
 //			This might be drawback in case catch up runs for a long time and hasn't been snapshotted.(reassess)
-//		c) GOGFWrapper :
+//		c) GOCronWrapper :
 //			This component is responsible for locking in the time for the scheduled job to be invoked and adding those
-//			to the GOGF scheduler. Right now this uses https://github.com/gogf/gf framework for fixed rate and cron
+//			to the cron scheduler. Right now this uses https://github.com/robfig/cron framework for fixed rate and cron
 // 			schedules
-// 			The current implementation uses the lastExecTime from the snapshot to compute the next scheduled time to be
-//			sent for execution. This same time is then used as lastExecTime when the jobfunction is invoked again
+// 			The scheduler provides ability to schedule a function with scheduleTime parameter. This is useful to know
+//			once the scheduled function is invoked that what scheduled time is this invocation for.
+// 			This scheduler supports standard cron scheduling which has 5 fields
+//			https://en.wikipedia.org/wiki/Cron
+//			It requires 5 entries
+//          representing: minute, hour, day of month, month and day of week, in that order.
+//
+//          It accepts
+//   			- Standard crontab specs, e.g. "* * * * ?"
+//   			- Descriptors, e.g. "@midnight", "@every 1h30m"
 //		d) Job function :
 //			The job function accepts the scheduleTime and the schedule which is used for creating an execution request
 //			to the admin. Each job fuction is tied to schedule which gets executed in separate go routine by the gogf

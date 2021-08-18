@@ -13,6 +13,7 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/robfig/cron"
 	"go.uber.org/ratelimit"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -68,6 +69,7 @@ func (w *workflowExecutor) CatchUpAllSchedules(ctx context.Context, schedules []
 		// i.e if the schedule was Active(t1)-Archive(t2)-Active(t3)-Archive(t4)-Active-(t5)
 		// And if the scheduler was down during t1-t5 , then when it comes back up it would use t5 timestamp
 		// to catch up until the current timestamp
+		// Here the assumption is updateAt timestamp changes for active/inactive transitions and no other changes.
 		if !*s.Active {
 			logger.Debugf(ctx, "schedule %+v was inactive during catchup", s)
 			continue
@@ -256,9 +258,11 @@ func NewWorkflowExecutor(db repositories.SchedulerRepoInterface, executionManage
 	snapShotReaderWriter := VersionedSnapshot{version: workflowExecConfig.SnapshotVersion}
 	rateLimiter := ratelimit.New(workflowExecConfig.AdminFireReqRateLimit)
 	snapshot := readSnapShot(ctx, db, workflowExecConfig.SnapshotVersion)
+	cron := cron.New()
+	cron.Start()
 	return &workflowExecutor{db: db, executionManager: executionManager, config: config, snapshot: snapshot,
 		snapShotReaderWriter: &snapShotReaderWriter,
-		goGfInterface:        GoGF{jobsMap: map[string]schedInterfaces.GoGFJobWrapper{}},
+		goGfInterface:        GoCron{jobsMap: map[string]schedInterfaces.GoCronJobWrapper{}, c: cron},
 		rateLimiter:          rateLimiter}
 }
 

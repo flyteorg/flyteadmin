@@ -11,12 +11,13 @@ import (
 	"time"
 )
 
-// GoGF Struct implementing the GoGFWrapper which is used by the scheduler for adding and removing schedules
-type GoGF struct {
-	jobsMap map[string]schedinterfaces.GoGFJobWrapper
+// GoCron Struct implementing the GoGFWrapper which is used by the scheduler for adding and removing schedules
+type GoCron struct {
+	jobsMap map[string]schedinterfaces.GoCronJobWrapper
+	c       *cron.Cron
 }
 
-func (g GoGF) DeRegister(ctx context.Context, s models.SchedulableEntity) {
+func (g GoCron) DeRegister(ctx context.Context, s models.SchedulableEntity) {
 	nameOfSchedule := GetScheduleName(s)
 
 	if g.jobsMap[nameOfSchedule] == nil {
@@ -29,7 +30,7 @@ func (g GoGF) DeRegister(ctx context.Context, s models.SchedulableEntity) {
 	delete(g.jobsMap, nameOfSchedule)
 }
 
-func (g GoGF) Register(ctx context.Context, s models.SchedulableEntity, asOfTime time.Time, registerFuncRef schedinterfaces.RegisterFuncRef) error {
+func (g GoCron) Register(ctx context.Context, s models.SchedulableEntity, asOfTime time.Time, registerFuncRef schedinterfaces.RegisterFuncRef) error {
 	nameOfSchedule := GetScheduleName(s)
 
 	if g.jobsMap[nameOfSchedule] != nil {
@@ -37,46 +38,17 @@ func (g GoGF) Register(ctx context.Context, s models.SchedulableEntity, asOfTime
 		return nil
 	}
 
-	// Set the temporary as of time before the first callback
-	// First call back will correctly set the AsOfTime
-	tempAsOfTime := s.UpdatedAt
-	if !asOfTime.IsZero() && asOfTime.After(s.UpdatedAt) {
-		tempAsOfTime = asOfTime
-	}
-
-	job := &GoGfJobWrapper{schedule: s, TempAsOfTime: tempAsOfTime, ctx: ctx, nameOfSchedule: nameOfSchedule}
+	job := &GoGfJobWrapper{schedule: s, ctx: ctx, nameOfSchedule: nameOfSchedule, c: g.c}
 	g.jobsMap[nameOfSchedule] = job
 
-	job.jobFunc = func(ticks int64) {
-		lockedScheduleTime, err := g.GetScheduledTime(s, job.TempAsOfTime)
-		if err != nil {
-			logger.Errorf(ctx, "unable to get next scheduled time for %+v schedule due to %v", s, err)
-			return
-		}
-		job.TempAsOfTime = lockedScheduleTime
-		//var err error
-		//if job.AsOfTime.IsZero() {
-		//	lockedScheduleTime, err = g.GetScheduledTime(s, job.TempAsOfTime)
-		//	if err != nil {
-		//		logger.Errorf(ctx, "unable to get next scheduled time for %+v schedule due to %v", s, err)
-		//		return
-		//	}
-		//	glog.Printf("Going to fire at %v", job.TempAsOfTime)
-		//	d := time.Duration(ticks) * time.Millisecond * 100
-		//	job.AsOfTime = time.Now().Add(-d)
-		//} else {
-		//	d := time.Duration(ticks) * time.Millisecond * 100
-		//	glog.Printf("Going to fire at %v", job.AsOfTime.Add(d))
-		//	lockedScheduleTime = job.AsOfTime.Add(d)
-		//}
-		registerFuncRef(ctx, s, lockedScheduleTime)
+	job.jobFunc = func(triggerTime time.Time) {
+		registerFuncRef(ctx, s, triggerTime)
 	}
 	job.ScheduleJob()
-
 	return nil
 }
 
-func (g GoGF) GetScheduledTime(s models.SchedulableEntity, fromTime time.Time) (time.Time, error) {
+func (g GoCron) GetScheduledTime(s models.SchedulableEntity, fromTime time.Time) (time.Time, error) {
 	if len(s.CronExpression) > 0 {
 		return getCronScheduledTime(s.CronExpression, fromTime)
 	} else {
@@ -84,7 +56,7 @@ func (g GoGF) GetScheduledTime(s models.SchedulableEntity, fromTime time.Time) (
 	}
 }
 
-func (g GoGF) GetCatchUpTimes(schedule models.SchedulableEntity, from time.Time, to time.Time) ([]time.Time, error) {
+func (g GoCron) GetCatchUpTimes(schedule models.SchedulableEntity, from time.Time, to time.Time) ([]time.Time, error) {
 	var scheduledTimes []time.Time
 	currFrom := from
 	for currFrom.Before(to) {
@@ -99,8 +71,7 @@ func (g GoGF) GetCatchUpTimes(schedule models.SchedulableEntity, from time.Time,
 }
 
 func getCronScheduledTime(cronString string, fromTime time.Time) (time.Time, error) {
-	var secondParser = cron.NewParser(cron.Second | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.DowOptional | cron.Descriptor)
-	sched, err := secondParser.Parse(cronString)
+	sched, err := cron.ParseStandard(cronString)
 	if err != nil {
 		return time.Time{}, err
 	}
