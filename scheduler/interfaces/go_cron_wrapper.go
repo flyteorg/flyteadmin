@@ -9,12 +9,12 @@ import (
 
 type RegisterFuncRef func(ctx context.Context, schedule models.SchedulableEntity, scheduledTime time.Time)
 
-// GoGFWrapper Wrapper interface to the gogf framework which is used for scheduler. It also locks in schedule time.
-type GoGFWrapper interface {
-	// Register add and remove cron or fixed rate schedules from gogf
-	Register(ctx context.Context, s models.SchedulableEntity, asOfTime time.Time, funcRef RegisterFuncRef) error
+// GoCronWrapper Wrapper interface to the gogf framework which is used for scheduler. It also locks in schedule time.
+type GoCronWrapper interface {
+	// Register add and remove cron or fixed rate schedules from scheduler
+	Register(ctx context.Context, s models.SchedulableEntity, funcRef RegisterFuncRef) error
 
-	// DeRegister remove cron or fixed rate schedules from gogf
+	// DeRegister remove cron or fixed rate schedules from scheduler
 	DeRegister(ctx context.Context, s models.SchedulableEntity)
 
 	// GetScheduledTime returns the next scheduleTime from marker fromTime for the given schedule s

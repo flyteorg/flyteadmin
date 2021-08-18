@@ -11,7 +11,9 @@ import (
 	"time"
 )
 
-// GoCron Struct implementing the GoGFWrapper which is used by the scheduler for adding and removing schedules
+// GoCron Struct implementing the GoCronWrapper which is used by the scheduler for adding and removing schedules
+// Each scheduled job accepts scheduled time parameter which helps to know what the actual invocation time and use
+// that to send an execution to admin
 type GoCron struct {
 	jobsMap map[string]schedinterfaces.GoCronJobWrapper
 	c       *cron.Cron
@@ -30,7 +32,7 @@ func (g GoCron) DeRegister(ctx context.Context, s models.SchedulableEntity) {
 	delete(g.jobsMap, nameOfSchedule)
 }
 
-func (g GoCron) Register(ctx context.Context, s models.SchedulableEntity, asOfTime time.Time, registerFuncRef schedinterfaces.RegisterFuncRef) error {
+func (g GoCron) Register(ctx context.Context, s models.SchedulableEntity, registerFuncRef schedinterfaces.RegisterFuncRef) error {
 	nameOfSchedule := GetScheduleName(s)
 
 	if g.jobsMap[nameOfSchedule] != nil {
@@ -38,7 +40,7 @@ func (g GoCron) Register(ctx context.Context, s models.SchedulableEntity, asOfTi
 		return nil
 	}
 
-	job := &GoGfJobWrapper{schedule: s, ctx: ctx, nameOfSchedule: nameOfSchedule, c: g.c}
+	job := &GoCronJobWrapper{schedule: s, ctx: ctx, nameOfSchedule: nameOfSchedule, c: g.c}
 	g.jobsMap[nameOfSchedule] = job
 
 	job.jobFunc = func(triggerTime time.Time) {
