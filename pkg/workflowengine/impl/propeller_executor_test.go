@@ -153,7 +153,7 @@ func TestExecuteWorkflowHappyCase(t *testing.T) {
 				"customlabel": "labelval",
 			}, workflow.Labels)
 			expectedAnnotations := map[string]string{
-				"iam.amazonaws.com/role":  "pbatchworker-d",
+				"iam.amazonaws.com/role":  "lp-pbatchworker-lp-d",
 				"lyft.net/iamwait-inject": "required",
 				"customannotation":        "annotationval",
 			}

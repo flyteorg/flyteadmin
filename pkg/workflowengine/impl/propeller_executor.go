@@ -147,7 +147,7 @@ func (c *FlytePropeller) ExecuteWorkflow(ctx context.Context, input interfaces.E
 	acceptAtWrapper := v1.NewTime(input.AcceptedAt)
 	flyteWf.AcceptedAt = &acceptAtWrapper
 
-	c.addPermissions(input.Auth, flyteWf, input.ExecutionID.GetProject(), input.ExecutionID.GetDomain())
+	c.addPermissions(input.Auth, flyteWf, input.Reference.Id.GetProject(), input.Reference.Id.GetDomain())
 
 	labels := addMapValues(input.Labels, flyteWf.Labels)
 	flyteWf.Labels = labels
