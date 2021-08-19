@@ -62,7 +62,7 @@ func (w *workflowScheduler) GetWorkflowExecutor(
 		case common.Local:
 			logger.Infof(context.Background(),
 				"Using default flyte workflow executor implementation")
-			w.workflowExecutor = scheduler.NewWorkflowExecutor(db, executionManager, config)
+			w.workflowExecutor = scheduler.NewWorkflowExecutor(db, executionManager, config, w.cfg.Scope.NewSubScope("workflow_executor"))
 		default:
 			logger.Infof(context.Background(),
 				"Using default noop workflow executor implementation for cloud provider type [%s]",
