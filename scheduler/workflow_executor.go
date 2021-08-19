@@ -13,11 +13,15 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/promutils"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/robfig/cron"
 	"go.uber.org/ratelimit"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/util/retry"
 	"strings"
 	"time"
 )
@@ -26,6 +30,12 @@ const executorSleepTime = 30
 
 const snapshotWriterSleepTime = 30
 const backOffSleepTime = 60
+const snapShotVersion = 1
+
+type schedulerMetrics struct {
+	Scope                  promutils.Scope
+	FailedExecutionCounter prometheus.Counter
+}
 
 // workflowExecutor used for executing the schedules saved by the native flyte scheduler in the database.
 type workflowExecutor struct {
@@ -36,6 +46,7 @@ type workflowExecutor struct {
 	snapShotReaderWriter schedInterfaces.SnapshotReaderWriter
 	goGfInterface        schedInterfaces.GoCronWrapper
 	rateLimiter          ratelimit.Limiter
+	metrics   schedulerMetrics
 }
 
 func (w *workflowExecutor) CheckPointState(ctx context.Context) {
@@ -102,7 +113,7 @@ func (w *workflowExecutor) CatchUpSingleSchedule(ctx context.Context, s models.S
 	var catchupTime time.Time
 	for _, catchupTime = range catchUpTimes {
 		_ = w.rateLimiter.Take()
-		err := fire(ctx, w.executionManager, catchupTime, s)
+		err := w.fire(ctx, w.executionManager, catchupTime, s)
 		if err != nil {
 			logger.Errorf(ctx, "unable to fire the schedule %+v at %v time due to %v", s, catchupTime, err)
 			return err
@@ -114,7 +125,7 @@ func (w *workflowExecutor) CatchUpSingleSchedule(ctx context.Context, s models.S
 	return nil
 }
 
-func fire(ctx context.Context, executionManager mgInterfaces.ExecutionInterface, scheduledTime time.Time,
+func (w *workflowExecutor) fire(ctx context.Context, executionManager mgInterfaces.ExecutionInterface, scheduledTime time.Time,
 	s models.SchedulableEntity) error {
 
 	literalsInputMap := map[string]*core.Literal{}
@@ -135,8 +146,8 @@ func fire(ctx context.Context, executionManager mgInterfaces.ExecutionInterface,
 	// Making the identifier deterministic using the hash of the identifier and scheduled time
 	executionIdentifier, err := GetExecutionIdentifier(core.Identifier{
 		Project: s.Project,
-		Domain: s.Domain,
-		Name: s.Name,
+		Domain:  s.Domain,
+		Name:    s.Name,
 		Version: s.Version,
 	}, scheduledTime)
 
@@ -173,18 +184,46 @@ func fire(ctx context.Context, executionManager mgInterfaces.ExecutionInterface,
 		logger.Debugf(ctx, "schedule %+v is no longer active", s)
 		return nil
 	}
-	_, err = executionManager.CreateExecution(context.Background(), executionRequest, scheduledTime)
-	if err != nil {
-		// For idempotent behavior ignore the AlreadyExists error which happens if we try to schedule a launchplan
-		// for execution at the same time which is already available in admin.
-		// This is possible since idempotency gurantees are using the schedule time and the identifier
-		if grpcError := status.Code(err); grpcError == codes.AlreadyExists {
-			logger.Debugf(ctx, "duplicate schedule %+v already exists for schedule", s)
-			return nil
-		}
-		logger.Error(ctx, "failed to create execution create request %+v due to %v", executionRequest, err)
-		return err
-	}
+
+	// Do maximum of 30 retries on failures with constant backoff factor
+	opts := wait.Backoff{Factor: 1.0, Steps: 30}
+	err = retry.OnError(opts,
+		func(err error) bool {
+			if err == nil {
+				return false
+			}
+			// For idempotent behavior ignore the AlreadyExists error which happens if we try to schedule a launchplan
+			// for execution at the same time which is already available in admin.
+			// This is possible since idempotency gurantees are using the schedule time and the identifier
+			if grpcError := status.Code(err); grpcError == codes.AlreadyExists {
+				logger.Debugf(ctx, "duplicate schedule %+v already exists for schedule", s)
+				return false
+			}
+			w.metrics.FailedExecutionCounter.Inc()
+			logger.Error(ctx, "failed to create execution create request %+v due to %v", executionRequest, err)
+			// TODO: Handle the case when admin launch plan state is archived but the schedule is active.
+			// After this bug is fixed in admin https://github.com/flyteorg/flyte/issues/1354
+			return true
+		},
+		func() error {
+			_, execErr := executionManager.CreateExecution(context.Background(), executionRequest, scheduledTime)
+			return execErr
+		},
+	)
+	//_, err = executionManager.CreateExecution(context.Background(), executionRequest, scheduledTime)
+	//if err != nil {
+	//	// For idempotent behavior ignore the AlreadyExists error which happens if we try to schedule a launchplan
+	//	// for execution at the same time which is already available in admin.
+	//	// This is possible since idempotency gurantees are using the schedule time and the identifier
+	//	// TODO: Handle the case when admin launch plan state is archived but the schedule is active.
+	//	// After this bug is fixed in admin https://github.com/flyteorg/flyte/issues/1354
+	//	if grpcError := status.Code(err); grpcError == codes.AlreadyExists {
+	//		logger.Debugf(ctx, "duplicate schedule %+v already exists for schedule", s)
+	//		return nil
+	//	}
+	//	logger.Error(ctx, "failed to create execution create request %+v due to %v", executionRequest, err)
+	//	return err
+	//}
 	return nil
 }
 
@@ -213,7 +252,7 @@ func (w *workflowExecutor) Run() {
 				}
 				nameOfSchedule := GetScheduleName(schedule)
 				_ = w.rateLimiter.Take()
-				err := fire(ctx, w.executionManager, scheduleTime, schedule)
+				err := w.fire(ctx, w.executionManager, scheduleTime, schedule)
 				if err != nil {
 					logger.Errorf(ctx, "unable to fire the schedule %+v at %v time due to %v", s, scheduleTime, err)
 					return
@@ -246,18 +285,28 @@ func (w *workflowExecutor) Stop() error {
 }
 
 func NewWorkflowExecutor(db repositories.SchedulerRepoInterface, executionManager mgInterfaces.ExecutionInterface,
-	config runtimeInterfaces.Configuration) interfaces.WorkflowExecutor {
+	config runtimeInterfaces.Configuration, scope promutils.Scope) interfaces.WorkflowExecutor {
 	ctx := context.Background()
 	workflowExecConfig := config.ApplicationConfiguration().GetSchedulerConfig().WorkflowExecutorConfig.GetFlyteWorkflowExecutorConfig()
-	snapShotReaderWriter := VersionedSnapshot{version: workflowExecConfig.SnapshotVersion}
+	snapShotReaderWriter := VersionedSnapshot{version: snapShotVersion}
+	// Rate limiter on admin
 	rateLimiter := ratelimit.New(workflowExecConfig.AdminFireReqRateLimit)
-	snapshot := readSnapShot(ctx, db, workflowExecConfig.SnapshotVersion)
-	cron := cron.New()
-	cron.Start()
+	// Reads the snapshot from the db
+	snapshot := readSnapShot(ctx, db, snapShotVersion)
+	// Create the new cron scheduler and start it off
+	c := cron.New()
+	c.Start()
+	metrics := schedulerMetrics{
+		Scope: scope,
+		FailedExecutionCounter: scope.MustNewCounter("failed_execution_counter",
+			"count of unsuccessful attempts to create the scheduled execution on the admin"),
+	}
 	return &workflowExecutor{db: db, executionManager: executionManager, config: config, snapshot: snapshot,
 		snapShotReaderWriter: &snapShotReaderWriter,
-		goGfInterface:        GoCron{jobsMap: map[string]schedInterfaces.GoCronJobWrapper{}, c: cron},
-		rateLimiter:          rateLimiter}
+		goGfInterface:        GoCron{jobsMap: map[string]schedInterfaces.GoCronJobWrapper{}, c: c},
+		rateLimiter:          rateLimiter,
+		metrics: metrics,
+	}
 }
 
 func readSnapShot(ctx context.Context, db repositories.SchedulerRepoInterface, version int) schedInterfaces.Snapshoter {
