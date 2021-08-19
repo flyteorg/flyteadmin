@@ -77,8 +77,7 @@ scheduler:
   workflowExecutor:
     scheme: local
     local:
-      snapshotVersion: 1 # version of the snapshot
-      adminFireReqRateLimit: 1 #per sec how many requests to send to admin
+      adminFireReqRateLimit: 100 #per sec how many requests to send to admin
     region: "my-region"
     scheduleQueueName: "won't-work-locally"
     accountId: "abc123"

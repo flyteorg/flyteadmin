@@ -205,16 +205,10 @@ func (a *AWSWorkflowExecutorConfig) GetAccountID() string {
 
 // FlyteWorkflowExecutorConfig specifies the workflow executor configuration for the native flyte scheduler
 type FlyteWorkflowExecutorConfig struct {
-	// Version number of the snapshot used for writing the GOB format of the snapshot
-	SnapshotVersion int `json:"snapshotVersion"`
 	// This allows to control the number of TPS that hit admin using the scheduler.
 	// eg : 100 TPS will send at the max 100 schedule requests to admin per sec.
 	// This value is in TPS.
 	AdminFireReqRateLimit int `json:"adminFireReqRateLimit"`
-}
-
-func (f *FlyteWorkflowExecutorConfig) GetSnapshotVersion() int {
-	return f.SnapshotVersion
 }
 
 func (f *FlyteWorkflowExecutorConfig) GetAdminFireReqRateLimit() int {
