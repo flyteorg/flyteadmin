@@ -154,13 +154,16 @@ func TestValidateListTaskRequest_MissingLimit(t *testing.T) {
 
 func TestValidateParameterMap(t *testing.T) {
 	exampleMap := core.ParameterMap{
-		Parameters: map[string]*core.Parameter{
-			"foo": {
-				Var: &core.Variable{
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
-				},
-				Behavior: &core.Parameter_Default{
-					Default: coreutils.MustMakeLiteral("foo-value"),
+		Parameters: []*core.ParameterMapFieldEntry{
+			{
+				Key: "foo",
+				Value: &core.Parameter{
+					Var: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
+					Behavior: &core.Parameter_Default{
+						Default: coreutils.MustMakeLiteral("foo-value"),
+					},
 				},
 			},
 		},
@@ -169,12 +172,15 @@ func TestValidateParameterMap(t *testing.T) {
 	assert.NoError(t, err)
 
 	exampleMap = core.ParameterMap{
-		Parameters: map[string]*core.Parameter{
-			"foo": {
-				Var: &core.Variable{
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+		Parameters: []*core.ParameterMapFieldEntry{
+			{
+				Key: "foo",
+				Value: &core.Parameter{
+					Var: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
+					Behavior: nil, // neither required or defaults
 				},
-				Behavior: nil, // neither required or defaults
 			},
 		},
 	}
@@ -182,13 +188,16 @@ func TestValidateParameterMap(t *testing.T) {
 	assert.Error(t, err)
 
 	exampleMap = core.ParameterMap{
-		Parameters: map[string]*core.Parameter{
-			"foo": {
-				Var: &core.Variable{
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
-				},
-				Behavior: &core.Parameter_Required{
-					Required: true,
+		Parameters: []*core.ParameterMapFieldEntry{
+			{
+				Key: "foo",
+				Value: &core.Parameter{
+					Var: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
+					Behavior: &core.Parameter_Required{
+						Required: true,
+					},
 				},
 			},
 		},
@@ -197,13 +206,16 @@ func TestValidateParameterMap(t *testing.T) {
 	assert.NoError(t, err)
 
 	exampleMap = core.ParameterMap{
-		Parameters: map[string]*core.Parameter{
-			"foo": {
-				Var: &core.Variable{
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
-				},
-				Behavior: &core.Parameter_Required{
-					Required: false,
+		Parameters: []*core.ParameterMapFieldEntry{
+			{
+				Key: "foo",
+				Value: &core.Parameter{
+					Var: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
+					Behavior: &core.Parameter_Required{
+						Required: false,
+					},
 				},
 			},
 		},

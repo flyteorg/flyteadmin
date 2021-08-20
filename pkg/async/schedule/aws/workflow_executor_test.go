@@ -79,7 +79,7 @@ func TestResolveKickoffTimeArg(t *testing.T) {
 			ExpectedInputs: &core.ParameterMap{
 				Parameters: []*core.ParameterMapFieldEntry{
 					{
-						Key:   "testKickoffTime",
+						Key:   testKickoffTime,
 						Value: &core.Parameter{},
 					},
 				},
@@ -281,7 +281,7 @@ func TestRun(t *testing.T) {
 							ExpectedInputs: &core.ParameterMap{
 								Parameters: []*core.ParameterMapFieldEntry{
 									{
-										Key:   "testKickoffTime",
+										Key:   testKickoffTime,
 										Value: &core.Parameter{},
 									},
 								},

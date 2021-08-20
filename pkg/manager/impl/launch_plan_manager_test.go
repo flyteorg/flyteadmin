@@ -87,8 +87,7 @@ func TestCreateLaunchPlan(t *testing.T) {
 	var createCalled bool
 	repository.LaunchPlanRepo().(*repositoryMocks.MockLaunchPlanRepo).SetCreateCallback(
 		func(input models.LaunchPlan) error {
-			assert.Equal(t, []byte{0xc9, 0xa9, 0x1b, 0xf3, 0x0, 0x65, 0xe5, 0xce, 0xdb, 0xde, 0xbe, 0x14, 0x1b, 0x9b,
-				0x60, 0x8d, 0xeb, 0x69, 0x47, 0x69, 0xed, 0x82, 0xae, 0x2c, 0xde, 0x11, 0x70, 0xba, 0xdc, 0x11, 0xe8, 0xdb}, input.Digest)
+			assert.Equal(t, []byte{0x8e, 0x95, 0x76, 0x48, 0x16, 0x1d, 0x76, 0xce, 0xd1, 0x51, 0x18, 0x2b, 0x5, 0xab, 0x37, 0xf0, 0xc5, 0xec, 0x1b, 0xd7, 0xb0, 0x9, 0xcd, 0xc7, 0x83, 0x55, 0x1, 0xbf, 0x0, 0x91, 0x47, 0xc2}, input.Digest)
 			createCalled = true
 			return nil
 		})
@@ -266,10 +265,13 @@ func TestCreateLaunchPlanInCompatibleInputs(t *testing.T) {
 	lpManager := NewLaunchPlanManager(repository, getMockConfigForLpTest(), mockScheduler, mockScope.NewTestScope())
 	request := testutils.GetLaunchPlanRequest()
 	request.Spec.DefaultInputs = &core.ParameterMap{
-		Parameters: map[string]*core.Parameter{
-			"boo": {
-				Var: &core.Variable{
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+		Parameters: []*core.ParameterMapFieldEntry{
+			{
+				Key: "boo",
+				Value: &core.Parameter{
+					Var: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
 				},
 			},
 		},
@@ -294,13 +296,16 @@ func TestCreateLaunchPlanValidateCreate(t *testing.T) {
 		assert.Equal(t, version, launchPlan.Id.Version)
 		assert.EqualValues(t, testutils.GetLaunchPlanRequest().Spec, launchPlan.Spec)
 		expectedInputs := &core.ParameterMap{
-			Parameters: map[string]*core.Parameter{
-				"foo": {
-					Var: &core.Variable{
-						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
-					},
-					Behavior: &core.Parameter_Default{
-						Default: coreutils.MustMakeLiteral("foo-value"),
+			Parameters: []*core.ParameterMapFieldEntry{
+				{
+					Key: "foo",
+					Value: &core.Parameter{
+						Var: &core.Variable{
+							Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+						},
+						Behavior: &core.Parameter_Default{
+							Default: coreutils.MustMakeLiteral("foo-value"),
+						},
 					},
 				},
 			},
@@ -347,7 +352,7 @@ func TestCreateLaunchPlanNoWorkflowInterface(t *testing.T) {
 		assert.Equal(t, version, launchPlan.Id.Version)
 		expectedLaunchPlanSpec := testutils.GetLaunchPlanRequest().Spec
 		expectedLaunchPlanSpec.FixedInputs = nil
-		expectedLaunchPlanSpec.DefaultInputs.Parameters = map[string]*core.Parameter{}
+		expectedLaunchPlanSpec.DefaultInputs.Parameters = []*core.ParameterMapFieldEntry{}
 		assert.EqualValues(t, expectedLaunchPlanSpec.String(), launchPlan.Spec.String())
 		assert.Empty(t, launchPlan.Closure.ExpectedInputs)
 		return nil

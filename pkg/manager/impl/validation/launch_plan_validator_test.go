@@ -56,25 +56,34 @@ func TestGetLpExpectedInputs(t *testing.T) {
 	request := testutils.GetLaunchPlanRequest()
 	actualExpectedMap, err := checkAndFetchExpectedInputForLaunchPlan(
 		&core.VariableMap{
-			Variables: map[string]*core.Variable{
-				"foo": {
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+			Variables: []*core.VariableMapFieldEntry{
+				{
+					Key: "foo",
+					Value: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
 				},
-				"bar": {
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+				{
+					Key: "bar",
+					Value: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
 				},
 			},
 		},
 		request.GetSpec().GetFixedInputs(), request.GetSpec().GetDefaultInputs(),
 	)
 	expectedMap := core.ParameterMap{
-		Parameters: map[string]*core.Parameter{
-			"foo": {
-				Var: &core.Variable{
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
-				},
-				Behavior: &core.Parameter_Default{
-					Default: coreutils.MustMakeLiteral("foo-value"),
+		Parameters: []*core.ParameterMapFieldEntry{
+			{
+				Key: "foo",
+				Value: &core.Parameter{
+					Var: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
+					Behavior: &core.Parameter_Default{
+						Default: coreutils.MustMakeLiteral("foo-value"),
+					},
 				},
 			},
 		},
@@ -86,15 +95,18 @@ func TestGetLpExpectedInputs(t *testing.T) {
 
 func TestValidateLpDefaultInputsWrongType(t *testing.T) {
 	request := testutils.GetLaunchPlanRequest()
-	request.Spec.DefaultInputs.Parameters["foo"].Var.Type = &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_FLOAT}}
+	request.Spec.DefaultInputs.Parameters[0].GetValue().Var.Type = &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_FLOAT}}
 	err := ValidateLaunchPlan(context.Background(), request, testutils.GetRepoWithDefaultProject(), lpApplicationConfig, getWorkflowInterface())
 	assert.EqualError(t, err, "Type mismatch for Parameter foo in default_inputs has type simple:FLOAT , expected simple:STRING ")
 }
 
 func TestValidateLpDefaultInputsEmptyName(t *testing.T) {
 	request := testutils.GetLaunchPlanRequest()
-	request.Spec.DefaultInputs.Parameters = map[string]*core.Parameter{
-		"": nil,
+	request.Spec.DefaultInputs.Parameters = []*core.ParameterMapFieldEntry{
+		{
+			Key:   "",
+			Value: nil,
+		},
 	}
 	err := ValidateLaunchPlan(context.Background(), request, testutils.GetRepoWithDefaultProject(), lpApplicationConfig, getWorkflowInterface())
 	assert.EqualError(t, err, "missing key in default_inputs")
@@ -102,14 +114,14 @@ func TestValidateLpDefaultInputsEmptyName(t *testing.T) {
 
 func TestValidateLpDefaultInputsEmptyType(t *testing.T) {
 	request := testutils.GetLaunchPlanRequest()
-	request.Spec.DefaultInputs.Parameters["foo"].Var.Type = nil
+	request.Spec.DefaultInputs.Parameters[0].GetValue().Var.Type = nil
 	err := ValidateLaunchPlan(context.Background(), request, testutils.GetRepoWithDefaultProject(), lpApplicationConfig, getWorkflowInterface())
 	assert.EqualError(t, err, "The Variable component of the Parameter foo in default_inputs either is missing, or has a missing Type")
 }
 
 func TestValidateLpDefaultInputsEmptyVar(t *testing.T) {
 	request := testutils.GetLaunchPlanRequest()
-	request.Spec.DefaultInputs.Parameters["foo"].Var = nil
+	request.Spec.DefaultInputs.Parameters[0].GetValue().Var = nil
 	err := ValidateLaunchPlan(context.Background(), request, testutils.GetRepoWithDefaultProject(), lpApplicationConfig, getWorkflowInterface())
 	assert.EqualError(t, err, "The Variable component of the Parameter foo in default_inputs either is missing, or has a missing Type")
 }
@@ -136,12 +148,18 @@ func TestGetLpExpectedInvalidDefaultInput(t *testing.T) {
 	request := testutils.GetLaunchPlanRequest()
 	actualMap, err := checkAndFetchExpectedInputForLaunchPlan(
 		&core.VariableMap{
-			Variables: map[string]*core.Variable{
-				"foo-x": {
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+			Variables: []*core.VariableMapFieldEntry{
+				{
+					Key: "foo-x",
+					Value: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
 				},
-				"bar": {
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+				{
+					Key: "bar",
+					Value: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
 				},
 			},
 		},
@@ -156,12 +174,18 @@ func TestGetLpExpectedInvalidDefaultInputType(t *testing.T) {
 	request := testutils.GetLaunchPlanRequest()
 	actualMap, err := checkAndFetchExpectedInputForLaunchPlan(
 		&core.VariableMap{
-			Variables: map[string]*core.Variable{
-				"foo": {
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_BINARY}},
+			Variables: []*core.VariableMapFieldEntry{
+				{
+					Key: "foo",
+					Value: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_BINARY}},
+					},
 				},
-				"bar": {
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+				{
+					Key: "bar",
+					Value: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
 				},
 			},
 		},
@@ -176,12 +200,18 @@ func TestGetLpExpectedInvalidFixedInputType(t *testing.T) {
 	request := testutils.GetLaunchPlanRequest()
 	actualMap, err := checkAndFetchExpectedInputForLaunchPlan(
 		&core.VariableMap{
-			Variables: map[string]*core.Variable{
-				"foo": {
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+			Variables: []*core.VariableMapFieldEntry{
+				{
+					Key: "foo",
+					Value: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
 				},
-				"bar": {
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_BINARY}},
+				{
+					Key: "bar",
+					Value: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_BINARY}},
+					},
 				},
 			},
 		},
@@ -196,12 +226,18 @@ func TestGetLpExpectedInvalidFixedInput(t *testing.T) {
 	request := testutils.GetLaunchPlanRequest()
 	actualMap, err := checkAndFetchExpectedInputForLaunchPlan(
 		&core.VariableMap{
-			Variables: map[string]*core.Variable{
-				"foo": {
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+			Variables: []*core.VariableMapFieldEntry{
+				{
+					Key: "foo",
+					Value: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
 				},
-				"bar-y": {
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+				{
+					Key: "bar-y",
+					Value: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
 				},
 			},
 		},
@@ -216,9 +252,12 @@ func TestGetLpExpectedNoFixedInput(t *testing.T) {
 	request := testutils.GetLaunchPlanRequest()
 	actualMap, err := checkAndFetchExpectedInputForLaunchPlan(
 		&core.VariableMap{
-			Variables: map[string]*core.Variable{
-				"foo": {
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+			Variables: []*core.VariableMapFieldEntry{
+				{
+					Key: "foo",
+					Value: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
 				},
 			},
 		},
@@ -226,13 +265,16 @@ func TestGetLpExpectedNoFixedInput(t *testing.T) {
 	)
 
 	expectedMap := core.ParameterMap{
-		Parameters: map[string]*core.Parameter{
-			"foo": {
-				Var: &core.Variable{
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
-				},
-				Behavior: &core.Parameter_Default{
-					Default: coreutils.MustMakeLiteral("foo-value"),
+		Parameters: []*core.ParameterMapFieldEntry{
+			{
+				Key: "foo",
+				Value: &core.Parameter{
+					Var: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
+					Behavior: &core.Parameter_Default{
+						Default: coreutils.MustMakeLiteral("foo-value"),
+					},
 				},
 			},
 		},
@@ -246,9 +288,12 @@ func TestGetLpExpectedNoDefaultInput(t *testing.T) {
 	request := testutils.GetLaunchPlanRequest()
 	actualMap, err := checkAndFetchExpectedInputForLaunchPlan(
 		&core.VariableMap{
-			Variables: map[string]*core.Variable{
-				"bar": {
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+			Variables: []*core.VariableMapFieldEntry{
+				{
+					Key: "bar",
+					Value: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
 				},
 			},
 		},
@@ -256,7 +301,7 @@ func TestGetLpExpectedNoDefaultInput(t *testing.T) {
 	)
 
 	expectedMap := core.ParameterMap{
-		Parameters: map[string]*core.Parameter{},
+		Parameters: []*core.ParameterMapFieldEntry{},
 	}
 	assert.Nil(t, err)
 	assert.NotNil(t, actualMap)
@@ -266,13 +311,16 @@ func TestGetLpExpectedNoDefaultInput(t *testing.T) {
 func TestValidateSchedule_NoSchedule(t *testing.T) {
 	request := testutils.GetLaunchPlanRequest()
 	inputMap := &core.ParameterMap{
-		Parameters: map[string]*core.Parameter{
-			"foo": {
-				Var: &core.Variable{
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
-				},
-				Behavior: &core.Parameter_Required{
-					Required: true,
+		Parameters: []*core.ParameterMapFieldEntry{
+			{
+				Key: "foo",
+				Value: &core.Parameter{
+					Var: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
+					Behavior: &core.Parameter_Required{
+						Required: true,
+					},
 				},
 			},
 		},
@@ -284,13 +332,16 @@ func TestValidateSchedule_NoSchedule(t *testing.T) {
 func TestValidateSchedule_ArgNotFixed(t *testing.T) {
 	request := testutils.GetLaunchPlanRequestWithCronSchedule("* * * * * *")
 	inputMap := &core.ParameterMap{
-		Parameters: map[string]*core.Parameter{
-			"foo": {
-				Var: &core.Variable{
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
-				},
-				Behavior: &core.Parameter_Required{
-					Required: true,
+		Parameters: []*core.ParameterMapFieldEntry{
+			{
+				Key: "foo",
+				Value: &core.Parameter{
+					Var: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
+					Behavior: &core.Parameter_Required{
+						Required: true,
+					},
 				},
 			},
 		},
@@ -303,7 +354,7 @@ func TestValidateSchedule_ArgNotFixed(t *testing.T) {
 func TestValidateSchedule_KickoffTimeArgDoesNotExist(t *testing.T) {
 	request := testutils.GetLaunchPlanRequestWithCronSchedule("* * * * * *")
 	inputMap := &core.ParameterMap{
-		Parameters: map[string]*core.Parameter{},
+		Parameters: []*core.ParameterMapFieldEntry{},
 	}
 	request.Spec.EntityMetadata.Schedule.KickoffTimeInputArg = "Does not exist"
 
@@ -314,13 +365,16 @@ func TestValidateSchedule_KickoffTimeArgDoesNotExist(t *testing.T) {
 func TestValidateSchedule_KickoffTimeArgPointsAtWrongType(t *testing.T) {
 	request := testutils.GetLaunchPlanRequestWithCronSchedule("* * * * * *")
 	inputMap := &core.ParameterMap{
-		Parameters: map[string]*core.Parameter{
-			"foo": {
-				Var: &core.Variable{
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
-				},
-				Behavior: &core.Parameter_Required{
-					Required: true,
+		Parameters: []*core.ParameterMapFieldEntry{
+			{
+				Key: "foo",
+				Value: &core.Parameter{
+					Var: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
+					Behavior: &core.Parameter_Required{
+						Required: true,
+					},
 				},
 			},
 		},
@@ -334,13 +388,16 @@ func TestValidateSchedule_KickoffTimeArgPointsAtWrongType(t *testing.T) {
 func TestValidateSchedule_NoRequired(t *testing.T) {
 	request := testutils.GetLaunchPlanRequestWithCronSchedule("* * * * * *")
 	inputMap := &core.ParameterMap{
-		Parameters: map[string]*core.Parameter{
-			"foo": {
-				Var: &core.Variable{
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
-				},
-				Behavior: &core.Parameter_Default{
-					Default: coreutils.MustMakeLiteral("foo-value"),
+		Parameters: []*core.ParameterMapFieldEntry{
+			{
+				Key: "foo",
+				Value: &core.Parameter{
+					Var: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
+					Behavior: &core.Parameter_Default{
+						Default: coreutils.MustMakeLiteral("foo-value"),
+					},
 				},
 			},
 		},
@@ -353,13 +410,16 @@ func TestValidateSchedule_NoRequired(t *testing.T) {
 func TestValidateSchedule_KickoffTimeBound(t *testing.T) {
 	request := testutils.GetLaunchPlanRequestWithCronSchedule("* * * * * *")
 	inputMap := &core.ParameterMap{
-		Parameters: map[string]*core.Parameter{
-			"foo": {
-				Var: &core.Variable{
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_DATETIME}},
-				},
-				Behavior: &core.Parameter_Required{
-					Required: true,
+		Parameters: []*core.ParameterMapFieldEntry{
+			{
+				Key: "foo",
+				Value: &core.Parameter{
+					Var: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_DATETIME}},
+					},
+					Behavior: &core.Parameter_Required{
+						Required: true,
+					},
 				},
 			},
 		},

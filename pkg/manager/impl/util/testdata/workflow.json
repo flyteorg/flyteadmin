@@ -1,33 +1,32 @@
 {
-  "primary":{
-    "template":{
-      "id":{
-        "resourceType":"WORKFLOW",
-        "project":"flyteexamples",
-        "domain":"development",
-        "name":"tests-flytekit-common-workflows-python-python-tasks-workflow",
-        "version":"123abc"
+  "primary": {
+    "template": {
+      "id": {
+        "resourceType": "WORKFLOW",
+        "project": "flyteexamples",
+        "domain": "development",
+        "name": "tests-flytekit-common-workflows-python-python-tasks-workflow",
+        "version": "123abc"
       },
-      "metadata":{
-
-      },
-      "interface":{
-        "inputs":{
-          "variables":{
-            "triggered_date":{
-              "type":{
-                "simple":"DATETIME"
+      "metadata": {},
+      "interface": {
+        "inputs": {
+          "variables": [
+            {
+              "key": "triggered_date",
+              "value": {
+                "type": {
+                  "simple": "DATETIME"
+                }
               }
             }
-          }
+          ]
         },
-        "outputs":{
-          "variables":{
-
-          }
+        "outputs": {
+          "variables": []
         }
       },
-      "nodes":[
+      "nodes": [
         {
           "id":"start-node"
         },
@@ -43,336 +42,324 @@
 
             }
           },
-          "inputs":[
+          "inputs": [
             {
-              "var":"date_triggered",
-              "binding":{
-                "promise":{
-                  "nodeId":"start-node",
-                  "var":"triggered_date"
+              "var": "date_triggered",
+              "binding": {
+                "promise": {
+                  "nodeId": "start-node",
+                  "var": "triggered_date"
                 }
               }
             },
             {
-              "var":"value_to_print",
-              "binding":{
-                "promise":{
-                  "nodeId":"print-sum",
-                  "var":"out"
+              "var": "value_to_print",
+              "binding": {
+                "promise": {
+                  "nodeId": "print-sum",
+                  "var": "out"
                 }
               }
             }
           ],
-          "upstreamNodeIds":[
+          "upstreamNodeIds": [
             "print-sum"
           ],
-          "taskNode":{
-            "referenceId":{
-              "resourceType":"TASK",
-              "project":"flyteexamples",
-              "domain":"development",
-              "name":"tests-flytekit-common-workflows-python-print-every-time",
-              "version":"123abc"
+          "taskNode": {
+            "referenceId": {
+              "resourceType": "TASK",
+              "project": "flyteexamples",
+              "domain": "development",
+              "name": "tests-flytekit-common-workflows-python-print-every-time",
+              "version": "123abc"
             }
           }
         },
         {
-          "id":"print-sum",
-          "metadata":{
-            "name":"DEADBEEF",
-            "timeout":"0s",
-            "retries":{
-
-            }
+          "id": "print-sum",
+          "metadata": {
+            "name": "DEADBEEF",
+            "timeout": "0s",
+            "retries": {}
           },
-          "inputs":[
+          "inputs": [
             {
-              "var":"value1_to_add",
-              "binding":{
-                "promise":{
-                  "nodeId":"print2",
-                  "var":"out"
+              "var": "value1_to_add",
+              "binding": {
+                "promise": {
+                  "nodeId": "print2",
+                  "var": "out"
                 }
               }
             },
             {
-              "var":"value2_to_add",
-              "binding":{
-                "promise":{
-                  "nodeId":"print3",
-                  "var":"out"
+              "var": "value2_to_add",
+              "binding": {
+                "promise": {
+                  "nodeId": "print3",
+                  "var": "out"
                 }
               }
             },
             {
-              "var":"value3_to_add",
-              "binding":{
-                "promise":{
-                  "nodeId":"print4",
-                  "var":"out"
+              "var": "value3_to_add",
+              "binding": {
+                "promise": {
+                  "nodeId": "print4",
+                  "var": "out"
                 }
               }
             },
             {
-              "var":"value4_to_add",
-              "binding":{
-                "scalar":{
-                  "primitive":{
-                    "integer":"100"
+              "var": "value4_to_add",
+              "binding": {
+                "scalar": {
+                  "primitive": {
+                    "integer": "100"
                   }
                 }
               }
             }
           ],
-          "upstreamNodeIds":[
+          "upstreamNodeIds": [
             "print2",
             "print3",
             "print4"
           ],
-          "taskNode":{
-            "referenceId":{
-              "resourceType":"TASK",
-              "project":"flyteexamples",
-              "domain":"development",
-              "name":"tests-flytekit-common-workflows-python-sum-and-print",
-              "version":"123abc"
+          "taskNode": {
+            "referenceId": {
+              "resourceType": "TASK",
+              "project": "flyteexamples",
+              "domain": "development",
+              "name": "tests-flytekit-common-workflows-python-sum-and-print",
+              "version": "123abc"
             }
           }
         },
         {
-          "id":"print1a",
-          "metadata":{
-            "name":"DEADBEEF",
-            "timeout":"0s",
-            "retries":{
-
-            }
+          "id": "print1a",
+          "metadata": {
+            "name": "DEADBEEF",
+            "timeout": "0s",
+            "retries": {}
           },
-          "inputs":[
+          "inputs": [
             {
-              "var":"value_to_print",
-              "binding":{
-                "scalar":{
-                  "primitive":{
-                    "integer":"3"
+              "var": "value_to_print",
+              "binding": {
+                "scalar": {
+                  "primitive": {
+                    "integer": "3"
                   }
                 }
               }
             }
           ],
-          "taskNode":{
-            "referenceId":{
-              "resourceType":"TASK",
-              "project":"flyteexamples",
-              "domain":"development",
-              "name":"tests-flytekit-common-workflows-python-add-one-and-print",
-              "version":"123abc"
+          "taskNode": {
+            "referenceId": {
+              "resourceType": "TASK",
+              "project": "flyteexamples",
+              "domain": "development",
+              "name": "tests-flytekit-common-workflows-python-add-one-and-print",
+              "version": "123abc"
             }
           }
         },
         {
-          "id":"print1b",
-          "metadata":{
-            "name":"DEADBEEF",
-            "timeout":"0s",
-            "retries":{
-
-            }
+          "id": "print1b",
+          "metadata": {
+            "name": "DEADBEEF",
+            "timeout": "0s",
+            "retries": {}
           },
-          "inputs":[
+          "inputs": [
             {
-              "var":"value_to_print",
-              "binding":{
-                "scalar":{
-                  "primitive":{
-                    "integer":"101"
+              "var": "value_to_print",
+              "binding": {
+                "scalar": {
+                  "primitive": {
+                    "integer": "101"
                   }
                 }
               }
             }
           ],
-          "taskNode":{
-            "referenceId":{
-              "resourceType":"TASK",
-              "project":"flyteexamples",
-              "domain":"development",
-              "name":"tests-flytekit-common-workflows-python-add-one-and-print",
-              "version":"123abc"
+          "taskNode": {
+            "referenceId": {
+              "resourceType": "TASK",
+              "project": "flyteexamples",
+              "domain": "development",
+              "name": "tests-flytekit-common-workflows-python-add-one-and-print",
+              "version": "123abc"
             }
           }
         },
         {
-          "id":"print2",
-          "metadata":{
-            "name":"DEADBEEF",
-            "timeout":"0s",
-            "retries":{
-
-            }
+          "id": "print2",
+          "metadata": {
+            "name": "DEADBEEF",
+            "timeout": "0s",
+            "retries": {}
           },
-          "inputs":[
+          "inputs": [
             {
-              "var":"value1_to_print",
-              "binding":{
-                "promise":{
-                  "nodeId":"print1a",
-                  "var":"out"
+              "var": "value1_to_print",
+              "binding": {
+                "promise": {
+                  "nodeId": "print1a",
+                  "var": "out"
                 }
               }
             },
             {
-              "var":"value2_to_print",
-              "binding":{
-                "promise":{
-                  "nodeId":"print1b",
-                  "var":"out"
+              "var": "value2_to_print",
+              "binding": {
+                "promise": {
+                  "nodeId": "print1b",
+                  "var": "out"
                 }
               }
             }
           ],
-          "upstreamNodeIds":[
+          "upstreamNodeIds": [
             "print1a",
             "print1b"
           ],
-          "taskNode":{
-            "referenceId":{
-              "resourceType":"TASK",
-              "project":"flyteexamples",
-              "domain":"development",
-              "name":"tests-flytekit-common-workflows-python-sum-non-none",
-              "version":"123abc"
+          "taskNode": {
+            "referenceId": {
+              "resourceType": "TASK",
+              "project": "flyteexamples",
+              "domain": "development",
+              "name": "tests-flytekit-common-workflows-python-sum-non-none",
+              "version": "123abc"
             }
           }
         },
         {
-          "id":"print3",
-          "metadata":{
-            "name":"DEADBEEF",
-            "timeout":"0s",
-            "retries":{
-
-            }
+          "id": "print3",
+          "metadata": {
+            "name": "DEADBEEF",
+            "timeout": "0s",
+            "retries": {}
           },
-          "inputs":[
+          "inputs": [
             {
-              "var":"value_to_print",
-              "binding":{
-                "promise":{
-                  "nodeId":"print2",
-                  "var":"out"
+              "var": "value_to_print",
+              "binding": {
+                "promise": {
+                  "nodeId": "print2",
+                  "var": "out"
                 }
               }
             }
           ],
-          "upstreamNodeIds":[
+          "upstreamNodeIds": [
             "print2"
           ],
-          "taskNode":{
-            "referenceId":{
-              "resourceType":"TASK",
-              "project":"flyteexamples",
-              "domain":"development",
-              "name":"tests-flytekit-common-workflows-python-add-one-and-print",
-              "version":"123abc"
+          "taskNode": {
+            "referenceId": {
+              "resourceType": "TASK",
+              "project": "flyteexamples",
+              "domain": "development",
+              "name": "tests-flytekit-common-workflows-python-add-one-and-print",
+              "version": "123abc"
             }
           }
         },
         {
-          "id":"print4",
-          "metadata":{
-            "name":"DEADBEEF",
-            "timeout":"0s",
-            "retries":{
-
-            }
+          "id": "print4",
+          "metadata": {
+            "name": "DEADBEEF",
+            "timeout": "0s",
+            "retries": {}
           },
-          "inputs":[
+          "inputs": [
             {
-              "var":"value_to_print",
-              "binding":{
-                "promise":{
-                  "nodeId":"print3",
-                  "var":"out"
+              "var": "value_to_print",
+              "binding": {
+                "promise": {
+                  "nodeId": "print3",
+                  "var": "out"
                 }
               }
             }
           ],
-          "upstreamNodeIds":[
+          "upstreamNodeIds": [
             "print3"
           ],
-          "taskNode":{
-            "referenceId":{
-              "resourceType":"TASK",
-              "project":"flyteexamples",
-              "domain":"development",
-              "name":"tests-flytekit-common-workflows-python-add-one-and-print",
-              "version":"123abc"
+          "taskNode": {
+            "referenceId": {
+              "resourceType": "TASK",
+              "project": "flyteexamples",
+              "domain": "development",
+              "name": "tests-flytekit-common-workflows-python-add-one-and-print",
+              "version": "123abc"
             }
           }
         }
       ]
     },
-    "connections":{
-      "downstream":{
-        "print-sum":{
-          "ids":[
+    "connections": {
+      "downstream": {
+        "print-sum": {
+          "ids": [
             "print-always",
             "print-always"
           ]
         },
-        "print1a":{
-          "ids":[
+        "print1a": {
+          "ids": [
             "print2",
             "print2"
           ]
         },
-        "print1b":{
-          "ids":[
+        "print1b": {
+          "ids": [
             "print2",
             "print2"
           ]
         },
-        "print2":{
-          "ids":[
+        "print2": {
+          "ids": [
             "print3",
             "print3",
             "print-sum",
             "print-sum"
           ]
         },
-        "print3":{
-          "ids":[
+        "print3": {
+          "ids": [
             "print4",
             "print4",
             "print-sum",
             "print-sum"
           ]
         },
-        "print4":{
-          "ids":[
+        "print4": {
+          "ids": [
             "print-sum",
             "print-sum"
           ]
         },
-        "start-node":{
-          "ids":[
+        "start-node": {
+          "ids": [
             "print-always",
             "print1a",
             "print1b"
           ]
         }
       },
-      "upstream":{
-        "print-always":{
-          "ids":[
+      "upstream": {
+        "print-always": {
+          "ids": [
             "",
             "print-sum",
             "start-node",
             "print-sum"
           ]
         },
-        "print-sum":{
-          "ids":[
+        "print-sum": {
+          "ids": [
             "",
             "print2",
             "print3",
@@ -382,20 +369,20 @@
             "print4"
           ]
         },
-        "print1a":{
-          "ids":[
+        "print1a": {
+          "ids": [
             "",
             "start-node"
           ]
         },
-        "print1b":{
-          "ids":[
+        "print1b": {
+          "ids": [
             "",
             "start-node"
           ]
         },
-        "print2":{
-          "ids":[
+        "print2": {
+          "ids": [
             "",
             "print1a",
             "print1b",
@@ -403,15 +390,15 @@
             "print1b"
           ]
         },
-        "print3":{
-          "ids":[
+        "print3": {
+          "ids": [
             "",
             "print2",
             "print2"
           ]
         },
-        "print4":{
-          "ids":[
+        "print4": {
+          "ids": [
             "",
             "print3",
             "print3"
@@ -420,55 +407,59 @@
       }
     }
   },
-  "tasks":[
+  "tasks": [
     {
-      "template":{
-        "id":{
-          "resourceType":"TASK",
-          "project":"flyteexamples",
-          "domain":"development",
-          "name":"tests-flytekit-common-workflows-python-add-one-and-print",
-          "version":"123abc"
+      "template": {
+        "id": {
+          "resourceType": "TASK",
+          "project": "flyteexamples",
+          "domain": "development",
+          "name": "tests-flytekit-common-workflows-python-add-one-and-print",
+          "version": "123abc"
         },
-        "type":"python-task",
-        "metadata":{
-          "runtime":{
-            "type":"FLYTE_SDK",
-            "version":"0.0.1a0",
-            "flavor":"python"
+        "type": "python-task",
+        "metadata": {
+          "runtime": {
+            "type": "FLYTE_SDK",
+            "version": "0.0.1a0",
+            "flavor": "python"
           },
-          "timeout":"0s",
-          "retries":{
-
-          },
-          "discoveryVersion":"1"
+          "timeout": "0s",
+          "retries": {},
+          "discoveryVersion": "1"
         },
-        "interface":{
-          "inputs":{
-            "variables":{
-              "value_to_print":{
-                "type":{
-                  "simple":"INTEGER"
+        "interface": {
+          "inputs": {
+            "variables": [
+              {
+                "key": "value_to_print",
+                "value": {
+                  "type": {
+                    "simple": "INTEGER"
+                  }
                 }
               }
-            }
+            ]
           },
-          "outputs":{
-            "variables":{
-              "out":{
-                "type":{
-                  "simple":"INTEGER"
+          "outputs": {
+            "variables": [
+              {
+                "key": "out",
+                "value": {
+                  "type": {
+                    "simple": "INTEGER"
+                  }
                 }
               }
-            }
+            ]
           }
         },
-        "container":{
-          "image":"myflyteimage:abc123",
-          "command":[
+        "container": {
+          "image": "myflyteimage:abc123",
+          "command": [
             "pyflyte-execute"
           ],
-          "args":[
+          "args": [
             "--task-module",
             "tests.flytekit.common.workflows.python",
             "--task-name",
@@ -478,67 +469,67 @@
             "--output-prefix",
             "{{.outputPrefix}}"
           ],
-          "resources":{
-
-          },
-          "env":[
+          "resources": {},
+          "env": [
             {
-              "key":"FLYTE_INTERNAL_CONFIGURATION_PATH",
-              "value":"/flyte/local.config"
+              "key": "FLYTE_INTERNAL_CONFIGURATION_PATH",
+              "value": "/flyte/local.config"
             }
           ]
         }
       }
     },
     {
-      "template":{
-        "id":{
-          "resourceType":"TASK",
-          "project":"flyteexamples",
-          "domain":"development",
-          "name":"tests-flytekit-common-workflows-python-print-every-time",
-          "version":"123abc"
+      "template": {
+        "id": {
+          "resourceType": "TASK",
+          "project": "flyteexamples",
+          "domain": "development",
+          "name": "tests-flytekit-common-workflows-python-print-every-time",
+          "version": "123abc"
         },
-        "type":"python-task",
-        "metadata":{
-          "runtime":{
-            "type":"FLYTE_SDK",
-            "version":"0.0.1a0",
-            "flavor":"python"
+        "type": "python-task",
+        "metadata": {
+          "runtime": {
+            "type": "FLYTE_SDK",
+            "version": "0.0.1a0",
+            "flavor": "python"
           },
-          "timeout":"0s",
-          "retries":{
-
-          },
-          "discoveryVersion":"1"
+          "timeout": "0s",
+          "retries": {},
+          "discoveryVersion": "1"
         },
-        "interface":{
-          "inputs":{
-            "variables":{
-              "date_triggered":{
-                "type":{
-                  "simple":"DATETIME"
+        "interface": {
+          "inputs": {
+            "variables": [
+              {
+                "key": "date_triggered",
+                "value": {
+                  "type": {
+                    "simple": "DATETIME"
+                  }
                 }
               },
-              "value_to_print":{
-                "type":{
-                  "simple":"INTEGER"
+              {
+                "key": "value_to_print",
+                "value": {
+                  "type": {
+                    "simple": "INTEGER"
+                  }
                 }
               }
-            }
+            ]
           },
-          "outputs":{
-            "variables":{
-
-            }
+          "outputs": {
+            "variables": []
           }
         },
-        "container":{
-          "image":"myflyteimage:abc123",
-          "command":[
+        "container": {
+          "image": "myflyteimage:abc123",
+          "command": [
             "pyflyte-execute"
           ],
-          "args":[
+          "args": [
             "--task-module",
             "tests.flytekit.common.workflows.python",
             "--task-name",
@@ -548,81 +539,92 @@
             "--output-prefix",
             "{{.outputPrefix}}"
           ],
-          "resources":{
-
-          },
-          "env":[
+          "resources": {},
+          "env": [
             {
-              "key":"FLYTE_INTERNAL_CONFIGURATION_PATH",
-              "value":"/flyte/local.config"
+              "key": "FLYTE_INTERNAL_CONFIGURATION_PATH",
+              "value": "/flyte/local.config"
             }
           ]
         }
       }
     },
     {
-      "template":{
-        "id":{
-          "resourceType":"TASK",
-          "project":"flyteexamples",
-          "domain":"development",
-          "name":"tests-flytekit-common-workflows-python-sum-and-print",
-          "version":"123abc"
+      "template": {
+        "id": {
+          "resourceType": "TASK",
+          "project": "flyteexamples",
+          "domain": "development",
+          "name": "tests-flytekit-common-workflows-python-sum-and-print",
+          "version": "123abc"
         },
-        "type":"python-task",
-        "metadata":{
-          "runtime":{
-            "type":"FLYTE_SDK",
-            "version":"0.0.1a0",
-            "flavor":"python"
+        "type": "python-task",
+        "metadata": {
+          "runtime": {
+            "type": "FLYTE_SDK",
+            "version": "0.0.1a0",
+            "flavor": "python"
           },
-          "timeout":"0s",
-          "retries":{
-
-          },
-          "discoveryVersion":"1"
+          "timeout": "0s",
+          "retries": {},
+          "discoveryVersion": "1"
         },
-        "interface":{
-          "inputs":{
-            "variables":{
-              "value1_to_add":{
-                "type":{
-                  "simple":"INTEGER"
+        "interface": {
+          "inputs": {
+            "variables": [
+              {
+                "key": "value1_to_add",
+                "value": {
+                  "type": {
+                    "simple": "INTEGER"
+                  }
                 }
               },
-              "value2_to_add":{
-                "type":{
-                  "simple":"INTEGER"
+              {
+                "key": "value2_to_add",
+                "value": {
+                  "type": {
+                    "simple": "INTEGER"
+                  }
                 }
               },
-              "value3_to_add":{
-                "type":{
-                  "simple":"INTEGER"
+              {
+                "key": "value3_to_add",
+                "value": {
+                  "type": {
+                    "simple": "INTEGER"
+                  }
                 }
               },
-              "value4_to_add":{
-                "type":{
-                  "simple":"INTEGER"
+              {
+                "key": "value4_to_add",
+                "value": {
+                  "type": {
+                    "simple": "INTEGER"
+                  }
                 }
               }
-            }
+            ]
           },
-          "outputs":{
-            "variables":{
-              "out":{
-                "type":{
-                  "simple":"INTEGER"
+          "outputs": {
+            "variables": [
+              {
+                "key": "out",
+                "value": {
+                  "type": {
+                    "simple": "INTEGER"
+                  }
                 }
               }
-            }
+            ]
           }
         },
-        "container":{
-          "image":"myflyteimage:abc123",
-          "command":[
+        "container": {
+          "image": "myflyteimage:abc123",
+          "command": [
             "pyflyte-execute"
           ],
-          "args":[
+          "args": [
             "--task-module",
             "tests.flytekit.common.workflows.python",
             "--task-name",
@@ -632,71 +634,76 @@
             "--output-prefix",
             "{{.outputPrefix}}"
           ],
-          "resources":{
-
-          },
-          "env":[
+          "resources": {},
+          "env": [
             {
-              "key":"FLYTE_INTERNAL_CONFIGURATION_PATH",
-              "value":"/flyte/local.config"
+              "key": "FLYTE_INTERNAL_CONFIGURATION_PATH",
+              "value": "/flyte/local.config"
             }
           ]
         }
       }
     },
     {
-      "template":{
-        "id":{
-          "resourceType":"TASK",
-          "project":"flyteexamples",
-          "domain":"development",
-          "name":"tests-flytekit-common-workflows-python-sum-non-none",
-          "version":"123abc"
+      "template": {
+        "id": {
+          "resourceType": "TASK",
+          "project": "flyteexamples",
+          "domain": "development",
+          "name": "tests-flytekit-common-workflows-python-sum-non-none",
+          "version": "123abc"
         },
-        "type":"python-task",
-        "metadata":{
-          "runtime":{
-            "type":"FLYTE_SDK",
-            "version":"0.0.1a0",
-            "flavor":"python"
+        "type": "python-task",
+        "metadata": {
+          "runtime": {
+            "type": "FLYTE_SDK",
+            "version": "0.0.1a0",
+            "flavor": "python"
           },
-          "timeout":"0s",
-          "retries":{
-
-          },
-          "discoveryVersion":"1"
+          "timeout": "0s",
+          "retries": {},
+          "discoveryVersion": "1"
         },
-        "interface":{
-          "inputs":{
-            "variables":{
-              "value1_to_print":{
-                "type":{
-                  "simple":"INTEGER"
+        "interface": {
+          "inputs": {
+            "variables": [
+              {
+                "key": "value1_to_print",
+                "value": {
+                  "type": {
+                    "simple": "INTEGER"
+                  }
                 }
               },
-              "value2_to_print":{
-                "type":{
-                  "simple":"INTEGER"
+              {
+                "key": "value2_to_print",
+                "value": {
+                  "type": {
+                    "simple": "INTEGER"
+                  }
                 }
               }
-            }
+            ]
           },
-          "outputs":{
-            "variables":{
-              "out":{
-                "type":{
-                  "simple":"INTEGER"
+          "outputs": {
+            "variables": [
+              {
+                "key": "out",
+                "value": {
+                  "type": {
+                    "simple": "INTEGER"
+                  }
                 }
               }
-            }
+            ]
           }
         },
-        "container":{
-          "image":"myflyteimage:abc123",
-          "command":[
+        "container": {
+          "image": "myflyteimage:abc123",
+          "command": [
             "pyflyte-execute"
           ],
-          "args":[
+          "args": [
             "--task-module",
             "tests.flytekit.common.workflows.python",
             "--task-name",
@@ -706,13 +713,11 @@
             "--output-prefix",
             "{{.outputPrefix}}"
           ],
-          "resources":{
-
-          },
-          "env":[
+          "resources": {},
+          "env": [
             {
-              "key":"FLYTE_INTERNAL_CONFIGURATION_PATH",
-              "value":"/flyte/local.config"
+              "key": "FLYTE_INTERNAL_CONFIGURATION_PATH",
+              "value": "/flyte/local.config"
             }
           ]
         }

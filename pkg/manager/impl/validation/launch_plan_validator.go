@@ -11,6 +11,7 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/validators"
+	"github.com/iancoleman/orderedmap"
 	"google.golang.org/grpc/codes"
 )
 
@@ -65,7 +66,7 @@ func validateSchedule(request admin.LaunchPlanCreateRequest, expectedInputs *cor
 			}
 		}
 		if schedule.GetKickoffTimeInputArg() != "" {
-			if param, ok := ParameterMapEntriesToMap(expectedInputs.Parameters)[schedule.GetKickoffTimeInputArg()]; !ok {
+			if param, ok := parameterMapEntriesToMap(expectedInputs.Parameters)[schedule.GetKickoffTimeInputArg()]; !ok {
 				return errors.NewFlyteAdminErrorf(
 					codes.InvalidArgument,
 					"Cannot create a schedule with a KickoffTimeInputArg that does not point to a free input. [%v] is not free or does not exist.", schedule.GetKickoffTimeInputArg())
@@ -79,31 +80,16 @@ func validateSchedule(request admin.LaunchPlanCreateRequest, expectedInputs *cor
 	return nil
 }
 
-func ParameterMapEntriesToMap(entries []*core.ParameterMapFieldEntry) (parameterMap map[string]*core.Parameter) {
-	parameterMap = make(map[string]*core.Parameter, len(entries))
-	for _, v := range entries {
-		parameterMap[v.GetKey()] = v.GetValue()
-	}
-	return
-}
-
-func VariableMapEntriesToMap(entries []*core.VariableMapFieldEntry) (variableMap map[string]*core.Variable) {
-	variableMap = make(map[string]*core.Variable, len(entries))
-	for _, v := range entries {
-		variableMap[v.GetKey()] = v.GetValue()
-	}
-	return
-}
-
 func checkAndFetchExpectedInputForLaunchPlan(
 	workflowVariableMap *core.VariableMap, fixedInputs *core.LiteralMap, defaultInputs *core.ParameterMap) (*core.ParameterMap, error) {
-	var expectedInputMap []*core.ParameterMapFieldEntry
+	expectedInputMap := orderedmap.New()
 	var workflowExpectedInputMap map[string]*core.Variable
-	var defaultInputMap []*core.ParameterMapFieldEntry
+	defaultInputMap := orderedmap.New()
 	var fixedInputMap map[string]*core.Literal
-
 	if defaultInputs != nil && len(defaultInputs.GetParameters()) > 0 {
-		defaultInputMap = defaultInputs.GetParameters()
+		for _, e := range defaultInputs.GetParameters() {
+			defaultInputMap.Set(e.GetKey(), e.GetValue())
+		}
 	}
 
 	if fixedInputs != nil && len(fixedInputs.GetLiterals()) > 0 {
@@ -112,28 +98,31 @@ func checkAndFetchExpectedInputForLaunchPlan(
 
 	// If there are no inputs that the workflow requires, there should be none at launch plan as well
 	if workflowVariableMap == nil || len(workflowVariableMap.Variables) == 0 {
-		if len(defaultInputMap) > 0 {
+		if len(defaultInputMap.Keys()) > 0 {
 			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
-				"invalid launch plan default inputs, expected none but found %d", len(defaultInputMap))
+				"invalid launch plan default inputs, expected none but found %d", len(defaultInputMap.Keys()))
 		}
 		if len(fixedInputMap) > 0 {
 			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
 				"invalid launch plan fixed inputs, expected none but found %d", len(fixedInputMap))
 		}
 		return &core.ParameterMap{
-			Parameters: expectedInputMap,
+			Parameters: parameterOrderedMapToList(expectedInputMap),
 		}, nil
 	}
 
-	workflowExpectedInputMap = VariableMapEntriesToMap(workflowVariableMap.Variables)
-	for _, e := range defaultInputMap {
-		value, ok := workflowExpectedInputMap[e.GetKey()]
+	workflowExpectedInputMap = variableMapEntriesToMap(workflowVariableMap.Variables)
+	for _, k := range defaultInputMap.Keys() {
+		value, ok := workflowExpectedInputMap[k]
 		if !ok {
-			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "unexpected default_input %s", e.GetKey())
-		} else if !validators.AreTypesCastable(e.GetValue().GetVar().GetType(), value.GetType()) {
-			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
-				"invalid default_input wrong type %s, expected %v, got %v instead",
-				e.GetKey(), e.GetValue().GetVar().GetType().String(), value.GetType().String())
+			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "unexpected default_input %s", k)
+		} else {
+			v, _ := defaultInputMap.Get(k)
+			if !validators.AreTypesCastable(v.(*core.Parameter).GetVar().GetType(), value.GetType()) {
+				return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
+					"invalid default_input wrong type %s, expected %v, got %v instead",
+					k, v.(*core.Parameter).GetVar().GetType().String(), value.GetType().String())
+			}
 		}
 	}
 
@@ -150,12 +139,12 @@ func checkAndFetchExpectedInputForLaunchPlan(
 	}
 
 	for name, workflowExpectedInput := range workflowExpectedInputMap {
-		if value, ok := defaultInputMap[name]; ok {
+		if value, ok := defaultInputMap.Get(name); ok {
 			// If the launch plan has a default value - then use this value
-			expectedInputMap[name] = value
+			expectedInputMap.Set(name, value)
 		} else if _, ok = fixedInputMap[name]; !ok {
 			// If there is no mention of the input in LaunchPlan, then copy from the workflow
-			expectedInputMap[name] = &core.Parameter{
+			expectedInputMap.Set(name, &core.Parameter{
 				Var: &core.Variable{
 					Type:        workflowExpectedInput.GetType(),
 					Description: workflowExpectedInput.GetDescription(),
@@ -163,10 +152,38 @@ func checkAndFetchExpectedInputForLaunchPlan(
 				Behavior: &core.Parameter_Required{
 					Required: true,
 				},
-			}
+			})
 		}
 	}
 	return &core.ParameterMap{
-		Parameters: expectedInputMap,
+		Parameters: parameterOrderedMapToList(expectedInputMap),
 	}, nil
+}
+
+func parameterMapEntriesToMap(entries []*core.ParameterMapFieldEntry) (parameterMap map[string]*core.Parameter) {
+	parameterMap = make(map[string]*core.Parameter, len(entries))
+	for _, v := range entries {
+		parameterMap[v.GetKey()] = v.GetValue()
+	}
+	return
+}
+
+func variableMapEntriesToMap(entries []*core.VariableMapFieldEntry) (variableMap map[string]*core.Variable) {
+	variableMap = make(map[string]*core.Variable, len(entries))
+	for _, v := range entries {
+		variableMap[v.GetKey()] = v.GetValue()
+	}
+	return
+}
+
+func parameterOrderedMapToList(orderedMap *orderedmap.OrderedMap) []*core.ParameterMapFieldEntry {
+	l := make([]*core.ParameterMapFieldEntry, len(orderedMap.Keys()))
+	for i, k := range orderedMap.Keys() {
+		v, _ := orderedMap.Get(k)
+		l[i] = &core.ParameterMapFieldEntry{
+			Key:   k,
+			Value: v.(*core.Parameter),
+		}
+	}
+	return l
 }

@@ -35,9 +35,15 @@ func TestGenerateWorkflowNameFromTask(t *testing.T) {
 func TestGenerateBindings(t *testing.T) {
 	nodeID := "nodeID"
 	outputs := core.VariableMap{
-		Variables: map[string]*core.Variable{
-			"output1": {},
-			"output2": {},
+		Variables: []*core.VariableMapFieldEntry{
+			{
+				Key:   "output1",
+				Value: &core.Variable{},
+			},
+			{
+				Key:   "output2",
+				Value: &core.Variable{},
+			},
 		},
 	}
 	generatedBindings := generateBindings(outputs, nodeID)
@@ -128,24 +134,26 @@ func TestCreateOrGetWorkflowModel(t *testing.T) {
 					Id: taskIdentifier,
 					Interface: &core.TypedInterface{
 						Inputs: &core.VariableMap{
-							Variables: map[string]*core.Variable{
-								"an_int": {
-									Type: &core.LiteralType{
+							Variables: []*core.VariableMapFieldEntry{
+								{
+									Key: "an_int",
+									Value: &core.Variable{Type: &core.LiteralType{
 										Type: &core.LiteralType_Simple{
 											Simple: core.SimpleType_INTEGER,
 										},
-									},
+									}},
 								},
 							},
 						},
 						Outputs: &core.VariableMap{
-							Variables: map[string]*core.Variable{
-								"an_output": {
-									Type: &core.LiteralType{
+							Variables: []*core.VariableMapFieldEntry{
+								{
+									Key: "an_output",
+									Value: &core.Variable{Type: &core.LiteralType{
 										Type: &core.LiteralType_Simple{
 											Simple: core.SimpleType_DURATION,
 										},
-									},
+									}},
 								},
 							},
 						},
@@ -188,24 +196,26 @@ func TestCreateOrGetLaunchPlan(t *testing.T) {
 
 	workflowInterface := &core.TypedInterface{
 		Inputs: &core.VariableMap{
-			Variables: map[string]*core.Variable{
-				"an_int": {
-					Type: &core.LiteralType{
+			Variables: []*core.VariableMapFieldEntry{
+				{
+					Key: "an_int",
+					Value: &core.Variable{Type: &core.LiteralType{
 						Type: &core.LiteralType_Simple{
 							Simple: core.SimpleType_INTEGER,
 						},
-					},
+					}},
 				},
 			},
 		},
 		Outputs: &core.VariableMap{
-			Variables: map[string]*core.Variable{
-				"an_output": {
-					Type: &core.LiteralType{
+			Variables: []*core.VariableMapFieldEntry{
+				{
+					Key: "an_output",
+					Value: &core.Variable{Type: &core.LiteralType{
 						Type: &core.LiteralType_Simple{
 							Simple: core.SimpleType_DURATION,
 						},
-					},
+					}},
 				},
 			},
 		},

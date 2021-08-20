@@ -3103,22 +3103,28 @@ func TestCreateSingleTaskExecution(t *testing.T) {
 						},
 						Interface: &core.TypedInterface{
 							Inputs: &core.VariableMap{
-								Variables: map[string]*core.Variable{
-									"a": {
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_Simple{
-												Simple: core.SimpleType_INTEGER,
+								Variables: []*core.VariableMapFieldEntry{
+									{
+										Key: "a",
+										Value: &core.Variable{
+											Type: &core.LiteralType{
+												Type: &core.LiteralType_Simple{
+													Simple: core.SimpleType_INTEGER,
+												},
 											},
 										},
 									},
 								},
 							},
 							Outputs: &core.VariableMap{
-								Variables: map[string]*core.Variable{
-									"b": {
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_Simple{
-												Simple: core.SimpleType_INTEGER,
+								Variables: []*core.VariableMapFieldEntry{
+									{
+										Key: "b",
+										Value: &core.Variable{
+											Type: &core.LiteralType{
+												Type: &core.LiteralType_Simple{
+													Simple: core.SimpleType_INTEGER,
+												},
 											},
 										},
 									},
