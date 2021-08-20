@@ -14,7 +14,6 @@ import (
 
 var (
 	cfgFile        string
-	kubeMasterURL  string
 	configAccessor = viper.NewAccessor(config.Options{})
 )
 
@@ -25,7 +24,7 @@ var RootCmd = &cobra.Command{
 	Long: `
 Use the run subcommand which will start the scheduler by connecting to DB containing schedules
 
-    flytescheduler run
+    flytescheduler run --config  flyteadmin_config.yaml  --admin.endpoint dns:///localhost:8089 --admin.insecure
 `,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		return initConfig(cmd.Flags())
@@ -48,7 +47,6 @@ func init() {
 
 	// Add persistent flags - persistent flags persist through all sub-commands
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is ./flyteadmin_config.yaml)")
-//	RootCmd.PersistentFlags().StringVar(&kubeMasterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 
 	RootCmd.AddCommand(viper.GetConfigCommand())
 

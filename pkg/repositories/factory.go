@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"fmt"
+	schedulerInterfaces "github.com/flyteorg/flyteadmin/scheduler/repositories/interfaces"
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories/config"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
@@ -34,8 +35,8 @@ type RepositoryInterface interface {
 	NodeExecutionEventRepo() interfaces.NodeExecutionEventRepoInterface
 	TaskExecutionRepo() interfaces.TaskExecutionRepoInterface
 	NamedEntityRepo() interfaces.NamedEntityRepoInterface
-	SchedulableEntityRepo() interfaces.SchedulableEntityRepoInterface
-	ScheduleEntitiesSnapshotRepo() interfaces.ScheduleEntitiesSnapShotRepoInterface
+	SchedulableEntityRepo() schedulerInterfaces.SchedulableEntityRepoInterface
+	ScheduleEntitiesSnapshotRepo() schedulerInterfaces.ScheduleEntitiesSnapShotRepoInterface
 }
 
 func GetRepository(repoType RepoConfig, dbConfig config.DbConfig, scope promutils.Scope) RepositoryInterface {

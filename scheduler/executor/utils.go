@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteadmin/scheduler/repositories/models"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/google/uuid"

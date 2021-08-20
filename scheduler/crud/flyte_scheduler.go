@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/flyteorg/flyteadmin/pkg/async/schedule/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories"
-	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	"github.com/flyteorg/flyteadmin/scheduler/repositories/models"
 
 	scheduleInterfaces "github.com/flyteorg/flyteadmin/pkg/async/schedule/interfaces"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"

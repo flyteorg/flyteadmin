@@ -2,7 +2,7 @@ package executor
 
 import (
 	"context"
-	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteadmin/scheduler/repositories/models"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/robfig/cron"
 )

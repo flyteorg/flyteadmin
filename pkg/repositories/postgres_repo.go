@@ -4,6 +4,8 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/gormimpl"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	schedulerGormImpl "github.com/flyteorg/flyteadmin/scheduler/repositories/gormimpl"
+	schedulerInterfaces "github.com/flyteorg/flyteadmin/scheduler/repositories/interfaces"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/jinzhu/gorm"
 )
@@ -20,8 +22,8 @@ type PostgresRepo struct {
 	taskExecutionRepo            interfaces.TaskExecutionRepoInterface
 	workflowRepo                 interfaces.WorkflowRepoInterface
 	resourceRepo                 interfaces.ResourceRepoInterface
-	schedulableEntityRepo        interfaces.SchedulableEntityRepoInterface
-	scheduleEntitiesSnapshotRepo interfaces.ScheduleEntitiesSnapShotRepoInterface
+	schedulableEntityRepo        schedulerInterfaces.SchedulableEntityRepoInterface
+	scheduleEntitiesSnapshotRepo schedulerInterfaces.ScheduleEntitiesSnapShotRepoInterface
 }
 
 func (p *PostgresRepo) ExecutionRepo() interfaces.ExecutionRepoInterface {
@@ -68,11 +70,11 @@ func (p *PostgresRepo) ResourceRepo() interfaces.ResourceRepoInterface {
 	return p.resourceRepo
 }
 
-func (p *PostgresRepo) SchedulableEntityRepo() interfaces.SchedulableEntityRepoInterface {
+func (p *PostgresRepo) SchedulableEntityRepo() schedulerInterfaces.SchedulableEntityRepoInterface {
 	return p.schedulableEntityRepo
 }
 
-func (p *PostgresRepo) ScheduleEntitiesSnapshotRepo() interfaces.ScheduleEntitiesSnapShotRepoInterface {
+func (p *PostgresRepo) ScheduleEntitiesSnapshotRepo() schedulerInterfaces.ScheduleEntitiesSnapShotRepoInterface {
 	return p.scheduleEntitiesSnapshotRepo
 }
 
@@ -89,7 +91,7 @@ func NewPostgresRepo(db *gorm.DB, errorTransformer errors.ErrorTransformer, scop
 		taskExecutionRepo:            gormimpl.NewTaskExecutionRepo(db, errorTransformer, scope.NewSubScope("task_executions")),
 		workflowRepo:                 gormimpl.NewWorkflowRepo(db, errorTransformer, scope.NewSubScope("workflows")),
 		resourceRepo:                 gormimpl.NewResourceRepo(db, errorTransformer, scope.NewSubScope("resources")),
-		schedulableEntityRepo:        gormimpl.NewSchedulableEntityRepo(db, errorTransformer, scope.NewSubScope("schedulable_entity")),
-		scheduleEntitiesSnapshotRepo: gormimpl.NewScheduleEntitiesSnapshotRepo(db, errorTransformer, scope.NewSubScope("schedule_entities_snapshot")),
+		schedulableEntityRepo:        schedulerGormImpl.NewSchedulableEntityRepo(db, errorTransformer, scope.NewSubScope("schedulable_entity")),
+		scheduleEntitiesSnapshotRepo: schedulerGormImpl.NewScheduleEntitiesSnapshotRepo(db, errorTransformer, scope.NewSubScope("schedule_entities_snapshot")),
 	}
 }

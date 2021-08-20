@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
-	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
-	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	interfaces2 "github.com/flyteorg/flyteadmin/scheduler/repositories/interfaces"
+	"github.com/flyteorg/flyteadmin/scheduler/repositories/models"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/jinzhu/gorm"
 )
@@ -47,7 +47,7 @@ func (r *ScheduleEntitiesSnapshotRepo) GetLatestSnapShot(ctx context.Context) (m
 
 // NewScheduleEntitiesSnapshotRepo Returns an instance of ScheduleEntitiesSnapshotRepoInterface
 func NewScheduleEntitiesSnapshotRepo(
-	db *gorm.DB, errorTransformer errors.ErrorTransformer, scope promutils.Scope) interfaces.ScheduleEntitiesSnapShotRepoInterface {
+	db *gorm.DB, errorTransformer errors.ErrorTransformer, scope promutils.Scope) interfaces2.ScheduleEntitiesSnapShotRepoInterface {
 	metrics := newMetrics(scope)
 	return &ScheduleEntitiesSnapshotRepo{
 		db:               db,

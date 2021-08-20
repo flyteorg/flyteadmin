@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
-	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
-	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	interfaces2 "github.com/flyteorg/flyteadmin/scheduler/repositories/interfaces"
+	"github.com/flyteorg/flyteadmin/scheduler/repositories/models"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/jinzhu/gorm"
@@ -136,7 +136,7 @@ func activateOrDeactivate(r *SchedulableEntityRepo, ID models.SchedulableEntityK
 
 // NewSchedulableEntityRepo Returns an instance of SchedulableEntityRepoInterface
 func NewSchedulableEntityRepo(
-	db *gorm.DB, errorTransformer errors.ErrorTransformer, scope promutils.Scope) interfaces.SchedulableEntityRepoInterface {
+	db *gorm.DB, errorTransformer errors.ErrorTransformer, scope promutils.Scope) interfaces2.SchedulableEntityRepoInterface {
 	metrics := newMetrics(scope)
 	return &SchedulableEntityRepo{
 		db:               db,
