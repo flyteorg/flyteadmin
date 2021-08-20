@@ -6,10 +6,10 @@ import (
 	"runtime/debug"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
-	"github.com/flyteorg/flyteadmin/pkg/repositories"
-	repositoryConfig "github.com/flyteorg/flyteadmin/pkg/repositories/config"
+	repositoryCommonConfig "github.com/flyteorg/flyteadmin/pkg/repositories/config"
 	"github.com/flyteorg/flyteadmin/pkg/runtime"
 	scheduler "github.com/flyteorg/flyteadmin/scheduler/executor"
+	schdulerRepoConfig "github.com/flyteorg/flyteadmin/scheduler/repositories"
 	"github.com/flyteorg/flyteidl/clients/go/admin"
 	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/logger"
@@ -40,8 +40,8 @@ var schedulerRunCmd = &cobra.Command{
 		}()
 
 		dbConfigValues := configuration.ApplicationConfiguration().GetDbConfig()
-		dbConfig := repositoryConfig.DbConfig{
-			BaseConfig: repositoryConfig.BaseConfig{
+		dbConfig := repositoryCommonConfig.DbConfig{
+			BaseConfig: repositoryCommonConfig.BaseConfig{
 				IsDebug: dbConfigValues.Debug,
 			},
 			Host:         dbConfigValues.Host,
@@ -51,8 +51,8 @@ var schedulerRunCmd = &cobra.Command{
 			Password:     dbConfigValues.Password,
 			ExtraOptions: dbConfigValues.ExtraOptions,
 		}
-		db := repositories.GetRepository(
-			repositories.POSTGRES, dbConfig, schedulerScope.NewSubScope("database"))
+		db := schdulerRepoConfig.GetRepository(
+			schdulerRepoConfig.POSTGRES, dbConfig, schedulerScope.NewSubScope("database"))
 
 		clientSet, err := admin.ClientSetBuilder().WithConfig(admin.GetConfig(ctx)).Build(ctx)
 		if err != nil {

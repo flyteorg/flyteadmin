@@ -5,10 +5,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/flyteorg/flyteadmin/pkg/async/schedule/interfaces"
-	"github.com/flyteorg/flyteadmin/pkg/repositories"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	interfaces2 "github.com/flyteorg/flyteadmin/scheduler/executor/interfaces"
+	"github.com/flyteorg/flyteadmin/scheduler/repositories"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
@@ -22,6 +22,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
+	"runtime/debug"
 	"strings"
 	"time"
 )
@@ -35,6 +36,12 @@ const snapShotVersion = 1
 type schedulerMetrics struct {
 	Scope                  promutils.Scope
 	FailedExecutionCounter prometheus.Counter
+	CheckPointPanicCounter prometheus.Counter
+	CheckPointSaveErrCounter prometheus.Counter
+	CheckPointCreationErrCounter prometheus.Counter
+	CatchupErrCounter prometheus.Counter
+	ScheduleRegistrationFailure prometheus.Counter
+	ScheduleReadFailure prometheus.Counter
 }
 
 // workflowExecutor used for executing the schedules saved by the native flyte scheduler in the database.
@@ -50,6 +57,13 @@ type workflowExecutor struct {
 }
 
 func (w *workflowExecutor) CheckPointState(ctx context.Context) {
+	defer func() {
+		if err := recover(); err != nil {
+			w.metrics.CheckPointPanicCounter.Inc()
+			logger.Fatalf(context.Background(), fmt.Sprintf("caught panic: %v [%+v]", err, string(debug.Stack())))
+		}
+	}()
+
 	for true {
 		var bytesArray []byte
 		f := bytes.NewBuffer(bytesArray)
@@ -58,12 +72,14 @@ func (w *workflowExecutor) CheckPointState(ctx context.Context) {
 			err := w.snapShotReaderWriter.WriteSnapshot(f, w.snapshot)
 			// Just log the error
 			if err != nil {
+				w.metrics.CheckPointCreationErrCounter.Inc()
 				logger.Errorf(ctx, "unable to write the snapshot to buffer due to %v", err)
 			}
 			err = w.db.ScheduleEntitiesSnapshotRepo().CreateSnapShot(ctx, models.ScheduleEntitiesSnapshot{
 				Snapshot: f.Bytes(),
 			})
 			if err != nil {
+				w.metrics.CheckPointSaveErrCounter.Inc()
 				logger.Errorf(ctx, "unable to save the snapshot to the database due to %v", err)
 			}
 		}
@@ -115,6 +131,7 @@ func (w *workflowExecutor) CatchUpSingleSchedule(ctx context.Context, s models.S
 		_ = w.rateLimiter.Take()
 		err := w.fire(ctx, catchupTime, s)
 		if err != nil {
+			w.metrics.CatchupErrCounter.Inc()
 			logger.Errorf(ctx, "unable to fire the schedule %+v at %v time due to %v", s, catchupTime, err)
 			return err
 		} else {
@@ -210,20 +227,6 @@ func (w *workflowExecutor) fire(ctx context.Context, scheduledTime time.Time,
 			return execErr
 		},
 	)
-	//_, err = executionManager.CreateExecution(context.Background(), executionRequest, scheduledTime)
-	//if err != nil {
-	//	// For idempotent behavior ignore the AlreadyExists error which happens if we try to schedule a launchplan
-	//	// for execution at the same time which is already available in admin.
-	//	// This is possible since idempotency gurantees are using the schedule time and the identifier
-	//	// TODO: Handle the case when admin launch plan state is archived but the schedule is active.
-	//	// After this bug is fixed in admin https://github.com/flyteorg/flyte/issues/1354
-	//	if grpcError := status.Code(err); grpcError == codes.AlreadyExists {
-	//		logger.Debugf(ctx, "duplicate schedule %+v already exists for schedule", s)
-	//		return nil
-	//	}
-	//	logger.Error(ctx, "failed to create execution create request %+v due to %v", executionRequest, err)
-	//	return err
-	//}
 	return nil
 }
 
@@ -267,6 +270,7 @@ func (w *workflowExecutor) Run() {
 			} else {
 				err := w.goGfInterface.Register(ctx, s, funcRef)
 				if err != nil {
+					w.metrics.ScheduleRegistrationFailure.Inc()
 					logger.Errorf(ctx, "unable to register the schedule %+v due to %v", s, err)
 				}
 			}
@@ -274,6 +278,7 @@ func (w *workflowExecutor) Run() {
 		time.Sleep(executorSleepTime * time.Second)
 		schedules, err = w.db.SchedulableEntityRepo().GetAll(ctx)
 		if err != nil {
+			w.metrics.ScheduleReadFailure.Inc()
 			logger.Errorf(ctx, "going to sleep additional %v backoff time due to DB error %v", backOffSleepTime, err)
 			time.Sleep(backOffSleepTime * time.Second)
 		}
@@ -301,6 +306,18 @@ func NewWorkflowExecutor(db repositories.SchedulerRepoInterface, config runtimeI
 		Scope: scope,
 		FailedExecutionCounter: scope.MustNewCounter("failed_execution_counter",
 			"count of unsuccessful attempts to create the scheduled execution on the admin"),
+		CheckPointPanicCounter: scope.MustNewCounter("checkpoint_panic_counter",
+			"count of crashes for the checkpointer"),
+		CheckPointCreationErrCounter: scope.MustNewCounter("checkpoint_creation_error_counter",
+			"count of unsuccessful attempts to create the snapshot from the inmemory map"),
+		CheckPointSaveErrCounter: scope.MustNewCounter("checkpoint_save_error_counter",
+			"count of unsuccessful attempts to save the created snapshot to the DB"),
+		CatchupErrCounter: scope.MustNewCounter("catchup_error_counter",
+			"count of unsuccessful attempts to catchup on the schedules"),
+		ScheduleRegistrationFailure: scope.MustNewCounter("schedule_registration_failure_counter",
+			"count of unsuccessful attempts to register the schedules"),
+		ScheduleReadFailure: scope.MustNewCounter("schedule_read_error_counter",
+			"count of unsuccessful attempts to read the schedules from the DB"),
 	}
 	return &workflowExecutor{db: db, config: config, snapshot: snapshot,
 		snapShotReaderWriter: &snapShotReaderWriter,
