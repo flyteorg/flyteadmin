@@ -2,8 +2,8 @@ package schedule
 
 import (
 	"context"
-	"github.com/flyteorg/flyteadmin/pkg/async/schedule/flytescheduler"
 	"github.com/flyteorg/flyteadmin/pkg/repositories"
+	flytescheduler "github.com/flyteorg/flyteadmin/scheduler/crud"
 	"time"
 
 	"github.com/flyteorg/flyteadmin/pkg/async"
