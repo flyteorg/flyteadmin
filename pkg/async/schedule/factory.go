@@ -29,8 +29,8 @@ type WorkflowSchedulerConfig struct {
 
 type WorkflowScheduler interface {
 	GetEventScheduler() interfaces.EventScheduler
-	GetWorkflowExecutor(db repositories.SchedulerRepoInterface, executionManager managerInterfaces.ExecutionInterface,
-		launchPlanManager managerInterfaces.LaunchPlanInterface, config runtimeInterfaces.Configuration) interfaces.WorkflowExecutor
+	GetWorkflowExecutor(executionManager managerInterfaces.ExecutionInterface,
+		launchPlanManager managerInterfaces.LaunchPlanInterface) interfaces.WorkflowExecutor
 }
 
 type workflowScheduler struct {
@@ -44,28 +44,16 @@ func (w *workflowScheduler) GetEventScheduler() interfaces.EventScheduler {
 }
 
 func (w *workflowScheduler) GetWorkflowExecutor(
-	db repositories.SchedulerRepoInterface,
 	executionManager managerInterfaces.ExecutionInterface,
-	launchPlanManager managerInterfaces.LaunchPlanInterface, config runtimeInterfaces.Configuration) interfaces.WorkflowExecutor {
+	launchPlanManager managerInterfaces.LaunchPlanInterface) interfaces.WorkflowExecutor {
 	if w.workflowExecutor == nil {
-		switch w.cfg.SchedulerConfig.WorkflowExecutorConfig.Scheme {
-		case common.AWS:
-			sqsConfig := gizmoConfig.SQSConfig{
-				QueueName:           w.cfg.SchedulerConfig.WorkflowExecutorConfig.ScheduleQueueName,
-				QueueOwnerAccountID: w.cfg.SchedulerConfig.WorkflowExecutorConfig.AccountID,
-			}
-			sqsConfig.Region = w.cfg.SchedulerConfig.WorkflowExecutorConfig.Region
-			w.workflowExecutor = awsSchedule.NewWorkflowExecutor(
-				sqsConfig, w.cfg.SchedulerConfig, executionManager, launchPlanManager, w.cfg.Scope.NewSubScope("workflow_executor"))
-			break
-		case common.Local:
-			fallthrough
-		default:
-			logger.Infof(context.Background(),
-				"Using default noop workflow executor implementation for cloud provider type [%s]",
-				w.cfg.SchedulerConfig.EventSchedulerConfig.Scheme)
-			w.workflowExecutor = noop.NewWorkflowExecutor()
+		sqsConfig := gizmoConfig.SQSConfig{
+			QueueName:           w.cfg.SchedulerConfig.WorkflowExecutorConfig.ScheduleQueueName,
+			QueueOwnerAccountID: w.cfg.SchedulerConfig.WorkflowExecutorConfig.AccountID,
 		}
+		sqsConfig.Region = w.cfg.SchedulerConfig.WorkflowExecutorConfig.Region
+		w.workflowExecutor = awsSchedule.NewWorkflowExecutor(
+			sqsConfig, w.cfg.SchedulerConfig, executionManager, launchPlanManager, w.cfg.Scope.NewSubScope("workflow_executor"))
 	}
 	return w.workflowExecutor
 }
@@ -103,6 +91,20 @@ func NewWorkflowScheduler(db repositories.RepositoryInterface, cfg WorkflowSched
 			"Using default noop event scheduler implementation for cloud provider type [%s]",
 			cfg.SchedulerConfig.EventSchedulerConfig.Scheme)
 		eventScheduler = noop.NewNoopEventScheduler()
+	}
+
+	switch cfg.SchedulerConfig.WorkflowExecutorConfig.Scheme {
+	case common.AWS:
+		// Do nothing, this special case depends on the execution manager and launch plan manager having been
+		// initialized and is handled in GetWorkflowExecutor.
+		break
+	case common.Local:
+		fallthrough
+	default:
+		logger.Infof(context.Background(),
+			"Using default noop workflow executor implementation for cloud provider type [%s]",
+			cfg.SchedulerConfig.EventSchedulerConfig.Scheme)
+		workflowExecutor = noop.NewWorkflowExecutor()
 	}
 	return &workflowScheduler{
 		cfg:              cfg,
