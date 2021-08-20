@@ -1,10 +1,10 @@
-package scheduler
+package executor
 
 import (
 	"context"
 	"fmt"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
-	schedinterfaces "github.com/flyteorg/flyteadmin/scheduler/interfaces"
+	"github.com/flyteorg/flyteadmin/scheduler/executor/interfaces"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/robfig/cron"
@@ -15,7 +15,7 @@ import (
 // Each scheduled job accepts scheduled time parameter which helps to know what the actual invocation time and use
 // that to send an execution to admin
 type GoCron struct {
-	jobsMap map[string]schedinterfaces.GoCronJobWrapper
+	jobsMap map[string]interfaces.GoCronJobWrapper
 	c       *cron.Cron
 }
 
@@ -32,7 +32,7 @@ func (g GoCron) DeRegister(ctx context.Context, s models.SchedulableEntity) {
 	delete(g.jobsMap, nameOfSchedule)
 }
 
-func (g GoCron) Register(ctx context.Context, s models.SchedulableEntity, registerFuncRef schedinterfaces.RegisterFuncRef) error {
+func (g GoCron) Register(ctx context.Context, s models.SchedulableEntity, registerFuncRef interfaces.RegisterFuncRef) error {
 	nameOfSchedule := GetScheduleName(s)
 
 	if g.jobsMap[nameOfSchedule] != nil {

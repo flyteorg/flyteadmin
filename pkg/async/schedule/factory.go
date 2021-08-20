@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/flyteorg/flyteadmin/pkg/async/schedule/flytescheduler"
 	"github.com/flyteorg/flyteadmin/pkg/repositories"
-	"github.com/flyteorg/flyteadmin/scheduler"
 	"time"
 
 	"github.com/flyteorg/flyteadmin/pkg/async"
@@ -60,9 +59,7 @@ func (w *workflowScheduler) GetWorkflowExecutor(
 				sqsConfig, w.cfg.SchedulerConfig, executionManager, launchPlanManager, w.cfg.Scope.NewSubScope("workflow_executor"))
 			break
 		case common.Local:
-			logger.Infof(context.Background(),
-				"Using default flyte workflow executor implementation")
-			w.workflowExecutor = scheduler.NewWorkflowExecutor(db, executionManager, config, w.cfg.Scope.NewSubScope("workflow_executor"))
+			fallthrough
 		default:
 			logger.Infof(context.Background(),
 				"Using default noop workflow executor implementation for cloud provider type [%s]",

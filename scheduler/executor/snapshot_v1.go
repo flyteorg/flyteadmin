@@ -1,9 +1,9 @@
-package scheduler
+package executor
 
 import (
 	"bytes"
 	"encoding/gob"
-	interfaces2 "github.com/flyteorg/flyteadmin/scheduler/interfaces"
+	"github.com/flyteorg/flyteadmin/scheduler/executor/interfaces"
 	"reflect"
 	"time"
 )
@@ -41,7 +41,7 @@ func (s *SnapshotV1) IsEmpty() bool {
 	return len(s.LastTimes) == 0
 }
 
-func (s *SnapshotV1) AreEqual(prevSnapshot interfaces2.Snapshoter) bool {
+func (s *SnapshotV1) AreEqual(prevSnapshot interfaces.Snapshoter) bool {
 	if prevSnapshotV1, ok := prevSnapshot.(*SnapshotV1); !ok {
 		return false
 	} else {
@@ -50,7 +50,7 @@ func (s *SnapshotV1) AreEqual(prevSnapshot interfaces2.Snapshoter) bool {
 }
 
 // Clone returns copy of the current in memory snapshot
-func (s *SnapshotV1) Clone() interfaces2.Snapshoter {
+func (s *SnapshotV1) Clone() interfaces.Snapshoter {
 	cloned := map[string]time.Time{}
 	for k,v := range s.LastTimes {
 		cloned[k] = v

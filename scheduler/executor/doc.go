@@ -54,4 +54,4 @@
 //			to the admin. Each job function is tied to schedule which gets executed in separate go routine by the gogf
 // 			framework in according the schedule cadence.
 
-package scheduler
+package executor
