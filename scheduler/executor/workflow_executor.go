@@ -5,13 +5,13 @@ import (
 	"context"
 	"fmt"
 	"github.com/flyteorg/flyteadmin/pkg/async/schedule/interfaces"
-	mgInterfaces "github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	interfaces2 "github.com/flyteorg/flyteadmin/scheduler/executor/interfaces"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/prometheus/client_golang/prometheus"
@@ -41,12 +41,12 @@ type schedulerMetrics struct {
 type workflowExecutor struct {
 	db                   repositories.SchedulerRepoInterface
 	config               runtimeInterfaces.Configuration
-	executionManager     mgInterfaces.ExecutionInterface
 	snapshot             interfaces2.Snapshoter
 	snapShotReaderWriter interfaces2.SnapshotReaderWriter
 	goGfInterface        interfaces2.GoCronWrapper
 	rateLimiter          ratelimit.Limiter
 	metrics              schedulerMetrics
+	adminServiceClient service.AdminServiceClient
 }
 
 func (w *workflowExecutor) CheckPointState(ctx context.Context) {
@@ -113,7 +113,7 @@ func (w *workflowExecutor) CatchUpSingleSchedule(ctx context.Context, s models.S
 	var catchupTime time.Time
 	for _, catchupTime = range catchUpTimes {
 		_ = w.rateLimiter.Take()
-		err := w.fire(ctx, w.executionManager, catchupTime, s)
+		err := w.fire(ctx, catchupTime, s)
 		if err != nil {
 			logger.Errorf(ctx, "unable to fire the schedule %+v at %v time due to %v", s, catchupTime, err)
 			return err
@@ -125,7 +125,7 @@ func (w *workflowExecutor) CatchUpSingleSchedule(ctx context.Context, s models.S
 	return nil
 }
 
-func (w *workflowExecutor) fire(ctx context.Context, executionManager mgInterfaces.ExecutionInterface, scheduledTime time.Time,
+func (w *workflowExecutor) fire(ctx context.Context, scheduledTime time.Time,
 	s models.SchedulableEntity) error {
 
 	literalsInputMap := map[string]*core.Literal{}
@@ -156,7 +156,7 @@ func (w *workflowExecutor) fire(ctx context.Context, executionManager mgInterfac
 		return err
 	}
 
-	executionRequest := admin.ExecutionCreateRequest{
+	executionRequest := &admin.ExecutionCreateRequest{
 		Project: s.Project,
 		Domain:  s.Domain,
 		Name:    "f" + strings.ReplaceAll(executionIdentifier.String(), "-", "")[:19],
@@ -206,7 +206,7 @@ func (w *workflowExecutor) fire(ctx context.Context, executionManager mgInterfac
 			return true
 		},
 		func() error {
-			_, execErr := executionManager.CreateExecution(context.Background(), executionRequest, scheduledTime)
+			_, execErr := w.adminServiceClient.CreateExecution(context.Background(), executionRequest)
 			return execErr
 		},
 	)
@@ -252,7 +252,7 @@ func (w *workflowExecutor) Run() {
 				}
 				nameOfSchedule := GetScheduleName(schedule)
 				_ = w.rateLimiter.Take()
-				err := w.fire(ctx, w.executionManager, scheduleTime, schedule)
+				err := w.fire(ctx, scheduleTime, schedule)
 				if err != nil {
 					logger.Errorf(ctx, "unable to fire the schedule %+v at %v time due to %v", s, scheduleTime, err)
 					return
@@ -284,8 +284,9 @@ func (w *workflowExecutor) Stop() error {
 	return nil
 }
 
-func NewWorkflowExecutor(db repositories.SchedulerRepoInterface, executionManager mgInterfaces.ExecutionInterface,
-	config runtimeInterfaces.Configuration, scope promutils.Scope) interfaces.WorkflowExecutor {
+func NewWorkflowExecutor(db repositories.SchedulerRepoInterface, config runtimeInterfaces.Configuration,
+	scope promutils.Scope, adminServiceClient service.AdminServiceClient) interfaces.WorkflowExecutor {
+
 	ctx := context.Background()
 	workflowExecConfig := config.ApplicationConfiguration().GetSchedulerConfig().WorkflowExecutorConfig.GetFlyteWorkflowExecutorConfig()
 	snapShotReaderWriter := VersionedSnapshot{version: snapShotVersion}
@@ -301,11 +302,12 @@ func NewWorkflowExecutor(db repositories.SchedulerRepoInterface, executionManage
 		FailedExecutionCounter: scope.MustNewCounter("failed_execution_counter",
 			"count of unsuccessful attempts to create the scheduled execution on the admin"),
 	}
-	return &workflowExecutor{db: db, executionManager: executionManager, config: config, snapshot: snapshot,
+	return &workflowExecutor{db: db, config: config, snapshot: snapshot,
 		snapShotReaderWriter: &snapShotReaderWriter,
 		goGfInterface:        GoCron{jobsMap: map[string]interfaces2.GoCronJobWrapper{}, c: c},
 		rateLimiter:          rateLimiter,
 		metrics:              metrics,
+		adminServiceClient: adminServiceClient,
 	}
 }
 
