@@ -1,12 +1,13 @@
 package models
 
 import (
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 )
 
 // Database model to encapsulate metadata associated with a SchedulableEntity
 type SchedulableEntity struct {
-	BaseModel
+	models.BaseModel
 	SchedulableEntityKey
 	CronExpression      string
 	FixedRateValue      uint32

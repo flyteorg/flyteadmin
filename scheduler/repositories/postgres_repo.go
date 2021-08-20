@@ -2,8 +2,8 @@ package repositories
 
 import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
-	"github.com/flyteorg/flyteadmin/pkg/repositories/gormimpl"
-	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	"github.com/flyteorg/flyteadmin/scheduler/repositories/gormimpl"
+	"github.com/flyteorg/flyteadmin/scheduler/repositories/interfaces"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/jinzhu/gorm"
 )
