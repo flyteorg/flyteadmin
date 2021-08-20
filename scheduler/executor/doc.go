@@ -54,4 +54,44 @@
 //			to the admin. Each job function is tied to schedule which gets executed in separate go routine by the gogf
 // 			framework in according the schedule cadence.
 
+// 		Failure scenarios:
+//		a) Case when the schedule is activated but launchplan is not. Ideally admin should throw an error here but it
+//		   allows to launch the scheduled execution.Bug marked here https://github.com/flyteorg/flyte/issues/1354
+//		   Once this issue is fixed, then the scheduler behavior would be find the specific new error defined for this
+//		   scenario.Eg : LaunchPlanNotActivated and skip the scheduled time execution after the failure.
+//		   It will continue to hit the admin with new future scheduled times where the problem can get fixed for the launchplan.
+//		   Hence its expected to not schedule the executions during such a discrepancy. The user need to reactivate the
+//		   launchplan to fix the issue.
+//		   eg: activate launch plan L1 with version V1 and create schedule. (One Api call)
+//			   - Create schedule for L1,V1 succeeds
+//			   - Activate launchplan fails for L1, V1
+//			   - API return failure
+//			Reactivate the launchplan by calling the API again to fix the discrepancy between the schedule and launchplan
+//		    During the discrepancy the executions won't be scheduled on admin once the bug(1354) is fixed.
+//
+//      b) Case when scheduled time T1 execution fails. The goroutine executing for T1 will go through 30 repetitions before
+//		   aborting the run. In such a scenario its possible that furture scheduled time T2 succeeds and gets executed successfully
+//		   by the admin. i.e admin could execute the schedules in this order T2, T1. This is rare case though
+//
+// 		c) Case when the scheduler goes down then once it comes back up it will run catch up on all the schedules using
+//		   the last snapshoted timestamp to time.Now()
+//
+//		d) Case when the snapshoter fails to record the last execution at T2 but has recorded at T1, where T1 < T2 ,
+//		   then new schedules would be created from T1 -> time.Now() during catchup and the idempotency aspect of the admin
+//		   will take care of not rescheduling the already scheduled execution from T1 -> Crash time
+//
+//		e) Case when the scheduler is down and the old schedule gets deactivated, then during catchup the scheduler won't
+// 		   create executions for it. It doesn't matter how many activation/deactivations have happened during the downtime,
+// 		   but the scheduler will go by the recent activation state
+//
+//		f) Similarly in case of scheduler being down and an old schedule gets activated,then during catchup the scheduler
+//		   would run catch from updated_at timestamp till now. It doesn't matter how many activation/deactivations have
+//		   happened during the downtime, but the scheduler will go by the recent activation state.
+//
+//		g) Case there are multiple pod running with the scheduler , then we rely on the idempotency aspect of the executions
+//		   which have a identifier derived from the hash of schedule time + launch plan identifier which would remain the same
+//		   any other instance of the scheduler picks up and admin will return the AlreadyExists error.
+//		 
+
+
 package executor
