@@ -1,9 +1,9 @@
-package scheduler
+package executor
 
 import (
 	"encoding/gob"
 	"fmt"
-	interfaces2 "github.com/flyteorg/flyteadmin/scheduler/interfaces"
+	"github.com/flyteorg/flyteadmin/scheduler/executor/interfaces"
 	"io"
 	"time"
 )
@@ -13,7 +13,7 @@ type VersionedSnapshot struct {
 	Ser     []byte
 }
 
-func (s *VersionedSnapshot) WriteSnapshot(w io.Writer, snapshot interfaces2.Snapshoter) error {
+func (s *VersionedSnapshot) WriteSnapshot(w io.Writer, snapshot interfaces.Snapshoter) error {
 	byteContents, err := snapshot.CreateSnapshot()
 	if err != nil {
 		return err
@@ -24,7 +24,7 @@ func (s *VersionedSnapshot) WriteSnapshot(w io.Writer, snapshot interfaces2.Snap
 	return enc.Encode(s)
 }
 
-func (s *VersionedSnapshot) ReadSnapshot(r io.Reader) (interfaces2.Snapshoter, error) {
+func (s *VersionedSnapshot) ReadSnapshot(r io.Reader) (interfaces.Snapshoter, error) {
 	err := gob.NewDecoder(r).Decode(s)
 	if err != nil {
 		return nil, err

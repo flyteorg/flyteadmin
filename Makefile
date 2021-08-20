@@ -31,13 +31,28 @@ k8s_integration_execute:
 compile:
 	go build -o flyteadmin -ldflags=$(LD_FLAGS) ./cmd/ && mv ./flyteadmin ${GOPATH}/bin
 
+.PHONY: compile_scheduler
+compile_scheduler:
+	go build -gcflags='all=-N -l' -o flytescheduler ./scheduler/ && mv ./flytescheduler ${GOPATH}/bin
+
+
 .PHONY: linux_compile
 linux_compile:
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0  go build -o /artifacts/flyteadmin -ldflags=$(LD_FLAGS) ./cmd/
 
+.PHONY: linux_compile_scheduler
+linux_compile_scheduler:
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0  go build -o /artifacts/flytescheduler -ldflags=$(LD_FLAGS) ./scheduler/
+
+
 .PHONY: server
 server:
 	go run cmd/main.go serve  --server.kube-config ~/.kube/config  --config flyteadmin_config.yaml
+
+.PHONY: scheduler
+scheduler:
+	go run scheduler/main.go run  --server.kube-config ~/.kube/config  --config flyteadmin_config.yaml
+
 
 .PHONY: migrate
 migrate:
