@@ -1,4 +1,4 @@
-package flytescheduler
+package crud
 
 import (
 	"context"
