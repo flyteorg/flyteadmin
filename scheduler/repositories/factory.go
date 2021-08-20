@@ -22,23 +22,13 @@ var RepositoryConfigurationName = map[int32]string{
 // The RepositoryInterface indicates the methods that each Repository must support.
 // A Repository indicates a Database which is collection of Tables/models.
 // The goal is allow databases to be Plugged in easily.
-type RepositoryInterface interface {
-	TaskRepo() interfaces.TaskRepoInterface
-	WorkflowRepo() interfaces.WorkflowRepoInterface
-	LaunchPlanRepo() interfaces.LaunchPlanRepoInterface
-	ExecutionRepo() interfaces.ExecutionRepoInterface
-	ExecutionEventRepo() interfaces.ExecutionEventRepoInterface
-	ProjectRepo() interfaces.ProjectRepoInterface
-	ResourceRepo() interfaces.ResourceRepoInterface
-	NodeExecutionRepo() interfaces.NodeExecutionRepoInterface
-	NodeExecutionEventRepo() interfaces.NodeExecutionEventRepoInterface
-	TaskExecutionRepo() interfaces.TaskExecutionRepoInterface
-	NamedEntityRepo() interfaces.NamedEntityRepoInterface
+
+type SchedulerRepoInterface interface {
 	SchedulableEntityRepo() interfaces.SchedulableEntityRepoInterface
 	ScheduleEntitiesSnapshotRepo() interfaces.ScheduleEntitiesSnapShotRepoInterface
 }
 
-func GetRepository(repoType RepoConfig, dbConfig config.DbConfig, scope promutils.Scope) RepositoryInterface {
+func GetRepository(repoType RepoConfig, dbConfig config.DbConfig, scope promutils.Scope) SchedulerRepoInterface {
 	switch repoType {
 	case POSTGRES:
 		postgresScope := scope.NewSubScope("postgres")
