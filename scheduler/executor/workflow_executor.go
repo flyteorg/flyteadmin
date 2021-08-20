@@ -1,4 +1,4 @@
-package scheduler
+package executor
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
-	schedInterfaces "github.com/flyteorg/flyteadmin/scheduler/interfaces"
+	interfaces2 "github.com/flyteorg/flyteadmin/scheduler/executor/interfaces"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/logger"
@@ -42,11 +42,11 @@ type workflowExecutor struct {
 	db                   repositories.SchedulerRepoInterface
 	config               runtimeInterfaces.Configuration
 	executionManager     mgInterfaces.ExecutionInterface
-	snapshot             schedInterfaces.Snapshoter
-	snapShotReaderWriter schedInterfaces.SnapshotReaderWriter
-	goGfInterface        schedInterfaces.GoCronWrapper
+	snapshot             interfaces2.Snapshoter
+	snapShotReaderWriter interfaces2.SnapshotReaderWriter
+	goGfInterface        interfaces2.GoCronWrapper
 	rateLimiter          ratelimit.Limiter
-	metrics   schedulerMetrics
+	metrics              schedulerMetrics
 }
 
 func (w *workflowExecutor) CheckPointState(ctx context.Context) {
@@ -303,14 +303,14 @@ func NewWorkflowExecutor(db repositories.SchedulerRepoInterface, executionManage
 	}
 	return &workflowExecutor{db: db, executionManager: executionManager, config: config, snapshot: snapshot,
 		snapShotReaderWriter: &snapShotReaderWriter,
-		goGfInterface:        GoCron{jobsMap: map[string]schedInterfaces.GoCronJobWrapper{}, c: c},
+		goGfInterface:        GoCron{jobsMap: map[string]interfaces2.GoCronJobWrapper{}, c: c},
 		rateLimiter:          rateLimiter,
-		metrics: metrics,
+		metrics:              metrics,
 	}
 }
 
-func readSnapShot(ctx context.Context, db repositories.SchedulerRepoInterface, version int) schedInterfaces.Snapshoter {
-	var snapshot schedInterfaces.Snapshoter
+func readSnapShot(ctx context.Context, db repositories.SchedulerRepoInterface, version int) interfaces2.Snapshoter {
+	var snapshot interfaces2.Snapshoter
 	scheduleEntitiesSnapShot, err := db.ScheduleEntitiesSnapshotRepo().GetLatestSnapShot(ctx)
 	// Just log the error but dont interrupt the startup of the scheduler
 	if err != nil {
