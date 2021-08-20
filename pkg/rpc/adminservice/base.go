@@ -149,7 +149,7 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 		publisher, urlData, workflowManager, namedEntityManager, eventPublisher, executionEventWriter)
 	versionManager := manager.NewVersionManager()
 
-	scheduledWorkflowExecutor := workflowScheduler.GetWorkflowExecutor(db, executionManager, launchPlanManager, configuration)
+	scheduledWorkflowExecutor := workflowScheduler.GetWorkflowExecutor(executionManager, launchPlanManager)
 	logger.Info(context.Background(), "Successfully initialized a new scheduled workflow executor")
 	go func() {
 		logger.Info(context.Background(), "Starting the scheduled workflow executor")
