@@ -77,7 +77,7 @@ func CheckAndFetchInputsForExecution(
 	expectedInputMap := map[string]*core.Parameter{}
 
 	if expectedInputs != nil && len(expectedInputs.GetParameters()) > 0 {
-		expectedInputMap = expectedInputs.GetParameters()
+		expectedInputMap = ParameterMapEntriesToMap(expectedInputs.GetParameters())
 	}
 
 	if userInputs != nil && len(userInputs.GetLiterals()) > 0 {

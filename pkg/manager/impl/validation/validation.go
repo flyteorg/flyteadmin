@@ -176,27 +176,27 @@ func validateLiteralMap(inputMap *core.LiteralMap, fieldName string) error {
 
 func validateParameterMap(inputMap *core.ParameterMap, fieldName string) error {
 	if inputMap != nil && len(inputMap.Parameters) > 0 {
-		for name, defaultInput := range inputMap.Parameters {
-			if name == "" {
+		for _, e := range inputMap.Parameters {
+			if e.GetKey() == "" {
 				return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "missing key in %s", fieldName)
 			}
-			if defaultInput.GetVar() == nil || defaultInput.GetVar().GetType() == nil {
+			if e.GetValue().GetVar() == nil || e.GetValue().GetVar().GetType() == nil {
 				return errors.NewFlyteAdminErrorf(codes.InvalidArgument,
 					"The Variable component of the Parameter %s in %s either is missing, or has a missing Type",
-					name, fieldName)
+					e.GetKey(), fieldName)
 			}
-			if defaultInput.GetDefault() == nil && !defaultInput.GetRequired() {
+			if e.GetValue().GetDefault() == nil && !e.GetValue().GetRequired() {
 				return errors.NewFlyteAdminErrorf(codes.InvalidArgument,
 					"Invalid variable %s in %s - variable has neither default, nor is required. "+
-						"One must be specified", name, fieldName)
+						"One must be specified", e.GetKey(), fieldName)
 			}
-			defaultValue := defaultInput.GetDefault()
+			defaultValue := e.GetValue().GetDefault()
 			if defaultValue != nil {
 				inputType := validators.LiteralTypeForLiteral(defaultValue)
-				if !validators.AreTypesCastable(inputType, defaultInput.GetVar().GetType()) {
+				if !validators.AreTypesCastable(inputType, e.GetValue().GetVar().GetType()) {
 					return errors.NewFlyteAdminErrorf(codes.InvalidArgument,
-						"Type mismatch for Parameter %s in %s has type %s, expected %s", name, fieldName,
-						defaultInput.GetVar().GetType().String(), inputType.String())
+						"Type mismatch for Parameter %s in %s has type %s, expected %s", e.GetKey(), fieldName,
+						e.GetValue().GetVar().GetType().String(), inputType.String())
 				}
 			}
 		}

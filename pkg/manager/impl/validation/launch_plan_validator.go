@@ -57,15 +57,15 @@ func ValidateLaunchPlan(ctx context.Context,
 func validateSchedule(request admin.LaunchPlanCreateRequest, expectedInputs *core.ParameterMap) error {
 	schedule := request.GetSpec().GetEntityMetadata().GetSchedule()
 	if schedule.GetCronExpression() != "" || schedule.GetRate() != nil {
-		for key, value := range expectedInputs.Parameters {
-			if value.GetRequired() && key != schedule.GetKickoffTimeInputArg() {
+		for _, e := range expectedInputs.Parameters {
+			if e.GetValue().GetRequired() && e.GetKey() != schedule.GetKickoffTimeInputArg() {
 				return errors.NewFlyteAdminErrorf(
 					codes.InvalidArgument,
-					"Cannot create a launch plan with a schedule if there is an unbound required input. [%v] is required", key)
+					"Cannot create a launch plan with a schedule if there is an unbound required input. [%v] is required", e.GetKey())
 			}
 		}
 		if schedule.GetKickoffTimeInputArg() != "" {
-			if param, ok := expectedInputs.Parameters[schedule.GetKickoffTimeInputArg()]; !ok {
+			if param, ok := ParameterMapEntriesToMap(expectedInputs.Parameters)[schedule.GetKickoffTimeInputArg()]; !ok {
 				return errors.NewFlyteAdminErrorf(
 					codes.InvalidArgument,
 					"Cannot create a schedule with a KickoffTimeInputArg that does not point to a free input. [%v] is not free or does not exist.", schedule.GetKickoffTimeInputArg())
@@ -79,11 +79,27 @@ func validateSchedule(request admin.LaunchPlanCreateRequest, expectedInputs *cor
 	return nil
 }
 
+func ParameterMapEntriesToMap(entries []*core.ParameterMapFieldEntry) (parameterMap map[string]*core.Parameter) {
+	parameterMap = make(map[string]*core.Parameter, len(entries))
+	for _, v := range entries {
+		parameterMap[v.GetKey()] = v.GetValue()
+	}
+	return
+}
+
+func VariableMapEntriesToMap(entries []*core.VariableMapFieldEntry) (variableMap map[string]*core.Variable) {
+	variableMap = make(map[string]*core.Variable, len(entries))
+	for _, v := range entries {
+		variableMap[v.GetKey()] = v.GetValue()
+	}
+	return
+}
+
 func checkAndFetchExpectedInputForLaunchPlan(
 	workflowVariableMap *core.VariableMap, fixedInputs *core.LiteralMap, defaultInputs *core.ParameterMap) (*core.ParameterMap, error) {
-	expectedInputMap := map[string]*core.Parameter{}
+	var expectedInputMap []*core.ParameterMapFieldEntry
 	var workflowExpectedInputMap map[string]*core.Variable
-	var defaultInputMap map[string]*core.Parameter
+	var defaultInputMap []*core.ParameterMapFieldEntry
 	var fixedInputMap map[string]*core.Literal
 
 	if defaultInputs != nil && len(defaultInputs.GetParameters()) > 0 {
@@ -109,15 +125,15 @@ func checkAndFetchExpectedInputForLaunchPlan(
 		}, nil
 	}
 
-	workflowExpectedInputMap = workflowVariableMap.Variables
-	for name, defaultInput := range defaultInputMap {
-		value, ok := workflowExpectedInputMap[name]
+	workflowExpectedInputMap = VariableMapEntriesToMap(workflowVariableMap.Variables)
+	for _, e := range defaultInputMap {
+		value, ok := workflowExpectedInputMap[e.GetKey()]
 		if !ok {
-			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "unexpected default_input %s", name)
-		} else if !validators.AreTypesCastable(defaultInput.GetVar().GetType(), value.GetType()) {
+			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "unexpected default_input %s", e.GetKey())
+		} else if !validators.AreTypesCastable(e.GetValue().GetVar().GetType(), value.GetType()) {
 			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
 				"invalid default_input wrong type %s, expected %v, got %v instead",
-				name, defaultInput.GetVar().GetType().String(), value.GetType().String())
+				e.GetKey(), e.GetValue().GetVar().GetType().String(), value.GetType().String())
 		}
 	}
 
