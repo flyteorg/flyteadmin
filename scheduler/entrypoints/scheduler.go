@@ -34,8 +34,8 @@ var schedulerRunCmd = &cobra.Command{
 		defer func() {
 			if err := recover(); err != nil {
 				schedulerScope.MustNewCounter("initialization_panic",
-					"panics encountered initializing the native flyte scheduler").Inc()
-				logger.Fatalf(context.Background(), fmt.Sprintf("caught panic: %v [%+v]", err, string(debug.Stack())))
+					"panics encountered initializing the flyte native scheduler").Inc()
+				logger.Fatalf(ctx, fmt.Sprintf("caught panic: %v [%+v]", err, string(debug.Stack())))
 			}
 		}()
 
@@ -56,7 +56,8 @@ var schedulerRunCmd = &cobra.Command{
 
 		clientSet, err := admin.ClientSetBuilder().WithConfig(admin.GetConfig(ctx)).Build(ctx)
 		if err != nil {
-			panic(err)
+			logger.Infof(ctx, "Flyte native scheduler failed to start due to %v", err)
+			return
 		}
 		adminServiceClient := clientSet.AdminClient()
 
@@ -64,8 +65,12 @@ var schedulerRunCmd = &cobra.Command{
 
 		logger.Info(context.Background(), "Successfully initialized a native flyte scheduler")
 
-		schedulerWorkflowExecutor.Run()
-
+		err = schedulerWorkflowExecutor.Run(ctx)
+		if err != nil {
+			logger.Infof(ctx, "Flyte native scheduler failed to start due to %v", err)
+			return
+		}
+		<-ctx.Done()
 		logger.Infof(ctx, "Flyte native scheduler started successfully")
 	},
 }
