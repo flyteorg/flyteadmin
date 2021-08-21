@@ -8,17 +8,18 @@
 //    Whenever a launchplan with a schedule is activated, a new schedule entry is created in the datastore
 //    On deactivation the created scheduled and launchplan is deactivated through a flag
 //    Atmost one launchplan is active at any moment across its various versions and same semantics apply for the
-//    schedules aswell.
+//    schedules as well.
 // 2] Scheduler
 //    This component is a singleton and has its source in the current folder and is responsible for reading the schedules
-//    from the DB and running them at the cadence defined by there schedule
+//    from the DB and running them at the cadence defined by the schedule
 //    The lowest granularity supported is minutes for scheduling through cron and fixed rate scheduler
 // 	  The scheduler should be running in one replica , two at the most during redeployment. Multiple replicas will just
 // 	  duplicate the work since each execution for a scheduleTime will have unique identifier derived from schedule name
 //	  and time of the schedule. The idempotency aspect of the admin for same identifier prevents duplication on the admin
 //	  side.
 //    The scheduler runs continously in a loop reading the updated schedule entries in the data store and adding or removing
-//    the schedules. Removing a schedule doesn't gurantee about inflight routines launched by the scheduler.
+//    the schedules. Removing a schedule will not alter in-flight go-routines launched by the scheduler.
+//    Thus the behavior of these executions is undefined (most probably will get executed).
 //    Sub components:
 //		a) Snapshoter
 // 			This component is responsible for writing the snapshot state of all the schedules at a regular cadence to a
@@ -30,7 +31,10 @@
 //			We cannot use global snapshot time since each time snapshot doesn't contain information on how many schedules
 //			were executed till that point in time. And hence the need to maintain map[string]time.Time of schedules to there
 //			lastExectimes
-// 		b) Catchuper :
+//   		In the future we may support global snapshots, such that we can record the last successfully considered
+//  		time for each schedule and select the lowest as the watermark. currently since the underlying scheduler
+// 			does not expose the last considered time, we just calculate our own watermark per schedule.
+// 		b) Catchup-System :
 //			This component runs at bootup and catches up all the schedules to there current time.Now()
 //			The scheduler is not run until all the schedules have been caught up.
 //			The current design is also not to snapshot until all the schedules are caught up.
@@ -91,7 +95,7 @@
 //		g) Case there are multiple pod running with the scheduler , then we rely on the idempotency aspect of the executions
 //		   which have a identifier derived from the hash of schedule time + launch plan identifier which would remain the same
 //		   any other instance of the scheduler picks up and admin will return the AlreadyExists error.
-//		 
+//
 
 
 package executor
