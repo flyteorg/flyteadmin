@@ -6,10 +6,21 @@ import (
 	"github.com/flyteorg/flyteadmin/scheduler/executor/interfaces"
 	"github.com/flyteorg/flyteadmin/scheduler/repositories/models"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/promutils"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/robfig/cron"
+	"runtime/debug"
+	"runtime/pprof"
 	"time"
 )
+
+
+type goCronMetrics struct {
+	Scope                  promutils.Scope
+	JobFuncPanicCounter prometheus.Counter
+}
 
 // GoCron Struct implementing the GoCronWrapper which is used by the scheduler for adding and removing schedules
 // Each scheduled job accepts scheduled time parameter which helps to know what the actual invocation time and use
@@ -17,6 +28,7 @@ import (
 type GoCron struct {
 	jobsMap map[string]interfaces.GoCronJobWrapper
 	c       *cron.Cron
+	metrics              goCronMetrics
 }
 
 func (g GoCron) DeRegister(ctx context.Context, s models.SchedulableEntity) {
@@ -43,8 +55,19 @@ func (g GoCron) Register(ctx context.Context, s models.SchedulableEntity, regist
 	job := &GoCronJobWrapper{schedule: s, ctx: ctx, nameOfSchedule: nameOfSchedule, c: g.c}
 	g.jobsMap[nameOfSchedule] = job
 
+	// Create job function label to be used for creating the child context
+	jobFuncLabel := fmt.Sprintf("jobfunc-%v", nameOfSchedule)
+
 	job.jobFunc = func(triggerTime time.Time) {
-		registerFuncRef(ctx, s, triggerTime)
+		jobFuncCtx := contextutils.WithGoroutineLabel(ctx, jobFuncLabel)
+		pprof.SetGoroutineLabels(jobFuncCtx)
+		defer func() {
+			if err := recover(); err != nil {
+				g.metrics.JobFuncPanicCounter.Inc()
+				logger.Errorf(jobFuncCtx, fmt.Sprintf("caught panic: %v [%+v]", err, string(debug.Stack())))
+			}
+		}()
+		registerFuncRef(jobFuncCtx, s, triggerTime)
 	}
 	job.ScheduleJob()
 	return nil

@@ -8,6 +8,9 @@ import (
 	"time"
 )
 
+// VersionedSnapshot stores the version and gob serialized form of the snapshot
+// Provides a read and write methods to serialize and deserialize the gob format of the snapshot.
+// Including a version provides compatibility check
 type VersionedSnapshot struct {
 	version int
 	Ser     []byte

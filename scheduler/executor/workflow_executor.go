@@ -4,14 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/flyteorg/flyteadmin/pkg/async/schedule/interfaces"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
-	interfaces2 "github.com/flyteorg/flyteadmin/scheduler/executor/interfaces"
+	schedInterfaces "github.com/flyteorg/flyteadmin/scheduler/executor/interfaces"
 	"github.com/flyteorg/flyteadmin/scheduler/repositories"
 	"github.com/flyteorg/flyteadmin/scheduler/repositories/models"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
+	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/prometheus/client_golang/prometheus"
@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 	"runtime/debug"
+	"runtime/pprof"
 	"strings"
 	"time"
 )
@@ -32,6 +33,7 @@ const executorSleepTime = 30
 const snapshotWriterSleepTime = 30
 const backOffSleepTime = 60
 const snapShotVersion = 1
+const checkPointerRoutineLabel = "checkpointer"
 
 type schedulerMetrics struct {
 	Scope                  promutils.Scope
@@ -48,22 +50,15 @@ type schedulerMetrics struct {
 type workflowExecutor struct {
 	db                   repositories.SchedulerRepoInterface
 	config               runtimeInterfaces.Configuration
-	snapshot             interfaces2.Snapshoter
-	snapShotReaderWriter interfaces2.SnapshotReaderWriter
-	goGfInterface        interfaces2.GoCronWrapper
+	snapshot             schedInterfaces.Snapshoter
+	snapShotReaderWriter schedInterfaces.SnapshotReaderWriter
+	goCronInterface      schedInterfaces.GoCronWrapper
 	rateLimiter          ratelimit.Limiter
 	metrics              schedulerMetrics
-	adminServiceClient service.AdminServiceClient
+	adminServiceClient   service.AdminServiceClient
 }
 
 func (w *workflowExecutor) CheckPointState(ctx context.Context) {
-	defer func() {
-		if err := recover(); err != nil {
-			w.metrics.CheckPointPanicCounter.Inc()
-			logger.Fatalf(context.Background(), fmt.Sprintf("caught panic: %v [%+v]", err, string(debug.Stack())))
-		}
-	}()
-
 	for true {
 		var bytesArray []byte
 		f := bytes.NewBuffer(bytesArray)
@@ -122,7 +117,7 @@ func (w *workflowExecutor) CatchUpSingleSchedule(ctx context.Context, s models.S
 	nameOfSchedule := GetScheduleName(s)
 	var catchUpTimes []time.Time
 	var err error
-	catchUpTimes, err = w.goGfInterface.GetCatchUpTimes(s, fromTime, toTime)
+	catchUpTimes, err = w.goCronInterface.GetCatchUpTimes(s, fromTime, toTime)
 	if err != nil {
 		return err
 	}
@@ -230,34 +225,46 @@ func (w *workflowExecutor) fire(ctx context.Context, scheduledTime time.Time,
 	return nil
 }
 
-func (w *workflowExecutor) Run() {
-	ctx := context.Background()
+func (w *workflowExecutor) Run(ctx context.Context) error {
 	schedules, err := w.db.SchedulableEntityRepo().GetAll(ctx)
 	if err != nil {
-		panic(fmt.Errorf("unable to run the workflow executor after reading the schedules due to %v", err))
+		return fmt.Errorf("unable to run the workflow executor after reading the schedules due to %v", err)
 	}
+	// Run the catchup system
 	catchUpTill := time.Now()
 	err = w.CatchUpAllSchedules(ctx, schedules, catchUpTill)
 	if err != nil {
-		panic(fmt.Errorf("unable to catch up on the schedules due to %v", err))
+		return fmt.Errorf("unable to catch up on the schedules due to %v", err)
 	}
 
 	// Start the go routine to write the snapshot map to the configured snapshot file
-	go w.CheckPointState(ctx)
+	// Create job function label to be used for creating the child context
+	go func() {
+		checkPointerCtx := contextutils.WithGoroutineLabel(ctx, checkPointerRoutineLabel)
+		pprof.SetGoroutineLabels(checkPointerCtx)
+		defer func() {
+			if err := recover(); err != nil {
+				w.metrics.CheckPointPanicCounter.Inc()
+				logger.Fatalf(checkPointerCtx, fmt.Sprintf("caught panic: %v [%+v]", err, string(debug.Stack())))
+			}
+		}()
+		w.CheckPointState(checkPointerCtx)
+	}()
 
 	defer logger.Infof(ctx, "Exiting Workflow executor")
 	for true {
 		for _, s := range schedules {
-			funcRef := func(ctx context.Context, schedule models.SchedulableEntity, scheduleTime time.Time) {
+
+			funcRef := func(jobCtx context.Context, schedule models.SchedulableEntity, scheduleTime time.Time) {
 				// If the schedule has been deactivated and then the inflight schedules can stop
 				if !*schedule.Active {
 					return
 				}
 				nameOfSchedule := GetScheduleName(schedule)
 				_ = w.rateLimiter.Take()
-				err := w.fire(ctx, scheduleTime, schedule)
+				err := w.fire(jobCtx, scheduleTime, schedule)
 				if err != nil {
-					logger.Errorf(ctx, "unable to fire the schedule %+v at %v time due to %v", s, scheduleTime, err)
+					logger.Errorf(jobCtx, "unable to fire the schedule %+v at %v time due to %v", s, scheduleTime, err)
 					return
 				} else {
 					w.snapshot.UpdateLastExecutionTime(nameOfSchedule, scheduleTime)
@@ -266,15 +273,16 @@ func (w *workflowExecutor) Run() {
 
 			// Register or deregister the schedule from the scheduler
 			if !*s.Active {
-				w.goGfInterface.DeRegister(ctx, s)
+				w.goCronInterface.DeRegister(ctx, s)
 			} else {
-				err := w.goGfInterface.Register(ctx, s, funcRef)
+				err := w.goCronInterface.Register(ctx, s, funcRef)
 				if err != nil {
 					w.metrics.ScheduleRegistrationFailure.Inc()
 					logger.Errorf(ctx, "unable to register the schedule %+v due to %v", s, err)
 				}
 			}
-		}
+		} // Done iterating over all the read schedules
+
 		time.Sleep(executorSleepTime * time.Second)
 		schedules, err = w.db.SchedulableEntityRepo().GetAll(ctx)
 		if err != nil {
@@ -283,14 +291,11 @@ func (w *workflowExecutor) Run() {
 			time.Sleep(backOffSleepTime * time.Second)
 		}
 	}
-}
-
-func (w *workflowExecutor) Stop() error {
 	return nil
 }
 
 func NewWorkflowExecutor(db repositories.SchedulerRepoInterface, config runtimeInterfaces.Configuration,
-	scope promutils.Scope, adminServiceClient service.AdminServiceClient) interfaces.WorkflowExecutor {
+	scope promutils.Scope, adminServiceClient service.AdminServiceClient) schedInterfaces.WorkflowExecutor {
 
 	ctx := context.Background()
 	workflowExecConfig := config.ApplicationConfiguration().GetSchedulerConfig().WorkflowExecutorConfig.GetFlyteWorkflowExecutorConfig()
@@ -319,17 +324,22 @@ func NewWorkflowExecutor(db repositories.SchedulerRepoInterface, config runtimeI
 		ScheduleReadFailure: scope.MustNewCounter("schedule_read_error_counter",
 			"count of unsuccessful attempts to read the schedules from the DB"),
 	}
+	cronMetric := goCronMetrics{
+		Scope: scope,
+		JobFuncPanicCounter: scope.MustNewCounter("job_func_panic_counter",
+			"count of crashes for the job functions executed by the scheduler"),
+	}
 	return &workflowExecutor{db: db, config: config, snapshot: snapshot,
 		snapShotReaderWriter: &snapShotReaderWriter,
-		goGfInterface:        GoCron{jobsMap: map[string]interfaces2.GoCronJobWrapper{}, c: c},
+		goCronInterface:      GoCron{jobsMap: map[string]schedInterfaces.GoCronJobWrapper{}, c: c, metrics: cronMetric},
 		rateLimiter:          rateLimiter,
 		metrics:              metrics,
-		adminServiceClient: adminServiceClient,
+		adminServiceClient:   adminServiceClient,
 	}
 }
 
-func readSnapShot(ctx context.Context, db repositories.SchedulerRepoInterface, version int) interfaces2.Snapshoter {
-	var snapshot interfaces2.Snapshoter
+func readSnapShot(ctx context.Context, db repositories.SchedulerRepoInterface, version int) schedInterfaces.Snapshoter {
+	var snapshot schedInterfaces.Snapshoter
 	scheduleEntitiesSnapShot, err := db.ScheduleEntitiesSnapshotRepo().GetLatestSnapShot(ctx)
 	// Just log the error but dont interrupt the startup of the scheduler
 	if err != nil {
