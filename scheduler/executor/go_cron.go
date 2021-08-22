@@ -57,7 +57,7 @@ func (g GoCron) Register(ctx context.Context, s models.SchedulableEntity, regist
 
 	// Create job function label to be used for creating the child context
 	jobFuncLabel := fmt.Sprintf("jobfunc-%v", nameOfSchedule)
-
+	context.WithCancel(ctx)
 	job.jobFunc = func(triggerTime time.Time) {
 		jobFuncCtx := contextutils.WithGoroutineLabel(ctx, jobFuncLabel)
 		pprof.SetGoroutineLabels(jobFuncCtx)
@@ -125,4 +125,13 @@ func getFixedRateDurationFromSchedule(unit admin.FixedRateUnit, fixedRateValue u
 		return -1, fmt.Errorf("unsupported unit %v for fixed rate scheduling ", unit)
 	}
 	return d, nil
+}
+
+
+func getCronMetrics(scope promutils.Scope) goCronMetrics {
+	return goCronMetrics{
+		Scope: scope,
+		JobFuncPanicCounter: scope.MustNewCounter("job_func_panic_counter",
+			"count of crashes for the job functions executed by the scheduler"),
+	}
 }
