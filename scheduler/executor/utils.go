@@ -17,7 +17,7 @@ import (
 
 const (
 	scheduleNameInputsFormat = "%s:%s:%s:%s"
-	executionIdInputsFormat = scheduleNameInputsFormat +":%s"
+	executionIdInputsFormat = scheduleNameInputsFormat +":%d"
 )
 
 // GetScheduleName generate the schedule name to be used as unique identification string within the scheduler
@@ -57,7 +57,7 @@ func hashIdentifier(identifier core.Identifier) uint64 {
 func hashScheduledTimeStamp(identifier core.Identifier, scheduledTime time.Time) uint64 {
 	h := fnv.New64()
 	_, err := h.Write([]byte(fmt.Sprintf(executionIdInputsFormat,
-		identifier.Project, identifier.Domain, identifier.Name, identifier.Version, scheduledTime)))
+		identifier.Project, identifier.Domain, identifier.Name, identifier.Version, scheduledTime.Unix())))
 	if err != nil {
 		// This shouldn't occur.
 		logger.Errorf(context.Background(),

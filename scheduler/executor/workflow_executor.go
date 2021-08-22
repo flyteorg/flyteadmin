@@ -25,19 +25,23 @@ import (
 	"runtime/debug"
 	"runtime/pprof"
 	"strings"
+	"sync"
 	"time"
 )
 
-const executorSleepTime = 30
+const registrationSleepTime = 30
 
 const snapshotWriterSleepTime = 30
-const backOffSleepTime = 60
 const snapShotVersion = 1
 const checkPointerRoutineLabel = "checkpointer"
+const scheduleRegisterRoutineLabel = "scheduleregister"
+const catchupRoutineLabel = "catchup"
 
-type schedulerMetrics struct {
+type workflowExecutorMetrics struct {
 	Scope                  promutils.Scope
 	FailedExecutionCounter prometheus.Counter
+	CatchupPanicCounter prometheus.Counter
+	ScheduleRegistraionPanicCounter prometheus.Counter
 	CheckPointPanicCounter prometheus.Counter
 	CheckPointSaveErrCounter prometheus.Counter
 	CheckPointCreationErrCounter prometheus.Counter
@@ -54,31 +58,28 @@ type workflowExecutor struct {
 	snapShotReaderWriter schedInterfaces.SnapshotReaderWriter
 	goCronInterface      schedInterfaces.GoCronWrapper
 	rateLimiter          ratelimit.Limiter
-	metrics              schedulerMetrics
+	metrics              workflowExecutorMetrics
 	adminServiceClient   service.AdminServiceClient
 }
 
 func (w *workflowExecutor) CheckPointState(ctx context.Context) {
-	for true {
-		var bytesArray []byte
-		f := bytes.NewBuffer(bytesArray)
-		// Only write if the snapshot has contents and not equal to the previous snapshot
-		if !w.snapshot.IsEmpty() {
-			err := w.snapShotReaderWriter.WriteSnapshot(f, w.snapshot)
-			// Just log the error
-			if err != nil {
-				w.metrics.CheckPointCreationErrCounter.Inc()
-				logger.Errorf(ctx, "unable to write the snapshot to buffer due to %v", err)
-			}
-			err = w.db.ScheduleEntitiesSnapshotRepo().CreateSnapShot(ctx, models.ScheduleEntitiesSnapshot{
-				Snapshot: f.Bytes(),
-			})
-			if err != nil {
-				w.metrics.CheckPointSaveErrCounter.Inc()
-				logger.Errorf(ctx, "unable to save the snapshot to the database due to %v", err)
-			}
+	var bytesArray []byte
+	f := bytes.NewBuffer(bytesArray)
+	// Only write if the snapshot has contents and not equal to the previous snapshot
+	if !w.snapshot.IsEmpty() {
+		err := w.snapShotReaderWriter.WriteSnapshot(f, w.snapshot)
+		// Just log the error
+		if err != nil {
+			w.metrics.CheckPointCreationErrCounter.Inc()
+			logger.Errorf(ctx, "unable to write the snapshot to buffer due to %v", err)
 		}
-		time.Sleep(snapshotWriterSleepTime * time.Second)
+		err = w.db.ScheduleEntitiesSnapshotRepo().CreateSnapShot(ctx, models.ScheduleEntitiesSnapshot{
+			Snapshot: f.Bytes(),
+		})
+		if err != nil {
+			w.metrics.CheckPointSaveErrCounter.Inc()
+			logger.Errorf(ctx, "unable to save the snapshot to the database due to %v", err)
+		}
 	}
 }
 
@@ -225,73 +226,134 @@ func (w *workflowExecutor) fire(ctx context.Context, scheduledTime time.Time,
 	return nil
 }
 
-func (w *workflowExecutor) Run(ctx context.Context) error {
+func (w *workflowExecutor) ReadAndCatchupSchedules(ctx context.Context) error {
 	schedules, err := w.db.SchedulableEntityRepo().GetAll(ctx)
 	if err != nil {
-		return fmt.Errorf("unable to run the workflow executor after reading the schedules due to %v", err)
+		logger.Errorf(ctx, "unable to read the schedules due to %v", err)
+		return err
 	}
 	// Run the catchup system
 	catchUpTill := time.Now()
 	err = w.CatchUpAllSchedules(ctx, schedules, catchUpTill)
 	if err != nil {
-		return fmt.Errorf("unable to catch up on the schedules due to %v", err)
+		logger.Errorf(ctx, "unable to catch up on the schedules due to %v", err)
+		return err
+	}
+	return nil
+}
+
+func (w *workflowExecutor) ReadAndRegisterSchedules(ctx context.Context) error {
+	schedules, err := w.db.SchedulableEntityRepo().GetAll(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to run the workflow executor after reading the schedules due to %v", err)
 	}
 
-	// Start the go routine to write the snapshot map to the configured snapshot file
-	// Create job function label to be used for creating the child context
-	go func() {
-		checkPointerCtx := contextutils.WithGoroutineLabel(ctx, checkPointerRoutineLabel)
-		pprof.SetGoroutineLabels(checkPointerCtx)
+	for _, s := range schedules {
+		funcRef := func(jobCtx context.Context, schedule models.SchedulableEntity, scheduleTime time.Time) {
+			// If the schedule has been deactivated and then the inflight schedules can stop
+			if !*schedule.Active {
+				return
+			}
+			nameOfSchedule := GetScheduleName(schedule)
+			_ = w.rateLimiter.Take()
+			err := w.fire(jobCtx, scheduleTime, schedule)
+			if err != nil {
+				logger.Errorf(jobCtx, "unable to fire the schedule %+v at %v time due to %v", s, scheduleTime, err)
+				return
+			} else {
+				w.snapshot.UpdateLastExecutionTime(nameOfSchedule, scheduleTime)
+			}
+		}
+
+		// Register or deregister the schedule from the scheduler
+		if !*s.Active {
+			w.goCronInterface.DeRegister(ctx, s)
+		} else {
+			err := w.goCronInterface.Register(ctx, s, funcRef)
+			if err != nil {
+				w.metrics.ScheduleRegistrationFailure.Inc()
+				logger.Errorf(ctx, "unable to register the schedule %+v due to %v", s, err)
+			}
+		}
+	} // Done iterating over all the read schedules
+	return nil
+}
+
+func (w *workflowExecutor) RunCatchupSystem(ctx context.Context) chan error {
+	catchupCtx, cancelCatchUp := context.WithCancel(ctx)
+	catchUpContextWithLabel := contextutils.WithGoroutineLabel(catchupCtx, catchupRoutineLabel)
+	catchUpErrChan := make(chan error, 1)
+	go func(ctx context.Context) {
+		pprof.SetGoroutineLabels(ctx)
+		defer func() {
+			if err := recover(); err != nil {
+				w.metrics.CatchupPanicCounter.Inc()
+				logger.Fatalf(ctx, fmt.Sprintf("caught panic: %v [%+v]", err, string(debug.Stack())))
+			}
+		}()
+		defer cancelCatchUp()
+		catchUpErrChan <- w.ReadAndCatchupSchedules(ctx)
+	}(catchUpContextWithLabel)
+
+	return catchUpErrChan
+}
+
+func (w *workflowExecutor) RunCheckpointerSystem(ctx context.Context) {
+	checkPointerCtx, checkPointerCancel := context.WithCancel(ctx)
+	checkPointerCtxWithLabel := contextutils.WithGoroutineLabel(checkPointerCtx, checkPointerRoutineLabel)
+	go func(ctx context.Context) {
+		pprof.SetGoroutineLabels(ctx)
 		defer func() {
 			if err := recover(); err != nil {
 				w.metrics.CheckPointPanicCounter.Inc()
-				logger.Fatalf(checkPointerCtx, fmt.Sprintf("caught panic: %v [%+v]", err, string(debug.Stack())))
+				logger.Fatalf(ctx, fmt.Sprintf("caught panic: %v [%+v]", err, string(debug.Stack())))
 			}
 		}()
-		w.CheckPointState(checkPointerCtx)
-	}()
+		defer checkPointerCancel()
+		wait.UntilWithContext(ctx, w.CheckPointState, snapshotWriterSleepTime * time.Second)
+	}(checkPointerCtxWithLabel)
+}
 
-	defer logger.Infof(ctx, "Exiting Workflow executor")
-	for true {
-		for _, s := range schedules {
-
-			funcRef := func(jobCtx context.Context, schedule models.SchedulableEntity, scheduleTime time.Time) {
-				// If the schedule has been deactivated and then the inflight schedules can stop
-				if !*schedule.Active {
-					return
-				}
-				nameOfSchedule := GetScheduleName(schedule)
-				_ = w.rateLimiter.Take()
-				err := w.fire(jobCtx, scheduleTime, schedule)
-				if err != nil {
-					logger.Errorf(jobCtx, "unable to fire the schedule %+v at %v time due to %v", s, scheduleTime, err)
-					return
-				} else {
-					w.snapshot.UpdateLastExecutionTime(nameOfSchedule, scheduleTime)
-				}
+func (w *workflowExecutor) RunScheduleRegistrationSystem(ctx context.Context) {
+	scheduleRegisterCtx, scheduleRegisterCtxCancel := context.WithCancel(ctx)
+	scheduleRegisterCtxWithLabel := contextutils.WithGoroutineLabel(scheduleRegisterCtx, scheduleRegisterRoutineLabel)
+	go func(ctx context.Context) {
+		pprof.SetGoroutineLabels(ctx)
+		defer func() {
+			if err := recover(); err != nil {
+				w.metrics.CheckPointPanicCounter.Inc()
+				logger.Fatalf(ctx, fmt.Sprintf("caught panic: %v [%+v]", err, string(debug.Stack())))
 			}
-
-			// Register or deregister the schedule from the scheduler
-			if !*s.Active {
-				w.goCronInterface.DeRegister(ctx, s)
-			} else {
-				err := w.goCronInterface.Register(ctx, s, funcRef)
-				if err != nil {
-					w.metrics.ScheduleRegistrationFailure.Inc()
-					logger.Errorf(ctx, "unable to register the schedule %+v due to %v", s, err)
-				}
+		}()
+		defer scheduleRegisterCtxCancel()
+		wait.UntilWithContext(ctx, func(ctx context.Context){
+			err := w.ReadAndRegisterSchedules(ctx)
+			if err != nil {
+				logger.Errorf(ctx, "Failed to iterated over all schedules in the current run due to %v", err)
 			}
-		} // Done iterating over all the read schedules
+		}, registrationSleepTime * time.Second)
+	}(scheduleRegisterCtxWithLabel)
+}
 
-		time.Sleep(executorSleepTime * time.Second)
-		schedules, err = w.db.SchedulableEntityRepo().GetAll(ctx)
-		if err != nil {
-			w.metrics.ScheduleReadFailure.Inc()
-			logger.Errorf(ctx, "going to sleep additional %v backoff time due to DB error %v", backOffSleepTime, err)
-			time.Sleep(backOffSleepTime * time.Second)
-		}
+func (w *workflowExecutor) Run(ctx context.Context) error {
+	// Start the go routine to catchup all the schedules
+	// Create catchup function label to be used for creating the child context
+	catchUpErrChan := w.RunCatchupSystem(ctx)
+
+	// Start the go routine to write the snapshot map to the configured snapshot file
+	// Create checkpointer  label to be used for creating the child context
+	w.RunCheckpointerSystem(ctx)
+
+	// Start the go routine to write the snapshot map to the configured snapshot file
+	// Create checkpointer  label to be used for creating the child context
+	w.RunScheduleRegistrationSystem(ctx)
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-catchUpErrChan:
+		return err
 	}
-	return nil
 }
 
 func NewWorkflowExecutor(db repositories.SchedulerRepoInterface, config runtimeInterfaces.Configuration,
@@ -300,35 +362,21 @@ func NewWorkflowExecutor(db repositories.SchedulerRepoInterface, config runtimeI
 	ctx := context.Background()
 	workflowExecConfig := config.ApplicationConfiguration().GetSchedulerConfig().WorkflowExecutorConfig.GetFlyteWorkflowExecutorConfig()
 	snapShotReaderWriter := VersionedSnapshot{version: snapShotVersion}
+
 	// Rate limiter on admin
 	rateLimiter := ratelimit.New(workflowExecConfig.AdminFireReqRateLimit)
+
 	// Reads the snapshot from the db
 	snapshot := readSnapShot(ctx, db, snapShotVersion)
+
 	// Create the new cron scheduler and start it off
 	c := cron.New()
 	c.Start()
-	metrics := schedulerMetrics{
-		Scope: scope,
-		FailedExecutionCounter: scope.MustNewCounter("failed_execution_counter",
-			"count of unsuccessful attempts to create the scheduled execution on the admin"),
-		CheckPointPanicCounter: scope.MustNewCounter("checkpoint_panic_counter",
-			"count of crashes for the checkpointer"),
-		CheckPointCreationErrCounter: scope.MustNewCounter("checkpoint_creation_error_counter",
-			"count of unsuccessful attempts to create the snapshot from the inmemory map"),
-		CheckPointSaveErrCounter: scope.MustNewCounter("checkpoint_save_error_counter",
-			"count of unsuccessful attempts to save the created snapshot to the DB"),
-		CatchupErrCounter: scope.MustNewCounter("catchup_error_counter",
-			"count of unsuccessful attempts to catchup on the schedules"),
-		ScheduleRegistrationFailure: scope.MustNewCounter("schedule_registration_failure_counter",
-			"count of unsuccessful attempts to register the schedules"),
-		ScheduleReadFailure: scope.MustNewCounter("schedule_read_error_counter",
-			"count of unsuccessful attempts to read the schedules from the DB"),
-	}
-	cronMetric := goCronMetrics{
-		Scope: scope,
-		JobFuncPanicCounter: scope.MustNewCounter("job_func_panic_counter",
-			"count of crashes for the job functions executed by the scheduler"),
-	}
+
+	// Create metric for the sche
+	metrics := getWorkflowExecutorMetrics(scope)
+	cronMetric := getCronMetrics(scope)
+
 	return &workflowExecutor{db: db, config: config, snapshot: snapshot,
 		snapShotReaderWriter: &snapShotReaderWriter,
 		goCronInterface:      GoCron{jobsMap: map[string]schedInterfaces.GoCronJobWrapper{}, c: c, metrics: cronMetric},
@@ -351,9 +399,33 @@ func readSnapShot(ctx context.Context, db repositories.SchedulerRepoInterface, v
 		// Similarly just log the error but dont interrupt the startup of the scheduler
 		if err != nil {
 			logger.Errorf(ctx, "unable to construct the snapshot struct from the file due to %v", err)
-			return &SnapshotV1{LastTimes: map[string]time.Time{}}
+			return &SnapshotV1{LastTimes: sync.Map{}}
 		}
 		return snapshot
 	}
-	return &SnapshotV1{LastTimes: map[string]time.Time{}}
+	return &SnapshotV1{LastTimes: sync.Map{}}
+}
+
+func getWorkflowExecutorMetrics(scope promutils.Scope) workflowExecutorMetrics {
+	return workflowExecutorMetrics{
+		Scope: scope,
+		FailedExecutionCounter: scope.MustNewCounter("failed_execution_counter",
+			"count of unsuccessful attempts to create the scheduled execution on the admin"),
+		CatchupPanicCounter : scope.MustNewCounter("catchup_panic_counter",
+			"count of crashes for the catchup system"),
+		ScheduleRegistraionPanicCounter : scope.MustNewCounter("schedule_registration_panic_counter",
+			"count of crashes for the schedule registration system"),
+		CheckPointPanicCounter: scope.MustNewCounter("checkpoint_panic_counter",
+			"count of crashes for the checkpointer"),
+		CheckPointCreationErrCounter: scope.MustNewCounter("checkpoint_creation_error_counter",
+			"count of unsuccessful attempts to create the snapshot from the inmemory map"),
+		CheckPointSaveErrCounter: scope.MustNewCounter("checkpoint_save_error_counter",
+			"count of unsuccessful attempts to save the created snapshot to the DB"),
+		CatchupErrCounter: scope.MustNewCounter("catchup_error_counter",
+			"count of unsuccessful attempts to catchup on the schedules"),
+		ScheduleRegistrationFailure: scope.MustNewCounter("schedule_registration_failure_counter",
+			"count of unsuccessful attempts to register the schedules"),
+		ScheduleReadFailure: scope.MustNewCounter("schedule_read_error_counter",
+			"count of unsuccessful attempts to read the schedules from the DB"),
+	}
 }

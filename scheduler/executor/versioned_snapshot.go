@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/flyteorg/flyteadmin/scheduler/executor/interfaces"
 	"io"
-	"time"
+	"sync"
 )
 
 // VersionedSnapshot stores the version and gob serialized form of the snapshot
@@ -33,7 +33,7 @@ func (s *VersionedSnapshot) ReadSnapshot(r io.Reader) (interfaces.Snapshoter, er
 		return nil, err
 	}
 	if s.version == 1 {
-		snapShotV1 := SnapshotV1{LastTimes: map[string]time.Time{}}
+		snapShotV1 := SnapshotV1{LastTimes: sync.Map{}}
 		err = snapShotV1.BootstrapFrom(s.Ser)
 		if err != nil {
 			return nil, err

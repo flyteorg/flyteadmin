@@ -56,7 +56,7 @@ var schedulerRunCmd = &cobra.Command{
 
 		clientSet, err := admin.ClientSetBuilder().WithConfig(admin.GetConfig(ctx)).Build(ctx)
 		if err != nil {
-			logger.Infof(ctx, "Flyte native scheduler failed to start due to %v", err)
+			logger.Fatalf(ctx, "Flyte native scheduler failed to start due to %v", err)
 			return
 		}
 		adminServiceClient := clientSet.AdminClient()
@@ -67,7 +67,7 @@ var schedulerRunCmd = &cobra.Command{
 
 		err = schedulerWorkflowExecutor.Run(ctx)
 		if err != nil {
-			logger.Infof(ctx, "Flyte native scheduler failed to start due to %v", err)
+			logger.Fatalf(ctx, "Flyte native scheduler failed to start due to %v", err)
 			return
 		}
 		<-ctx.Done()
