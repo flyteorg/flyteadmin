@@ -3,8 +3,7 @@ package executor
 import (
 	"bytes"
 	"encoding/gob"
-	"github.com/flyteorg/flyteadmin/scheduler/executor/interfaces"
-	"reflect"
+	"sync"
 	"time"
 )
 
@@ -16,46 +15,67 @@ import (
 // a backward compatible way to read old snapshots.
 type SnapshotV1 struct {
 	// LastTimes map of the schedule name to last execution timestamp
-	LastTimes map[string]time.Time
+	LastTimes sync.Map
+}
+
+// lastExecTimeEntry This is only used for gob serialization and deserialization since sync.Map cannot do the same.
+type lastExecTimeEntry struct {
+	LastExecTime       time.Time
+	ScheduleIdentifier string
 }
 
 func (s *SnapshotV1) GetLastExecutionTime(key string) time.Time {
-	return s.LastTimes[key]
+	val, ok := s.LastTimes.Load(key)
+	if !ok {
+		return time.Time{}
+	}
+	return val.(time.Time)
 }
 
 func (s *SnapshotV1) UpdateLastExecutionTime(key string, lastExecTime time.Time) {
-	s.LastTimes[key] = lastExecTime
+	// Load the last exec time for the schedule key and compare if its less than new LastExecTime
+	// and only if it is then update the map
+	prevLastExecTime, ok := s.LastTimes.Load(key)
+	if !ok || prevLastExecTime.(time.Time).Before(lastExecTime){
+		s.LastTimes.Store(key, lastExecTime)
+	}
 }
 
 func (s *SnapshotV1) CreateSnapshot() ([]byte, error) {
 	var b bytes.Buffer
-	err := gob.NewEncoder(&b).Encode(s)
+	lastExecTimeEntries := s.ReadEntries()
+	err := gob.NewEncoder(&b).Encode(lastExecTimeEntries)
 	return b.Bytes(), err
 }
 
+func (s *SnapshotV1) ReadEntries() []lastExecTimeEntry {
+	var lastExecTimeEntries []lastExecTimeEntry
+	s.LastTimes.Range(func(key, value interface{}) bool {
+		lastExecTime := value.(time.Time)
+		scheduleIdentifier := key.(string)
+		lastExecTimeEntries = append(lastExecTimeEntries, lastExecTimeEntry{
+			LastExecTime: lastExecTime, ScheduleIdentifier: scheduleIdentifier,
+		})
+		return true
+	})
+	return lastExecTimeEntries
+}
+
 func (s *SnapshotV1) BootstrapFrom(snapshot []byte) error {
-	return gob.NewDecoder(bytes.NewBuffer(snapshot)).Decode(s)
+	var lastExecTimeEntries [] lastExecTimeEntry
+	err := gob.NewDecoder(bytes.NewBuffer(snapshot)).Decode(&lastExecTimeEntries)
+	if err != nil {
+		return err
+	}
+	for _, entry := range lastExecTimeEntries {
+		s.LastTimes.Store(entry.ScheduleIdentifier, entry.LastExecTime)
+	}
+	return nil
 }
 
 func (s *SnapshotV1) IsEmpty() bool {
-	return len(s.LastTimes) == 0
-}
-
-func (s *SnapshotV1) AreEqual(prevSnapshot interfaces.Snapshoter) bool {
-	if prevSnapshotV1, ok := prevSnapshot.(*SnapshotV1); !ok {
-		return false
-	} else {
-		return reflect.DeepEqual(s.LastTimes, prevSnapshotV1.LastTimes)
-	}
-}
-
-// Clone returns copy of the current in memory snapshot
-func (s *SnapshotV1) Clone() interfaces.Snapshoter {
-	cloned := map[string]time.Time{}
-	for k,v := range s.LastTimes {
-		cloned[k] = v
-	}
-	return &SnapshotV1{cloned}
+	lastExecTimeEntries := s.ReadEntries()
+	return len(lastExecTimeEntries) == 0
 }
 
 func (s *SnapshotV1) GetVersion() int {
