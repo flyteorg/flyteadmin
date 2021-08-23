@@ -1,6 +1,8 @@
 package interfaces
 
-import "time"
+import (
+	"time"
+)
 
 // Snapshoter used by the scheduler for creating, updating and reading snapshots of the schedules.
 type Snapshoter interface {
