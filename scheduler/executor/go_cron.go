@@ -32,7 +32,7 @@ type GoCron struct {
 }
 
 func (g GoCron) DeRegister(ctx context.Context, s models.SchedulableEntity) {
-	nameOfSchedule := GetScheduleName(s)
+	nameOfSchedule := GetScheduleName(ctx, s)
 
 	if g.jobsMap[nameOfSchedule] == nil {
 		logger.Debugf(ctx, "Job doesn't exists in the map for name %v with schedule %+v  and hence already removed", nameOfSchedule, s)
@@ -45,7 +45,7 @@ func (g GoCron) DeRegister(ctx context.Context, s models.SchedulableEntity) {
 }
 
 func (g GoCron) Register(ctx context.Context, s models.SchedulableEntity, registerFuncRef interfaces.RegisterFuncRef) error {
-	nameOfSchedule := GetScheduleName(s)
+	nameOfSchedule := GetScheduleName(ctx, s)
 
 	if g.jobsMap[nameOfSchedule] != nil {
 		logger.Debugf(ctx, "Job already exists in the map for name %v with schedule %+v", nameOfSchedule, s)
@@ -127,6 +127,18 @@ func getFixedRateDurationFromSchedule(unit admin.FixedRateUnit, fixedRateValue u
 	return d, nil
 }
 
+
+func NewGoCron(scope promutils.Scope) interfaces.GoCronWrapper {
+	// Create the new cron scheduler and start it off
+	c := cron.New()
+	c.Start()
+
+	return &GoCron{
+		jobsMap: map[string]interfaces.GoCronJobWrapper{},
+		metrics:         getCronMetrics(scope),
+		c : c,
+	}
+}
 
 func getCronMetrics(scope promutils.Scope) goCronMetrics {
 	return goCronMetrics{

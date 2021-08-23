@@ -70,8 +70,9 @@ var schedulerRunCmd = &cobra.Command{
 			logger.Fatalf(ctx, "Flyte native scheduler failed to start due to %v", err)
 			return
 		}
-		<-ctx.Done()
 		logger.Infof(ctx, "Flyte native scheduler started successfully")
+		<-ctx.Done()
+		logger.Infof(ctx, "Flyte native scheduler shutdown")
 	},
 }
 
