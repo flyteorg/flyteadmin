@@ -54,12 +54,12 @@ func generateBindings(outputs core.VariableMap, nodeID string) []*core.Binding {
 	bindings := make([]*core.Binding, 0, len(outputs.Variables))
 	for _, e := range outputs.Variables {
 		binding := &core.Binding{
-			Var: e.GetKey(),
+			Var: e.GetName(),
 			Binding: &core.BindingData{
 				Value: &core.BindingData_Promise{
 					Promise: &core.OutputReference{
 						NodeId: nodeID,
-						Var:    e.GetKey(),
+						Var:    e.GetName(),
 					},
 				},
 			},

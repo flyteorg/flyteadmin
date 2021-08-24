@@ -73,7 +73,7 @@ func (e *workflowExecutor) resolveKickoffTimeArg(
 		return nil
 	}
 	for _, entry := range launchPlan.Closure.ExpectedInputs.Parameters {
-		if entry.GetKey() == request.KickoffTimeArg {
+		if entry.GetName() == request.KickoffTimeArg {
 			ts, err := ptypes.TimestampProto(request.KickoffTime)
 			if err != nil {
 				logger.Warningf(context.Background(),
@@ -82,7 +82,7 @@ func (e *workflowExecutor) resolveKickoffTimeArg(
 				return errors.NewFlyteAdminErrorf(
 					codes.Internal, "could not serialize kickoff time %+v to timestamp proto", request.KickoffTime)
 			}
-			executionRequest.Inputs.Literals[entry.GetKey()] = &core.Literal{
+			executionRequest.Inputs.Literals[entry.GetName()] = &core.Literal{
 				Value: &core.Literal_Scalar{
 					Scalar: &core.Scalar{
 						Value: &core.Scalar_Primitive{

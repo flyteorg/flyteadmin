@@ -22,10 +22,10 @@ var launchPlanIdentifier = core.Identifier{
 }
 
 var inputs = core.ParameterMap{
-	Parameters: []*core.ParameterMapFieldEntry{
+	Parameters: []*core.ParameterMapEntry{
 		{
-			Key: "foo",
-			Value: &core.Parameter{Var: &core.Variable{
+			Name: "foo",
+			Var: &core.Parameter{Var: &core.Variable{
 				Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 			},
 				Behavior: &core.Parameter_Default{
@@ -35,10 +35,10 @@ var inputs = core.ParameterMap{
 	},
 }
 var outputs = core.VariableMap{
-	Variables: []*core.VariableMapFieldEntry{
+	Variables: []*core.VariableMapEntry{
 		{
-			Key:   "foo",
-			Value: &core.Variable{Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}}},
+			Name: "foo",
+			Var:  &core.Variable{Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}}},
 		},
 	},
 }
@@ -67,14 +67,14 @@ func TestGetId(t *testing.T) {
 func TestGetExpectedInputs(t *testing.T) {
 	provider := getProviderForTest(t)
 	assert.Equal(t, 1, len((*provider.GetExpectedInputs()).Parameters))
-	assert.NotNil(t, (*provider.GetExpectedInputs()).Parameters[0].GetValue().Var.Type.GetSimple())
-	assert.EqualValues(t, "STRING", (*provider.GetExpectedInputs()).Parameters[0].GetValue().Var.Type.GetSimple().String())
-	assert.NotNil(t, (*provider.GetExpectedInputs()).Parameters[0].GetValue().GetDefault())
+	assert.NotNil(t, (*provider.GetExpectedInputs()).Parameters[0].GetVar().Var.Type.GetSimple())
+	assert.EqualValues(t, "STRING", (*provider.GetExpectedInputs()).Parameters[0].GetVar().Var.Type.GetSimple().String())
+	assert.NotNil(t, (*provider.GetExpectedInputs()).Parameters[0].GetVar().GetDefault())
 }
 
 func TestGetExpectedOutputs(t *testing.T) {
 	provider := getProviderForTest(t)
 	assert.Equal(t, 1, len(outputs.Variables))
-	assert.EqualValues(t, outputs.Variables[0].GetValue().GetType().GetType(),
-		provider.GetExpectedOutputs().Variables[0].GetValue().GetType().GetType())
+	assert.EqualValues(t, outputs.Variables[0].GetVar().GetType().GetType(),
+		provider.GetExpectedOutputs().Variables[0].GetVar().GetType().GetType())
 }

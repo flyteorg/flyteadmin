@@ -13,8 +13,8 @@
         "inputs": {
           "variables": [
             {
-              "key": "triggered_date",
-              "value": {
+              "name": "triggered_date",
+              "var": {
                 "type": {
                   "simple": "DATETIME"
                 }
@@ -432,8 +432,8 @@
           "inputs": {
             "variables": [
               {
-                "key": "value_to_print",
-                "value": {
+                "name": "value_to_print",
+                "var": {
                   "type": {
                     "simple": "INTEGER"
                   }
@@ -444,8 +444,8 @@
           "outputs": {
             "variables": [
               {
-                "key": "out",
-                "value": {
+                "name": "out",
+                "var": {
                   "type": {
                     "simple": "INTEGER"
                   }
@@ -503,16 +503,16 @@
           "inputs": {
             "variables": [
               {
-                "key": "date_triggered",
-                "value": {
+                "name": "date_triggered",
+                "var": {
                   "type": {
                     "simple": "DATETIME"
                   }
                 }
               },
               {
-                "key": "value_to_print",
-                "value": {
+                "name": "value_to_print",
+                "var": {
                   "type": {
                     "simple": "INTEGER"
                   }
@@ -573,32 +573,32 @@
           "inputs": {
             "variables": [
               {
-                "key": "value1_to_add",
-                "value": {
+                "name": "value1_to_add",
+                "var": {
                   "type": {
                     "simple": "INTEGER"
                   }
                 }
               },
               {
-                "key": "value2_to_add",
-                "value": {
+                "name": "value2_to_add",
+                "var": {
                   "type": {
                     "simple": "INTEGER"
                   }
                 }
               },
               {
-                "key": "value3_to_add",
-                "value": {
+                "name": "value3_to_add",
+                "var": {
                   "type": {
                     "simple": "INTEGER"
                   }
                 }
               },
               {
-                "key": "value4_to_add",
-                "value": {
+                "name": "value4_to_add",
+                "var": {
                   "type": {
                     "simple": "INTEGER"
                   }
@@ -609,8 +609,8 @@
           "outputs": {
             "variables": [
               {
-                "key": "out",
-                "value": {
+                "name": "out",
+                "var": {
                   "type": {
                     "simple": "INTEGER"
                   }
@@ -668,16 +668,16 @@
           "inputs": {
             "variables": [
               {
-                "key": "value1_to_print",
-                "value": {
+                "name": "value1_to_print",
+                "var": {
                   "type": {
                     "simple": "INTEGER"
                   }
                 }
               },
               {
-                "key": "value2_to_print",
-                "value": {
+                "name": "value2_to_print",
+                "var": {
                   "type": {
                     "simple": "INTEGER"
                   }
@@ -688,8 +688,8 @@
           "outputs": {
             "variables": [
               {
-                "key": "out",
-                "value": {
+                "name": "out",
+                "var": {
                   "type": {
                     "simple": "INTEGER"
                   }

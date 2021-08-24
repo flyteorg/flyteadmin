@@ -17,18 +17,18 @@ import (
 var active = int32(admin.LaunchPlanState_ACTIVE)
 
 var expectedInputs = &core.ParameterMap{
-	Parameters: []*core.ParameterMapFieldEntry{
+	Parameters: []*core.ParameterMapEntry{
 		{
-			Key:   "foo",
-			Value: &core.Parameter{},
+			Name: "foo",
+			Var:  &core.Parameter{},
 		},
 	},
 }
 var expectedOutputs = &core.VariableMap{
-	Variables: []*core.VariableMapFieldEntry{
+	Variables: []*core.VariableMapEntry{
 		{
-			Key:   "baz",
-			Value: &core.Variable{},
+			Name: "baz",
+			Var:  &core.Variable{},
 		},
 	},
 }

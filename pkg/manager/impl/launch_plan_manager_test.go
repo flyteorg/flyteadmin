@@ -87,7 +87,7 @@ func TestCreateLaunchPlan(t *testing.T) {
 	var createCalled bool
 	repository.LaunchPlanRepo().(*repositoryMocks.MockLaunchPlanRepo).SetCreateCallback(
 		func(input models.LaunchPlan) error {
-			assert.Equal(t, []byte{0x8e, 0x95, 0x76, 0x48, 0x16, 0x1d, 0x76, 0xce, 0xd1, 0x51, 0x18, 0x2b, 0x5, 0xab, 0x37, 0xf0, 0xc5, 0xec, 0x1b, 0xd7, 0xb0, 0x9, 0xcd, 0xc7, 0x83, 0x55, 0x1, 0xbf, 0x0, 0x91, 0x47, 0xc2}, input.Digest)
+			assert.Equal(t, []byte{0xcb, 0xb, 0xa7, 0x29, 0x9a, 0x59, 0xa1, 0x92, 0x12, 0x67, 0xed, 0xde, 0xad, 0x75, 0xf3, 0x65, 0x53, 0x23, 0x97, 0x38, 0x41, 0xdb, 0xe9, 0x64, 0xd6, 0xbe, 0xf7, 0xd0, 0x6d, 0xb4, 0xb, 0x4e}, input.Digest)
 			createCalled = true
 			return nil
 		})
@@ -265,10 +265,10 @@ func TestCreateLaunchPlanInCompatibleInputs(t *testing.T) {
 	lpManager := NewLaunchPlanManager(repository, getMockConfigForLpTest(), mockScheduler, mockScope.NewTestScope())
 	request := testutils.GetLaunchPlanRequest()
 	request.Spec.DefaultInputs = &core.ParameterMap{
-		Parameters: []*core.ParameterMapFieldEntry{
+		Parameters: []*core.ParameterMapEntry{
 			{
-				Key: "boo",
-				Value: &core.Parameter{
+				Name: "boo",
+				Var: &core.Parameter{
 					Var: &core.Variable{
 						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 					},
@@ -296,10 +296,10 @@ func TestCreateLaunchPlanValidateCreate(t *testing.T) {
 		assert.Equal(t, version, launchPlan.Id.Version)
 		assert.EqualValues(t, testutils.GetLaunchPlanRequest().Spec, launchPlan.Spec)
 		expectedInputs := &core.ParameterMap{
-			Parameters: []*core.ParameterMapFieldEntry{
+			Parameters: []*core.ParameterMapEntry{
 				{
-					Key: "foo",
-					Value: &core.Parameter{
+					Name: "foo",
+					Var: &core.Parameter{
 						Var: &core.Variable{
 							Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 						},
@@ -352,7 +352,7 @@ func TestCreateLaunchPlanNoWorkflowInterface(t *testing.T) {
 		assert.Equal(t, version, launchPlan.Id.Version)
 		expectedLaunchPlanSpec := testutils.GetLaunchPlanRequest().Spec
 		expectedLaunchPlanSpec.FixedInputs = nil
-		expectedLaunchPlanSpec.DefaultInputs.Parameters = []*core.ParameterMapFieldEntry{}
+		expectedLaunchPlanSpec.DefaultInputs.Parameters = []*core.ParameterMapEntry{}
 		assert.EqualValues(t, expectedLaunchPlanSpec.String(), launchPlan.Spec.String())
 		assert.Empty(t, launchPlan.Closure.ExpectedInputs)
 		return nil

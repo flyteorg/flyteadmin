@@ -59,10 +59,10 @@ func validateSchedule(request admin.LaunchPlanCreateRequest, expectedInputs *cor
 	schedule := request.GetSpec().GetEntityMetadata().GetSchedule()
 	if schedule.GetCronExpression() != "" || schedule.GetRate() != nil {
 		for _, e := range expectedInputs.Parameters {
-			if e.GetValue().GetRequired() && e.GetKey() != schedule.GetKickoffTimeInputArg() {
+			if e.GetVar().GetRequired() && e.GetName() != schedule.GetKickoffTimeInputArg() {
 				return errors.NewFlyteAdminErrorf(
 					codes.InvalidArgument,
-					"Cannot create a launch plan with a schedule if there is an unbound required input. [%v] is required", e.GetKey())
+					"Cannot create a launch plan with a schedule if there is an unbound required input. [%v] is required", e.GetName())
 			}
 		}
 		if schedule.GetKickoffTimeInputArg() != "" {
@@ -88,7 +88,7 @@ func checkAndFetchExpectedInputForLaunchPlan(
 	var fixedInputMap map[string]*core.Literal
 	if defaultInputs != nil && len(defaultInputs.GetParameters()) > 0 {
 		for _, e := range defaultInputs.GetParameters() {
-			defaultInputMap.Set(e.GetKey(), e.GetValue())
+			defaultInputMap.Set(e.GetName(), e.GetVar())
 		}
 	}
 
@@ -160,29 +160,29 @@ func checkAndFetchExpectedInputForLaunchPlan(
 	}, nil
 }
 
-func parameterMapEntriesToMap(entries []*core.ParameterMapFieldEntry) (parameterMap map[string]*core.Parameter) {
+func parameterMapEntriesToMap(entries []*core.ParameterMapEntry) (parameterMap map[string]*core.Parameter) {
 	parameterMap = make(map[string]*core.Parameter, len(entries))
 	for _, v := range entries {
-		parameterMap[v.GetKey()] = v.GetValue()
+		parameterMap[v.GetName()] = v.GetVar()
 	}
 	return
 }
 
-func variableMapEntriesToMap(entries []*core.VariableMapFieldEntry) (variableMap map[string]*core.Variable) {
+func variableMapEntriesToMap(entries []*core.VariableMapEntry) (variableMap map[string]*core.Variable) {
 	variableMap = make(map[string]*core.Variable, len(entries))
 	for _, v := range entries {
-		variableMap[v.GetKey()] = v.GetValue()
+		variableMap[v.GetName()] = v.GetVar()
 	}
 	return
 }
 
-func parameterOrderedMapToList(orderedMap *orderedmap.OrderedMap) []*core.ParameterMapFieldEntry {
-	l := make([]*core.ParameterMapFieldEntry, len(orderedMap.Keys()))
+func parameterOrderedMapToList(orderedMap *orderedmap.OrderedMap) []*core.ParameterMapEntry {
+	l := make([]*core.ParameterMapEntry, len(orderedMap.Keys()))
 	for i, k := range orderedMap.Keys() {
 		v, _ := orderedMap.Get(k)
-		l[i] = &core.ParameterMapFieldEntry{
-			Key:   k,
-			Value: v.(*core.Parameter),
+		l[i] = &core.ParameterMapEntry{
+			Name: k,
+			Var:  v.(*core.Parameter),
 		}
 	}
 	return l

@@ -47,10 +47,10 @@ func getWorkflowCreateRequest() admin.WorkflowCreateRequest {
 				},
 				Interface: &core.TypedInterface{
 					Inputs: &core.VariableMap{
-						Variables: []*core.VariableMapFieldEntry{
+						Variables: []*core.VariableMapEntry{
 							{
-								Key: "foo",
-								Value: &core.Variable{
+								Name: "foo",
+								Var: &core.Variable{
 									Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 								},
 							},
@@ -96,10 +96,10 @@ func getLaunchPlanCreateRequest(workflowIdentifier *core.Identifier) admin.Launc
 		Spec: &admin.LaunchPlanSpec{
 			WorkflowId: workflowIdentifier,
 			DefaultInputs: &core.ParameterMap{
-				Parameters: []*core.ParameterMapFieldEntry{
+				Parameters: []*core.ParameterMapEntry{
 					{
-						Key: "foo",
-						Value: &core.Parameter{
+						Name: "foo",
+						Var: &core.Parameter{
 							Var: &core.Variable{
 								Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 							},
@@ -864,7 +864,7 @@ func testListLaunchPlanIdentifiersGrpc(t *testing.T) {
 		Limit:   10,
 		SortBy: &admin.Sort{
 			Direction: admin.Sort_DESCENDING,
-			Key:       "name",
+			Name:      "name",
 		},
 	})
 	assert.Nil(t, err)
@@ -876,7 +876,7 @@ func testListLaunchPlanIdentifiersGrpc(t *testing.T) {
 		Limit:   10,
 		SortBy: &admin.Sort{
 			Direction: admin.Sort_ASCENDING,
-			Key:       "name",
+			Name:      "name",
 		},
 	})
 	assert.Nil(t, err)

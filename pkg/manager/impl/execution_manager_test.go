@@ -3103,10 +3103,10 @@ func TestCreateSingleTaskExecution(t *testing.T) {
 						},
 						Interface: &core.TypedInterface{
 							Inputs: &core.VariableMap{
-								Variables: []*core.VariableMapFieldEntry{
+								Variables: []*core.VariableMapEntry{
 									{
-										Key: "a",
-										Value: &core.Variable{
+										Name: "a",
+										Var: &core.Variable{
 											Type: &core.LiteralType{
 												Type: &core.LiteralType_Simple{
 													Simple: core.SimpleType_INTEGER,
@@ -3117,10 +3117,10 @@ func TestCreateSingleTaskExecution(t *testing.T) {
 								},
 							},
 							Outputs: &core.VariableMap{
-								Variables: []*core.VariableMapFieldEntry{
+								Variables: []*core.VariableMapEntry{
 									{
-										Key: "b",
-										Value: &core.Variable{
+										Name: "b",
+										Var: &core.Variable{
 											Type: &core.LiteralType{
 												Type: &core.LiteralType_Simple{
 													Simple: core.SimpleType_INTEGER,

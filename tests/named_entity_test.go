@@ -121,7 +121,7 @@ func testListNamedEntityGrpc(t *testing.T) {
 			Limit:        20,
 			SortBy: &admin.Sort{
 				Direction: admin.Sort_ASCENDING,
-				Key:       "name",
+				Name:      "name",
 			},
 		})
 		assert.NoError(t, err)
@@ -315,7 +315,7 @@ func TestUpdateNamedEntityState(t *testing.T) {
 		Limit:        20,
 		SortBy: &admin.Sort{
 			Direction: admin.Sort_ASCENDING,
-			Key:       "name",
+			Name:      "name",
 		},
 		Filters: fmt.Sprintf("eq(named_entity_metadata.state, %v)", int(admin.NamedEntityState_NAMED_ENTITY_ACTIVE)),
 	})
@@ -344,7 +344,7 @@ func TestUpdateNamedEntityState(t *testing.T) {
 		Limit:        20,
 		SortBy: &admin.Sort{
 			Direction: admin.Sort_ASCENDING,
-			Key:       "name",
+			Name:      "name",
 		},
 		Filters: fmt.Sprintf("eq(named_entity_metadata.state, %v)", int(admin.NamedEntityState_NAMED_ENTITY_ACTIVE)),
 	})
@@ -358,7 +358,7 @@ func TestUpdateNamedEntityState(t *testing.T) {
 		Limit:        20,
 		SortBy: &admin.Sort{
 			Direction: admin.Sort_ASCENDING,
-			Key:       "name",
+			Name:      "name",
 		},
 		Filters: fmt.Sprintf("eq(named_entity_metadata.state, %v)", int(admin.NamedEntityState_NAMED_ENTITY_ARCHIVED)),
 	})

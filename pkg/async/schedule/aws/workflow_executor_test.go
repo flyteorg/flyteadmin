@@ -77,10 +77,10 @@ func TestResolveKickoffTimeArg(t *testing.T) {
 	launchPlan := admin.LaunchPlan{
 		Closure: &admin.LaunchPlanClosure{
 			ExpectedInputs: &core.ParameterMap{
-				Parameters: []*core.ParameterMapFieldEntry{
+				Parameters: []*core.ParameterMapEntry{
 					{
-						Key:   testKickoffTime,
-						Value: &core.Parameter{},
+						Name: testKickoffTime,
+						Var:  &core.Parameter{},
 					},
 				},
 			},
@@ -110,10 +110,10 @@ func TestResolveKickoffTimeArg_NoKickoffTimeArg(t *testing.T) {
 	launchPlan := admin.LaunchPlan{
 		Closure: &admin.LaunchPlanClosure{
 			ExpectedInputs: &core.ParameterMap{
-				Parameters: []*core.ParameterMapFieldEntry{
+				Parameters: []*core.ParameterMapEntry{
 					{
-						Key:   "foo",
-						Value: &core.Parameter{},
+						Name: "foo",
+						Var:  &core.Parameter{},
 					},
 				},
 			},
@@ -279,10 +279,10 @@ func TestRun(t *testing.T) {
 						},
 						Closure: &admin.LaunchPlanClosure{
 							ExpectedInputs: &core.ParameterMap{
-								Parameters: []*core.ParameterMapFieldEntry{
+								Parameters: []*core.ParameterMapEntry{
 									{
-										Key:   testKickoffTime,
-										Value: &core.Parameter{},
+										Name: testKickoffTime,
+										Var:  &core.Parameter{},
 									},
 								},
 							},

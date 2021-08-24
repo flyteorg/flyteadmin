@@ -75,10 +75,10 @@ func insertWorkflowsForTests(t *testing.T, client service.AdminServiceClient) {
 								Id: &identifier,
 								Interface: &core.TypedInterface{
 									Inputs: &core.VariableMap{
-										Variables: []*core.VariableMapFieldEntry{
+										Variables: []*core.VariableMapEntry{
 											{
-												Key: "foo",
-												Value: &core.Variable{
+												Name: "foo",
+												Var: &core.Variable{
 													Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 												},
 											},
@@ -139,10 +139,10 @@ func insertLaunchPlansForTests(t *testing.T, client service.AdminServiceClient) 
 						Spec: &admin.LaunchPlanSpec{
 							WorkflowId: &workflowIdentifier,
 							DefaultInputs: &core.ParameterMap{
-								Parameters: []*core.ParameterMapFieldEntry{
+								Parameters: []*core.ParameterMapEntry{
 									{
-										Key: "foo",
-										Value: &core.Parameter{
+										Name: "foo",
+										Var: &core.Parameter{
 											Var: &core.Variable{
 												Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 											},

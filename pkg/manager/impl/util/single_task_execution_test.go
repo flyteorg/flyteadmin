@@ -35,14 +35,14 @@ func TestGenerateWorkflowNameFromTask(t *testing.T) {
 func TestGenerateBindings(t *testing.T) {
 	nodeID := "nodeID"
 	outputs := core.VariableMap{
-		Variables: []*core.VariableMapFieldEntry{
+		Variables: []*core.VariableMapEntry{
 			{
-				Key:   "output1",
-				Value: &core.Variable{},
+				Name: "output1",
+				Var:  &core.Variable{},
 			},
 			{
-				Key:   "output2",
-				Value: &core.Variable{},
+				Name: "output2",
+				Var:  &core.Variable{},
 			},
 		},
 	}
@@ -134,10 +134,10 @@ func TestCreateOrGetWorkflowModel(t *testing.T) {
 					Id: taskIdentifier,
 					Interface: &core.TypedInterface{
 						Inputs: &core.VariableMap{
-							Variables: []*core.VariableMapFieldEntry{
+							Variables: []*core.VariableMapEntry{
 								{
-									Key: "an_int",
-									Value: &core.Variable{Type: &core.LiteralType{
+									Name: "an_int",
+									Var: &core.Variable{Type: &core.LiteralType{
 										Type: &core.LiteralType_Simple{
 											Simple: core.SimpleType_INTEGER,
 										},
@@ -146,10 +146,10 @@ func TestCreateOrGetWorkflowModel(t *testing.T) {
 							},
 						},
 						Outputs: &core.VariableMap{
-							Variables: []*core.VariableMapFieldEntry{
+							Variables: []*core.VariableMapEntry{
 								{
-									Key: "an_output",
-									Value: &core.Variable{Type: &core.LiteralType{
+									Name: "an_output",
+									Var: &core.Variable{Type: &core.LiteralType{
 										Type: &core.LiteralType_Simple{
 											Simple: core.SimpleType_DURATION,
 										},
@@ -196,10 +196,10 @@ func TestCreateOrGetLaunchPlan(t *testing.T) {
 
 	workflowInterface := &core.TypedInterface{
 		Inputs: &core.VariableMap{
-			Variables: []*core.VariableMapFieldEntry{
+			Variables: []*core.VariableMapEntry{
 				{
-					Key: "an_int",
-					Value: &core.Variable{Type: &core.LiteralType{
+					Name: "an_int",
+					Var: &core.Variable{Type: &core.LiteralType{
 						Type: &core.LiteralType_Simple{
 							Simple: core.SimpleType_INTEGER,
 						},
@@ -208,10 +208,10 @@ func TestCreateOrGetLaunchPlan(t *testing.T) {
 			},
 		},
 		Outputs: &core.VariableMap{
-			Variables: []*core.VariableMapFieldEntry{
+			Variables: []*core.VariableMapEntry{
 				{
-					Key: "an_output",
-					Value: &core.Variable{Type: &core.LiteralType{
+					Name: "an_output",
+					Var: &core.Variable{Type: &core.LiteralType{
 						Type: &core.LiteralType_Simple{
 							Simple: core.SimpleType_DURATION,
 						},

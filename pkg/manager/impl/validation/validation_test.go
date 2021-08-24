@@ -154,10 +154,10 @@ func TestValidateListTaskRequest_MissingLimit(t *testing.T) {
 
 func TestValidateParameterMap(t *testing.T) {
 	exampleMap := core.ParameterMap{
-		Parameters: []*core.ParameterMapFieldEntry{
+		Parameters: []*core.ParameterMapEntry{
 			{
-				Key: "foo",
-				Value: &core.Parameter{
+				Name: "foo",
+				Var: &core.Parameter{
 					Var: &core.Variable{
 						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 					},
@@ -172,10 +172,10 @@ func TestValidateParameterMap(t *testing.T) {
 	assert.NoError(t, err)
 
 	exampleMap = core.ParameterMap{
-		Parameters: []*core.ParameterMapFieldEntry{
+		Parameters: []*core.ParameterMapEntry{
 			{
-				Key: "foo",
-				Value: &core.Parameter{
+				Name: "foo",
+				Var: &core.Parameter{
 					Var: &core.Variable{
 						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 					},
@@ -188,10 +188,10 @@ func TestValidateParameterMap(t *testing.T) {
 	assert.Error(t, err)
 
 	exampleMap = core.ParameterMap{
-		Parameters: []*core.ParameterMapFieldEntry{
+		Parameters: []*core.ParameterMapEntry{
 			{
-				Key: "foo",
-				Value: &core.Parameter{
+				Name: "foo",
+				Var: &core.Parameter{
 					Var: &core.Variable{
 						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 					},
@@ -206,10 +206,10 @@ func TestValidateParameterMap(t *testing.T) {
 	assert.NoError(t, err)
 
 	exampleMap = core.ParameterMap{
-		Parameters: []*core.ParameterMapFieldEntry{
+		Parameters: []*core.ParameterMapEntry{
 			{
-				Key: "foo",
-				Value: &core.Parameter{
+				Name: "foo",
+				Var: &core.Parameter{
 					Var: &core.Variable{
 						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 					},

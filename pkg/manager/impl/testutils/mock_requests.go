@@ -96,20 +96,20 @@ func GetWorkflowRequest() admin.WorkflowCreateRequest {
 				Id: &identifier,
 				Interface: &core.TypedInterface{
 					Inputs: &core.VariableMap{
-						Variables: []*core.VariableMapFieldEntry{
+						Variables: []*core.VariableMapEntry{
 							{
-								Key: "foo",
-								Value: &core.Variable{
+								Name: "foo",
+								Var: &core.Variable{
 									Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 								},
 							},
 						},
 					},
 					Outputs: &core.VariableMap{
-						Variables: []*core.VariableMapFieldEntry{
+						Variables: []*core.VariableMapEntry{
 							{
-								Key: "bar",
-								Value: &core.Variable{
+								Name: "bar",
+								Var: &core.Variable{
 									Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 								},
 							},
@@ -147,10 +147,10 @@ func GetLaunchPlanRequest() admin.LaunchPlanCreateRequest {
 				Version:      "version",
 			},
 			DefaultInputs: &core.ParameterMap{
-				Parameters: []*core.ParameterMapFieldEntry{
+				Parameters: []*core.ParameterMapEntry{
 					{
-						Key: "foo",
-						Value: &core.Parameter{
+						Name: "foo",
+						Var: &core.Parameter{
 							Var: &core.Variable{
 								Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 							},
@@ -241,16 +241,16 @@ func GetSampleWorkflowSpecForTest() admin.WorkflowSpec {
 		Template: &core.WorkflowTemplate{
 			Interface: &core.TypedInterface{
 				Inputs: &core.VariableMap{
-					Variables: []*core.VariableMapFieldEntry{
+					Variables: []*core.VariableMapEntry{
 						{
-							Key: "foo",
-							Value: &core.Variable{
+							Name: "foo",
+							Var: &core.Variable{
 								Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 							},
 						},
 						{
-							Key: "bar",
-							Value: &core.Variable{
+							Name: "bar",
+							Var: &core.Variable{
 								Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 							},
 						},
@@ -271,10 +271,10 @@ func GetSampleLpSpecForTest() admin.LaunchPlanSpec {
 			Version:      "version",
 		},
 		DefaultInputs: &core.ParameterMap{
-			Parameters: []*core.ParameterMapFieldEntry{
+			Parameters: []*core.ParameterMapEntry{
 				{
-					Key: "foo",
-					Value: &core.Parameter{
+					Name: "foo",
+					Var: &core.Parameter{
 						Var: &core.Variable{
 							Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 						},
