@@ -129,8 +129,6 @@ func (p Provider) ValidateAccessToken(ctx context.Context, expectedAudience, tok
 
 	claimsRaw := parsedToken.Claims.(jwtgo.MapClaims)
 
-	verifyClaims(sets.NewString(expectedAudience), claimsRaw)
-
 	return verifyClaims(sets.NewString(expectedAudience), claimsRaw)
 }
 
