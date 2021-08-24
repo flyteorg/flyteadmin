@@ -25,6 +25,7 @@ import (
 type ResourceServer struct {
 	signatureVerifier oidc.KeySet
 	allowedAudience   []string
+	requiredScopes    []string
 }
 
 func (r ResourceServer) ValidateAccessToken(ctx context.Context, expectedAudience, tokenStr string) (interfaces.IdentityContext, error) {
@@ -36,6 +37,16 @@ func (r ResourceServer) ValidateAccessToken(ctx context.Context, expectedAudienc
 	claimsRaw := map[string]interface{}{}
 	if err = json.Unmarshal(raw, &claimsRaw); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal user info claim into UserInfo type. Error: %w", err)
+	}
+
+	idCtx, err := verifyClaims(sets.NewString(append(r.allowedAudience, expectedAudience)...), claimsRaw)
+	if err != nil {
+		return nil, err
+	}
+
+	err = verifyScopes(sets.NewString(r.requiredScopes...), idCtx.Scopes())
+	if err != nil {
+		return nil, err
 	}
 
 	return verifyClaims(sets.NewString(append(r.allowedAudience, expectedAudience)...), claimsRaw)
@@ -116,5 +127,6 @@ func NewOAuth2ResourceServer(ctx context.Context, cfg authConfig.ExternalAuthori
 	return ResourceServer{
 		signatureVerifier: verifier,
 		allowedAudience:   cfg.AllowedAudience,
+		requiredScopes:    cfg.RequiredScopes,
 	}, nil
 }

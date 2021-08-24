@@ -4,9 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/secretmanager"
 
 	authConfig "github.com/flyteorg/flyteadmin/auth/config"
@@ -76,21 +73,6 @@ func init() {
 		contextutils.TaskTypeKey, common.RuntimeTypeKey, common.RuntimeVersionKey)
 }
 
-func blanketAuthorization(ctx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (
-	resp interface{}, err error) {
-
-	identityContext := auth.IdentityContextFromContext(ctx)
-	if identityContext.IsEmpty() {
-		return handler(ctx, req)
-	}
-
-	if !identityContext.Scopes().Has(auth.ScopeAll) {
-		return nil, status.Errorf(codes.Unauthenticated, "authenticated user doesn't have required scope")
-	}
-
-	return handler(ctx, req)
-}
-
 // Creates a new gRPC Server with all the configuration
 func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authCtx interfaces.AuthenticationContext,
 	opts ...grpc.ServerOption) (*grpc.Server, error) {
@@ -102,7 +84,6 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authCtx interf
 			auth.GetAuthenticationCustomMetadataInterceptor(authCtx),
 			grpcauth.UnaryServerInterceptor(auth.GetAuthenticationInterceptor(authCtx)),
 			auth.AuthenticationLoggingInterceptor,
-			blanketAuthorization,
 		)
 	} else {
 		logger.Infof(ctx, "Creating gRPC server without authentication")

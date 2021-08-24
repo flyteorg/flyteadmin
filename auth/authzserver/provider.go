@@ -128,6 +128,9 @@ func (p Provider) ValidateAccessToken(ctx context.Context, expectedAudience, tok
 	}
 
 	claimsRaw := parsedToken.Claims.(jwtgo.MapClaims)
+
+	verifyClaims(sets.NewString(expectedAudience), claimsRaw)
+
 	return verifyClaims(sets.NewString(expectedAudience), claimsRaw)
 }
 
@@ -171,6 +174,17 @@ func verifyClaims(expectedAudience sets.String, claimsRaw map[string]interface{}
 	}
 
 	return auth.NewIdentityContext(claims.Audience[0], claims.Subject, clientID, claims.IssuedAt, scopes, userInfo), nil
+}
+
+func verifyScopes(requiredScopes sets.String, actualScopes sets.String) error {
+	if actualScopes.Has(auth.ScopeAll) {
+		return nil
+	}
+	missingScopes := requiredScopes.Difference(actualScopes)
+	if len(missingScopes) == 0 {
+		return nil
+	}
+	return fmt.Errorf("missing the following required scopes: %v", missingScopes)
 }
 
 // NewProvider creates a new OAuth2 Provider that is able to do OAuth 2-legged and 3-legged flows. It'll lookup

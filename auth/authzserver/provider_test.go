@@ -237,3 +237,26 @@ func Test_verifyClaims(t *testing.T) {
 		assert.Equal(t, "123", identityCtx.UserID())
 	})
 }
+
+func Test_verify_scopes(t *testing.T) {
+
+	t.Run("No required scope", func(t *testing.T) {
+		err := verifyScopes(sets.String{}, sets.String{})
+		assert.NoError(t, err)
+	})
+
+	t.Run("all is all we need", func(t *testing.T) {
+		err := verifyScopes(sets.NewString("a"), sets.NewString("all"))
+		assert.NoError(t, err)
+	})
+
+	t.Run("Have all required scopes", func(t *testing.T) {
+		err := verifyScopes(sets.NewString("a", "b"), sets.NewString("a", "b", "c"))
+		assert.NoError(t, err)
+	})
+
+	t.Run("Missing required scopes", func(t *testing.T) {
+		err := verifyScopes(sets.NewString("a", "b"), sets.NewString("a", "c"))
+		assert.NotNil(t, err)
+	})
+}
