@@ -28,7 +28,7 @@ func TestShouldFetchData(t *testing.T) {
 	})
 	t.Run("no config", func(t *testing.T) {
 		assert.True(t, ShouldFetchData(&interfaces.RemoteDataConfig{
-			Scheme:         common.None,
+			Scheme: common.None,
 		}, admin.UrlBlob{
 			Bytes: 200,
 		}))
