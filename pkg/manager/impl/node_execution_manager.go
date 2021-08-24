@@ -222,7 +222,7 @@ func (m *NodeExecutionManager) uploadDynamicWorkflowClosure(
 
 func (m *NodeExecutionManager) CreateNodeEvent(ctx context.Context, request admin.NodeExecutionEventRequest) (
 	*admin.NodeExecutionEventResponse, error) {
-	if err := validation.ValidateNodeExecutionEventRequest(&request); err != nil {
+	if err := validation.ValidateNodeExecutionEventRequest(&request, m.config.ApplicationConfiguration().GetRemoteDataConfig().MaxSizeInBytes); err != nil {
 		logger.Debugf(ctx, "CreateNodeEvent called with invalid identifier [%+v]: %v", request.Event.Id, err)
 	}
 	ctx = getNodeExecutionContext(ctx, request.Event.Id)

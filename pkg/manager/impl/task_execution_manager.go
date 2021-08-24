@@ -122,6 +122,10 @@ func (m *TaskExecutionManager) updateTaskExecutionModelState(
 
 func (m *TaskExecutionManager) CreateTaskExecutionEvent(ctx context.Context, request admin.TaskExecutionEventRequest) (
 	*admin.TaskExecutionEventResponse, error) {
+	if err := validation.ValidateTaskExecutionRequest(request, m.config.ApplicationConfiguration().GetRemoteDataConfig().MaxSizeInBytes); err != nil {
+		return nil, err
+	}
+
 	// Get the parent node execution, if none found a MissingEntityError will be returned
 	nodeExecutionID := request.Event.ParentNodeExecutionId
 	taskExecutionID := core.TaskExecutionIdentifier{

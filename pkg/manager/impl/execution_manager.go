@@ -1134,7 +1134,7 @@ func (m *ExecutionManager) emitOverallWorkflowExecutionTime(
 
 func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admin.WorkflowExecutionEventRequest) (
 	*admin.WorkflowExecutionEventResponse, error) {
-	err := validation.ValidateCreateWorkflowEventRequest(request)
+	err := validation.ValidateCreateWorkflowEventRequest(request, m.config.ApplicationConfiguration().GetRemoteDataConfig().MaxSizeInBytes)
 	if err != nil {
 		logger.Debugf(ctx, "received invalid CreateWorkflowEventRequest [%s]: %v", request.RequestId, err)
 		return nil, err
