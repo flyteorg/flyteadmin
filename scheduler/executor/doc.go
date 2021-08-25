@@ -41,7 +41,7 @@
 //			This might be drawback in case catch up runs for a long time and hasn't been snapshotted.(reassess)
 //		c) GOCronWrapper :
 //			This component is responsible for locking in the time for the scheduled job to be invoked and adding those
-//			to the cron scheduler. Right now this uses https://github.com/robfig/cron framework for fixed rate and cron
+//			to the cron scheduler. Right now this uses https://github.com/robfig/cron/v3 framework for fixed rate and cron
 // 			schedules
 // 			The scheduler provides ability to schedule a function with scheduleTime parameter. This is useful to know
 //			once the scheduled function is invoked that what scheduled time is this invocation for.

@@ -26,9 +26,11 @@ jobs:
           docker build -t flyteorg/${{ github.event.repository.name }}:builder --target builder --cache-from=flyteorg/${{ github.event.repository.name }}:builder .
           docker build -t flyteorg/${{ github.event.repository.name }}:latest --cache-from=flyteorg/${{ github.event.repository.name }}:builder .
 
-      - name: Tag and cache docker image
-        run: mkdir -p /tmp/tmp/docker-images && docker save flyteorg/${{ github.event.repository.name }}:builder -o /tmp/tmp/docker-images/snapshot-builder.tar && docker save flyteorg/${{ github.event.repository.name }}:latest -o /tmp/tmp/docker-images/snapshot.tar
+          docker build -t flyteorg/flytescheduler:builder . -f Dockerfile.scheduler
 
+      - name: Tag and cache docker image
+        run:  mkdir -p /tmp/tmp/docker-images && docker save flyteorg/${{ github.event.repository.name }}:builder -o /tmp/tmp/docker-images/snapshot-builder.tar && docker save flyteorg/${{ github.event.repository.name }}:latest -o /tmp/tmp/docker-images/snapshot.tar
+         
   endtoend:
     name: End to End tests
     runs-on: ubuntu-latest
