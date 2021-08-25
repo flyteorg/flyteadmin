@@ -10,7 +10,7 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/robfig/cron"
+	"github.com/robfig/cron/v3"
 	"runtime/debug"
 	"runtime/pprof"
 	"time"

@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/flyteorg/flyteadmin/scheduler/repositories/models"
 	"github.com/flyteorg/flytestdlib/logger"
-	"github.com/robfig/cron"
+	"github.com/robfig/cron/v3"
 )
 
 type GoCronJobWrapper struct {
