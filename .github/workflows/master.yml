@@ -29,8 +29,6 @@ jobs:
           docker build -t flyteorg/${{ github.event.repository.name }}:builder --target builder --cache-from=flyteorg/${{ github.event.repository.name }}:builder .
           docker build -t flyteorg/${{ github.event.repository.name }}:latest --cache-from=flyteorg/${{ github.event.repository.name }}:builder .
 
-          docker build -t flyteorg/flytescheduler:builder . -f Dockerfile.scheduler
-          
       - name: Tag and cache docker image
         run: mkdir -p /tmp/tmp/docker-images && docker save flyteorg/${{ github.event.repository.name }}:builder -o /tmp/tmp/docker-images/snapshot-builder.tar && docker save flyteorg/${{ github.event.repository.name }}:latest -o /tmp/tmp/docker-images/snapshot.tar
 
@@ -118,6 +116,7 @@ jobs:
           push_git_tag: true
           registry: ghcr.io
           build_extra_args: "--compress=true"
+
       - name: Push Flytescheduler Docker Image to Github Registry
         uses: whoan/docker-build-with-cache-action@v5
         with:
