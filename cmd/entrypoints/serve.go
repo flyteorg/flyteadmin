@@ -87,7 +87,10 @@ func blanketAuthorization(ctx context.Context, req interface{}, _ *grpc.UnarySer
 		return handler(ctx, req)
 	}
 
-	if !identityContext.Scopes().Has(auth.ScopeAll) {
+	// HACK: At Lyft, we do not want to scope all since it also exposes other okta resources
+	// that are not necessary for Flyte.
+	scopeSvc := "svc"
+	if !identityContext.Scopes().Has(auth.ScopeAll) && !identityContext.Scopes().Has(scopeSvc) {
 		return nil, status.Errorf(codes.Unauthenticated, "authenticated user doesn't have required scope")
 	}
 
