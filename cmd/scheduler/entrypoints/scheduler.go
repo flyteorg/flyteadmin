@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"runtime/debug"
 
+	scheduler "github.com/flyteorg/flyteadmin/scheduler"
+	schdulerRepoConfig "github.com/flyteorg/flyteadmin/scheduler/repositories"
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	repositoryCommonConfig "github.com/flyteorg/flyteadmin/pkg/repositories/config"
 	"github.com/flyteorg/flyteadmin/pkg/runtime"
-	scheduler "github.com/flyteorg/flyteadmin/scheduler/executor"
-	schdulerRepoConfig "github.com/flyteorg/flyteadmin/scheduler/repositories"
 	"github.com/flyteorg/flyteidl/clients/go/admin"
 	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/logger"
