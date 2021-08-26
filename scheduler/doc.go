@@ -34,7 +34,7 @@
 //   		In the future we may support global snapshots, such that we can record the last successfully considered
 //  		time for each schedule and select the lowest as the watermark. currently since the underlying scheduler
 // 			does not expose the last considered time, we just calculate our own watermark per schedule.
-// 		b) Catchup-System :
+// 		b) CatchupAll-System :
 //			This component runs at bootup and catches up all the schedules to there current time.Now()
 //			The scheduler is not run until all the schedules have been caught up.
 //			The current design is also not to snapshot until all the schedules are caught up.

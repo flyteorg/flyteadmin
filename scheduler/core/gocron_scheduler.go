@@ -1,0 +1,337 @@
+package core
+
+import (
+	"context"
+	"fmt"
+	executor2 "github.com/flyteorg/flyteadmin/scheduler/executor"
+	executor3 "github.com/flyteorg/flyteadmin/scheduler/snapshoter"
+	"sync"
+	"time"
+
+	"github.com/flyteorg/flyteadmin/scheduler/identifier"
+	"github.com/flyteorg/flyteadmin/scheduler/repositories/models"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/promutils"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/robfig/cron/v3"
+	"go.uber.org/ratelimit"
+)
+
+type goCronMetrics struct {
+	Scope                     promutils.Scope
+	JobFuncPanicCounter       prometheus.Counter
+	JobScheduledFailedCounter prometheus.Counter
+	CatchupErrCounter prometheus.Counter
+}
+
+type GoCronScheduler struct {
+	cron        *cron.Cron
+	jobStore    sync.Map
+	metrics     goCronMetrics
+	rateLimiter ratelimit.Limiter
+	executor    executor2.Executor
+	snapshot    executor3.Snapshot
+}
+
+func (g *GoCronScheduler) GetTimedFuncWithSchedule() TimedFuncWithSchedule {
+	var funcRef TimedFuncWithSchedule
+	funcRef = func(jobCtx context.Context, schedule models.SchedulableEntity, scheduleTime time.Time) error {
+		_ = g.rateLimiter.Take()
+		err := g.executor.Execute(jobCtx, scheduleTime, schedule)
+		if err != nil {
+			logger.Errorf(jobCtx, "unable to fire the schedule %+v at %v time due to %v", schedule, scheduleTime,
+				err)
+		}
+		return err
+	}
+	return funcRef
+}
+
+func (g *GoCronScheduler) BootStrapSchedulesFromSnapShot(ctx context.Context, schedules []models.SchedulableEntity,
+	snapshot executor3.Snapshot) {
+	for _, s := range schedules {
+		if *s.Active {
+			funcRef := g.GetTimedFuncWithSchedule()
+			nameOfSchedule := identifier.GetScheduleName(ctx, s)
+			// Intialize the lastExectime as the updatedAt time
+			// Assumption here that schedule was activated and that the 0th execution of the schedule
+			// which will be used as a reference
+			lastExecTime := &s.UpdatedAt
+
+			fromSnapshot := snapshot.GetLastExecutionTime(nameOfSchedule)
+			// Use the latest time if available in the snapshot
+			if fromSnapshot != nil && fromSnapshot.After(s.UpdatedAt){
+				lastExecTime = fromSnapshot
+			}
+			err := g.ScheduleJob(ctx, s, funcRef, lastExecTime)
+			if err != nil {
+				g.metrics.JobScheduledFailedCounter.Inc()
+				logger.Errorf(ctx, "unable to register the schedule %+v due to %v", s, err)
+			}
+		}
+	}
+}
+
+func (g *GoCronScheduler) UpdateSchedules(ctx context.Context, schedules []models.SchedulableEntity) {
+	for _, s := range schedules {
+		// Schedule or Deschedule job from the scheduler based on the activation status
+		if !*s.Active {
+			g.DeScheduleJob(ctx, s)
+		} else {
+			// Get the TimedFuncWithSchedule
+			funcRef := g.GetTimedFuncWithSchedule()
+			err := g.ScheduleJob(ctx, s, funcRef, nil)
+			if err != nil {
+				g.metrics.JobScheduledFailedCounter.Inc()
+				logger.Errorf(ctx, "unable to register the schedule %+v due to %v", s, err)
+			}
+		}
+	} // Done iterating over all the read schedules
+}
+
+func (g *GoCronScheduler) CalculateSnapshot(ctx context.Context) executor3.Snapshot {
+	snapshot := g.snapshot.Create()
+	g.jobStore.Range(func(key, value interface{}) bool {
+		job := value.(*GoCronJobWrapper)
+		scheduleIdentifier := key.(string)
+		if job.lastTime != nil {
+			snapshot.UpdateLastExecutionTime(scheduleIdentifier, job.lastTime)
+		}
+		return true
+	})
+	return snapshot
+}
+
+func (g *GoCronScheduler) ScheduleJob(ctx context.Context, schedule models.SchedulableEntity,
+	funcWithSchedule TimedFuncWithSchedule, lastTime *time.Time) error {
+
+	nameOfSchedule := identifier.GetScheduleName(ctx, schedule)
+
+	if _, ok := g.jobStore.Load(nameOfSchedule); ok {
+		logger.Debugf(ctx, "Job already exists in the map for name %v with schedule %+v",
+			nameOfSchedule, schedule)
+		return nil
+	}
+
+	// Update the catchupFrom time as the lastTime.
+	// Here lastTime is passed to this function only from BootStrapSchedulesFromSnapShot which is during bootup
+	// Once initialized we wont be changing the catchupTime until the next boot
+	job := &GoCronJobWrapper{nameOfSchedule: nameOfSchedule, schedule: schedule, funcWithSchedule: funcWithSchedule,
+		catchupFromTime: lastTime, ctx: ctx}
+	g.jobStore.Store(nameOfSchedule, job)
+
+	// Define the timed job function to be used for the callback at the scheduled time
+	//jobFunc := job.GetTimedFunc(ctx, g.metrics)
+
+	if len(job.schedule.CronExpression) > 0 {
+		err := g.AddCronJob(ctx, job)
+		if err != nil {
+			logger.Errorf(ctx, "failed to add cron schedule %+v due to %v", schedule, err)
+			return err
+		}
+	} else {
+		err := g.AddFixedIntervalJob(ctx, job)
+		if err != nil {
+			logger.Errorf(ctx, "failed to add fixed rate schedule %+v due to %v", schedule, err)
+			return err
+		}
+	}
+	return nil
+}
+
+func (g *GoCronScheduler) DeScheduleJob(ctx context.Context, schedule models.SchedulableEntity) {
+	nameOfSchedule := identifier.GetScheduleName(ctx, schedule)
+	if _, ok := g.jobStore.Load(nameOfSchedule); !ok {
+		logger.Debugf(ctx, "Job doesn't exists in the map for name %v with schedule %+v "+
+			" and hence already removed", nameOfSchedule, schedule)
+		return
+	}
+	val, _ := g.jobStore.Load(nameOfSchedule)
+	jobWrapper := val.(*GoCronJobWrapper)
+
+	s := jobWrapper.schedule
+	if len(s.CronExpression) > 0 {
+		g.RemoveCronJob(ctx, jobWrapper)
+	} else {
+		g.RemoveFixedIntervalJob(ctx, jobWrapper)
+	}
+
+	// Delete it from the job store
+	g.jobStore.Delete(nameOfSchedule)
+}
+
+
+func (g *GoCronScheduler) CatchupAll(ctx context.Context, until time.Time) bool {
+	failed := false
+	g.jobStore.Range(func(key, value interface{}) bool {
+		job := value.(*GoCronJobWrapper)
+		var fromTime *time.Time
+		if !*job.schedule.Active {
+			logger.Debugf(ctx, "schedule %+v was inactive during catchup", job.schedule)
+			return true
+		} else {
+			fromTime = job.catchupFromTime
+		}
+		if fromTime != nil {
+			logger.Debugf(ctx, "catching up schedule %+v from %v to %v", job.schedule, fromTime, until)
+			err := g.CatchUpSingleSchedule(ctx, job.schedule, *fromTime, until)
+			if err != nil {
+				// stop the iteration since one of the catchups failed
+				failed = true
+				return false
+			}
+			logger.Debugf(ctx, "caught up successfully on the schedule %+v from %v to %v", job.schedule, fromTime, until)
+		}
+		return true
+	})
+	return failed == false
+}
+
+func (g *GoCronScheduler) CatchUpSingleSchedule(ctx context.Context, s models.SchedulableEntity, fromTime time.Time, toTime time.Time) error {
+	var catchUpTimes []time.Time
+	var err error
+	catchUpTimes, err = GetCatchUpTimes(s, fromTime, toTime)
+	if err != nil {
+		return err
+	}
+	var catchupTime time.Time
+	for _, catchupTime = range catchUpTimes {
+		_ = g.rateLimiter.Take()
+		err := g.executor.Execute(ctx, catchupTime, s)
+		if err != nil {
+			g.metrics.CatchupErrCounter.Inc()
+			logger.Errorf(ctx, "unable to fire the schedule %+v at %v time due to %v", s, catchupTime, err)
+			return err
+		}
+	}
+	return nil
+}
+
+func GetCatchUpTimes(s models.SchedulableEntity, from time.Time, to time.Time) ([]time.Time, error) {
+	var scheduledTimes []time.Time
+	currFrom := from
+	for currFrom.Before(to) {
+		scheduledTime, err := GetScheduledTime(s, currFrom)
+		if err != nil {
+			return nil, err
+		}
+		scheduledTimes = append(scheduledTimes, scheduledTime)
+		currFrom = scheduledTime
+	}
+	return scheduledTimes, nil
+}
+
+
+func GetScheduledTime(s models.SchedulableEntity, fromTime time.Time) (time.Time, error) {
+	if len(s.CronExpression) > 0 {
+		return getCronScheduledTime(s.CronExpression, fromTime)
+	} else {
+		return getFixedIntervalScheduledTime(s.Unit, s.FixedRateValue, fromTime)
+	}
+}
+
+
+func getCronScheduledTime(cronString string, fromTime time.Time) (time.Time, error) {
+	sched, err := cron.ParseStandard(cronString)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return sched.Next(fromTime), nil
+}
+
+func getFixedIntervalScheduledTime(unit admin.FixedRateUnit, fixedRateValue uint32, fromTime time.Time) (time.Time, error) {
+	d, err := getFixedRateDurationFromSchedule(unit, fixedRateValue)
+	if err != nil {
+		return time.Time{}, err
+	}
+	fixedRateSchedule := cron.ConstantDelaySchedule{Delay: d}
+	return fixedRateSchedule.Next(fromTime), nil
+}
+
+
+func (g *GoCronScheduler) AddFixedIntervalJob(ctx context.Context, job *GoCronJobWrapper) error {
+	d, err := getFixedRateDurationFromSchedule(job.schedule.Unit, job.schedule.FixedRateValue)
+	if err != nil {
+		return err
+	}
+
+	var jobFunc cron.TimedFuncJob
+	jobFunc = job.Run
+
+	g.cron.ScheduleTimedJob(cron.ConstantDelaySchedule{Delay: d}, jobFunc)
+	logger.Infof(ctx, "successfully added the fixed rate schedule %snapshoter to the scheduler for schedule %+v",
+		job.nameOfSchedule, job.schedule)
+
+	return nil
+}
+
+func (g *GoCronScheduler) RemoveFixedIntervalJob(ctx context.Context, job *GoCronJobWrapper) {
+	g.cron.Remove(job.entryId)
+	logger.Infof(ctx, "successfully removed the schedule %snapshoter from scheduler for schedule %+v",
+		job.nameOfSchedule, job.schedule)
+}
+
+func (g *GoCronScheduler) AddCronJob(ctx context.Context, job *GoCronJobWrapper) error {
+	var jobFunc cron.TimedFuncJob
+	jobFunc = job.Run
+
+	entryId, err := g.cron.AddTimedJob(job.schedule.CronExpression, jobFunc)
+	// Update the enttry id in the job which is handle to be used for removal
+	job.entryId = entryId
+	if err == nil {
+		logger.Infof(ctx, "successfully added the schedule %snapshoter to the scheduler for schedule %+v",
+			job.nameOfSchedule, job.schedule)
+	}
+	return err
+}
+
+func (g *GoCronScheduler) RemoveCronJob(ctx context.Context, job *GoCronJobWrapper) {
+	g.cron.Remove(job.entryId)
+	logger.Infof(ctx, "successfully removed the schedule %snapshoter from scheduler for schedue %+v",
+		job.nameOfSchedule, job.schedule)
+
+}
+
+func getFixedRateDurationFromSchedule(unit admin.FixedRateUnit, fixedRateValue uint32) (time.Duration, error) {
+	d := time.Duration(fixedRateValue)
+	switch unit {
+	case admin.FixedRateUnit_MINUTE:
+		d = d * time.Minute
+	case admin.FixedRateUnit_HOUR:
+		d = d * time.Hour
+	case admin.FixedRateUnit_DAY:
+		d = d * time.Hour * 24
+	default:
+		return -1, fmt.Errorf("unsupported unit %v for fixed rate scheduling ", unit)
+	}
+	return d, nil
+}
+
+func NewGoCronScheduler(scope promutils.Scope, snapshot executor3.Snapshot, rateLimiter ratelimit.Limiter,
+	executor executor2.Executor) Scheduler {
+	// Create the new cron scheduler and start it off
+	c := cron.New()
+	c.Start()
+	return &GoCronScheduler{
+		cron:     c,
+		jobStore: sync.Map{},
+		metrics:  getCronMetrics(scope),
+		rateLimiter: rateLimiter,
+		executor: executor,
+		snapshot: snapshot,
+	}
+}
+
+func getCronMetrics(scope promutils.Scope) goCronMetrics {
+	return goCronMetrics{
+		Scope: scope,
+		JobFuncPanicCounter: scope.MustNewCounter("job_func_panic_counter",
+			"count of crashes for the job functions executed by the scheduler"),
+		JobScheduledFailedCounter: scope.MustNewCounter("job_schedule_failed_counter",
+			"count of scheduling failures by the scheduler"),
+		CatchupErrCounter: scope.MustNewCounter("catchup_error_counter",
+			"count of unsuccessful attempts to catchup on the schedules"),
+	}
+}

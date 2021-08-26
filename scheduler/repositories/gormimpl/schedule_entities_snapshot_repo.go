@@ -2,10 +2,9 @@ package gormimpl
 
 import (
 	"context"
-	"fmt"
-	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	interfaces2 "github.com/flyteorg/flyteadmin/scheduler/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/scheduler/repositories/models"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/jinzhu/gorm"
 )
@@ -18,7 +17,7 @@ type ScheduleEntitiesSnapshotRepo struct {
 }
 
 // TODO : always overwrite the exisiting snapshot instead of creating new rows
-func (r *ScheduleEntitiesSnapshotRepo) CreateSnapShot(ctx context.Context, input models.ScheduleEntitiesSnapshot) error {
+func (r *ScheduleEntitiesSnapshotRepo) Write(ctx context.Context, input models.ScheduleEntitiesSnapshot) error {
 	timer := r.metrics.GetDuration.Start()
 	tx := r.db.Create(&input)
 	timer.Stop()
@@ -28,7 +27,7 @@ func (r *ScheduleEntitiesSnapshotRepo) CreateSnapShot(ctx context.Context, input
 	return nil
 }
 
-func (r *ScheduleEntitiesSnapshotRepo) GetLatestSnapShot(ctx context.Context) (models.ScheduleEntitiesSnapshot, error) {
+func (r *ScheduleEntitiesSnapshotRepo) Read(ctx context.Context) (models.ScheduleEntitiesSnapshot, error) {
 	var schedulableEntitiesSnapshot models.ScheduleEntitiesSnapshot
 	timer := r.metrics.GetDuration.Start()
 	tx := r.db.Last(&schedulableEntitiesSnapshot)
@@ -36,14 +35,14 @@ func (r *ScheduleEntitiesSnapshotRepo) GetLatestSnapShot(ctx context.Context) (m
 
 	if tx.Error != nil {
 		if tx.RecordNotFound() {
-			return models.ScheduleEntitiesSnapshot{},
-				fmt.Errorf("no snapshot exists in the db")
+			return models.ScheduleEntitiesSnapshot{}, nil
 		}
 		return models.ScheduleEntitiesSnapshot{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
 	}
 
 	return schedulableEntitiesSnapshot, nil
 }
+
 
 // NewScheduleEntitiesSnapshotRepo Returns an instance of ScheduleEntitiesSnapshotRepoInterface
 func NewScheduleEntitiesSnapshotRepo(
