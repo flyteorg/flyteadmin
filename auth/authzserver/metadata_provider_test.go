@@ -41,12 +41,14 @@ func TestOAuth2MetadataProvider_OAuth2Metadata(t *testing.T) {
 	t.Run("Self AuthServer", func(t *testing.T) {
 		provider := NewService(&authConfig.Config{
 			AuthorizedURIs: []config2.URL{{URL: *config.MustParseURL("https://issuer/")}},
+			AppAuth: authConfig.OAuth2Options{FlyteScopeAll: "all"},
 		})
 
 		ctx := context.Background()
 		resp, err := provider.GetOAuth2Metadata(ctx, &service.OAuth2MetadataRequest{})
 		assert.NoError(t, err)
 		assert.Equal(t, "https://issuer/", resp.Issuer)
+		assert.Equal(t, "all", resp.ScopesSupported[0])
 	})
 
 	var issuer string
