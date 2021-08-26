@@ -69,6 +69,7 @@ var (
 		},
 		AppAuth: OAuth2Options{
 			AuthServerType: AuthorizationServerTypeSelf,
+			FlyteScopeAll: "all",
 			ThirdParty: ThirdPartyConfigOptions{
 				FlyteClientConfig: FlyteClientConfig{
 					ClientID:    "flytectl",
