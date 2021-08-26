@@ -39,7 +39,7 @@ func newMockProvider(t testing.TB) (Provider, auth.SecretsSet) {
 	sm.OnGet(ctx, config.SecretNameTokenSigningRSAKey).Return(buf.String(), nil)
 	sm.OnGet(ctx, config.SecretNameOldTokenSigningRSAKey).Return("", fmt.Errorf("not found"))
 
-	p, err := NewProvider(ctx, config.DefaultConfig.AppAuth.SelfAuthServer, sm)
+	p, err := NewProvider(ctx, config.DefaultConfig.AppAuth, sm)
 	assert.NoError(t, err)
 	return p, secrets
 }
@@ -180,7 +180,7 @@ func TestProvider_ValidateAccessToken(t *testing.T) {
 		sm.OnGet(ctx, config.SecretNameTokenSigningRSAKey).Return(buf.String(), nil)
 		sm.OnGet(ctx, config.SecretNameOldTokenSigningRSAKey).Return("", fmt.Errorf("not found"))
 
-		p, err := NewProvider(ctx, config.DefaultConfig.AppAuth.SelfAuthServer, sm)
+		p, err := NewProvider(ctx, config.DefaultConfig.AppAuth, sm)
 		assert.NoError(t, err)
 
 		// create a signer for rsa 256
@@ -216,7 +216,7 @@ func TestProvider_ValidateAccessToken(t *testing.T) {
 
 func Test_verifyClaims(t *testing.T) {
 	t.Run("Empty claims, fail", func(t *testing.T) {
-		_, err := verifyClaims(sets.NewString("https://myserver"), map[string]interface{}{})
+		_, err := verifyClaims(sets.NewString("https://myserver"), map[string]interface{}{}, "all")
 		assert.Error(t, err)
 	})
 
@@ -229,7 +229,7 @@ func Test_verifyClaims(t *testing.T) {
 			"sub":       "123",
 			"client_id": "my-client",
 			"scp":       []interface{}{"all", "offline"},
-		})
+		}, "all")
 
 		assert.NoError(t, err)
 		assert.Equal(t, sets.NewString("all", "offline"), identityCtx.Scopes())

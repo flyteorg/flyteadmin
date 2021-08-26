@@ -76,19 +76,19 @@ func init() {
 		contextutils.TaskTypeKey, common.RuntimeTypeKey, common.RuntimeVersionKey)
 }
 
-func blanketAuthorization(ctx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (
-	resp interface{}, err error) {
+func GetBlanketAuthorizationInterceptor(authCtx interfaces.AuthenticationContext) grpc.UnaryServerInterceptor {
+		return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+			identityContext := auth.IdentityContextFromContext(ctx)
+			if identityContext.IsEmpty() {
+				return handler(ctx, req)
+			}
 
-	identityContext := auth.IdentityContextFromContext(ctx)
-	if identityContext.IsEmpty() {
-		return handler(ctx, req)
-	}
+			if !identityContext.Scopes().Has(authCtx.Options().AppAuth.FlyteScopeAll) {
+				return nil, status.Errorf(codes.Unauthenticated, "authenticated user doesn't have required scope")
+			}
 
-	if !identityContext.Scopes().Has(auth.ScopeAll) {
-		return nil, status.Errorf(codes.Unauthenticated, "authenticated user doesn't have required scope")
-	}
-
-	return handler(ctx, req)
+			return handler(ctx, req)
+		}
 }
 
 // Creates a new gRPC Server with all the configuration
@@ -102,7 +102,7 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authCtx interf
 			auth.GetAuthenticationCustomMetadataInterceptor(authCtx),
 			grpcauth.UnaryServerInterceptor(auth.GetAuthenticationInterceptor(authCtx)),
 			auth.AuthenticationLoggingInterceptor,
-			blanketAuthorization,
+			GetBlanketAuthorizationInterceptor(authCtx),
 		)
 	} else {
 		logger.Infof(ctx, "Creating gRPC server without authentication")
@@ -222,7 +222,7 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig, authCfg
 		var oauth2Provider interfaces.OAuth2Provider
 		var oauth2ResourceServer interfaces.OAuth2ResourceServer
 		if authCfg.AppAuth.AuthServerType == authConfig.AuthorizationServerTypeSelf {
-			oauth2Provider, err = authzserver.NewProvider(ctx, authCfg.AppAuth.SelfAuthServer, sm)
+			oauth2Provider, err = authzserver.NewProvider(ctx, authCfg.AppAuth, sm)
 			if err != nil {
 				logger.Errorf(ctx, "Error creating authorization server %s", err)
 				return err
@@ -230,7 +230,7 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig, authCfg
 
 			oauth2ResourceServer = oauth2Provider
 		} else {
-			oauth2ResourceServer, err = authzserver.NewOAuth2ResourceServer(ctx, authCfg.AppAuth.ExternalAuthServer, authCfg.UserAuth.OpenID.BaseURL)
+			oauth2ResourceServer, err = authzserver.NewOAuth2ResourceServer(ctx, authCfg.AppAuth, authCfg.UserAuth.OpenID.BaseURL)
 			if err != nil {
 				logger.Errorf(ctx, "Error creating resource server %s", err)
 				return err
@@ -316,7 +316,7 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig, authCfg *
 		var oauth2Provider interfaces.OAuth2Provider
 		var oauth2ResourceServer interfaces.OAuth2ResourceServer
 		if authCfg.AppAuth.AuthServerType == authConfig.AuthorizationServerTypeSelf {
-			oauth2Provider, err = authzserver.NewProvider(ctx, authCfg.AppAuth.SelfAuthServer, sm)
+			oauth2Provider, err = authzserver.NewProvider(ctx, authCfg.AppAuth, sm)
 			if err != nil {
 				logger.Errorf(ctx, "Error creating authorization server %s", err)
 				return err
@@ -324,7 +324,7 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig, authCfg *
 
 			oauth2ResourceServer = oauth2Provider
 		} else {
-			oauth2ResourceServer, err = authzserver.NewOAuth2ResourceServer(ctx, authCfg.AppAuth.ExternalAuthServer, authCfg.UserAuth.OpenID.BaseURL)
+			oauth2ResourceServer, err = authzserver.NewOAuth2ResourceServer(ctx, authCfg.AppAuth, authCfg.UserAuth.OpenID.BaseURL)
 			if err != nil {
 				logger.Errorf(ctx, "Error creating resource server %s", err)
 				return err

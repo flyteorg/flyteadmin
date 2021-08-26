@@ -183,6 +183,8 @@ type OAuth2Options struct {
 	// AuthServerType defines the type of AuthServer to connect to.
 	AuthServerType AuthorizationServerType `json:"authServerType" pflag:"-,Determines authorization server type to use. Additional config should be provided for the chosen AuthorizationServer"`
 
+	FlyteScopeAll string `json:"flyteScopeAll" pflag:", Name of the scope that allows access to all Flyte resources. By default the name is 'all'."`
+
 	// SelfAuthServer defines settings for running authorization server locally.
 	SelfAuthServer AuthorizationServer `json:"selfAuthServer" pflag:",Authorization Server config to run as a service. Use this when using an IdP that does not offer a custom OAuth2 Authorization Server."`
 

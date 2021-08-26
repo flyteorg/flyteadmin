@@ -25,6 +25,7 @@ import (
 type ResourceServer struct {
 	signatureVerifier oidc.KeySet
 	allowedAudience   []string
+	flyteScopeAll     string
 }
 
 func (r ResourceServer) ValidateAccessToken(ctx context.Context, expectedAudience, tokenStr string) (interfaces.IdentityContext, error) {
@@ -38,7 +39,7 @@ func (r ResourceServer) ValidateAccessToken(ctx context.Context, expectedAudienc
 		return nil, fmt.Errorf("failed to unmarshal user info claim into UserInfo type. Error: %w", err)
 	}
 
-	return verifyClaims(sets.NewString(append(r.allowedAudience, expectedAudience)...), claimsRaw)
+	return verifyClaims(sets.NewString(append(r.allowedAudience, expectedAudience)...), claimsRaw, r.flyteScopeAll)
 }
 
 func doRequest(ctx context.Context, req *http.Request) (*http.Response, error) {
@@ -102,7 +103,8 @@ func getJwksForIssuer(ctx context.Context, issuerBaseURL url.URL, customMetadata
 }
 
 // NewOAuth2ResourceServer initializes a new OAuth2ResourceServer.
-func NewOAuth2ResourceServer(ctx context.Context, cfg authConfig.ExternalAuthorizationServer, fallbackBaseURL config.URL) (ResourceServer, error) {
+func NewOAuth2ResourceServer(ctx context.Context, options authConfig.OAuth2Options, fallbackBaseURL config.URL) (ResourceServer, error) {
+	cfg := options.ExternalAuthServer
 	u := cfg.BaseURL
 	if len(u.String()) == 0 {
 		u = fallbackBaseURL
@@ -116,5 +118,6 @@ func NewOAuth2ResourceServer(ctx context.Context, cfg authConfig.ExternalAuthori
 	return ResourceServer{
 		signatureVerifier: verifier,
 		allowedAudience:   cfg.AllowedAudience,
+		flyteScopeAll:     options.FlyteScopeAll,
 	}, nil
 }

@@ -96,9 +96,11 @@ func GRPCGetIdentityFromAccessToken(ctx context.Context, authCtx interfaces.Auth
 
 // GRPCGetIdentityFromIDToken attempts to extract a token from the context, and will then call the validation function,
 // passing up any errors.
-func GRPCGetIdentityFromIDToken(ctx context.Context, clientID string, provider *oidc.Provider) (
+func GRPCGetIdentityFromIDToken(ctx context.Context, authCtx interfaces.AuthenticationContext) (
 	interfaces.IdentityContext, error) {
 
+	clientID := authCtx.Options().UserAuth.OpenID.ClientID
+	provider :=	authCtx.OidcProvider()
 	tokenStr, err := grpcauth.AuthFromMD(ctx, IDTokenScheme)
 	if err != nil {
 		logger.Debugf(ctx, "Could not retrieve id token from metadata %v", err)
@@ -120,11 +122,11 @@ func GRPCGetIdentityFromIDToken(ctx context.Context, clientID string, provider *
 		}
 	}
 
-	return IdentityContextFromIDTokenToken(ctx, tokenStr, clientID, provider, userInfo)
+	return IdentityContextFromIDTokenToken(ctx, tokenStr, clientID, provider, userInfo, authCtx.Options().AppAuth.FlyteScopeAll)
 }
 
 func IdentityContextFromIDTokenToken(ctx context.Context, tokenStr, clientID string, provider *oidc.Provider,
-	userInfo *service.UserInfoResponse) (interfaces.IdentityContext, error) {
+	userInfo *service.UserInfoResponse, flyteScopeAll string) (interfaces.IdentityContext, error) {
 
 	idToken, err := ParseIDTokenAndValidate(ctx, clientID, tokenStr, provider)
 	if err != nil {
@@ -133,5 +135,5 @@ func IdentityContextFromIDTokenToken(ctx context.Context, tokenStr, clientID str
 
 	// TODO: Document why automatically specify "all" scope
 	return NewIdentityContext(idToken.Audience[0], idToken.Subject, "", idToken.IssuedAt,
-		sets.NewString(ScopeAll), userInfo), nil
+		sets.NewString(flyteScopeAll), userInfo), nil
 }

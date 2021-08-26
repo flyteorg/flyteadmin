@@ -40,7 +40,7 @@ func (s OAuth2MetadataProvider) GetOAuth2Metadata(ctx context.Context, r *servic
 				"code token",
 			},
 			GrantTypesSupported: supportedGrantTypes,
-			ScopesSupported:     []string{auth.ScopeAll},
+			ScopesSupported:     []string{s.cfg.AppAuth.FlyteScopeAll},
 			TokenEndpointAuthMethodsSupported: []string{
 				"client_secret_basic",
 			},

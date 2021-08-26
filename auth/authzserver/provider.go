@@ -48,6 +48,7 @@ type Provider struct {
 	cfg       config.AuthorizationServer
 	publicKey []rsa.PublicKey
 	keySet    jwk.Set
+	flyteScopeAll string
 }
 
 func (p Provider) PublicKeys() []rsa.PublicKey {
@@ -128,10 +129,10 @@ func (p Provider) ValidateAccessToken(ctx context.Context, expectedAudience, tok
 	}
 
 	claimsRaw := parsedToken.Claims.(jwtgo.MapClaims)
-	return verifyClaims(sets.NewString(expectedAudience), claimsRaw)
+	return verifyClaims(sets.NewString(expectedAudience), claimsRaw, p.flyteScopeAll)
 }
 
-func verifyClaims(expectedAudience sets.String, claimsRaw map[string]interface{}) (interfaces.IdentityContext, error) {
+func verifyClaims(expectedAudience sets.String, claimsRaw map[string]interface{}, flyteScopeAll string) (interfaces.IdentityContext, error) {
 	claims := jwtx.ParseMapStringInterfaceClaims(claimsRaw)
 	if len(claims.Audience) != 1 {
 		return nil, fmt.Errorf("expected exactly one granted audience. found [%v]", len(claims.Audience))
@@ -167,7 +168,7 @@ func verifyClaims(expectedAudience sets.String, claimsRaw map[string]interface{}
 	// If this is a user-only access token with no scopes defined then add `all` scope by default because it's equivalent
 	// to having a user's login cookie or an ID Token as means of accessing the service.
 	if len(clientID) == 0 && scopes.Len() == 0 {
-		scopes.Insert(auth.ScopeAll)
+		scopes.Insert(flyteScopeAll)
 	}
 
 	return auth.NewIdentityContext(claims.Audience[0], claims.Subject, clientID, claims.IssuedAt, scopes, userInfo), nil
@@ -178,7 +179,7 @@ func verifyClaims(expectedAudience sets.String, claimsRaw map[string]interface{}
 // sign and generate hashes for tokens. The RSA Private key is expected to be in PEM format with the public key embedded.
 // Use auth.GetInitSecretsCommand() to generate new valid secrets that will be accepted by this provider.
 // The config.SecretNameClaimSymmetricKey must be a 32-bytes long key in Base64Encoding.
-func NewProvider(ctx context.Context, cfg config.AuthorizationServer, sm core.SecretManager) (Provider, error) {
+func NewProvider(ctx context.Context, options config.OAuth2Options, sm core.SecretManager) (Provider, error) {
 	// fosite requires four parameters for the server to get up and running:
 	// 1. config - for any enforcement you may desire, you can do this using `compose.Config`. You like PKCE, enforce it!
 	// 2. store - no auth service is generally useful unless it can remember clients and users.
@@ -186,6 +187,7 @@ func NewProvider(ctx context.Context, cfg config.AuthorizationServer, sm core.Se
 	// 3. secret - required for code, access and refresh token generation.
 	// 4. privateKey - required for id/jwt token generation.
 
+	cfg := options.SelfAuthServer
 	composeConfig := &compose.Config{
 		AccessTokenLifespan:   cfg.AccessTokenLifespan.Duration,
 		RefreshTokenLifespan:  cfg.RefreshTokenLifespan.Duration,
@@ -266,5 +268,6 @@ func NewProvider(ctx context.Context, cfg config.AuthorizationServer, sm core.Se
 		OAuth2Provider: oauth2Provider,
 		publicKey:      publicKeys,
 		keySet:         keysSet,
+		flyteScopeAll:  options.FlyteScopeAll,
 	}, nil
 }

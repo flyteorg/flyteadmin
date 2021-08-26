@@ -236,8 +236,7 @@ func GetAuthenticationInterceptor(authCtx interfaces.AuthenticationContext) func
 
 		logger.Infof(ctx, "Failed to parse Access Token from context. Will attempt to find IDToken. Error: %v", err)
 
-		identityContext, err = GRPCGetIdentityFromIDToken(ctx, authCtx.Options().UserAuth.OpenID.ClientID,
-			authCtx.OidcProvider())
+		identityContext, err = GRPCGetIdentityFromIDToken(ctx, authCtx)
 
 		if err == nil {
 			return SetContextForIdentity(ctx, identityContext), nil
@@ -363,7 +362,7 @@ func IdentityContextFromRequest(ctx context.Context, req *http.Request, authCtx 
 	}
 
 	return IdentityContextFromIDTokenToken(ctx, idToken, authCtx.Options().UserAuth.OpenID.ClientID,
-		authCtx.OidcProvider(), userInfo)
+		authCtx.OidcProvider(), userInfo, authCtx.Options().AppAuth.FlyteScopeAll)
 }
 
 func QueryUserInfo(ctx context.Context, identityContext interfaces.IdentityContext, request *http.Request,
