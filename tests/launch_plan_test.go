@@ -99,7 +99,7 @@ func getLaunchPlanCreateRequest(workflowIdentifier *core.Identifier) admin.Launc
 				Parameters: []*core.ParameterMapEntry{
 					{
 						Name: "foo",
-						Var: &core.Parameter{
+						Parameter: &core.Parameter{
 							Var: &core.Variable{
 								Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 							},

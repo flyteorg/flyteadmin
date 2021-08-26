@@ -59,7 +59,7 @@ func validateSchedule(request admin.LaunchPlanCreateRequest, expectedInputs *cor
 	schedule := request.GetSpec().GetEntityMetadata().GetSchedule()
 	if schedule.GetCronExpression() != "" || schedule.GetRate() != nil {
 		for _, e := range expectedInputs.Parameters {
-			if e.GetVar().GetRequired() && e.GetName() != schedule.GetKickoffTimeInputArg() {
+			if e.GetParameter().GetRequired() && e.GetName() != schedule.GetKickoffTimeInputArg() {
 				return errors.NewFlyteAdminErrorf(
 					codes.InvalidArgument,
 					"Cannot create a launch plan with a schedule if there is an unbound required input. [%v] is required", e.GetName())
@@ -88,7 +88,7 @@ func checkAndFetchExpectedInputForLaunchPlan(
 	var fixedInputMap map[string]*core.Literal
 	if defaultInputs != nil && len(defaultInputs.GetParameters()) > 0 {
 		for _, e := range defaultInputs.GetParameters() {
-			defaultInputMap.Set(e.GetName(), e.GetVar())
+			defaultInputMap.Set(e.GetName(), e.GetParameter())
 		}
 	}
 
@@ -162,8 +162,8 @@ func checkAndFetchExpectedInputForLaunchPlan(
 
 func parameterMapEntriesToMap(entries []*core.ParameterMapEntry) (parameterMap map[string]*core.Parameter) {
 	parameterMap = make(map[string]*core.Parameter, len(entries))
-	for _, v := range entries {
-		parameterMap[v.GetName()] = v.GetVar()
+	for _, e := range entries {
+		parameterMap[e.GetName()] = e.GetParameter()
 	}
 	return
 }
@@ -181,8 +181,8 @@ func parameterOrderedMapToList(orderedMap *orderedmap.OrderedMap) []*core.Parame
 	for i, k := range orderedMap.Keys() {
 		v, _ := orderedMap.Get(k)
 		l[i] = &core.ParameterMapEntry{
-			Name: k,
-			Var:  v.(*core.Parameter),
+			Name:      k,
+			Parameter: v.(*core.Parameter),
 		}
 	}
 	return l

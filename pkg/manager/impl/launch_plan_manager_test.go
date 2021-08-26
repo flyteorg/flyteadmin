@@ -87,7 +87,7 @@ func TestCreateLaunchPlan(t *testing.T) {
 	var createCalled bool
 	repository.LaunchPlanRepo().(*repositoryMocks.MockLaunchPlanRepo).SetCreateCallback(
 		func(input models.LaunchPlan) error {
-			assert.Equal(t, []byte{0xcb, 0xb, 0xa7, 0x29, 0x9a, 0x59, 0xa1, 0x92, 0x12, 0x67, 0xed, 0xde, 0xad, 0x75, 0xf3, 0x65, 0x53, 0x23, 0x97, 0x38, 0x41, 0xdb, 0xe9, 0x64, 0xd6, 0xbe, 0xf7, 0xd0, 0x6d, 0xb4, 0xb, 0x4e}, input.Digest)
+			assert.Equal(t, []byte{0x80, 0x6c, 0x2b, 0x48, 0x80, 0x0, 0x5c, 0xa, 0xdf, 0x92, 0xbc, 0xb0, 0x34, 0xc9, 0xeb, 0xfe, 0xed, 0x1, 0x59, 0xe, 0x9b, 0x9, 0xa7, 0x4a, 0xa6, 0xf, 0x5f, 0xda, 0x64, 0xe4, 0xf6, 0xb8}, input.Digest)
 			createCalled = true
 			return nil
 		})
@@ -268,7 +268,7 @@ func TestCreateLaunchPlanInCompatibleInputs(t *testing.T) {
 		Parameters: []*core.ParameterMapEntry{
 			{
 				Name: "boo",
-				Var: &core.Parameter{
+				Parameter: &core.Parameter{
 					Var: &core.Variable{
 						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 					},
@@ -299,7 +299,7 @@ func TestCreateLaunchPlanValidateCreate(t *testing.T) {
 			Parameters: []*core.ParameterMapEntry{
 				{
 					Name: "foo",
-					Var: &core.Parameter{
+					Parameter: &core.Parameter{
 						Var: &core.Variable{
 							Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 						},

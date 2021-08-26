@@ -19,8 +19,8 @@ var active = int32(admin.LaunchPlanState_ACTIVE)
 var expectedInputs = &core.ParameterMap{
 	Parameters: []*core.ParameterMapEntry{
 		{
-			Name: "foo",
-			Var:  &core.Parameter{},
+			Name:      "foo",
+			Parameter: &core.Parameter{},
 		},
 	},
 }

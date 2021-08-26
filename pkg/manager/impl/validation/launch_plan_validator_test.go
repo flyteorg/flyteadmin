@@ -77,7 +77,7 @@ func TestGetLpExpectedInputs(t *testing.T) {
 		Parameters: []*core.ParameterMapEntry{
 			{
 				Name: "foo",
-				Var: &core.Parameter{
+				Parameter: &core.Parameter{
 					Var: &core.Variable{
 						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 					},
@@ -95,7 +95,7 @@ func TestGetLpExpectedInputs(t *testing.T) {
 
 func TestValidateLpDefaultInputsWrongType(t *testing.T) {
 	request := testutils.GetLaunchPlanRequest()
-	request.Spec.DefaultInputs.Parameters[0].GetVar().Var.Type = &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_FLOAT}}
+	request.Spec.DefaultInputs.Parameters[0].GetParameter().Var.Type = &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_FLOAT}}
 	err := ValidateLaunchPlan(context.Background(), request, testutils.GetRepoWithDefaultProject(), lpApplicationConfig, getWorkflowInterface())
 	assert.EqualError(t, err, "Type mismatch for Parameter foo in default_inputs has type simple:FLOAT , expected simple:STRING ")
 }
@@ -104,8 +104,8 @@ func TestValidateLpDefaultInputsEmptyName(t *testing.T) {
 	request := testutils.GetLaunchPlanRequest()
 	request.Spec.DefaultInputs.Parameters = []*core.ParameterMapEntry{
 		{
-			Name: "",
-			Var:  nil,
+			Name:      "",
+			Parameter: nil,
 		},
 	}
 	err := ValidateLaunchPlan(context.Background(), request, testutils.GetRepoWithDefaultProject(), lpApplicationConfig, getWorkflowInterface())
@@ -114,14 +114,14 @@ func TestValidateLpDefaultInputsEmptyName(t *testing.T) {
 
 func TestValidateLpDefaultInputsEmptyType(t *testing.T) {
 	request := testutils.GetLaunchPlanRequest()
-	request.Spec.DefaultInputs.Parameters[0].GetVar().Var.Type = nil
+	request.Spec.DefaultInputs.Parameters[0].GetParameter().Var.Type = nil
 	err := ValidateLaunchPlan(context.Background(), request, testutils.GetRepoWithDefaultProject(), lpApplicationConfig, getWorkflowInterface())
 	assert.EqualError(t, err, "The Variable component of the Parameter foo in default_inputs either is missing, or has a missing Type")
 }
 
 func TestValidateLpDefaultInputsEmptyVar(t *testing.T) {
 	request := testutils.GetLaunchPlanRequest()
-	request.Spec.DefaultInputs.Parameters[0].GetVar().Var = nil
+	request.Spec.DefaultInputs.Parameters[0].GetParameter().Var = nil
 	err := ValidateLaunchPlan(context.Background(), request, testutils.GetRepoWithDefaultProject(), lpApplicationConfig, getWorkflowInterface())
 	assert.EqualError(t, err, "The Variable component of the Parameter foo in default_inputs either is missing, or has a missing Type")
 }
@@ -268,7 +268,7 @@ func TestGetLpExpectedNoFixedInput(t *testing.T) {
 		Parameters: []*core.ParameterMapEntry{
 			{
 				Name: "foo",
-				Var: &core.Parameter{
+				Parameter: &core.Parameter{
 					Var: &core.Variable{
 						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 					},
@@ -314,7 +314,7 @@ func TestValidateSchedule_NoSchedule(t *testing.T) {
 		Parameters: []*core.ParameterMapEntry{
 			{
 				Name: "foo",
-				Var: &core.Parameter{
+				Parameter: &core.Parameter{
 					Var: &core.Variable{
 						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 					},
@@ -335,7 +335,7 @@ func TestValidateSchedule_ArgNotFixed(t *testing.T) {
 		Parameters: []*core.ParameterMapEntry{
 			{
 				Name: "foo",
-				Var: &core.Parameter{
+				Parameter: &core.Parameter{
 					Var: &core.Variable{
 						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 					},
@@ -368,7 +368,7 @@ func TestValidateSchedule_KickoffTimeArgPointsAtWrongType(t *testing.T) {
 		Parameters: []*core.ParameterMapEntry{
 			{
 				Name: "foo",
-				Var: &core.Parameter{
+				Parameter: &core.Parameter{
 					Var: &core.Variable{
 						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 					},
@@ -391,7 +391,7 @@ func TestValidateSchedule_NoRequired(t *testing.T) {
 		Parameters: []*core.ParameterMapEntry{
 			{
 				Name: "foo",
-				Var: &core.Parameter{
+				Parameter: &core.Parameter{
 					Var: &core.Variable{
 						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 					},
@@ -413,7 +413,7 @@ func TestValidateSchedule_KickoffTimeBound(t *testing.T) {
 		Parameters: []*core.ParameterMapEntry{
 			{
 				Name: "foo",
-				Var: &core.Parameter{
+				Parameter: &core.Parameter{
 					Var: &core.Variable{
 						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_DATETIME}},
 					},

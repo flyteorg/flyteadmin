@@ -25,7 +25,7 @@ var inputs = core.ParameterMap{
 	Parameters: []*core.ParameterMapEntry{
 		{
 			Name: "foo",
-			Var: &core.Parameter{Var: &core.Variable{
+			Parameter: &core.Parameter{Var: &core.Variable{
 				Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 			},
 				Behavior: &core.Parameter_Default{
@@ -67,9 +67,9 @@ func TestGetId(t *testing.T) {
 func TestGetExpectedInputs(t *testing.T) {
 	provider := getProviderForTest(t)
 	assert.Equal(t, 1, len((*provider.GetExpectedInputs()).Parameters))
-	assert.NotNil(t, (*provider.GetExpectedInputs()).Parameters[0].GetVar().Var.Type.GetSimple())
-	assert.EqualValues(t, "STRING", (*provider.GetExpectedInputs()).Parameters[0].GetVar().Var.Type.GetSimple().String())
-	assert.NotNil(t, (*provider.GetExpectedInputs()).Parameters[0].GetVar().GetDefault())
+	assert.NotNil(t, (*provider.GetExpectedInputs()).Parameters[0].GetParameter().Var.Type.GetSimple())
+	assert.EqualValues(t, "STRING", (*provider.GetExpectedInputs()).Parameters[0].GetParameter().Var.Type.GetSimple().String())
+	assert.NotNil(t, (*provider.GetExpectedInputs()).Parameters[0].GetParameter().GetDefault())
 }
 
 func TestGetExpectedOutputs(t *testing.T) {

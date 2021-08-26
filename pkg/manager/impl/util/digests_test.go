@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var testLaunchPlanDigest = []byte{0x2, 0x46, 0x44, 0x52, 0x5e, 0x5c, 0x62, 0xe7, 0xe0, 0xb1, 0x19, 0x76, 0xf7, 0xaf, 0x28, 0x2b, 0xc, 0x22, 0x3b, 0xc7, 0x21, 0xba, 0x4d, 0x98, 0x5, 0xd9, 0x17, 0x79, 0xd5, 0xb5, 0x2f, 0xf2}
+var testLaunchPlanDigest = []byte{0xfa, 0xe8, 0x14, 0x80, 0x14, 0xc4, 0xe0, 0x67, 0xb3, 0x91, 0x96, 0xb5, 0xb1, 0x90, 0x54, 0xa4, 0x4e, 0x6c, 0xdf, 0x85, 0xe2, 0xf8, 0x4c, 0xcb, 0x7, 0x88, 0x70, 0x30, 0x73, 0x3e, 0xd1, 0x6c}
 
 var taskIdentifier = core.Identifier{
 	ResourceType: core.ResourceType_TASK,
@@ -51,12 +51,12 @@ func getLaunchPlan() *admin.LaunchPlan {
 			ExpectedInputs: &core.ParameterMap{
 				Parameters: []*core.ParameterMapEntry{
 					{
-						Name: "foo",
-						Var:  &core.Parameter{},
+						Name:      "foo",
+						Parameter: &core.Parameter{},
 					},
 					{
-						Name: "bar",
-						Var:  &core.Parameter{},
+						Name:      "bar",
+						Parameter: &core.Parameter{},
 					},
 				},
 			},
@@ -115,8 +115,8 @@ func TestGetLaunchPlanDigest(t *testing.T) {
 func TestGetLaunchPlanDigest_Unequal(t *testing.T) {
 	launchPlanWithDifferentInputs := getLaunchPlan()
 	launchPlanWithDifferentInputs.Closure.ExpectedInputs.Parameters = append(launchPlanWithDifferentInputs.Closure.ExpectedInputs.Parameters, &core.ParameterMapEntry{
-		Name: "unexpected",
-		Var:  &core.Parameter{},
+		Name:      "unexpected",
+		Parameter: &core.Parameter{},
 	})
 	launchPlanDigest, err := GetLaunchPlanDigest(context.Background(), launchPlanWithDifferentInputs)
 	assert.NotEqual(t, testLaunchPlanDigest, launchPlanDigest)

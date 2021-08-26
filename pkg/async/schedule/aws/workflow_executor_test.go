@@ -79,8 +79,8 @@ func TestResolveKickoffTimeArg(t *testing.T) {
 			ExpectedInputs: &core.ParameterMap{
 				Parameters: []*core.ParameterMapEntry{
 					{
-						Name: testKickoffTime,
-						Var:  &core.Parameter{},
+						Name:      testKickoffTime,
+						Parameter: &core.Parameter{},
 					},
 				},
 			},
@@ -112,8 +112,8 @@ func TestResolveKickoffTimeArg_NoKickoffTimeArg(t *testing.T) {
 			ExpectedInputs: &core.ParameterMap{
 				Parameters: []*core.ParameterMapEntry{
 					{
-						Name: "foo",
-						Var:  &core.Parameter{},
+						Name:      "foo",
+						Parameter: &core.Parameter{},
 					},
 				},
 			},
@@ -281,8 +281,8 @@ func TestRun(t *testing.T) {
 							ExpectedInputs: &core.ParameterMap{
 								Parameters: []*core.ParameterMapEntry{
 									{
-										Name: testKickoffTime,
-										Var:  &core.Parameter{},
+										Name:      testKickoffTime,
+										Parameter: &core.Parameter{},
 									},
 								},
 							},
