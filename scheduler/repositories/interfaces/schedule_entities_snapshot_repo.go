@@ -11,8 +11,8 @@ import (
 type ScheduleEntitiesSnapShotRepoInterface interface {
 
 	// Create/ Update the snapshot in the  database store
-	CreateSnapShot(ctx context.Context, input models.ScheduleEntitiesSnapshot) error
+	Write(ctx context.Context, input models.ScheduleEntitiesSnapshot) error
 
 	// Get the latest snapshot from the database store.
-	GetLatestSnapShot(ctx context.Context) (models.ScheduleEntitiesSnapshot, error)
+	Read(ctx context.Context) (models.ScheduleEntitiesSnapshot, error)
 }

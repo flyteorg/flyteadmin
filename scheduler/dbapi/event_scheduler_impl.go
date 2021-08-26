@@ -1,25 +1,25 @@
-package crud
+package dbapi
 
 import (
 	"context"
 	"fmt"
-	"github.com/flyteorg/flyteadmin/pkg/async/schedule/interfaces"
-	"github.com/flyteorg/flyteadmin/pkg/repositories"
-	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
-	"github.com/flyteorg/flyteadmin/scheduler/repositories/models"
 
+	"github.com/flyteorg/flyteadmin/pkg/async/schedule/interfaces"
 	scheduleInterfaces "github.com/flyteorg/flyteadmin/pkg/async/schedule/interfaces"
+	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	"github.com/flyteorg/flyteadmin/scheduler/repositories"
+	"github.com/flyteorg/flyteadmin/scheduler/repositories/models"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/logger"
 )
 
-// FlyteScheduler used for saving the scheduler entries after launch plans are enabled or disabled.
-type FlyteScheduler struct {
-	db repositories.RepositoryInterface
+// eventScheduler used for saving the scheduler entries after launch plans are enabled or disabled.
+type eventScheduler struct {
+	db repositories.SchedulerRepoInterface
 }
 
-func (s *FlyteScheduler) CreateScheduleInput(ctx context.Context, appConfig *runtimeInterfaces.SchedulerConfig,
+func (s *eventScheduler) CreateScheduleInput(ctx context.Context, appConfig *runtimeInterfaces.SchedulerConfig,
 	identifier core.Identifier, schedule *admin.Schedule) (interfaces.AddScheduleInput, error) {
 
 	addScheduleInput := scheduleInterfaces.AddScheduleInput{
@@ -29,7 +29,7 @@ func (s *FlyteScheduler) CreateScheduleInput(ctx context.Context, appConfig *run
 	return addScheduleInput, nil
 }
 
-func (s *FlyteScheduler) AddSchedule(ctx context.Context, input interfaces.AddScheduleInput) error {
+func (s *eventScheduler) AddSchedule(ctx context.Context, input interfaces.AddScheduleInput) error {
 	logger.Infof(ctx, "Received call to add schedule [%+v]", input)
 	var cronString string
 	var fixedRateValue uint32
@@ -67,7 +67,7 @@ func (s *FlyteScheduler) AddSchedule(ctx context.Context, input interfaces.AddSc
 	return nil
 }
 
-func (s *FlyteScheduler) RemoveSchedule(ctx context.Context, input interfaces.RemoveScheduleInput) error {
+func (s *eventScheduler) RemoveSchedule(ctx context.Context, input interfaces.RemoveScheduleInput) error {
 	logger.Infof(ctx, "Received call to remove schedule [%+v]. Will deactivate it in the scheduler", input.Identifier)
 
 	err := s.db.SchedulableEntityRepo().Deactivate(ctx, models.SchedulableEntityKey{
@@ -84,6 +84,7 @@ func (s *FlyteScheduler) RemoveSchedule(ctx context.Context, input interfaces.Re
 	return nil
 }
 
-func NewFlyteScheduler(db repositories.RepositoryInterface) interfaces.EventScheduler {
-	return &FlyteScheduler{db: db}
+func New(db repositories.SchedulerRepoInterface) interfaces.EventScheduler {
+	return &eventScheduler{db: db}
 }
+

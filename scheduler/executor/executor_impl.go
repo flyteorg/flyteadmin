@@ -2,7 +2,8 @@ package executor
 
 import (
 	"context"
-	"github.com/flyteorg/flyteadmin/scheduler/executor/interfaces"
+
+	"github.com/flyteorg/flyteadmin/scheduler/identifier"
 	"github.com/flyteorg/flyteadmin/scheduler/repositories/models"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -19,18 +20,18 @@ import (
 	"time"
 )
 
-type ScheduleExecutionFirer struct {
+type executor struct {
 	adminServiceClient service.AdminServiceClient
-	metrics            fireMetrics
+	metrics            executorMetrics
 }
 
-type fireMetrics struct {
-	Scope                     promutils.Scope
-	FailedExecutionCounter    prometheus.Counter
+type executorMetrics struct {
+	Scope                      promutils.Scope
+	FailedExecutionCounter     prometheus.Counter
 	SuccessfulExecutionCounter prometheus.Counter
 }
 
-func (w *ScheduleExecutionFirer) Fire(ctx context.Context, scheduledTime time.Time, s models.SchedulableEntity) error {
+func (w *executor) Execute(ctx context.Context, scheduledTime time.Time, s models.SchedulableEntity) error {
 
 	literalsInputMap := map[string]*core.Literal{}
 	literalsInputMap[s.KickoffTimeInputArg] = &core.Literal{
@@ -48,7 +49,7 @@ func (w *ScheduleExecutionFirer) Fire(ctx context.Context, scheduledTime time.Ti
 	}
 
 	// Making the identifier deterministic using the hash of the identifier and scheduled time
-	executionIdentifier, err := GetExecutionIdentifier(ctx, core.Identifier{
+	executionIdentifier, err := identifier.GetExecutionIdentifier(ctx, core.Identifier{
 		Project: s.Project,
 		Domain:  s.Domain,
 		Name:    s.Name,
@@ -119,17 +120,17 @@ func (w *ScheduleExecutionFirer) Fire(ctx context.Context, scheduledTime time.Ti
 	return nil
 }
 
-func NewScheduleExecutionFirer(scope promutils.Scope,
-	adminServiceClient service.AdminServiceClient) interfaces.ScheduleExecutionFirer {
+func New(scope promutils.Scope,
+	adminServiceClient service.AdminServiceClient) Executor {
 
-	return &ScheduleExecutionFirer{
+	return &executor{
 		adminServiceClient: adminServiceClient,
-		metrics: getFireMetrics(scope),
+		metrics:            getExecutorMetrics(scope),
 	}
 }
 
-func getFireMetrics(scope promutils.Scope) fireMetrics {
-	return fireMetrics{
+func getExecutorMetrics(scope promutils.Scope) executorMetrics {
+	return executorMetrics{
 		Scope: scope,
 		FailedExecutionCounter: scope.MustNewCounter("failed_execution_counter",
 			"count of unsuccessful attempts to fire execution for a schedules"),
