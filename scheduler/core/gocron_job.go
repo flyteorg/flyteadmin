@@ -13,6 +13,7 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
+// GoCronJob this provides a wrapper around the go cron libraries job function.
 type GoCronJob struct {
 	ctx              context.Context
 	nameOfSchedule   string

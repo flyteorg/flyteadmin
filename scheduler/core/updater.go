@@ -7,6 +7,7 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 )
 
+// Updater this updates the scheduler with the latest state of schedules from the DB.
 type Updater struct {
 	db        repositories.SchedulerRepoInterface
 	scheduler Scheduler

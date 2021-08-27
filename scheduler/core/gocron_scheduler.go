@@ -19,6 +19,7 @@ import (
 	"go.uber.org/ratelimit"
 )
 
+// goCronMetrics mertrics recorded for go cron.
 type goCronMetrics struct {
 	Scope                     promutils.Scope
 	JobFuncPanicCounter       prometheus.Counter
@@ -26,6 +27,7 @@ type goCronMetrics struct {
 	CatchupErrCounter         prometheus.Counter
 }
 
+// GoCronScheduler this provides a scheduler functionality using the https://github.com/robfig/cron library.
 type GoCronScheduler struct {
 	cron        *cron.Cron
 	jobStore    sync.Map
