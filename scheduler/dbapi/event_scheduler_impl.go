@@ -87,4 +87,3 @@ func (s *eventScheduler) RemoveSchedule(ctx context.Context, input interfaces.Re
 func New(db repositories.SchedulerRepoInterface) interfaces.EventScheduler {
 	return &eventScheduler{db: db}
 }
-

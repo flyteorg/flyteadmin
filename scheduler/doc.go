@@ -17,7 +17,7 @@
 // 	  duplicate the work since each execution for a scheduleTime will have unique identifier derived from schedule name
 //	  and time of the schedule. The idempotency aspect of the admin for same identifier prevents duplication on the admin
 //	  side.
-//    The scheduler runs continously in a loop reading the updated schedule entries in the data store and adding or removing
+//    The scheduler runs continuously in a loop reading the updated schedule entries in the data store and adding or removing
 //    the schedules. Removing a schedule will not alter in-flight go-routines launched by the scheduler.
 //    Thus the behavior of these executions is undefined (most probably will get executed).
 //    Sub components:
@@ -96,6 +96,5 @@
 //		   which have a identifier derived from the hash of schedule time + launch plan identifier which would remain the same
 //		   any other instance of the scheduler picks up and admin will return the AlreadyExists error.
 //
-
 
 package executor

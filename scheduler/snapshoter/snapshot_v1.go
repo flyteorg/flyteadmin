@@ -1,4 +1,4 @@
-package executor
+package snapshoter
 
 import (
 	"bytes"
@@ -15,7 +15,6 @@ type snapshotV1 struct {
 	// LastTimes map of the schedule name to last execution timestamp
 	LastTimes map[string]*time.Time
 }
-
 
 func (s *snapshotV1) GetLastExecutionTime(key string) *time.Time {
 	return s.LastTimes[key]
@@ -45,7 +44,7 @@ func (s *snapshotV1) GetVersion() int {
 	return 1
 }
 
-func (w *snapshotV1) Create() Snapshot {
+func (s *snapshotV1) Create() Snapshot {
 	return &snapshotV1{
 		LastTimes: map[string]*time.Time{},
 	}

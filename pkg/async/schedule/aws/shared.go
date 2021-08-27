@@ -3,9 +3,9 @@ package aws
 import (
 	"context"
 	"fmt"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"hash/fnv"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/logger"
 )
 

@@ -1,8 +1,9 @@
 package aws
 
 import (
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"testing"
+
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/magiconair/properties/assert"
 )

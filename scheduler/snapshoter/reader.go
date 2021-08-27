@@ -1,4 +1,4 @@
-package executor
+package snapshoter
 
 import "io"
 
@@ -7,4 +7,3 @@ type Reader interface {
 	// ReadSnapshot reads the snapshot from the reader
 	ReadSnapshot(reader io.Reader) (Snapshot, error)
 }
-

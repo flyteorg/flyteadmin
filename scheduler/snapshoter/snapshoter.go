@@ -1,17 +1,19 @@
-package executor
+package snapshoter
 
 import (
 	"bytes"
 	"context"
+	"time"
+
+	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/scheduler/repositories"
 	"github.com/flyteorg/flyteadmin/scheduler/repositories/models"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
-	"github.com/prometheus/client_golang/prometheus"
-	"time"
-)
 
-const snapShotVersion = 1
+	"github.com/prometheus/client_golang/prometheus"
+	"google.golang.org/grpc/codes"
+)
 
 type snpashoterMetrics struct {
 	Scope                      promutils.Scope
@@ -46,23 +48,25 @@ func (w *snapshoter) Save(ctx context.Context, writer Writer, snapshot Snapshot)
 	}
 }
 
-func (w *snapshoter) Read(ctx context.Context, reader Reader) (Snapshot,error) {
+func (w *snapshoter) Read(ctx context.Context, reader Reader) (Snapshot, error) {
 	scheduleEntitiesSnapShot, err := w.db.ScheduleEntitiesSnapshotRepo().Read(ctx)
 	var snapshot Snapshot
 	snapshot = &snapshotV1{LastTimes: map[string]*time.Time{}}
 	// Just log the error but dont interrupt the startup of the scheduler
 	if err != nil {
+		if err.(errors.FlyteAdminError).Code() == codes.NotFound {
+			// This is not an error condition and hence can be ignored.
+			return snapshot, nil
+		}
 		logger.Errorf(ctx, "unable to read the snapshot from the DB due to %v", err)
 		return nil, err
-	} else {
-		f := bytes.NewReader(scheduleEntitiesSnapShot.Snapshot)
-		snapshot, err = reader.ReadSnapshot(f)
-		// Similarly just log the error but dont interrupt the startup of the scheduler
-		if err != nil {
-			logger.Errorf(ctx, "unable to construct the snapshot struct from the file due to %v", err)
-			return nil, err
-		}
-
+	}
+	f := bytes.NewReader(scheduleEntitiesSnapShot.Snapshot)
+	snapshot, err = reader.ReadSnapshot(f)
+	// Similarly just log the error but dont interrupt the startup of the scheduler
+	if err != nil {
+		logger.Errorf(ctx, "unable to construct the snapshot struct from the file due to %v", err)
+		return nil, err
 	}
 	return snapshot, nil
 }
