@@ -8,6 +8,8 @@ import (
 
 const snapShotVersion = 1
 
+// Snapshotrunner allows the ability to snapshot the scheduler state and save it to the db.
+// Its invoked periodically from the scheduledExecutor
 type Snapshotrunner struct {
 	snapshoter sImpl.Persistence
 	scheduler  Scheduler
