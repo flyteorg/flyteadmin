@@ -1297,6 +1297,8 @@ func (m *ExecutionManager) GetExecutionData(
 			}
 		} else if execution.Closure.GetOutputData() != nil && int64(proto.Size(execution.Closure.GetOutputData())) < maxDataSize {
 			fullOutputs = *execution.Closure.GetOutputData()
+		} else if execution.Closure.GetOutputData() != nil {
+			logger.Debugf(ctx, "Execution closure contains output data that exceeds max data size for responses")
 		}
 		response.FullOutputs = &fullOutputs
 	}

@@ -473,6 +473,8 @@ func (m *NodeExecutionManager) GetNodeExecutionData(
 		}
 	} else if nodeExecution.Closure.GetOutputData() != nil && int64(proto.Size(nodeExecution.Closure.GetOutputData())) < m.config.ApplicationConfiguration().GetRemoteDataConfig().MaxSizeInBytes {
 		fullOutputs = nodeExecution.Closure.GetOutputData()
+	} else if nodeExecution.Closure.GetOutputData() != nil {
+		logger.Debugf(ctx, "Node execution closure contains output data that exceeds max data size for responses")
 	}
 	response.FullOutputs = fullOutputs
 

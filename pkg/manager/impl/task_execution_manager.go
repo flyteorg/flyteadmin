@@ -327,6 +327,8 @@ func (m *TaskExecutionManager) GetTaskExecutionData(
 		}
 	} else if taskExecution.Closure.GetOutputData() != nil {
 		fullOutputs = taskExecution.Closure.GetOutputData()
+	} else if taskExecution.Closure.GetOutputData() != nil {
+		logger.Debugf(ctx, "Task execution closure contains output data that exceeds max data size for responses")
 	}
 	response.FullOutputs = fullOutputs
 	m.metrics.TaskExecutionInputBytes.Observe(float64(response.Inputs.Bytes))
