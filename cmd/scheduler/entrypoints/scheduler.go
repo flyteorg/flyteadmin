@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"runtime/debug"
 
-	scheduler "github.com/flyteorg/flyteadmin/scheduler"
-	schdulerRepoConfig "github.com/flyteorg/flyteadmin/scheduler/repositories"
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	repositoryCommonConfig "github.com/flyteorg/flyteadmin/pkg/repositories/config"
 	"github.com/flyteorg/flyteadmin/pkg/runtime"
+	scheduler "github.com/flyteorg/flyteadmin/scheduler"
+	schdulerRepoConfig "github.com/flyteorg/flyteadmin/scheduler/repositories"
 	"github.com/flyteorg/flyteidl/clients/go/admin"
 	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/logger"
@@ -61,18 +61,15 @@ var schedulerRunCmd = &cobra.Command{
 		}
 		adminServiceClient := clientSet.AdminClient()
 
-		schedulerWorkflowExecutor := scheduler.NewWorkflowExecutor(db, configuration, schedulerScope, adminServiceClient)
+		scheduleExecutor := scheduler.NewScheduledExecutor(db, configuration, schedulerScope, adminServiceClient)
 
 		logger.Info(context.Background(), "Successfully initialized a native flyte scheduler")
 
-		err = schedulerWorkflowExecutor.Run(ctx)
+		err = scheduleExecutor.Run(ctx)
 		if err != nil {
 			logger.Fatalf(ctx, "Flyte native scheduler failed to start due to %v", err)
 			return
 		}
-		logger.Infof(ctx, "Flyte native scheduler started successfully")
-		<-ctx.Done()
-		logger.Infof(ctx, "Flyte native scheduler shutdown")
 	},
 }
 

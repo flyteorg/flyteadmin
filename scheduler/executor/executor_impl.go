@@ -2,6 +2,8 @@ package executor
 
 import (
 	"context"
+	"strings"
+	"time"
 
 	"github.com/flyteorg/flyteadmin/scheduler/identifier"
 	"github.com/flyteorg/flyteadmin/scheduler/repositories/models"
@@ -10,14 +12,13 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
-	"strings"
-	"time"
 )
 
 type executor struct {
@@ -99,7 +100,7 @@ func (w *executor) Execute(ctx context.Context, scheduledTime time.Time, s model
 			}
 			// For idempotent behavior ignore the AlreadyExists error which happens if we try to schedule a launchplan
 			// for execution at the same time which is already available in admin.
-			// This is possible since idempotency gurantees are using the schedule time and the identifier
+			// This is possible since idempotency guarantees are using the schedule time and the identifier
 			if grpcError := status.Code(err); grpcError == codes.AlreadyExists {
 				logger.Debugf(ctx, "duplicate schedule %+v already exists for schedule", s)
 				return false
@@ -115,6 +116,9 @@ func (w *executor) Execute(ctx context.Context, scheduledTime time.Time, s model
 			return execErr
 		},
 	)
+	if err != nil {
+		logger.Error(ctx, "failed to create execution create request %+v due to %v after all retries", executionRequest, err)
+	}
 	w.metrics.SuccessfulExecutionCounter.Inc()
 	logger.Infof(ctx, "successfully fired the request for schedule %+v for time %v", s, scheduledTime)
 	return nil

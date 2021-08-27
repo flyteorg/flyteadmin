@@ -2,40 +2,44 @@ package executor
 
 import (
 	"context"
+	"time"
+
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flyteadmin/scheduler/core"
 	"github.com/flyteorg/flyteadmin/scheduler/executor"
 	"github.com/flyteorg/flyteadmin/scheduler/repositories"
-	sImpl "github.com/flyteorg/flyteadmin/scheduler/snapshoter"
+	"github.com/flyteorg/flyteadmin/scheduler/snapshoter"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 	"github.com/flyteorg/flytestdlib/futures"
 	"github.com/flyteorg/flytestdlib/logger"
-	"k8s.io/apimachinery/pkg/util/wait"
-
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 	"github.com/flyteorg/flytestdlib/promutils"
+
 	"go.uber.org/ratelimit"
-	"time"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-const snapshotWriterSleepTime = 30
-const scheduleUpdaterSleepTime = 30
-
+const snapshotWriterSleepTime = 30 * time.Second
+const scheduleUpdaterSleepTime = 30 * time.Second
 
 const snapShotVersion = 1
 
-// workflowExecutor used for executing the schedules saved by the native flyte scheduler in the database.
-type workflowExecutor struct {
+// ScheduledExecutor used for executing the schedules saved by the native flyte scheduler in the database.
+type ScheduledExecutor struct {
 	scheduler              core.Scheduler
-	snapshoter             sImpl.Persistence
+	snapshoter             snapshoter.Persistence
 	db                     repositories.SchedulerRepoInterface
 	scope                  promutils.Scope
 	adminServiceClient     service.AdminServiceClient
 	workflowExecutorConfig *runtimeInterfaces.FlyteWorkflowExecutorConfig
 }
 
-func (w *workflowExecutor) Run(ctx context.Context) error {
+func (w *ScheduledExecutor) Run(ctx context.Context) error {
+	logger.Infof(ctx, "Flyte native scheduler started successfully")
+
+	defer logger.Infof(ctx, "Flyte native scheduler shutdown")
+
 	// Read snapshot from the DB.
-	snapShotReader := &sImpl.VersionedSnapshot{Version: snapShotVersion}
+	snapShotReader := &snapshoter.VersionedSnapshot{Version: snapShotVersion}
 	snapshot, err := w.snapshoter.Read(ctx, snapShotReader)
 
 	if err != nil {
@@ -50,19 +54,20 @@ func (w *workflowExecutor) Run(ctx context.Context) error {
 		return err
 	}
 	// Default to 100
-	adminApiRateLimit := 100
+	adminAPIRateLimit := 100
 	if w.workflowExecutorConfig != nil {
-		adminApiRateLimit = w.workflowExecutorConfig.AdminFireReqRateLimit
+		adminAPIRateLimit = w.workflowExecutorConfig.AdminFireReqRateLimit
 	}
 
 	// Set the rate limit on the admin
-	rateLimiter := ratelimit.New(adminApiRateLimit)
+	rateLimiter := ratelimit.New(adminAPIRateLimit)
 
 	// Set the executor to send executions to admin
 	executor := executor.New(w.scope, w.adminServiceClient)
 
 	// Create the scheduler using GoCronScheduler implementation
 	gcronScheduler := core.NewGoCronScheduler(w.scope, snapshot, rateLimiter, executor)
+	w.scheduler = gcronScheduler
 
 	// Bootstrap the schedules from the snapshot
 	bootStrapCtx, bootStrapCancel := context.WithCancel(ctx)
@@ -73,7 +78,7 @@ func (w *workflowExecutor) Run(ctx context.Context) error {
 	updaterCtx, updaterCancel := context.WithCancel(ctx)
 	defer updaterCancel()
 	gcronUpdater := core.NewUpdater(w.db, gcronScheduler)
-	wait.UntilWithContext(updaterCtx, gcronUpdater.UpdateGoCronSchedules, scheduleUpdaterSleepTime*time.Second)
+	go wait.UntilWithContext(updaterCtx, gcronUpdater.UpdateGoCronSchedules, scheduleUpdaterSleepTime)
 
 	// Catch up simulataneously on all the schedules in the scheduler
 	currTime := time.Now()
@@ -91,22 +96,19 @@ func (w *workflowExecutor) Run(ctx context.Context) error {
 		// Start the go routine to write the snapshot periodically
 		snapshoterCtx, snapshoterCancel := context.WithCancel(ctx)
 		defer snapshoterCancel()
-		wait.UntilWithContext(snapshoterCtx, snapshotRunner.Run, snapshotWriterSleepTime*time.Second)
-	} else {
-		// cancel gcronUpdater and all the spawned jobs
-		updaterCancel()
-		bootStrapCancel()
+		wait.UntilWithContext(snapshoterCtx, snapshotRunner.Run, snapshotWriterSleepTime)
+		<-ctx.Done()
 	}
 	return nil
 }
 
-func NewWorkflowExecutor(db repositories.SchedulerRepoInterface, config runtimeInterfaces.Configuration,
-	scope promutils.Scope, adminServiceClient service.AdminServiceClient) workflowExecutor {
-
-	return workflowExecutor{
-		db : db,
-		scope: scope,
-		adminServiceClient: adminServiceClient,
+func NewScheduledExecutor(db repositories.SchedulerRepoInterface, config runtimeInterfaces.Configuration,
+	scope promutils.Scope, adminServiceClient service.AdminServiceClient) ScheduledExecutor {
+	return ScheduledExecutor{
+		db:                     db,
+		scope:                  scope,
+		adminServiceClient:     adminServiceClient,
 		workflowExecutorConfig: config.ApplicationConfiguration().GetSchedulerConfig().WorkflowExecutorConfig.GetFlyteWorkflowExecutorConfig(),
+		snapshoter:             snapshoter.New(scope, db),
 	}
 }

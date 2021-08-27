@@ -2,10 +2,10 @@ package repositories
 
 import (
 	"fmt"
-	interfaces2 "github.com/flyteorg/flyteadmin/scheduler/repositories/interfaces"
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories/config"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
+	"github.com/flyteorg/flyteadmin/scheduler/repositories/interfaces"
 	"github.com/flyteorg/flytestdlib/promutils"
 )
 
@@ -25,8 +25,8 @@ var RepositoryConfigurationName = map[int32]string{
 // This interface contains only scheduler specific models and tables.
 
 type SchedulerRepoInterface interface {
-	SchedulableEntityRepo() interfaces2.SchedulableEntityRepoInterface
-	ScheduleEntitiesSnapshotRepo() interfaces2.ScheduleEntitiesSnapShotRepoInterface
+	SchedulableEntityRepo() interfaces.SchedulableEntityRepoInterface
+	ScheduleEntitiesSnapshotRepo() interfaces.ScheduleEntitiesSnapShotRepoInterface
 }
 
 func GetRepository(repoType RepoConfig, dbConfig config.DbConfig, scope promutils.Scope) SchedulerRepoInterface {

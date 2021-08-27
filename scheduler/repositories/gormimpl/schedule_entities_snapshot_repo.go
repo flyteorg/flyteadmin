@@ -2,10 +2,12 @@ package gormimpl
 
 import (
 	"context"
+
+	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	interfaces2 "github.com/flyteorg/flyteadmin/scheduler/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/scheduler/repositories/models"
-	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flytestdlib/promutils"
+
 	"github.com/jinzhu/gorm"
 )
 
@@ -35,14 +37,13 @@ func (r *ScheduleEntitiesSnapshotRepo) Read(ctx context.Context) (models.Schedul
 
 	if tx.Error != nil {
 		if tx.RecordNotFound() {
-			return models.ScheduleEntitiesSnapshot{}, nil
+			return models.ScheduleEntitiesSnapshot{}, errors.GetSingletonMissingEntityError("schedule_entities_snapshots")
 		}
 		return models.ScheduleEntitiesSnapshot{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
 	}
 
 	return schedulableEntitiesSnapshot, nil
 }
-
 
 // NewScheduleEntitiesSnapshotRepo Returns an instance of ScheduleEntitiesSnapshotRepoInterface
 func NewScheduleEntitiesSnapshotRepo(
