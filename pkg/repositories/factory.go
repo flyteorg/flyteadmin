@@ -2,11 +2,11 @@ package repositories
 
 import (
 	"fmt"
-	schedulerInterfaces "github.com/flyteorg/flyteadmin/scheduler/repositories/interfaces"
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories/config"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	schedulerInterfaces "github.com/flyteorg/flyteadmin/scheduler/repositories/interfaces"
 	"github.com/flyteorg/flytestdlib/promutils"
 )
 

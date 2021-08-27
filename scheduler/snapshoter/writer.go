@@ -1,4 +1,4 @@
-package executor
+package snapshoter
 
 import "io"
 
@@ -7,4 +7,3 @@ type Writer interface {
 	// WriteSnapshot writes the serialized form of the snapshot to the writer
 	WriteSnapshot(writer io.Writer, snapshot Snapshot) error
 }
-

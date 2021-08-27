@@ -1,4 +1,4 @@
-package executor
+package snapshoter
 
 import (
 	"context"
@@ -12,5 +12,4 @@ type Persistence interface {
 	Save(ctx context.Context, writer Writer, snapshot Snapshot)
 	// Read reads the serialized snapshot from the storage and deserializes to its in memory format.
 	Read(ctx context.Context, reader Reader) (Snapshot, error)
-
 }

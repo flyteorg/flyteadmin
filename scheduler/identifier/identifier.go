@@ -4,20 +4,22 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"github.com/flyteorg/flyteadmin/scheduler/repositories/models"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flytestdlib/logger"
-	"github.com/google/uuid"
 	"hash/fnv"
 	"strconv"
 	"time"
+
+	"github.com/flyteorg/flyteadmin/scheduler/repositories/models"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytestdlib/logger"
+
+	"github.com/google/uuid"
 )
 
 // Utility functions used by the flyte native scheduler
 
 const (
 	scheduleNameInputsFormat = "%s:%s:%s:%s"
-	executionIdInputsFormat = scheduleNameInputsFormat +":%d"
+	executionIDInputsFormat  = scheduleNameInputsFormat + ":%d"
 )
 
 // GetScheduleName generate the schedule name to be used as unique identification string within the scheduler
@@ -56,7 +58,7 @@ func hashIdentifier(ctx context.Context, identifier core.Identifier) uint64 {
 // hashScheduledTimeStamp return the hash of the identifier and the scheduledTime
 func hashScheduledTimeStamp(ctx context.Context, identifier core.Identifier, scheduledTime time.Time) uint64 {
 	h := fnv.New64()
-	_, err := h.Write([]byte(fmt.Sprintf(executionIdInputsFormat,
+	_, err := h.Write([]byte(fmt.Sprintf(executionIDInputsFormat,
 		identifier.Project, identifier.Domain, identifier.Name, identifier.Version, scheduledTime.Unix())))
 	if err != nil {
 		// This shouldn't occur.

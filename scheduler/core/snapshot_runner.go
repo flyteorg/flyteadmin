@@ -2,9 +2,9 @@ package core
 
 import (
 	"context"
+
 	sImpl "github.com/flyteorg/flyteadmin/scheduler/snapshoter"
 )
-
 
 const snapShotVersion = 1
 
@@ -19,7 +19,6 @@ func (u Snapshotrunner) Run(ctx context.Context) {
 	u.snapshoter.Save(ctx, snapshotWriter, snapshot)
 }
 
-func NewSnapshotRunner(snapshoter sImpl.Persistence, scheduler  Scheduler) Snapshotrunner {
+func NewSnapshotRunner(snapshoter sImpl.Persistence, scheduler Scheduler) Snapshotrunner {
 	return Snapshotrunner{snapshoter: snapshoter, scheduler: scheduler}
 }
-

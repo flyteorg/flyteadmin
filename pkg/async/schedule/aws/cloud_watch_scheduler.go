@@ -3,24 +3,22 @@ package aws
 import (
 	"context"
 	"fmt"
-	appInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"strings"
 
 	"github.com/flyteorg/flyteadmin/pkg/async/schedule/aws/interfaces"
 	scheduleInterfaces "github.com/flyteorg/flyteadmin/pkg/async/schedule/interfaces"
-
+	"github.com/flyteorg/flyteadmin/pkg/errors"
+	appInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
-	"github.com/prometheus/client_golang/prometheus"
-
-	"github.com/aws/aws-sdk-go/aws/awserr"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatchevents"
-	"github.com/flyteorg/flyteadmin/pkg/errors"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc/codes"
 )
 
@@ -177,7 +175,11 @@ func (s *cloudWatchScheduler) CreateScheduleInput(ctx context.Context, appConfig
 
 	payload, err := SerializeScheduleWorkflowPayload(
 		schedule.GetKickoffTimeInputArg(),
-		identifier)
+		admin.NamedEntityIdentifier{
+			Project: identifier.Project,
+			Domain:  identifier.Domain,
+			Name:    identifier.Name,
+		})
 	if err != nil {
 		logger.Errorf(ctx, "failed to serialize schedule workflow payload for launch plan: %v with err: %v",
 			identifier, err)
