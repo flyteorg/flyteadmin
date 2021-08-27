@@ -21,6 +21,7 @@ import (
 	"k8s.io/client-go/util/retry"
 )
 
+// executor allows to call the admin with scheduled execution
 type executor struct {
 	adminServiceClient service.AdminServiceClient
 	metrics            executorMetrics
