@@ -37,9 +37,8 @@ var flyteAdminConfig = config.MustRegisterSection(flyteAdmin, &interfaces.Applic
 })
 var schedulerConfig = config.MustRegisterSection(scheduler, &interfaces.SchedulerConfig{
 	EventSchedulerConfig: interfaces.EventSchedulerConfig{
-		Scheme: common.Local,
-		FlyteSchedulerConfig: &interfaces.FlyteSchedulerConfig{
-		},
+		Scheme:               common.Local,
+		FlyteSchedulerConfig: &interfaces.FlyteSchedulerConfig{},
 	},
 	WorkflowExecutorConfig: interfaces.WorkflowExecutorConfig{
 		Scheme: common.Local,
