@@ -45,9 +45,9 @@ const (
 // Provider implements OAuth2 Authorization Server.
 type Provider struct {
 	fosite.OAuth2Provider
-	cfg       config.AuthorizationServer
-	publicKey []rsa.PublicKey
-	keySet    jwk.Set
+	cfg           config.AuthorizationServer
+	publicKey     []rsa.PublicKey
+	keySet        jwk.Set
 	flyteScopeAll string
 }
 
