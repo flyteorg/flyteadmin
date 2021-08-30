@@ -61,7 +61,8 @@ var schedulerRunCmd = &cobra.Command{
 		}
 		adminServiceClient := clientSet.AdminClient()
 
-		scheduleExecutor := scheduler.NewScheduledExecutor(db, configuration, schedulerScope, adminServiceClient)
+		scheduleExecutor := scheduler.NewScheduledExecutor(db,
+			configuration.ApplicationConfiguration().GetSchedulerConfig().GetWorkflowExecutorConfig(), schedulerScope, adminServiceClient)
 
 		logger.Info(context.Background(), "Successfully initialized a native flyte scheduler")
 

@@ -98,13 +98,14 @@ func (w *ScheduledExecutor) Run(ctx context.Context) error {
 	return nil
 }
 
-func NewScheduledExecutor(db repositories.SchedulerRepoInterface, config runtimeInterfaces.Configuration,
+func NewScheduledExecutor(db repositories.SchedulerRepoInterface,
+	workflowExecutorConfig runtimeInterfaces.WorkflowExecutorConfig,
 	scope promutils.Scope, adminServiceClient service.AdminServiceClient) ScheduledExecutor {
 	return ScheduledExecutor{
 		db:                     db,
 		scope:                  scope,
 		adminServiceClient:     adminServiceClient,
-		workflowExecutorConfig: config.ApplicationConfiguration().GetSchedulerConfig().WorkflowExecutorConfig.GetFlyteWorkflowExecutorConfig(),
+		workflowExecutorConfig: workflowExecutorConfig.GetFlyteWorkflowExecutorConfig(),
 		snapshoter:             snapshoter.New(scope, db),
 	}
 }
