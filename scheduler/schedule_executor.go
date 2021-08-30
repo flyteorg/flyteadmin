@@ -53,11 +53,7 @@ func (w *ScheduledExecutor) Run(ctx context.Context) error {
 		logger.Errorf(ctx, "unable to read the schedules from the db due to %v. Aborting", err)
 		return err
 	}
-	// Default to 100
-	adminAPIRateLimit := 100
-	if w.workflowExecutorConfig != nil {
-		adminAPIRateLimit = w.workflowExecutorConfig.AdminFireReqRateLimit
-	}
+	adminAPIRateLimit := w.workflowExecutorConfig.AdminFireReqRateLimit
 
 	// Set the rate limit on the admin
 	rateLimiter := ratelimit.New(adminAPIRateLimit)
