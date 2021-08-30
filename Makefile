@@ -33,7 +33,7 @@ compile:
 
 .PHONY: compile_scheduler
 compile_scheduler:
-	go build -gcflags='all=-N -l' -o flytescheduler ./cmd/scheduler/ && mv ./flytescheduler ${GOPATH}/bin
+	go build -o flytescheduler -ldflags=$(LD_FLAGS) ./cmd/scheduler/ && mv ./flytescheduler ${GOPATH}/bin
 
 
 .PHONY: linux_compile
