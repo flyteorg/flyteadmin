@@ -225,6 +225,22 @@ type SchedulerConfig struct {
 	ReconnectDelaySeconds int `json:"reconnectDelaySeconds"`
 }
 
+func (s *SchedulerConfig) GetEventSchedulerConfig() EventSchedulerConfig {
+	return s.EventSchedulerConfig
+}
+
+func (s *SchedulerConfig) GetWorkflowExecutorConfig() WorkflowExecutorConfig {
+	return s.WorkflowExecutorConfig
+}
+
+func (s *SchedulerConfig) GetReconnectAttempts() int {
+	return s.ReconnectAttempts
+}
+
+func (s *SchedulerConfig) GetReconnectDelaySeconds() int {
+	return s.ReconnectDelaySeconds
+}
+
 // Configuration specific to setting up signed urls.
 type SignedURL struct {
 	// The amount of time for which a signed URL is valid.

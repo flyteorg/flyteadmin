@@ -93,12 +93,9 @@ func (w *executor) Execute(ctx context.Context, scheduledTime time.Time, s model
 	}
 
 	// Do maximum of 30 retries on failures with constant backoff factor
-	opts := wait.Backoff{Factor: 1.0, Steps: 30}
+	opts := wait.Backoff{Duration: 3000, Factor: 2.0, Steps: 30}
 	err = retry.OnError(opts,
 		func(err error) bool {
-			if err == nil {
-				return false
-			}
 			// For idempotent behavior ignore the AlreadyExists error which happens if we try to schedule a launchplan
 			// for execution at the same time which is already available in admin.
 			// This is possible since idempotency guarantees are using the schedule time and the identifier
@@ -119,6 +116,7 @@ func (w *executor) Execute(ctx context.Context, scheduledTime time.Time, s model
 	)
 	if err != nil {
 		logger.Error(ctx, "failed to create execution create request %+v due to %v after all retries", executionRequest, err)
+		return err
 	}
 	w.metrics.SuccessfulExecutionCounter.Inc()
 	logger.Infof(ctx, "successfully fired the request for schedule %+v for time %v", s, scheduledTime)

@@ -32,7 +32,7 @@ func (s *VersionedSnapshot) ReadSnapshot(r io.Reader) (Snapshot, error) {
 		return nil, err
 	}
 	if s.Version == 1 {
-		snapShotV1 := snapshotV1{LastTimes: map[string]*time.Time{}}
+		snapShotV1 := SnapshotV1{LastTimes: map[string]*time.Time{}}
 		err = snapShotV1.Deserialize(s.Ser)
 		if err != nil {
 			return nil, err

@@ -40,8 +40,6 @@ func (s *eventScheduler) AddSchedule(ctx context.Context, input interfaces.AddSc
 		fixedRateUnit = v.Rate.Unit
 	case *admin.Schedule_CronSchedule:
 		cronString = v.CronSchedule.Schedule
-	case *admin.Schedule_CronExpression:
-		cronString = v.CronExpression
 	default:
 		return fmt.Errorf("failed adding schedule for unknown schedule expression type %v", v)
 	}

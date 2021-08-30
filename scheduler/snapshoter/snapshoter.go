@@ -51,7 +51,7 @@ func (w *snapshoter) Save(ctx context.Context, writer Writer, snapshot Snapshot)
 func (w *snapshoter) Read(ctx context.Context, reader Reader) (Snapshot, error) {
 	scheduleEntitiesSnapShot, err := w.db.ScheduleEntitiesSnapshotRepo().Read(ctx)
 	var snapshot Snapshot
-	snapshot = &snapshotV1{LastTimes: map[string]*time.Time{}}
+	snapshot = &SnapshotV1{LastTimes: map[string]*time.Time{}}
 	// Just log the error but dont interrupt the startup of the scheduler
 	if err != nil {
 		if err.(errors.FlyteAdminError).Code() == codes.NotFound {
