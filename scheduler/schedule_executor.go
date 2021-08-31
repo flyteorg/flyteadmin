@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"context"
-	"golang.org/x/time/rate"
 	"time"
 
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
@@ -15,6 +14,7 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 
+	"golang.org/x/time/rate"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
@@ -57,7 +57,6 @@ func (w *ScheduledExecutor) Run(ctx context.Context) error {
 
 	// Set the rate limit on the admin
 	rateLimiter := rate.NewLimiter(adminRateLimit.GetTps(), adminRateLimit.GetBurst())
-
 
 	// Set the executor to send executions to admin
 	executor := executor.New(w.scope, w.adminServiceClient)

@@ -47,7 +47,7 @@ var schedulerConfig = config.MustRegisterSection(scheduler, &interfaces.Schedule
 		Scheme: common.Local,
 		FlyteWorkflowExecutorConfig: &interfaces.FlyteWorkflowExecutorConfig{
 			AdminRateLimit: &interfaces.AdminRateLimit{
-				Tps: 100,
+				Tps:   100,
 				Burst: 10,
 			},
 		},
