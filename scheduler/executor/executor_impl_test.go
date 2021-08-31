@@ -58,10 +58,10 @@ func TestExecutorAlreadyExists(t *testing.T) {
 		KickoffTimeInputArg: "kickoff_time",
 		Active:              &active,
 	}
-	mockAdminClient.OnCreateExecutionMatch(context.Background(), mock.Anything).Return(nil,
+	mockAdminClient.OnCreateExecutionMatch(mock.Anything, mock.Anything).Return(nil,
 		errors.NewFlyteAdminErrorf(codes.AlreadyExists, "Already exists"))
 	err := executor.Execute(context.Background(), time.Now(), schedule)
-	assert.NotNil(t, err)
+	assert.Nil(t, err)
 }
 
 func TestExecutorInactiveSchedule(t *testing.T) {
