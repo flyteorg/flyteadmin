@@ -10,13 +10,12 @@ const taskResourceKey = "task_resources"
 var taskResourceConfig = config.MustRegisterSection(taskResourceKey, &TaskResourceSpec{})
 
 type TaskResourceSpec struct {
-	Defaults interfaces.TaskResourceSet           `json:"defaults"`
-	Limits   interfaces.TaskResourceSet           `json:"limits"`
+	Defaults interfaces.TaskResourceSet `json:"defaults"`
+	Limits   interfaces.TaskResourceSet `json:"limits"`
 }
 
 // Implementation of an interfaces.TaskResourceConfiguration
 type TaskResourceProvider struct{}
-
 
 func (p *TaskResourceProvider) GetDefaults() interfaces.TaskResourceSet {
 	return taskResourceConfig.GetConfig().(*TaskResourceSpec).Defaults
