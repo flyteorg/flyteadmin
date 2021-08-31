@@ -16,7 +16,7 @@ require (
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/evanphx/json-patch v4.9.0+incompatible
-	github.com/flyteorg/flyteidl v0.19.22
+	github.com/flyteorg/flyteidl v0.20.1
 	github.com/flyteorg/flyteplugins v0.5.72
 	github.com/flyteorg/flytepropeller v0.13.20
 	github.com/flyteorg/flytestdlib v0.3.34
