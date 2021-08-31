@@ -3,20 +3,20 @@ package core
 import (
 	"context"
 	"fmt"
-	"golang.org/x/time/rate"
 	"sync"
 	"time"
 
 	"github.com/flyteorg/flyteadmin/scheduler/executor"
 	"github.com/flyteorg/flyteadmin/scheduler/identifier"
 	"github.com/flyteorg/flyteadmin/scheduler/repositories/models"
-	snapshoter "github.com/flyteorg/flyteadmin/scheduler/snapshoter"
+	"github.com/flyteorg/flyteadmin/scheduler/snapshoter"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/robfig/cron/v3"
+	"golang.org/x/time/rate"
 )
 
 // goCronMetrics mertrics recorded for go cron.
