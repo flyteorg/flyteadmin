@@ -219,7 +219,7 @@ func (f *FlyteWorkflowExecutorConfig) GetAdminRateLimit() *AdminRateLimit {
 
 type AdminRateLimit struct {
 	Tps   rate.Limit `json:"tps"`
-	Burst int     `json:"burst"`
+	Burst int        `json:"burst"`
 }
 
 func (f *AdminRateLimit) GetTps() rate.Limit {
@@ -229,7 +229,6 @@ func (f *AdminRateLimit) GetTps() rate.Limit {
 func (f *AdminRateLimit) GetBurst() int {
 	return f.Burst
 }
-
 
 // This configuration is the base configuration for all scheduler-related set-up.
 type SchedulerConfig struct {

@@ -30,7 +30,7 @@ func setupScheduleExecutor(t *testing.T) ScheduledExecutor {
 	scheduleExecutorConfig := runtimeInterfaces.WorkflowExecutorConfig{
 		FlyteWorkflowExecutorConfig: &runtimeInterfaces.FlyteWorkflowExecutorConfig{
 			AdminRateLimit: &runtimeInterfaces.AdminRateLimit{
-				Tps: 100,
+				Tps:   100,
 				Burst: 10,
 			},
 		},
