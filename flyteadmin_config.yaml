@@ -69,7 +69,6 @@ database:
 scheduler:
   eventScheduler:
     scheme: local
-    local:
     region: "my-region"
     scheduleRole: "arn:aws:iam::abc123:role/my-iam-role"
     targetName: "arn:aws:sqs:my-region:abc123:my-queue"
@@ -77,7 +76,9 @@ scheduler:
   workflowExecutor:
     scheme: local
     local:
-      adminFireReqRateLimit: 100 #per sec how many requests to send to admin
+      adminRateLimit:
+        tps: 100 # per sec how many requests to send to admin
+        burst: 10 # burst count of request to admin
     region: "my-region"
     scheduleQueueName: "won't-work-locally"
     accountId: "abc123"

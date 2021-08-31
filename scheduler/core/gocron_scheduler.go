@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"golang.org/x/time/rate"
 	"sync"
 	"time"
 
@@ -16,7 +17,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/robfig/cron/v3"
-	"go.uber.org/ratelimit"
 )
 
 // goCronMetrics mertrics recorded for go cron.
@@ -32,14 +32,14 @@ type GoCronScheduler struct {
 	cron        *cron.Cron
 	jobStore    sync.Map
 	metrics     goCronMetrics
-	rateLimiter ratelimit.Limiter
+	rateLimiter *rate.Limiter
 	executor    executor.Executor
 	snapshot    snapshoter.Snapshot
 }
 
 func (g *GoCronScheduler) GetTimedFuncWithSchedule() TimedFuncWithSchedule {
 	return func(jobCtx context.Context, schedule models.SchedulableEntity, scheduleTime time.Time) error {
-		_ = g.rateLimiter.Take()
+		_ = g.rateLimiter.Wait(jobCtx)
 		err := g.executor.Execute(jobCtx, scheduleTime, schedule)
 		if err != nil {
 			logger.Errorf(jobCtx, "unable to fire the schedule %+v at %v time due to %v", schedule, scheduleTime,
@@ -198,7 +198,7 @@ func (g *GoCronScheduler) CatchUpSingleSchedule(ctx context.Context, s models.Sc
 	}
 	var catchupTime time.Time
 	for _, catchupTime = range catchUpTimes {
-		_ = g.rateLimiter.Take()
+		_ = g.rateLimiter.Wait(ctx)
 		err := g.executor.Execute(ctx, catchupTime, s)
 		if err != nil {
 			g.metrics.CatchupErrCounter.Inc()
@@ -307,7 +307,7 @@ func getFixedRateDurationFromSchedule(unit admin.FixedRateUnit, fixedRateValue u
 	return d, nil
 }
 
-func NewGoCronScheduler(scope promutils.Scope, snapshot snapshoter.Snapshot, rateLimiter ratelimit.Limiter,
+func NewGoCronScheduler(scope promutils.Scope, snapshot snapshoter.Snapshot, rateLimiter *rate.Limiter,
 	executor executor.Executor) Scheduler {
 	// Create the new cron scheduler and start it off
 	c := cron.New()

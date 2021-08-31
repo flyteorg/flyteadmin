@@ -23,7 +23,7 @@ import (
 var schedulerRunCmd = &cobra.Command{
 	Use:   "run",
 	Short: "This command will start the flyte native scheduler and periodically get new schedules from the db for scheduling",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
 		configuration := runtime.NewConfigurationProvider()
 		applicationConfiguration := configuration.ApplicationConfiguration().GetTopLevelConfig()
@@ -40,24 +40,14 @@ var schedulerRunCmd = &cobra.Command{
 		}()
 
 		dbConfigValues := configuration.ApplicationConfiguration().GetDbConfig()
-		dbConfig := repositoryCommonConfig.DbConfig{
-			BaseConfig: repositoryCommonConfig.BaseConfig{
-				IsDebug: dbConfigValues.Debug,
-			},
-			Host:         dbConfigValues.Host,
-			Port:         dbConfigValues.Port,
-			DbName:       dbConfigValues.DbName,
-			User:         dbConfigValues.User,
-			Password:     dbConfigValues.Password,
-			ExtraOptions: dbConfigValues.ExtraOptions,
-		}
+		dbConfig := repositoryCommonConfig.NewDbConfig(dbConfigValues)
 		db := schdulerRepoConfig.GetRepository(
 			schdulerRepoConfig.POSTGRES, dbConfig, schedulerScope.NewSubScope("database"))
 
 		clientSet, err := admin.ClientSetBuilder().WithConfig(admin.GetConfig(ctx)).Build(ctx)
 		if err != nil {
 			logger.Fatalf(ctx, "Flyte native scheduler failed to start due to %v", err)
-			return
+			return err
 		}
 		adminServiceClient := clientSet.AdminClient()
 
@@ -69,8 +59,9 @@ var schedulerRunCmd = &cobra.Command{
 		err = scheduleExecutor.Run(ctx)
 		if err != nil {
 			logger.Fatalf(ctx, "Flyte native scheduler failed to start due to %v", err)
-			return
+			return err
 		}
+		return nil
 	},
 }
 
