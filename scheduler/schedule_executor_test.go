@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flyteorg/flyteadmin/pkg/repositories"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/mocks"
 	adminModels "github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
@@ -23,10 +24,11 @@ import (
 )
 
 var schedules []models.SchedulableEntity
+var db repositories.RepositoryInterface
 
-func setupScheduleExecutor(t *testing.T) ScheduledExecutor {
-	db := mocks.NewMockRepository()
-	var scope = promutils.NewScope("test_scheduler")
+func setupScheduleExecutor(t *testing.T, s string) ScheduledExecutor {
+	db = mocks.NewMockRepository()
+	var scope = promutils.NewScope(s)
 	scheduleExecutorConfig := runtimeInterfaces.WorkflowExecutorConfig{
 		FlyteWorkflowExecutorConfig: &runtimeInterfaces.FlyteWorkflowExecutorConfig{
 			AdminRateLimit: &runtimeInterfaces.AdminRateLimit{
@@ -45,9 +47,6 @@ func setupScheduleExecutor(t *testing.T) ScheduledExecutor {
 	assert.Nil(t, err)
 	mockAdminClient := new(adminMocks.AdminServiceClient)
 	snapshotRepo := db.ScheduleEntitiesSnapshotRepo().(*schedMocks.ScheduleEntitiesSnapShotRepoInterface)
-
-	scheduleEntitiesRepo := db.SchedulableEntityRepo().(*schedMocks.SchedulableEntityRepoInterface)
-
 	snapshotModel := models.ScheduleEntitiesSnapshot{
 		BaseModel: adminModels.BaseModel{
 			ID:        17,
@@ -56,49 +55,116 @@ func setupScheduleExecutor(t *testing.T) ScheduledExecutor {
 		},
 		Snapshot: f.Bytes(),
 	}
-
-	activeV2 := true
-	schedules = append(schedules, models.SchedulableEntity{
-		SchedulableEntityKey: models.SchedulableEntityKey{
-			Project: "project",
-			Domain:  "domain",
-			Name:    "cron_schedule",
-			Version: "v2",
-		},
-		CronExpression:      "@every 1s",
-		KickoffTimeInputArg: "kickoff_time",
-		Active:              &activeV2,
-	})
-
-	activeV1 := false
-	schedules = append(schedules, models.SchedulableEntity{
-		SchedulableEntityKey: models.SchedulableEntityKey{
-			Project: "project",
-			Domain:  "domain",
-			Name:    "cron_schedule",
-			Version: "v1",
-		},
-		CronExpression:      "*/1 * * * *",
-		KickoffTimeInputArg: "kickoff_time",
-		Active:              &activeV1,
-	})
-	snapshotRepo.OnRead(context.Background()).Return(snapshotModel, nil)
-	scheduleEntitiesRepo.OnGetAllMatch(mock.Anything).Return(schedules, nil)
+	snapshotRepo.OnReadMatch(mock.Anything).Return(snapshotModel, nil)
+	snapshotRepo.OnWriteMatch(mock.Anything, mock.Anything).Return(nil)
 	mockAdminClient.OnCreateExecutionMatch(context.Background(), mock.Anything).
 		Return(&admin.ExecutionCreateResponse{}, nil)
-
 	return NewScheduledExecutor(db, scheduleExecutorConfig,
 		scope, mockAdminClient)
 }
 
 func TestSuccessfulSchedulerExec(t *testing.T) {
 	t.Run("add cron schedule", func(t *testing.T) {
-		scheduleExecutor := setupScheduleExecutor(t)
+		scheduleExecutor := setupScheduleExecutor(t, "cron")
+		scheduleEntitiesRepo := db.SchedulableEntityRepo().(*schedMocks.SchedulableEntityRepoInterface)
+		activeV2 := true
+		createAt := time.Now()
+		schedules = append(schedules, models.SchedulableEntity{
+			BaseModel: adminModels.BaseModel{
+				ID:        1,
+				CreatedAt: createAt,
+				UpdatedAt: time.Now(),
+			},
+			SchedulableEntityKey: models.SchedulableEntityKey{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "cron_schedule",
+				Version: "v2",
+			},
+			CronExpression:      "@every 1s",
+			KickoffTimeInputArg: "kickoff_time",
+			Active:              &activeV2,
+		})
+
+		scheduleEntitiesRepo.OnGetAllMatch(mock.Anything).Return(schedules, nil)
+		go func() {
+			err := scheduleExecutor.Run(context.Background())
+			assert.Nil(t, err)
+		}()
+		time.Sleep(10 * time.Second)
+		scheduleEntitiesRepo = db.SchedulableEntityRepo().(*schedMocks.SchedulableEntityRepoInterface)
+		activeV2 = false
+		schedules = nil
+		schedules = append(schedules, models.SchedulableEntity{
+			BaseModel: adminModels.BaseModel{
+				ID:        1,
+				CreatedAt: createAt,
+				UpdatedAt: time.Now(),
+			},
+			SchedulableEntityKey: models.SchedulableEntityKey{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "cron_schedule",
+				Version: "v2",
+			},
+			CronExpression:      "@every 1s",
+			KickoffTimeInputArg: "kickoff_time",
+			Active:              &activeV2,
+		})
+		scheduleEntitiesRepo.OnGetAllMatch(mock.Anything).Return(schedules, nil)
+		time.Sleep(30 * time.Second)
+	})
+
+	t.Run("add fixed rate schedule", func(t *testing.T) {
+		scheduleExecutor := setupScheduleExecutor(t, "fixed")
+		scheduleEntitiesRepo := db.SchedulableEntityRepo().(*schedMocks.SchedulableEntityRepoInterface)
+		activeV2 := true
+		createAt := time.Now()
+		schedules = append(schedules, models.SchedulableEntity{
+			BaseModel: adminModels.BaseModel{
+				ID:        1,
+				CreatedAt: createAt,
+				UpdatedAt: time.Now(),
+			},
+			SchedulableEntityKey: models.SchedulableEntityKey{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "fixed_rate_schedule",
+				Version: "v2",
+			},
+			FixedRateValue:      1,
+			Unit:                admin.FixedRateUnit_MINUTE,
+			KickoffTimeInputArg: "kickoff_time",
+			Active:              &activeV2,
+		})
+		scheduleEntitiesRepo.OnGetAllMatch(mock.Anything).Return(schedules, nil)
 
 		go func() {
 			err := scheduleExecutor.Run(context.Background())
 			assert.Nil(t, err)
 		}()
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Second)
+		scheduleEntitiesRepo = db.SchedulableEntityRepo().(*schedMocks.SchedulableEntityRepoInterface)
+		activeV2 = false
+		schedules = nil
+		schedules = append(schedules, models.SchedulableEntity{
+			BaseModel: adminModels.BaseModel{
+				ID:        1,
+				CreatedAt: createAt,
+				UpdatedAt: time.Now(),
+			},
+			SchedulableEntityKey: models.SchedulableEntityKey{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "fixed_rate_schedule",
+				Version: "v2",
+			},
+			FixedRateValue:      1,
+			Unit:                admin.FixedRateUnit_MINUTE,
+			KickoffTimeInputArg: "kickoff_time",
+			Active:              &activeV2,
+		})
+		scheduleEntitiesRepo.OnGetAllMatch(mock.Anything).Return(schedules, nil)
+		time.Sleep(30 * time.Second)
 	})
 }

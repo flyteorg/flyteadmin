@@ -15,15 +15,14 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-type snpashoterMetrics struct {
+type SnapshoterMetrics struct {
 	Scope                      promutils.Scope
-	CheckPointPanicCounter     prometheus.Counter
 	SnapshotSaveErrCounter     prometheus.Counter
 	SnapshotCreationErrCounter prometheus.Counter
 }
 
 type snapshoter struct {
-	metrics snpashoterMetrics
+	metrics SnapshoterMetrics
 	db      repositories.SchedulerRepoInterface
 }
 
@@ -78,11 +77,9 @@ func New(scope promutils.Scope, db repositories.SchedulerRepoInterface) Persiste
 	}
 }
 
-func getSnapshoterMetrics(scope promutils.Scope) snpashoterMetrics {
-	return snpashoterMetrics{
+func getSnapshoterMetrics(scope promutils.Scope) SnapshoterMetrics {
+	return SnapshoterMetrics{
 		Scope: scope,
-		CheckPointPanicCounter: scope.MustNewCounter("checkpoint_panic_counter",
-			"count of crashes for the checkpointer"),
 		SnapshotSaveErrCounter: scope.MustNewCounter("checkpoint_save_error_counter",
 			"count of unsuccessful attempts to save the created snapshot to the DB"),
 		SnapshotCreationErrCounter: scope.MustNewCounter("checkpoint_creation_error_counter",
