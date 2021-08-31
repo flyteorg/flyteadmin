@@ -1,4 +1,5 @@
 export REPOSITORY=flyteadmin
+export FLYTE_SCHEDULER_REPOSITORY=flytescheduler
 include boilerplate/flyte/docker_build/Makefile
 include boilerplate/flyte/golang_test_targets/Makefile
 include boilerplate/flyte/end2end/Makefile
@@ -14,6 +15,10 @@ LD_FLAGS="-s -w -X $(PACKAGE)/version.Version=$(GIT_VERSION) -X $(PACKAGE)/versi
 update_boilerplate:
 	@curl https://raw.githubusercontent.com/flyteorg/boilerplate/master/boilerplate/update.sh -o boilerplate/update.sh
 	@boilerplate/update.sh
+
+.PHONY: docker_build_scheduler
+docker_build_scheduler:
+	docker build -t $$FLYTE_SCHEDULER_REPOSITORY:$(GIT_HASH) -f Dockerfile.scheduler .
 
 .PHONY: integration
 integration:
