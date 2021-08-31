@@ -314,12 +314,12 @@ data:
         target_gc_percent: 100
       container: "flyte"
     task_resources:
-      defaults:
+      defaultResources:
         cpu: 100m
         gpu: 20m
         memory: 1Mi
         storage: 10M
-      limits:
+      limitResources:
         cpu: 500m
         gpu: 100m
         memory: 1Mi
