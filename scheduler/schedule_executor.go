@@ -18,8 +18,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-const snapshotWriterSleepTime = 30 * time.Second
-const scheduleUpdaterSleepTime = 30 * time.Second
+const snapshotWriterDuration = 30 * time.Second
+const scheduleUpdaterDuration = 30 * time.Second
 
 const snapShotVersion = 1
 
@@ -74,7 +74,7 @@ func (w *ScheduledExecutor) Run(ctx context.Context) error {
 	updaterCtx, updaterCancel := context.WithCancel(ctx)
 	defer updaterCancel()
 	gcronUpdater := core.NewUpdater(w.db, gcronScheduler)
-	go wait.UntilWithContext(updaterCtx, gcronUpdater.UpdateGoCronSchedules, scheduleUpdaterSleepTime)
+	go wait.UntilWithContext(updaterCtx, gcronUpdater.UpdateGoCronSchedules, scheduleUpdaterDuration)
 
 	// Catch up simulataneously on all the schedules in the scheduler
 	currTime := time.Now()
@@ -92,7 +92,7 @@ func (w *ScheduledExecutor) Run(ctx context.Context) error {
 		// Start the go routine to write the snapshot periodically
 		snapshoterCtx, snapshoterCancel := context.WithCancel(ctx)
 		defer snapshoterCancel()
-		wait.UntilWithContext(snapshoterCtx, snapshotRunner.Run, snapshotWriterSleepTime)
+		wait.UntilWithContext(snapshoterCtx, snapshotRunner.Run, snapshotWriterDuration)
 		<-ctx.Done()
 	}
 	return nil
