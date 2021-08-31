@@ -41,7 +41,7 @@ func TestOAuth2MetadataProvider_OAuth2Metadata(t *testing.T) {
 	t.Run("Self AuthServer", func(t *testing.T) {
 		provider := NewService(&authConfig.Config{
 			AuthorizedURIs: []config2.URL{{URL: *config.MustParseURL("https://issuer/")}},
-			AppAuth: authConfig.OAuth2Options{FlyteScopeAll: "all"},
+			AppAuth:        authConfig.OAuth2Options{FlyteScopeAll: "all"},
 		})
 
 		ctx := context.Background()

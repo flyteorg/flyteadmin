@@ -99,8 +99,8 @@ func GRPCGetIdentityFromAccessToken(ctx context.Context, authCtx interfaces.Auth
 func GRPCGetIdentityFromIDToken(ctx context.Context, authCtx interfaces.AuthenticationContext) (
 	interfaces.IdentityContext, error) {
 
-	clientID :=      authCtx.Options().UserAuth.OpenID.ClientID
-	provider :=	     authCtx.OidcProvider()
+	clientID := authCtx.Options().UserAuth.OpenID.ClientID
+	provider := authCtx.OidcProvider()
 	tokenStr, err := grpcauth.AuthFromMD(ctx, IDTokenScheme)
 	if err != nil {
 		logger.Debugf(ctx, "Could not retrieve id token from metadata %v", err)

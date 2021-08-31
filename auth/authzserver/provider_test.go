@@ -237,7 +237,7 @@ func Test_verifyClaims(t *testing.T) {
 		assert.Equal(t, "123", identityCtx.UserID())
 	})
 
-	t.Run("Add flyte scope all if it is user access token iwth no scope defined", func(t *testing.T) {
+	t.Run("Add flyte scope all if it is user access token with no scope defined", func(t *testing.T) {
 		identityCtx, err := verifyClaims(sets.NewString("https://myserver"), map[string]interface{}{
 			"aud": []string{"https://myserver"},
 			"user_info": map[string]interface{}{
