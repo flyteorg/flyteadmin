@@ -1,5 +1,7 @@
 package interfaces
 
+import "golang.org/x/time/rate"
+
 // This configuration section is used to for initiating the database connection with the store that holds registered
 // entities (e.g. workflows, tasks, launch plans...)
 // This struct specifically maps to the flyteadmin config yaml structure.
@@ -207,13 +209,27 @@ func (a *AWSWorkflowExecutorConfig) GetAccountID() string {
 type FlyteWorkflowExecutorConfig struct {
 	// This allows to control the number of TPS that hit admin using the scheduler.
 	// eg : 100 TPS will send at the max 100 schedule requests to admin per sec.
-	// This value is in TPS.
-	AdminFireReqRateLimit int `json:"adminFireReqRateLimit"`
+	// Burst specifies burst traffic count
+	AdminRateLimit *AdminRateLimit `json:"adminRateLimit"`
 }
 
-func (f *FlyteWorkflowExecutorConfig) GetAdminFireReqRateLimit() int {
-	return f.AdminFireReqRateLimit
+func (f *FlyteWorkflowExecutorConfig) GetAdminRateLimit() *AdminRateLimit {
+	return f.AdminRateLimit
 }
+
+type AdminRateLimit struct {
+	Tps   rate.Limit `json:"tps"`
+	Burst int     `json:"burst"`
+}
+
+func (f *AdminRateLimit) GetTps() rate.Limit {
+	return f.Tps
+}
+
+func (f *AdminRateLimit) GetBurst() int {
+	return f.Burst
+}
+
 
 // This configuration is the base configuration for all scheduler-related set-up.
 type SchedulerConfig struct {
