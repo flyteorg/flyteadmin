@@ -220,14 +220,18 @@ func SetContextForIdentity(ctx context.Context, identityContext interfaces.Ident
 	return WithAuditFields(newCtx, identityContext.UserID(), []string{identityContext.AppID()}, identityContext.AuthenticatedAt())
 }
 
+func IsAuthEnabled(ctx context.Context, authCtx interfaces.AuthenticationContext) bool {
+	fromHTTP := metautils.ExtractIncoming(ctx).Get(FromHTTPKey)
+	isFromHTTP := fromHTTP == FromHTTPVal
+	return (isFromHTTP && !authCtx.Options().DisableForHTTP) ||
+		(!isFromHTTP && !authCtx.Options().DisableForGrpc)
+}
+
 // GetAuthenticationInterceptor chooses to enforce or not enforce authentication. It will attempt to get the token
 // from the incoming context, validate it, and decide whether or not to let the request through.
 func GetAuthenticationInterceptor(authCtx interfaces.AuthenticationContext) func(context.Context) (context.Context, error) {
 	return func(ctx context.Context) (context.Context, error) {
 		logger.Debugf(ctx, "Running authentication gRPC interceptor")
-
-		fromHTTP := metautils.ExtractIncoming(ctx).Get(FromHTTPKey)
-		isFromHTTP := fromHTTP == FromHTTPVal
 
 		identityContext, err := GRPCGetIdentityFromAccessToken(ctx, authCtx)
 		if err == nil {
@@ -244,8 +248,7 @@ func GetAuthenticationInterceptor(authCtx interfaces.AuthenticationContext) func
 		}
 
 		// Only enforcement logic is present. The default case is to let things through.
-		if (isFromHTTP && !authCtx.Options().DisableForHTTP) ||
-			(!isFromHTTP && !authCtx.Options().DisableForGrpc) {
+		if IsAuthEnabled(ctx, authCtx) {
 			return ctx, status.Errorf(codes.Unauthenticated, "token parse error %s", err)
 		}
 

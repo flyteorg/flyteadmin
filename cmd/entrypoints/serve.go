@@ -79,19 +79,23 @@ func init() {
 		contextutils.TaskTypeKey, common.RuntimeTypeKey, common.RuntimeVersionKey)
 }
 
-func blanketAuthorization(ctx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (
-	resp interface{}, err error) {
+func GetBlanketAuthInterceptor(authCtx interfaces.AuthenticationContext) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		if !auth.IsAuthEnabled(ctx, authCtx) {
+			return handler(ctx, req)
+		}
 
-	identityContext := auth.IdentityContextFromContext(ctx)
-	if identityContext.IsEmpty() {
+		identityContext := auth.IdentityContextFromContext(ctx)
+		if identityContext.IsEmpty() {
+			return handler(ctx, req)
+		}
+
+		if !identityContext.Scopes().Has(auth.ScopeAll) && !identityContext.Scopes().Has("all") {
+			return nil, status.Errorf(codes.Unauthenticated, "authenticated user doesn't have required scope")
+		}
+
 		return handler(ctx, req)
 	}
-
-	if !identityContext.Scopes().Has(auth.ScopeAll) && !identityContext.Scopes().Has("all") {
-		return nil, status.Errorf(codes.Unauthenticated, "authenticated user doesn't have required scope")
-	}
-
-	return handler(ctx, req)
 }
 
 // Creates a new gRPC Server with all the configuration
@@ -105,7 +109,7 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authCtx interf
 			auth.GetAuthenticationCustomMetadataInterceptor(authCtx),
 			grpcauth.UnaryServerInterceptor(auth.GetAuthenticationInterceptor(authCtx)),
 			auth.AuthenticationLoggingInterceptor,
-			blanketAuthorization,
+			GetBlanketAuthInterceptor(authCtx),
 		)
 	} else {
 		logger.Infof(ctx, "Creating gRPC server without authentication")
