@@ -36,18 +36,21 @@ type executorMetrics struct {
 func (w *executor) Execute(ctx context.Context, scheduledTime time.Time, s models.SchedulableEntity) error {
 
 	literalsInputMap := map[string]*core.Literal{}
-	literalsInputMap[s.KickoffTimeInputArg] = &core.Literal{
-		Value: &core.Literal_Scalar{
-			Scalar: &core.Scalar{
-				Value: &core.Scalar_Primitive{
-					Primitive: &core.Primitive{
-						Value: &core.Primitive_Datetime{
-							Datetime: timestamppb.New(scheduledTime),
+	// Only add kickoff time input arg for cron based schedules
+	if len(s.CronExpression) > 0 {
+		literalsInputMap[s.KickoffTimeInputArg] = &core.Literal{
+			Value: &core.Literal_Scalar{
+				Scalar: &core.Scalar{
+					Value: &core.Scalar_Primitive{
+						Primitive: &core.Primitive{
+							Value: &core.Primitive_Datetime{
+								Datetime: timestamppb.New(scheduledTime),
+							},
 						},
 					},
 				},
 			},
-		},
+		}
 	}
 
 	// Making the identifier deterministic using the hash of the identifier and scheduled time
@@ -114,7 +117,7 @@ func (w *executor) Execute(ctx context.Context, scheduledTime time.Time, s model
 			return execErr
 		},
 	)
-	if err != nil {
+	if err != nil && status.Code(err) != codes.AlreadyExists {
 		logger.Error(ctx, "failed to create execution create request %+v due to %v after all retries", executionRequest, err)
 		return err
 	}
