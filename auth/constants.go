@@ -20,5 +20,5 @@ const (
 	OIdCMetadataEndpoint = ".well-known/openid-configuration"
 
 	ContextKeyIdentityContext = contextutils.Key("identity_context")
-	ScopeAll                  = "all"
+	ScopeAll                  = "svc"
 )
