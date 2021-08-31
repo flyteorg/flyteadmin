@@ -175,14 +175,14 @@ func (g *GoCronScheduler) CatchupAll(ctx context.Context, until time.Time) bool 
 
 		fromTime = job.catchupFromTime
 		if fromTime != nil {
-			logger.Debugf(ctx, "catching up schedule %+v from %v to %v", job.schedule, fromTime, until)
+			logger.Infof(ctx, "catching up schedule %+v from %v to %v", job.schedule, fromTime, until)
 			err := g.CatchUpSingleSchedule(ctx, job.schedule, *fromTime, until)
 			if err != nil {
 				// stop the iteration since one of the catchups failed
 				failed = true
 				return false
 			}
-			logger.Debugf(ctx, "caught up successfully on the schedule %+v from %v to %v", job.schedule, fromTime, until)
+			logger.Infof(ctx, "caught up successfully on the schedule %+v from %v to %v", job.schedule, fromTime, until)
 		}
 		return true
 	})
@@ -258,7 +258,7 @@ func (g *GoCronScheduler) AddFixedIntervalJob(ctx context.Context, job *GoCronJo
 	jobFunc = job.Run
 
 	g.cron.ScheduleTimedJob(cron.ConstantDelaySchedule{Delay: d}, jobFunc)
-	logger.Infof(ctx, "successfully added the fixed rate schedule %snapshoter to the scheduler for schedule %+v",
+	logger.Infof(ctx, "successfully added the fixed rate schedule %s to the scheduler for schedule %+v",
 		job.nameOfSchedule, job.schedule)
 
 	return nil
@@ -266,7 +266,7 @@ func (g *GoCronScheduler) AddFixedIntervalJob(ctx context.Context, job *GoCronJo
 
 func (g *GoCronScheduler) RemoveFixedIntervalJob(ctx context.Context, job *GoCronJob) {
 	g.cron.Remove(job.entryID)
-	logger.Infof(ctx, "successfully removed the schedule %snapshoter from scheduler for schedule %+v",
+	logger.Infof(ctx, "successfully removed the schedule %s from scheduler for schedule %+v",
 		job.nameOfSchedule, job.schedule)
 }
 
@@ -279,7 +279,7 @@ func (g *GoCronScheduler) AddCronJob(ctx context.Context, job *GoCronJob) error 
 	// Update the enttry id in the job which is handle to be used for removal
 	job.entryID = entryID
 	if err == nil {
-		logger.Infof(ctx, "successfully added the schedule %snapshoter to the scheduler for schedule %+v",
+		logger.Infof(ctx, "successfully added the schedule %s to the scheduler for schedule %+v",
 			job.nameOfSchedule, job.schedule)
 	}
 	return err
@@ -287,7 +287,7 @@ func (g *GoCronScheduler) AddCronJob(ctx context.Context, job *GoCronJob) error 
 
 func (g *GoCronScheduler) RemoveCronJob(ctx context.Context, job *GoCronJob) {
 	g.cron.Remove(job.entryID)
-	logger.Infof(ctx, "successfully removed the schedule %snapshoter from scheduler for schedue %+v",
+	logger.Infof(ctx, "successfully removed the schedule %s from scheduler for schedue %+v",
 		job.nameOfSchedule, job.schedule)
 
 }
