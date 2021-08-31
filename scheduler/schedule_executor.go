@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"golang.org/x/time/rate"
 	"time"
 
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
@@ -14,7 +15,6 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 
-	"go.uber.org/ratelimit"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
@@ -53,10 +53,11 @@ func (w *ScheduledExecutor) Run(ctx context.Context) error {
 		logger.Errorf(ctx, "unable to read the schedules from the db due to %v. Aborting", err)
 		return err
 	}
-	adminAPIRateLimit := w.workflowExecutorConfig.AdminFireReqRateLimit
+	adminRateLimit := w.workflowExecutorConfig.GetAdminRateLimit()
 
 	// Set the rate limit on the admin
-	rateLimiter := ratelimit.New(adminAPIRateLimit)
+	rateLimiter := rate.NewLimiter(adminRateLimit.GetTps(), adminRateLimit.GetBurst())
+
 
 	// Set the executor to send executions to admin
 	executor := executor.New(w.scope, w.adminServiceClient)

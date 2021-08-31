@@ -29,7 +29,10 @@ func setupScheduleExecutor(t *testing.T) ScheduledExecutor {
 	var scope = promutils.NewScope("test_scheduler")
 	scheduleExecutorConfig := runtimeInterfaces.WorkflowExecutorConfig{
 		FlyteWorkflowExecutorConfig: &runtimeInterfaces.FlyteWorkflowExecutorConfig{
-			AdminFireReqRateLimit: 100,
+			AdminRateLimit: &runtimeInterfaces.AdminRateLimit{
+				Tps: 100,
+				Burst: 10,
+			},
 		},
 	}
 	var bytesArray []byte
