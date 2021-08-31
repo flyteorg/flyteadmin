@@ -87,7 +87,7 @@ func blanketAuthorization(ctx context.Context, req interface{}, _ *grpc.UnarySer
 		return handler(ctx, req)
 	}
 
-	if !identityContext.Scopes().Has(auth.ScopeAll) || !identityContext.Scopes().Has("all") {
+	if !identityContext.Scopes().Has(auth.ScopeAll) && !identityContext.Scopes().Has("all") {
 		return nil, status.Errorf(codes.Unauthenticated, "authenticated user doesn't have required scope")
 	}
 
