@@ -243,7 +243,7 @@ func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask,
 		}
 		cpu, err := resource.ParseQuantity(cpuLimit)
 		if err != nil {
-			logger.Infof(ctx, "Failed to parse user cpu limit from task spec [%s] with err [%+v]", cpuLimit, err)
+			logger.Errorf(ctx, "Failed to parse user cpu limit from task spec [%s] with err [%+v]", cpuLimit, err)
 		} else {
 			taskResourceLimits.CPU = cpu
 		}
@@ -256,7 +256,7 @@ func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask,
 		}
 		memory, err := resource.ParseQuantity(memoryLimit)
 		if err != nil {
-			logger.Infof(ctx, "Failed to parse user memory limit from task spec [%s] with err [%+v]", memoryLimit, err)
+			logger.Errorf(ctx, "Failed to parse user memory limit from task spec [%s] with err [%+v]", memoryLimit, err)
 		} else {
 			taskResourceLimits.Memory = memory
 		}
@@ -270,7 +270,7 @@ func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask,
 	} else if ephemeralStorageIndex >= 0 {
 		ephemeralStorage, err := resource.ParseQuantity(resourceRequestEntries[ephemeralStorageIndex].Value)
 		if err != nil {
-			logger.Infof(ctx, "Failed to parse user ephemeral storage limit from task spec [%s] with err [%+v]",
+			logger.Errorf(ctx, "Failed to parse user ephemeral storage limit from task spec [%s] with err [%+v]",
 				resourceRequestEntries[ephemeralStorageIndex].Value, err)
 		} else {
 			taskResourceLimits.EphemeralStorage = ephemeralStorage
