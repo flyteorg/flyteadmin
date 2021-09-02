@@ -38,7 +38,8 @@ func (w *ScheduledExecutor) Run(ctx context.Context) error {
 
 	defer logger.Infof(ctx, "Flyte native scheduler shutdown")
 
-	// Read snapshot from the DB.
+	// Read snapshot from the DB. Each snapshot is versioned and helps in maintaining backward compatibility
+	// Snapshot contains the lastexecution times for each schedule and is captured every 30 secs
 	snapShotReader := &snapshoter.VersionedSnapshot{Version: snapShotVersion}
 	snapshot, err := w.snapshoter.Read(ctx, snapShotReader)
 
@@ -53,6 +54,7 @@ func (w *ScheduledExecutor) Run(ctx context.Context) error {
 		logger.Errorf(ctx, "unable to read the schedules from the db due to %v. Aborting", err)
 		return err
 	}
+	logger.Infof(ctx, "Number of schedules retrieved %v", len(schedules))
 	adminRateLimit := w.workflowExecutorConfig.GetAdminRateLimit()
 
 	// Set the rate limit on the admin
@@ -62,13 +64,11 @@ func (w *ScheduledExecutor) Run(ctx context.Context) error {
 	executor := executor.New(w.scope, w.adminServiceClient)
 
 	// Create the scheduler using GoCronScheduler implementation
-	gcronScheduler := core.NewGoCronScheduler(w.scope, snapshot, rateLimiter, executor)
-	w.scheduler = gcronScheduler
-
-	// Bootstrap the schedules from the snapshot
+	// Also Bootstrap the schedules from the snapshot
 	bootStrapCtx, bootStrapCancel := context.WithCancel(ctx)
 	defer bootStrapCancel()
-	gcronScheduler.BootStrapSchedulesFromSnapShot(bootStrapCtx, schedules, snapshot)
+	gcronScheduler := core.NewGoCronScheduler(bootStrapCtx, schedules, w.scope, snapshot, rateLimiter, executor)
+	w.scheduler = gcronScheduler
 
 	// Start the go routine to write the update schedules periodically
 	updaterCtx, updaterCancel := context.WithCancel(ctx)
@@ -87,14 +87,17 @@ func (w *ScheduledExecutor) Run(ctx context.Context) error {
 		return err
 	}
 
-	if isCatchupSuccess.(bool) {
-		snapshotRunner := core.NewSnapshotRunner(w.snapshoter, w.scheduler)
-		// Start the go routine to write the snapshot periodically
-		snapshoterCtx, snapshoterCancel := context.WithCancel(ctx)
-		defer snapshoterCancel()
-		wait.UntilWithContext(snapshoterCtx, snapshotRunner.Run, snapshotWriterDuration)
-		<-ctx.Done()
+	if !isCatchupSuccess.(bool) {
+		logger.Errorf(ctx, "failed to catch up on all the schedules. Aborting")
 	}
+
+	snapshotRunner := core.NewSnapshotRunner(w.snapshoter, w.scheduler)
+	// Start the go routine to write the snapshot periodically
+	snapshoterCtx, snapshoterCancel := context.WithCancel(ctx)
+	defer snapshoterCancel()
+	wait.UntilWithContext(snapshoterCtx, snapshotRunner.Run, snapshotWriterDuration)
+	<-ctx.Done()
+
 	return nil
 }
 

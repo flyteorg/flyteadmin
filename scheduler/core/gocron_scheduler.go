@@ -307,12 +307,12 @@ func getFixedRateDurationFromSchedule(unit admin.FixedRateUnit, fixedRateValue u
 	return d, nil
 }
 
-func NewGoCronScheduler(scope promutils.Scope, snapshot snapshoter.Snapshot, rateLimiter *rate.Limiter,
-	executor executor.Executor) Scheduler {
+func NewGoCronScheduler(ctx context.Context, schedules []models.SchedulableEntity, scope promutils.Scope,
+	snapshot snapshoter.Snapshot, rateLimiter *rate.Limiter, executor executor.Executor) Scheduler {
 	// Create the new cron scheduler and start it off
 	c := cron.New()
 	c.Start()
-	return &GoCronScheduler{
+	scheduler := &GoCronScheduler{
 		cron:        c,
 		jobStore:    sync.Map{},
 		metrics:     getCronMetrics(scope),
@@ -320,6 +320,8 @@ func NewGoCronScheduler(scope promutils.Scope, snapshot snapshoter.Snapshot, rat
 		executor:    executor,
 		snapshot:    snapshot,
 	}
+	scheduler.BootStrapSchedulesFromSnapShot(ctx, schedules, snapshot)
+	return scheduler
 }
 
 func getCronMetrics(scope promutils.Scope) goCronMetrics {
