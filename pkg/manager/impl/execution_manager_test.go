@@ -3487,7 +3487,7 @@ func TestGetTaskResources(t *testing.T) {
 }
 
 func TestFromDeprecatedTaskResourceSet(t *testing.T) {
-	taskResourceSet := fromDeprecatedTaskResourceSet(context.TODO(), &admin.TaskResourceSpec{
+	taskResourceSet := fromAdminProtoTaskResourceSpec(context.TODO(), &admin.TaskResourceSpec{
 		Cpu:              "1",
 		Memory:           "100",
 		Storage:          "200",

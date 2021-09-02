@@ -436,7 +436,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 	checkTaskRequestsLessThanLimits(ctx, task.Template.Id, task.Template.GetContainer().Resources)
 }
 
-func fromDeprecatedTaskResourceSet(ctx context.Context, spec *admin.TaskResourceSpec) runtimeInterfaces.TaskResourceSet {
+func fromAdminProtoTaskResourceSpec(ctx context.Context, spec *admin.TaskResourceSpec) runtimeInterfaces.TaskResourceSet {
 	result := runtimeInterfaces.TaskResourceSet{}
 	var err error
 	if len(spec.Cpu) > 0 {
@@ -487,8 +487,8 @@ func (m *ExecutionManager) getTaskResources(ctx context.Context, workflow *core.
 	logger.Debugf(ctx, "Assigning task requested resources for [%+v]", workflow)
 	var taskResourceAttributes = &workflowengineInterfaces.TaskResources{}
 	if resource != nil && resource.Attributes != nil && resource.Attributes.GetTaskResourceAttributes() != nil {
-		taskResourceAttributes.Defaults = fromDeprecatedTaskResourceSet(ctx, resource.Attributes.GetTaskResourceAttributes().Defaults)
-		taskResourceAttributes.Limits = fromDeprecatedTaskResourceSet(ctx, resource.Attributes.GetTaskResourceAttributes().Limits)
+		taskResourceAttributes.Defaults = fromAdminProtoTaskResourceSpec(ctx, resource.Attributes.GetTaskResourceAttributes().Defaults)
+		taskResourceAttributes.Limits = fromAdminProtoTaskResourceSpec(ctx, resource.Attributes.GetTaskResourceAttributes().Limits)
 	} else {
 		taskResourceAttributes = &workflowengineInterfaces.TaskResources{
 			Defaults: m.config.TaskResourceConfiguration().GetDefaults(),
