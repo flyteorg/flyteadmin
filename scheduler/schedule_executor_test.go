@@ -5,6 +5,7 @@ package scheduler
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -166,5 +167,16 @@ func TestSuccessfulSchedulerExec(t *testing.T) {
 		})
 		scheduleEntitiesRepo.OnGetAllMatch(mock.Anything).Return(schedules, nil)
 		time.Sleep(30 * time.Second)
+	})
+
+	t.Run("unable to read schedules", func(t *testing.T) {
+		scheduleExecutor := setupScheduleExecutor(t, "unable_read_schedules")
+		scheduleEntitiesRepo := db.SchedulableEntityRepo().(*schedMocks.SchedulableEntityRepoInterface)
+		scheduleEntitiesRepo.OnGetAllMatch(mock.Anything).Return(nil, fmt.Errorf("unable to read schedules"))
+
+		go func() {
+			err := scheduleExecutor.Run(context.Background())
+			assert.NotNil(t, err)
+		}()
 	})
 }
