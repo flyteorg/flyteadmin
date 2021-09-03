@@ -116,13 +116,12 @@ func checkAndFetchExpectedInputForLaunchPlan(
 		value, ok := workflowExpectedInputMap[k]
 		if !ok {
 			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "unexpected default_input %s", k)
-		} else {
-			v, _ := defaultInputMap.Get(k)
-			if !validators.AreTypesCastable(v.(*core.Parameter).GetVar().GetType(), value.GetType()) {
-				return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
-					"invalid default_input wrong type %s, expected %v, got %v instead",
-					k, v.(*core.Parameter).GetVar().GetType().String(), value.GetType().String())
-			}
+		}
+		v, _ := defaultInputMap.Get(k)
+		if !validators.AreTypesCastable(v.(*core.Parameter).GetVar().GetType(), value.GetType()) {
+			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
+				"invalid default_input wrong type %s, expected %v, got %v instead",
+				k, v.(*core.Parameter).GetVar().GetType().String(), value.GetType().String())
 		}
 	}
 
