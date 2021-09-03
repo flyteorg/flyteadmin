@@ -89,6 +89,7 @@ func (w *ScheduledExecutor) Run(ctx context.Context) error {
 
 	if !isCatchupSuccess.(bool) {
 		logger.Errorf(ctx, "failed to catch up on all the schedules. Aborting")
+		return err
 	}
 
 	snapshotRunner := core.NewSnapshotRunner(w.snapshoter, w.scheduler)
