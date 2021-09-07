@@ -52,14 +52,14 @@ func generateWorkflowNameFromTask(taskName string) string {
 
 func generateBindings(outputs core.VariableMap, nodeID string) []*core.Binding {
 	bindings := make([]*core.Binding, 0, len(outputs.Variables))
-	for _, e := range outputs.Variables {
+	for _, mapEntry := range outputs.Variables {
 		binding := &core.Binding{
-			Var: e.GetName(),
+			Var: mapEntry.GetName(),
 			Binding: &core.BindingData{
 				Value: &core.BindingData_Promise{
 					Promise: &core.OutputReference{
 						NodeId: nodeID,
-						Var:    e.GetName(),
+						Var:    mapEntry.GetName(),
 					},
 				},
 			},

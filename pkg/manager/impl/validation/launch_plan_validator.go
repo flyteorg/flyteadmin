@@ -58,11 +58,11 @@ func ValidateLaunchPlan(ctx context.Context,
 func validateSchedule(request admin.LaunchPlanCreateRequest, expectedInputs *core.ParameterMap) error {
 	schedule := request.GetSpec().GetEntityMetadata().GetSchedule()
 	if schedule.GetCronExpression() != "" || schedule.GetRate() != nil {
-		for _, e := range expectedInputs.Parameters {
-			if e.GetParameter().GetRequired() && e.GetName() != schedule.GetKickoffTimeInputArg() {
+		for _, mapEntry := range expectedInputs.Parameters {
+			if mapEntry.GetParameter().GetRequired() && mapEntry.GetName() != schedule.GetKickoffTimeInputArg() {
 				return errors.NewFlyteAdminErrorf(
 					codes.InvalidArgument,
-					"Cannot create a launch plan with a schedule if there is an unbound required input. [%v] is required", e.GetName())
+					"Cannot create a launch plan with a schedule if there is an unbound required input. [%v] is required", mapEntry.GetName())
 			}
 		}
 		if schedule.GetKickoffTimeInputArg() != "" {
@@ -87,8 +87,8 @@ func checkAndFetchExpectedInputForLaunchPlan(
 	defaultInputMap := orderedmap.New()
 	var fixedInputMap map[string]*core.Literal
 	if defaultInputs != nil && len(defaultInputs.GetParameters()) > 0 {
-		for _, e := range defaultInputs.GetParameters() {
-			defaultInputMap.Set(e.GetName(), e.GetParameter())
+		for _, mapEntry := range defaultInputs.GetParameters() {
+			defaultInputMap.Set(mapEntry.GetName(), mapEntry.GetParameter())
 		}
 	}
 
@@ -161,16 +161,16 @@ func checkAndFetchExpectedInputForLaunchPlan(
 
 func parameterMapEntriesToMap(entries []*core.ParameterMapEntry) (parameterMap map[string]*core.Parameter) {
 	parameterMap = make(map[string]*core.Parameter, len(entries))
-	for _, e := range entries {
-		parameterMap[e.GetName()] = e.GetParameter()
+	for _, mapEntry := range entries {
+		parameterMap[mapEntry.GetName()] = mapEntry.GetParameter()
 	}
 	return
 }
 
 func variableMapEntriesToMap(entries []*core.VariableMapEntry) (variableMap map[string]*core.Variable) {
 	variableMap = make(map[string]*core.Variable, len(entries))
-	for _, v := range entries {
-		variableMap[v.GetName()] = v.GetVar()
+	for _, mapEntry := range entries {
+		variableMap[mapEntry.GetName()] = mapEntry.GetVar()
 	}
 	return
 }

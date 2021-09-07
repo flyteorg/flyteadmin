@@ -176,27 +176,27 @@ func validateLiteralMap(inputMap *core.LiteralMap, fieldName string) error {
 
 func validateParameterMap(inputMap *core.ParameterMap, fieldName string) error {
 	if inputMap != nil && len(inputMap.Parameters) > 0 {
-		for _, e := range inputMap.Parameters {
-			if e.GetName() == "" {
+		for _, mapEntry := range inputMap.Parameters {
+			if mapEntry.GetName() == "" {
 				return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "missing key in %s", fieldName)
 			}
-			if e.GetParameter().GetVar() == nil || e.GetParameter().GetVar().GetType() == nil {
+			if mapEntry.GetParameter().GetVar() == nil || mapEntry.GetParameter().GetVar().GetType() == nil {
 				return errors.NewFlyteAdminErrorf(codes.InvalidArgument,
 					"The Variable component of the Parameter %s in %s either is missing, or has a missing Type",
-					e.GetName(), fieldName)
+					mapEntry.GetName(), fieldName)
 			}
-			if e.GetParameter().GetDefault() == nil && !e.GetParameter().GetRequired() {
+			if mapEntry.GetParameter().GetDefault() == nil && !mapEntry.GetParameter().GetRequired() {
 				return errors.NewFlyteAdminErrorf(codes.InvalidArgument,
 					"Invalid variable %s in %s - variable has neither default, nor is required. "+
-						"One must be specified", e.GetName(), fieldName)
+						"One must be specified", mapEntry.GetName(), fieldName)
 			}
-			defaultValue := e.GetParameter().GetDefault()
+			defaultValue := mapEntry.GetParameter().GetDefault()
 			if defaultValue != nil {
 				inputType := validators.LiteralTypeForLiteral(defaultValue)
-				if !validators.AreTypesCastable(inputType, e.GetParameter().GetVar().GetType()) {
+				if !validators.AreTypesCastable(inputType, mapEntry.GetParameter().GetVar().GetType()) {
 					return errors.NewFlyteAdminErrorf(codes.InvalidArgument,
-						"Type mismatch for Parameter %s in %s has type %s, expected %s", e.GetName(), fieldName,
-						e.GetParameter().GetVar().GetType().String(), inputType.String())
+						"Type mismatch for Parameter %s in %s has type %s, expected %s", mapEntry.GetName(), fieldName,
+						mapEntry.GetParameter().GetVar().GetType().String(), inputType.String())
 				}
 			}
 		}
