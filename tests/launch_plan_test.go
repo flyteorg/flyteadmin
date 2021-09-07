@@ -864,7 +864,7 @@ func testListLaunchPlanIdentifiersGrpc(t *testing.T) {
 		Limit:   10,
 		SortBy: &admin.Sort{
 			Direction: admin.Sort_DESCENDING,
-			Name:      "name",
+			Key:       "name",
 		},
 	})
 	assert.Nil(t, err)
@@ -876,7 +876,7 @@ func testListLaunchPlanIdentifiersGrpc(t *testing.T) {
 		Limit:   10,
 		SortBy: &admin.Sort{
 			Direction: admin.Sort_ASCENDING,
-			Name:      "name",
+			Key:       "name",
 		},
 	})
 	assert.Nil(t, err)
