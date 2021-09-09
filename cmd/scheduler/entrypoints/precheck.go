@@ -21,8 +21,8 @@ var preCheckRunCmd = &cobra.Command{
 		err := retry.Do(
 			func() error {
 				config := adminClient.GetConfig(ctx)
-				host := strings.Split(config.Endpoint.Host,":")
-				response,err := http.Get(fmt.Sprintf("http://%s/healthcheck",host))
+				host := strings.Split(config.Endpoint.Host, ":")
+				response, err := http.Get(fmt.Sprintf("http://%s/healthcheck", host))
 				if err != nil {
 					return err
 				}
