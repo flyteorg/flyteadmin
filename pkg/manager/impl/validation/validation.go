@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"k8s.io/apimachinery/pkg/util/validation"
 	"strconv"
 	"strings"
 
@@ -38,6 +39,33 @@ func ValidateMaxLengthStringField(field string, fieldName string, limit int) err
 func ValidateMaxMapLengthField(m map[string]string, fieldName string, limit int) error {
 	if len(m) > limit {
 		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "%s map cannot exceed %d entries", fieldName, limit)
+	}
+	return nil
+}
+
+func validateLabels(labels *admin.Labels) error {
+	if labels == nil || len(labels.Values) == 0 {
+		return nil
+	}
+	if err := ValidateMaxMapLengthField(labels.Values, "labels", maxLabelArrayLength); err != nil {
+		return err
+	}
+	if err := validateLabelsAlphanumeric(labels); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Given an admin.Project, checks if the project has labels and if it does, checks if the labels are K8s compliant,
+// i.e. alphanumeric + - and _
+func validateLabelsAlphanumeric(labels *admin.Labels) error {
+	for key, value := range labels.Values {
+		if errs := validation.IsDNS1123Label(key); len(errs) > 0 {
+			return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "invalid label key [%s]: %v", key, errs)
+		}
+		if errs := validation.IsDNS1123Label(value); len(errs) > 0 {
+			return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "invalid label value [%s]: %v", value, errs)
+		}
 	}
 	return nil
 }
