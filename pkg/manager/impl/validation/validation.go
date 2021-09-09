@@ -57,7 +57,7 @@ func validateLabels(labels *admin.Labels) error {
 	return nil
 }
 
-// Given an admin.Project, checks if the project has labels and if it does, checks if the labels are K8s compliant,
+// Given an admin.Labels, checks if the labels exist, checks if the labels are K8s compliant,
 // i.e. alphanumeric + - and _
 func validateLabelsAlphanumeric(labels *admin.Labels) error {
 	for key, value := range labels.Values {
