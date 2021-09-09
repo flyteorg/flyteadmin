@@ -206,5 +206,3 @@ qualityOfService:
     # by default production has an UNDEFINED tier when it is omitted from the configuration
 namespace_mapping:
    template: "{{ project }}-{{ domain }}" # Default namespace mapping template.
-admin:
-  endpoint: "dns:///localhost:30081"
