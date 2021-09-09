@@ -2,11 +2,13 @@ package entrypoints
 
 import (
 	"context"
+	"fmt"
 	"github.com/avast/retry-go"
 	adminClient "github.com/flyteorg/flyteidl/clients/go/admin"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/pkg/errors"
+	"net/http"
+	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -16,23 +18,21 @@ var preCheckRunCmd = &cobra.Command{
 	Short: "This command will check pre requirement for scheduler",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
-
 		err := retry.Do(
 			func() error {
-				clientSet, err := adminClient.ClientSetBuilder().WithConfig(adminClient.GetConfig(ctx)).Build(ctx)
-				if err != nil {
-					logger.Fatalf(ctx, "Flyte native scheduler failed to start due to %v", err)
-					return err
-				}
-				version, err := clientSet.AdminClient().GetVersion(ctx, &admin.GetVersionRequest{})
+				config := adminClient.GetConfig(ctx)
+				host := strings.Split(config.Endpoint.Host,":")
+				response,err := http.Get(fmt.Sprintf("http://%s/healthcheck",host))
 				if err != nil {
 					return err
 				}
-				if len(version.ControlPlaneVersion.Version) > 0 {
+				if response.StatusCode == 200 {
 					return nil
 				}
 				return errors.New("something goes wrong")
 			},
+			retry.Delay(30*time.Second),
+			retry.Attempts(100),
 		)
 		if err != nil {
 			return err
