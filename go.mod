@@ -10,14 +10,14 @@ require (
 	github.com/Azure/go-autorest/autorest v0.11.18 // indirect
 	github.com/NYTimes/gizmo v1.3.6
 	github.com/Selvatico/go-mocket v1.0.7
-	github.com/avast/retry-go v3.0.0+incompatible // indirect
+	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go v1.37.31
 	github.com/benbjohnson/clock v1.1.0
 	github.com/bradfitz/gomemcache v0.0.0-20190913173617-a41fca850d0b // indirect
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/evanphx/json-patch v4.9.0+incompatible
-	github.com/flyteorg/flyteidl v0.20.2
+	github.com/flyteorg/flyteidl v0.19.22
 	github.com/flyteorg/flyteplugins v0.5.72
 	github.com/flyteorg/flytepropeller v0.13.20
 	github.com/flyteorg/flytestdlib v0.3.34
