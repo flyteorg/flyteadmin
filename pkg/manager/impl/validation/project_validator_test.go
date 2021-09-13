@@ -289,3 +289,14 @@ func TestValidateProjectAndDomainError(t *testing.T) {
 	assert.EqualError(t, err,
 		"failed to validate that project [flyte-project-id] and domain [domain] are registered, err: [foo]")
 }
+
+func TestValidateProjectAndDomainNotFound(t *testing.T) {
+	mockRepo := repositoryMocks.NewMockRepository()
+	mockRepo.ProjectRepo().(*repositoryMocks.MockProjectRepo).GetFunction = func(
+		ctx context.Context, projectID string) (models.Project, error) {
+		return models.Project{}, nil
+	}
+	err := ValidateProjectAndDomain(context.Background(), mockRepo, testutils.GetApplicationConfigWithDefaultDomains(),
+		"flyte-project", "domain")
+	assert.EqualError(t, err,"project [flyte-project] is not found")
+}

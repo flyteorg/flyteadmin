@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 )
 
 func TestCreateProject(t *testing.T) {
@@ -16,6 +17,18 @@ func TestCreateProject(t *testing.T) {
 	ctx := context.Background()
 	client, conn := GetTestAdminServiceClient()
 	defer conn.Close()
+
+	task, err := client.GetTask(ctx, &admin.ObjectGetRequest{
+		Id: &core.Identifier{
+			Project:      "potato",
+			Domain:       "development",
+			Name:         "tasky",
+			Version:      "1234",
+			ResourceType: core.ResourceType_TASK,
+		},
+	})
+	assert.EqualError(t, err, "project [potato] is not found")
+	assert.Empty(t, task)
 
 	req := admin.ProjectRegisterRequest{
 		Project: &admin.Project{
