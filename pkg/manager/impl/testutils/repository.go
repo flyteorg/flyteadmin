@@ -15,7 +15,7 @@ func GetRepoWithDefaultProjectAndErr(err error) repositories.RepositoryInterface
 	repo.ProjectRepo().(*repositoryMocks.MockProjectRepo).GetFunction = func(
 		ctx context.Context, projectID string) (models.Project, error) {
 		activeState := int32(admin.Project_ACTIVE)
-		return models.Project{State: &activeState}, err
+		return models.Project{Identifier: "Flyte-Project", State: &activeState}, err
 	}
 	return repo
 }
@@ -25,7 +25,7 @@ func GetRepoWithDefaultProject() repositories.RepositoryInterface {
 	repo.ProjectRepo().(*repositoryMocks.MockProjectRepo).GetFunction = func(
 		ctx context.Context, projectID string) (models.Project, error) {
 		activeState := int32(admin.Project_ACTIVE)
-		return models.Project{State: &activeState}, nil
+		return models.Project{Identifier: "Flyte-Project", State: &activeState}, nil
 	}
 	return repo
 }
