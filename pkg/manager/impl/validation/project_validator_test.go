@@ -298,5 +298,5 @@ func TestValidateProjectAndDomainNotFound(t *testing.T) {
 	}
 	err := ValidateProjectAndDomain(context.Background(), mockRepo, testutils.GetApplicationConfigWithDefaultDomains(),
 		"flyte-project", "domain")
-	assert.EqualError(t, err,"project [flyte-project] is not found")
+	assert.EqualError(t, err, "project [flyte-project] is not found")
 }

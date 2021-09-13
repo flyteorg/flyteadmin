@@ -37,7 +37,7 @@ func TestCreateProject(t *testing.T) {
 		},
 	}
 
-	_, err := client.RegisterProject(ctx, &req)
+	_, err = client.RegisterProject(ctx, &req)
 	assert.Nil(t, err)
 
 	projects, err := client.ListProjects(ctx, &admin.ProjectListRequest{})
