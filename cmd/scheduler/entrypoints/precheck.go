@@ -20,7 +20,12 @@ import (
 )
 
 const (
-	timeout = 30 * time.Second
+	timeout            = 30 * time.Second
+	timeoutError       = "timeout: failed to connect service %q within %v"
+	connectionError    = "error: failed to connect service at %q: %+v"
+	deadlineError      = "timeout: health rpc did not complete within %v"
+	healthCheckError   = "Health check failed with status %v"
+	healthCheckSuccess = "Health check passed, Flyteadmin is up and running"
 )
 
 var preCheckRunCmd = &cobra.Command{
@@ -42,11 +47,11 @@ var preCheckRunCmd = &cobra.Command{
 				conn, err := grpc.DialContext(dialCtx, config.Endpoint.String(), opts...)
 				if err != nil {
 					if err == context.DeadlineExceeded {
-						logger.Printf(ctx, "timeout: failed to connect service %q within %v", config.Endpoint.String(), timeout)
-						return fmt.Errorf("timeout: failed to connect service %q within %v", config.Endpoint.String(), timeout)
+						logger.Errorf(ctx, timeoutError, config.Endpoint.String(), timeout)
+						return errors.New(fmt.Sprintf(timeoutError, config.Endpoint.String(), timeout))
 					}
-					logger.Printf(ctx, "error: failed to connect service at %q: %+v", config.Endpoint.String(), err)
-					return fmt.Errorf("error: failed to connect service at %q: %+v", config.Endpoint.String(), err)
+					logger.Errorf(ctx, connectionError, config.Endpoint.String(), err)
+					return errors.New(fmt.Sprintf(connectionError, config.Endpoint.String(), err))
 				}
 				rpcCtx := metadata.NewOutgoingContext(ctx, metadata.MD{})
 				resp, err := healthpb.NewHealthClient(conn).Check(rpcCtx,
@@ -57,13 +62,14 @@ var preCheckRunCmd = &cobra.Command{
 					if stat, ok := status.FromError(err); ok && stat.Code() == codes.Unimplemented {
 						return retry.Unrecoverable(err)
 					} else if stat, ok := status.FromError(err); ok && stat.Code() == codes.DeadlineExceeded {
-						logger.Printf(ctx, "timeout: health rpc did not complete within %v", timeout)
-						return fmt.Errorf("timeout: health rpc did not complete within %v", timeout)
+						logger.Errorf(ctx, deadlineError, timeout)
+						return errors.New(fmt.Sprintf(deadlineError, timeout))
 					}
 					return err
 				}
 				if resp.GetStatus() != healthpb.HealthCheckResponse_SERVING {
-					return errors.New("Health check failed")
+					logger.Errorf(ctx, healthCheckError, resp.GetStatus())
+					return errors.New(fmt.Sprintf(healthCheckError, resp.GetStatus()))
 				}
 				return nil
 			},
@@ -73,7 +79,7 @@ var preCheckRunCmd = &cobra.Command{
 			return err
 		}
 
-		logger.Printf(ctx, "Flyteadmin is up & running")
+		logger.Printf(ctx, healthCheckSuccess)
 		return nil
 	},
 }
