@@ -274,7 +274,7 @@ func TestValidateProjectAndDomainArchivedProject(t *testing.T) {
 	err := ValidateProjectAndDomain(context.Background(), mockRepo, testutils.GetApplicationConfigWithDefaultDomains(),
 		"flyte-project-id", "domain")
 	assert.EqualError(t, err,
-		"project [flyte-project-id] is not active")
+		"project [flyte-project-id] was not active")
 }
 
 func TestValidateProjectAndDomainError(t *testing.T) {
