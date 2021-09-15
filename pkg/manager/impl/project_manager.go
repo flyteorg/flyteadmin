@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+	"github.com/imdario/mergo"
 	"strconv"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
@@ -107,7 +108,7 @@ func (m *ProjectManager) UpdateProject(ctx context.Context, projectUpdate admin.
 	projectRepo := m.db.ProjectRepo()
 
 	// Fetch the existing project if exists. If not, return err and do not update.
-	_, err := projectRepo.Get(ctx, projectUpdate.Id)
+	oldProject, err := projectRepo.Get(ctx, projectUpdate.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -119,6 +120,10 @@ func (m *ProjectManager) UpdateProject(ctx context.Context, projectUpdate admin.
 
 	// Transform the provided project into a model and apply to the DB.
 	projectUpdateModel := transformers.CreateProjectModel(&projectUpdate)
+	err = mergo.Merge(&projectUpdateModel, oldProject)
+	if err != nil {
+		return nil, err
+	}
 	err = projectRepo.UpdateProject(ctx, projectUpdateModel)
 
 	if err != nil {

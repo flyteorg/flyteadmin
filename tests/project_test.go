@@ -18,9 +18,10 @@ func TestCreateProject(t *testing.T) {
 	client, conn := GetTestAdminServiceClient()
 	defer conn.Close()
 
+	projectId := "potato"
 	task, err := client.GetTask(ctx, &admin.ObjectGetRequest{
 		Id: &core.Identifier{
-			Project:      "potato",
+			Project:      projectId,
 			Domain:       "development",
 			Name:         "task",
 			Version:      "1234",
@@ -33,7 +34,7 @@ func TestCreateProject(t *testing.T) {
 
 	req := admin.ProjectRegisterRequest{
 		Project: &admin.Project{
-			Id:   "potato",
+			Id:   projectId,
 			Name: "spud",
 		},
 	}
@@ -46,7 +47,7 @@ func TestCreateProject(t *testing.T) {
 	assert.NotEmpty(t, projects.Projects)
 	var sawNewProject bool
 	for _, project := range projects.Projects {
-		if project.Id == "potato" {
+		if project.Id == projectId {
 			sawNewProject = true
 			assert.Equal(t, "spud", project.Name)
 		}
@@ -65,11 +66,11 @@ func TestUpdateProjectDescription(t *testing.T) {
 	ctx := context.Background()
 	client, conn := GetTestAdminServiceClient()
 	defer conn.Close()
-
 	// Create a new project.
+	projectId := "potato1"
 	req := admin.ProjectRegisterRequest{
 		Project: &admin.Project{
-			Id:   "potato",
+			Id:   projectId,
 			Name: "spud",
 			Labels: &admin.Labels{
 				Values: map[string]string{
@@ -90,7 +91,7 @@ func TestUpdateProjectDescription(t *testing.T) {
 	// Attempt to modify the name of the Project. Labels should be a no-op.
 	// Name and Description should modify just fine.
 	_, err = client.UpdateProject(ctx, &admin.Project{
-		Id:          "potato",
+		Id:          projectId,
 		Name:        "foobar",
 		Description: "a-new-description",
 	})
@@ -104,9 +105,9 @@ func TestUpdateProjectDescription(t *testing.T) {
 	assert.NotEmpty(t, projectsUpdated.Projects)
 
 	// Verify that the project's ID has not been modified but the Description has.
-	var updatedProject admin.Project
+	var updatedProject *admin.Project
 	for _, project := range projectsUpdated.Projects {
-		if project.Id == "potato" {
+		if project.Id == projectId {
 			updatedProject = project
 		}
 	}
@@ -115,6 +116,7 @@ func TestUpdateProjectDescription(t *testing.T) {
 
 	// Verify that project labels are not removed.
 	labelsMap := updatedProject.Labels
+	assert.NotNil(t, labelsMap)
 	fooVal, fooExists := labelsMap.Values["foo"]
 	barVal, barExists := labelsMap.Values["bar"]
 	assert.Equal(t, fooExists, true)
@@ -129,9 +131,10 @@ func TestUpdateProjectLabels(t *testing.T) {
 	defer conn.Close()
 
 	// Create a new project.
+	projectId := "potato2"
 	req := admin.ProjectRegisterRequest{
 		Project: &admin.Project{
-			Id:   "potato",
+			Id:   projectId,
 			Name: "spud",
 		},
 	}
@@ -141,12 +144,13 @@ func TestUpdateProjectLabels(t *testing.T) {
 	// Verify the project has been registered.
 	projects, err := client.ListProjects(ctx, &admin.ProjectListRequest{})
 	assert.Nil(t, err)
+	assert.NotNil(t, projects)
 	assert.NotEmpty(t, projects.Projects)
 
 	// Attempt to modify the name of the Project. Labels and name should be
 	// modified.
 	_, err = client.UpdateProject(ctx, &admin.Project{
-		Id:   "potato",
+		Id:   projectId,
 		Name: "foobar",
 		Labels: &admin.Labels{
 			Values: map[string]string{
@@ -166,9 +170,9 @@ func TestUpdateProjectLabels(t *testing.T) {
 
 	// Check the name has been modified.
 	// Verify that the project's ID has not been modified but the Description has.
-	var updatedProject admin.Project
+	var updatedProject *admin.Project
 	for _, project := range projectsUpdated.Projects {
-		if project.Id == "potato" {
+		if project.Id == projectId {
 			updatedProject = project
 		}
 	}
@@ -190,9 +194,10 @@ func TestUpdateProjectLabels_BadLabels(t *testing.T) {
 	defer conn.Close()
 
 	// Create a new project.
+	projectId := "potato4"
 	req := admin.ProjectRegisterRequest{
 		Project: &admin.Project{
-			Id:   "potato",
+			Id:   projectId,
 			Name: "spud",
 		},
 	}
@@ -207,7 +212,7 @@ func TestUpdateProjectLabels_BadLabels(t *testing.T) {
 	// Attempt to modify the name of the Project. Labels and name should be
 	// modified.
 	_, err = client.UpdateProject(ctx, &admin.Project{
-		Id:   "potato",
+		Id:   projectId,
 		Name: "foobar",
 		Labels: &admin.Labels{
 			Values: map[string]string{
@@ -218,5 +223,5 @@ func TestUpdateProjectLabels_BadLabels(t *testing.T) {
 	})
 
 	// Assert that update went through without an error.
-	assert.EqualError(t, err, "invalid label value [#bar]: [a DNS-1123 label must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character (e.g. 'my-name',  or '123-abc', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?')]")
+	assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid label value [#bar]: [a lowercase RFC 1123 label must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character (e.g. 'my-name',  or '123-abc', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?')]")
 }
