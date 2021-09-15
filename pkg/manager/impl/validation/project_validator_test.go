@@ -3,6 +3,8 @@ package validation
 import (
 	"context"
 	"errors"
+	flyteAdminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
+	"google.golang.org/grpc/codes"
 	"strconv"
 	"testing"
 
@@ -274,7 +276,7 @@ func TestValidateProjectAndDomainArchivedProject(t *testing.T) {
 	err := ValidateProjectAndDomain(context.Background(), mockRepo, testutils.GetApplicationConfigWithDefaultDomains(),
 		"flyte-project-id", "domain")
 	assert.EqualError(t, err,
-		"project [flyte-project-id] was not active")
+		"project [flyte-project-id] is not active")
 }
 
 func TestValidateProjectAndDomainError(t *testing.T) {
@@ -294,9 +296,9 @@ func TestValidateProjectAndDomainNotFound(t *testing.T) {
 	mockRepo := repositoryMocks.NewMockRepository()
 	mockRepo.ProjectRepo().(*repositoryMocks.MockProjectRepo).GetFunction = func(
 		ctx context.Context, projectID string) (models.Project, error) {
-		return models.Project{}, nil
+		return models.Project{}, flyteAdminErrors.NewFlyteAdminErrorf(codes.NotFound, "project [%s] not found", projectID)
 	}
 	err := ValidateProjectAndDomain(context.Background(), mockRepo, testutils.GetApplicationConfigWithDefaultDomains(),
 		"flyte-project", "domain")
-	assert.EqualError(t, err, "project [flyte-project] is not found")
+	assert.EqualError(t, err, "failed to validate that project [flyte-project] and domain [domain] are registered, err: [project [flyte-project] not found]")
 }

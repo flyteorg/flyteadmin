@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	databaseConfig "github.com/flyteorg/flyteadmin/pkg/repositories/config"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 )
@@ -22,12 +23,13 @@ func TestCreateProject(t *testing.T) {
 		Id: &core.Identifier{
 			Project:      "potato",
 			Domain:       "development",
-			Name:         "tasky",
+			Name:         "task",
 			Version:      "1234",
 			ResourceType: core.ResourceType_TASK,
 		},
 	})
-	assert.EqualError(t, err, "project [potato] is not found")
+	assert.EqualError(t, err, "rpc error: code = NotFound desc = missing entity of type TASK" +
+		" with identifier project:\"potato\" domain:\"development\" name:\"task\" version:\"1234\" ")
 	assert.Empty(t, task)
 
 	req := admin.ProjectRegisterRequest{
@@ -60,6 +62,11 @@ func TestCreateProject(t *testing.T) {
 
 func TestUpdateProjectDescription(t *testing.T) {
 	truncateAllTablesForTestingOnly()
+
+	db := databaseConfig.OpenDbConnection(databaseConfig.NewPostgresConfigProvider(getDbConfig(), adminScope))
+	truncateTableForTesting(db, "projects")
+	db.Close()
+
 	ctx := context.Background()
 	client, conn := GetTestAdminServiceClient()
 	defer conn.Close()
@@ -122,6 +129,10 @@ func TestUpdateProjectLabels(t *testing.T) {
 	client, conn := GetTestAdminServiceClient()
 	defer conn.Close()
 
+	db := databaseConfig.OpenDbConnection(databaseConfig.NewPostgresConfigProvider(getDbConfig(), adminScope))
+	truncateTableForTesting(db, "projects")
+	db.Close()
+
 	// Create a new project.
 	req := admin.ProjectRegisterRequest{
 		Project: &admin.Project{
@@ -178,6 +189,10 @@ func TestUpdateProjectLabels_BadLabels(t *testing.T) {
 	ctx := context.Background()
 	client, conn := GetTestAdminServiceClient()
 	defer conn.Close()
+
+	db := databaseConfig.OpenDbConnection(databaseConfig.NewPostgresConfigProvider(getDbConfig(), adminScope))
+	truncateTableForTesting(db, "projects")
+	db.Close()
 
 	// Create a new project.
 	req := admin.ProjectRegisterRequest{

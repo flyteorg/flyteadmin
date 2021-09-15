@@ -63,17 +63,10 @@ func ValidateProjectAndDomain(
 			"failed to validate that project [%s] and domain [%s] are registered, err: [%+v]",
 			projectID, domainID, err)
 	}
-
-	if project.State == nil {
-		return errors.NewFlyteAdminErrorf(codes.NotFound,
-			"project [%s] is not found", projectID)
-	}
-
 	if *project.State != int32(admin.Project_ACTIVE) {
 		return errors.NewFlyteAdminErrorf(codes.InvalidArgument,
 			"project [%s] is not active", projectID)
 	}
-
 	var validDomain bool
 	domains := config.GetDomainsConfig()
 	for _, domain := range *domains {
