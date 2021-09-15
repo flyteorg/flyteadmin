@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	databaseConfig "github.com/flyteorg/flyteadmin/pkg/repositories/config"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 )
@@ -63,10 +62,6 @@ func TestCreateProject(t *testing.T) {
 func TestUpdateProjectDescription(t *testing.T) {
 	truncateAllTablesForTestingOnly()
 
-	db := databaseConfig.OpenDbConnection(databaseConfig.NewPostgresConfigProvider(getDbConfig(), adminScope))
-	truncateTableForTesting(db, "projects")
-	db.Close()
-
 	ctx := context.Background()
 	client, conn := GetTestAdminServiceClient()
 	defer conn.Close()
@@ -108,9 +103,13 @@ func TestUpdateProjectDescription(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotEmpty(t, projectsUpdated.Projects)
 
-	// Verify that the project's Name has not been modified but the Description has.
-	updatedProject := projectsUpdated.Projects[0]
-	assert.Equal(t, updatedProject.Id, "potato")                     // unchanged
+	// Verify that the project's ID has not been modified but the Description has.
+	var updatedProject admin.Project
+	for _, project := range projectsUpdated.Projects {
+		if project.Id == "potato" {
+			updatedProject = project
+		}
+	}
 	assert.Equal(t, updatedProject.Name, "foobar")                   // changed
 	assert.Equal(t, updatedProject.Description, "a-new-description") // changed
 
@@ -128,10 +127,6 @@ func TestUpdateProjectLabels(t *testing.T) {
 	ctx := context.Background()
 	client, conn := GetTestAdminServiceClient()
 	defer conn.Close()
-
-	db := databaseConfig.OpenDbConnection(databaseConfig.NewPostgresConfigProvider(getDbConfig(), adminScope))
-	truncateTableForTesting(db, "projects")
-	db.Close()
 
 	// Create a new project.
 	req := admin.ProjectRegisterRequest{
@@ -170,9 +165,13 @@ func TestUpdateProjectLabels(t *testing.T) {
 	assert.NotEmpty(t, projectsUpdated.Projects)
 
 	// Check the name has been modified.
-	// Verify that the project's Name has not been modified but the Description has.
-	updatedProject := projectsUpdated.Projects[0]
-	assert.Equal(t, updatedProject.Id, "potato")   // unchanged
+	// Verify that the project's ID has not been modified but the Description has.
+	var updatedProject admin.Project
+	for _, project := range projectsUpdated.Projects {
+		if project.Id == "potato" {
+			updatedProject = project
+		}
+	}
 	assert.Equal(t, updatedProject.Name, "foobar") // changed
 
 	// Verify that the expected labels have been added to the project.
@@ -189,10 +188,6 @@ func TestUpdateProjectLabels_BadLabels(t *testing.T) {
 	ctx := context.Background()
 	client, conn := GetTestAdminServiceClient()
 	defer conn.Close()
-
-	db := databaseConfig.OpenDbConnection(databaseConfig.NewPostgresConfigProvider(getDbConfig(), adminScope))
-	truncateTableForTesting(db, "projects")
-	db.Close()
 
 	// Create a new project.
 	req := admin.ProjectRegisterRequest{
