@@ -79,6 +79,7 @@ func NewNotificationsProcessor(config runtimeInterfaces.NotificationsConfig, sco
 	reconnectDelay := time.Duration(config.ReconnectDelaySeconds) * time.Second
 	var sub pubsub.Subscriber
 	var emailer interfaces.Emailer
+	var cloudProvider common.CloudProvider
 	switch config.Type {
 	case common.AWS:
 		sqsConfig := gizmoAWS.SQSConfig{
@@ -103,6 +104,23 @@ func NewNotificationsProcessor(config runtimeInterfaces.NotificationsConfig, sco
 			panic(err)
 		}
 		emailer = GetEmailer(config, scope)
+		cloudProvider = common.AWS
+	case common.GCP:
+		projectID := config.GCPConfig.ProjectID
+		subscibrer := config.NotificationsProcessorConfig.QueueName
+		var err error
+		err = async.Retry(reconnectAttempts, reconnectDelay, func() error {
+			sub, err = gizmoGCP.NewSubscriber(context.TODO(), projectID, subscibrer)
+			if err != nil {
+				logger.Warnf(context.TODO(), "Failed to initialize new gizmo gcp subscriber with config [ProjectID: %s, Subscriber: %s] and err: %v", projectID, subscibrer, err)
+			}
+			return err
+		})
+		if err != nil {
+			panic(err)
+		}
+		emailer = GetEmailer(config, scope)
+		cloudProvider = common.GCP
 	case common.Local:
 		fallthrough
 	default:
@@ -110,7 +128,7 @@ func NewNotificationsProcessor(config runtimeInterfaces.NotificationsConfig, sco
 			"Using default noop notifications processor implementation for config type [%s]", config.Type)
 		return implementations.NewNoopProcess()
 	}
-	return implementations.NewProcessor(sub, emailer, scope)
+	return implementations.NewProcessor(sub, emailer, scope, cloudProvider)
 }
 
 func NewNotificationsPublisher(config runtimeInterfaces.NotificationsConfig, scope promutils.Scope) interfaces.Publisher {

@@ -2,16 +2,14 @@ package implementations
 
 import (
 	"context"
-	"time"
-
-	"github.com/flyteorg/flyteadmin/pkg/async"
-
-	"github.com/flyteorg/flyteadmin/pkg/async/notifications/interfaces"
-
 	"encoding/base64"
 	"encoding/json"
+	"time"
 
 	"github.com/NYTimes/gizmo/pubsub"
+	"github.com/flyteorg/flyteadmin/pkg/async"
+	"github.com/flyteorg/flyteadmin/pkg/async/notifications/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
@@ -36,6 +34,7 @@ type Processor struct {
 	sub           pubsub.Subscriber
 	email         interfaces.Emailer
 	systemMetrics processorSystemMetrics
+	cloudProvider common.CloudProvider
 }
 
 // Currently only email is the supported notification because slack and pagerduty both use
@@ -57,53 +56,63 @@ func (p *Processor) run() error {
 
 		p.systemMetrics.MessageTotal.Inc()
 		// Currently this is safe because Gizmo takes a string and casts it to a byte array.
-		var stringMsg = string(msg.Message())
-		// Amazon doesn't provide a struct that can be used to unmarshall into. A generic JSON struct is used in its place.
-		var snsJSONFormat map[string]interface{}
+		stringMsg := string(msg.Message())
 
-		// At Lyft, SNS populates SQS. This results in the message body of SQS having the SNS message format.
-		// The message format is documented here: https://docs.aws.amazon.com/sns/latest/dg/sns-message-and-json-formats.html
-		// The notification published is stored in the message field after unmarshalling the SQS message.
-		if err := json.Unmarshal(msg.Message(), &snsJSONFormat); err != nil {
-			p.systemMetrics.MessageDecodingError.Inc()
-			logger.Errorf(context.Background(), "failed to unmarshall JSON message [%s] from processor with err: %v", stringMsg, err)
-			p.markMessageDone(msg)
-			continue
-		}
+		if p.cloudProvider == common.AWS {
+			// Amazon doesn't provide a struct that can be used to unmarshall into. A generic JSON struct is used in its place.
+			var snsJSONFormat map[string]interface{}
 
-		var value interface{}
-		var ok bool
-		var valueString string
+			// At Lyft, SNS populates SQS. This results in the message body of SQS having the SNS message format.
+			// The message format is documented here: https://docs.aws.amazon.com/sns/latest/dg/sns-message-and-json-formats.html
+			// The notification published is stored in the message field after unmarshalling the SQS message.
+			if err := json.Unmarshal(msg.Message(), &snsJSONFormat); err != nil {
+				p.systemMetrics.MessageDecodingError.Inc()
+				logger.Errorf(context.Background(), "failed to unmarshall JSON message [%s] from processor with err: %v", stringMsg, err)
+				p.markMessageDone(msg)
+				continue
+			}
 
-		if value, ok = snsJSONFormat["Message"]; !ok {
-			logger.Errorf(context.Background(), "failed to retrieve message from unmarshalled JSON object [%s]", stringMsg)
-			p.systemMetrics.MessageDataError.Inc()
-			p.markMessageDone(msg)
-			continue
-		}
+			var value interface{}
+			var ok bool
+			var valueString string
 
-		if valueString, ok = value.(string); !ok {
-			p.systemMetrics.MessageDataError.Inc()
-			logger.Errorf(context.Background(), "failed to retrieve notification message (in string format) from unmarshalled JSON object for message [%s]", stringMsg)
-			p.markMessageDone(msg)
-			continue
-		}
+			if value, ok = snsJSONFormat["Message"]; !ok {
+				logger.Errorf(context.Background(), "failed to retrieve message from unmarshalled JSON object [%s]", stringMsg)
+				p.systemMetrics.MessageDataError.Inc()
+				p.markMessageDone(msg)
+				continue
+			}
 
-		// The Publish method for SNS Encodes the notification using Base64 then stringifies it before
-		// setting that as the message body for SNS. Do the inverse to retrieve the notification.
-		notificationBytes, err := base64.StdEncoding.DecodeString(valueString)
-		if err != nil {
-			logger.Errorf(context.Background(), "failed to Base64 decode from message string [%s] from message [%s] with err: %v", valueString, stringMsg, err)
-			p.systemMetrics.MessageDecodingError.Inc()
-			p.markMessageDone(msg)
-			continue
-		}
+			if valueString, ok = value.(string); !ok {
+				p.systemMetrics.MessageDataError.Inc()
+				logger.Errorf(context.Background(), "failed to retrieve notification message (in string format) from unmarshalled JSON object for message [%s]", stringMsg)
+				p.markMessageDone(msg)
+				continue
+			}
 
-		if err = proto.Unmarshal(notificationBytes, &emailMessage); err != nil {
-			logger.Debugf(context.Background(), "failed to unmarshal to notification object from decoded string[%s] from message [%s] with err: %v", valueString, stringMsg, err)
-			p.systemMetrics.MessageDecodingError.Inc()
-			p.markMessageDone(msg)
-			continue
+			// The Publish method for SNS Encodes the notification using Base64 then stringifies it before
+			// setting that as the message body for SNS. Do the inverse to retrieve the notification.
+			notificationBytes, err := base64.StdEncoding.DecodeString(valueString)
+			if err != nil {
+				logger.Errorf(context.Background(), "failed to Base64 decode from message string [%s] from message [%s] with err: %v", valueString, stringMsg, err)
+				p.systemMetrics.MessageDecodingError.Inc()
+				p.markMessageDone(msg)
+				continue
+			}
+
+			if err = proto.Unmarshal(notificationBytes, &emailMessage); err != nil {
+				logger.Debugf(context.Background(), "failed to unmarshal to notification object from decoded string[%s] from message [%s] with err: %v", valueString, stringMsg, err)
+				p.systemMetrics.MessageDecodingError.Inc()
+				p.markMessageDone(msg)
+				continue
+			}
+		} else if p.cloudProvider == common.GCP {
+			if err = proto.Unmarshal(msg.Message(), &emailMessage); err != nil {
+				logger.Debugf(context.Background(), "failed to unmarshal to notification object message [%s] with err: %v", string(msg.Message()), err)
+				p.systemMetrics.MessageDecodingError.Inc()
+				p.markMessageDone(msg)
+				continue
+			}
 		}
 
 		if err = p.email.SendEmail(context.Background(), emailMessage); err != nil {
@@ -163,10 +172,11 @@ func newProcessorSystemMetrics(scope promutils.Scope) processorSystemMetrics {
 	}
 }
 
-func NewProcessor(sub pubsub.Subscriber, emailer interfaces.Emailer, scope promutils.Scope) interfaces.Processor {
+func NewProcessor(sub pubsub.Subscriber, emailer interfaces.Emailer, scope promutils.Scope, cloudProvider common.CloudProvider) interfaces.Processor {
 	return &Processor{
 		sub:           sub,
 		email:         emailer,
 		systemMetrics: newProcessorSystemMetrics(scope.NewSubScope("processor")),
+		cloudProvider: cloudProvider,
 	}
 }
