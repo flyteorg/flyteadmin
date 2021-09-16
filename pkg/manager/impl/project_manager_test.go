@@ -3,8 +3,9 @@ package impl
 import (
 	"context"
 	"errors"
-	"github.com/golang/protobuf/proto"
 	"testing"
+
+	"github.com/golang/protobuf/proto"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
 
@@ -210,7 +211,7 @@ func TestProjectManager_UpdateProject(t *testing.T) {
 		ctx context.Context, projectID string) (models.Project, error) {
 
 		return models.Project{Identifier: "project-id",
-			Name: "old-project-name",
+			Name:        "old-project-name",
 			Description: "old-project-description", Labels: labelsBytes}, nil
 	}
 	mockRepository.ProjectRepo().(*repositoryMocks.MockProjectRepo).UpdateProjectFunction = func(
@@ -219,10 +220,7 @@ func TestProjectManager_UpdateProject(t *testing.T) {
 		assert.Equal(t, "project-id", projectUpdate.Identifier)
 		assert.Equal(t, "new-project-name", projectUpdate.Name)
 		assert.Equal(t, "new-project-description", projectUpdate.Description)
-		actualLabels := &admin.Labels{}
-		err := proto.Unmarshal(projectUpdate.Labels, actualLabels)
-		assert.Nil(t, err)
-		assert.Equal(t, labels.Values, actualLabels.Values)
+		assert.Nil(t, projectUpdate.Labels)
 		assert.Equal(t, int32(admin.Project_ACTIVE), *projectUpdate.State)
 		return nil
 	}

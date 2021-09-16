@@ -21,7 +21,7 @@ func TestCreateProjectModel(t *testing.T) {
 		Id:          "project_id",
 		Name:        "project_name",
 		Description: "project_description",
-		Labels: 	 &labels,
+		Labels:      &labels,
 		State:       admin.Project_ACTIVE,
 	}
 
@@ -33,8 +33,8 @@ func TestCreateProjectModel(t *testing.T) {
 		Identifier:  "project_id",
 		Name:        "project_name",
 		Description: "project_description",
-		Labels: projectBytes,
-		State: &activeState,
+		Labels:      projectBytes,
+		State:       &activeState,
 	}, projectModel)
 }
 
