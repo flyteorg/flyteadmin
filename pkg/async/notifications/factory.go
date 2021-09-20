@@ -106,12 +106,12 @@ func NewNotificationsProcessor(config runtimeInterfaces.NotificationsConfig, sco
 		return implementations.NewProcessor(sub, emailer, scope)
 	case common.GCP:
 		projectID := config.GCPConfig.ProjectID
-		subscibrer := config.NotificationsProcessorConfig.QueueName
+		subscription := config.NotificationsProcessorConfig.QueueName
 		var err error
 		err = async.Retry(reconnectAttempts, reconnectDelay, func() error {
-			sub, err = gizmoGCP.NewSubscriber(context.TODO(), projectID, subscibrer)
+			sub, err = gizmoGCP.NewSubscriber(context.TODO(), projectID, subscription)
 			if err != nil {
-				logger.Warnf(context.TODO(), "Failed to initialize new gizmo gcp subscriber with config [ProjectID: %s, Subscriber: %s] and err: %v", projectID, subscibrer, err)
+				logger.Warnf(context.TODO(), "Failed to initialize new gizmo gcp subscriber with config [ProjectID: %s, Subscription: %s] and err: %v", projectID, subscription, err)
 			}
 			return err
 		})
