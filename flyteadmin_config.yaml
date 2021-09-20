@@ -9,28 +9,56 @@ server:
   kube-config: /Users/haythamabuelfutuh/kubeconfig/k3s/k3s.yaml
   security:
     secure: false
-    useAuth: false
+    useAuth: true
     allowCors: true
     allowedOrigins:
       # Accepting all domains for Sandbox installation
       - "*"
     allowedHeaders:
       - "Content-Type"
+secrets:
+  secrets-prefix: "/Users/sonjae/flyteadmin"
 # Okta OIdC only
 auth:
+  appAuth:
+    selfAuthServer:
+      claimSymmetricEncryptionKeySecretName: "claim_symmetric_key"
+      tokenSigningRSAKeySecretName: "token_rsa_key.pem"
+      staticClients:
+        - obol:
+            id: obol
+            # The secret is hashed, so we can store it in ghe
+            client_secret: JDJiJDA2JFpVaS5Iby5KVzV3dHl1L3o1UDkvOU9IZ0VjbUh6LnEwVHVVaGxjTWlRNVdld0VneU9STHZh
+            scopes: all
+            grant_types: client_credentials
+        - spotify-flytepropeller:
+            id: spotify-flytepropeller
+            # The secret is hashed, so we can store it in ghe
+            client_secret: JDJiJDA2JE5HQW9xLk9PNFVxaElhckhlV1JtNC5OUG9OUHFHb0tqcGNpVnJHamx4STRVM3lLUlpIWGx5
+            scopes: all
+            grant_types: client_credentials
+  #appAuth:
+  #  authServerType: External
+  #  externalAuthServer:
+  #    metadataUrl: .well-known/openid-configuration
+  #    allowedAudience: https://flyte.net
   authorizedUris:
-    - https://localhost:8088
-    - http://flyteadmin:80
+    # This should point at your public http Uri.
+    - http://localhost:8088
   userAuth:
     openId:
       # Put the URL of the OpenID Connect provider.
-      baseUrl: https://dev-14186422.okta.com/oauth2/auskngnn7uBViQq6b5d6
-      scopes:
-        - profile
-        - openid
-        - offline_access # Uncomment if OIdC supports issuing refresh tokens.
+      baseUrl: "https://accounts.google.com"
+      #scopes:
+      #  - profile
+      #  - openid
       # Replace with the client id created for Flyte.
-      clientId: 0oakkheteNjCMERst5d6
+      #clientId: "418828950929-etkqnjo8sdcn501eo6o8oik0iupvimgt.apps.googleusercontent.com"
+      cookieHashKeySecretName: "cookie_hash_key"
+      cookieBlockKeySecretName: "cookie_block_key"
+      clientSecretName: "oidc_client_secret"
+
+
 
 # Okta OIdC and OAuth2
 #auth:
