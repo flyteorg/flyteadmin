@@ -9,32 +9,17 @@ import (
 	"github.com/NYTimes/gizmo/pubsub"
 	"github.com/flyteorg/flyteadmin/pkg/async"
 	"github.com/flyteorg/flyteadmin/pkg/async/notifications/interfaces"
-	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/golang/protobuf/proto"
-	"github.com/prometheus/client_golang/prometheus"
 )
-
-type processorSystemMetrics struct {
-	Scope                 promutils.Scope
-	MessageTotal          prometheus.Counter
-	MessageDoneError      prometheus.Counter
-	MessageDecodingError  prometheus.Counter
-	MessageDataError      prometheus.Counter
-	MessageProcessorError prometheus.Counter
-	MessageSuccess        prometheus.Counter
-	ChannelClosedError    prometheus.Counter
-	StopError             prometheus.Counter
-}
 
 // TODO: Add a counter that encompasses the publisher stats grouped by project and domain.
 type Processor struct {
 	sub           pubsub.Subscriber
 	email         interfaces.Emailer
 	systemMetrics processorSystemMetrics
-	cloudProvider common.CloudProvider
 }
 
 // Currently only email is the supported notification because slack and pagerduty both use
@@ -53,66 +38,55 @@ func (p *Processor) run() error {
 	var emailMessage admin.EmailMessage
 	var err error
 	for msg := range p.sub.Start() {
-
 		p.systemMetrics.MessageTotal.Inc()
 		// Currently this is safe because Gizmo takes a string and casts it to a byte array.
 		stringMsg := string(msg.Message())
 
-		if p.cloudProvider == common.AWS {
-			// Amazon doesn't provide a struct that can be used to unmarshall into. A generic JSON struct is used in its place.
-			var snsJSONFormat map[string]interface{}
+		var snsJSONFormat map[string]interface{}
 
-			// At Lyft, SNS populates SQS. This results in the message body of SQS having the SNS message format.
-			// The message format is documented here: https://docs.aws.amazon.com/sns/latest/dg/sns-message-and-json-formats.html
-			// The notification published is stored in the message field after unmarshalling the SQS message.
-			if err := json.Unmarshal(msg.Message(), &snsJSONFormat); err != nil {
-				p.systemMetrics.MessageDecodingError.Inc()
-				logger.Errorf(context.Background(), "failed to unmarshall JSON message [%s] from processor with err: %v", stringMsg, err)
-				p.markMessageDone(msg)
-				continue
-			}
+		// At Lyft, SNS populates SQS. This results in the message body of SQS having the SNS message format.
+		// The message format is documented here: https://docs.aws.amazon.com/sns/latest/dg/sns-message-and-json-formats.html
+		// The notification published is stored in the message field after unmarshalling the SQS message.
+		if err := json.Unmarshal(msg.Message(), &snsJSONFormat); err != nil {
+			p.systemMetrics.MessageDecodingError.Inc()
+			logger.Errorf(context.Background(), "failed to unmarshall JSON message [%s] from processor with err: %v", stringMsg, err)
+			p.markMessageDone(msg)
+			continue
+		}
 
-			var value interface{}
-			var ok bool
-			var valueString string
+		var value interface{}
+		var ok bool
+		var valueString string
 
-			if value, ok = snsJSONFormat["Message"]; !ok {
-				logger.Errorf(context.Background(), "failed to retrieve message from unmarshalled JSON object [%s]", stringMsg)
-				p.systemMetrics.MessageDataError.Inc()
-				p.markMessageDone(msg)
-				continue
-			}
+		if value, ok = snsJSONFormat["Message"]; !ok {
+			logger.Errorf(context.Background(), "failed to retrieve message from unmarshalled JSON object [%s]", stringMsg)
+			p.systemMetrics.MessageDataError.Inc()
+			p.markMessageDone(msg)
+			continue
+		}
 
-			if valueString, ok = value.(string); !ok {
-				p.systemMetrics.MessageDataError.Inc()
-				logger.Errorf(context.Background(), "failed to retrieve notification message (in string format) from unmarshalled JSON object for message [%s]", stringMsg)
-				p.markMessageDone(msg)
-				continue
-			}
+		if valueString, ok = value.(string); !ok {
+			p.systemMetrics.MessageDataError.Inc()
+			logger.Errorf(context.Background(), "failed to retrieve notification message (in string format) from unmarshalled JSON object for message [%s]", stringMsg)
+			p.markMessageDone(msg)
+			continue
+		}
 
-			// The Publish method for SNS Encodes the notification using Base64 then stringifies it before
-			// setting that as the message body for SNS. Do the inverse to retrieve the notification.
-			notificationBytes, err := base64.StdEncoding.DecodeString(valueString)
-			if err != nil {
-				logger.Errorf(context.Background(), "failed to Base64 decode from message string [%s] from message [%s] with err: %v", valueString, stringMsg, err)
-				p.systemMetrics.MessageDecodingError.Inc()
-				p.markMessageDone(msg)
-				continue
-			}
+		// The Publish method for SNS Encodes the notification using Base64 then stringifies it before
+		// setting that as the message body for SNS. Do the inverse to retrieve the notification.
+		notificationBytes, err := base64.StdEncoding.DecodeString(valueString)
+		if err != nil {
+			logger.Errorf(context.Background(), "failed to Base64 decode from message string [%s] from message [%s] with err: %v", valueString, stringMsg, err)
+			p.systemMetrics.MessageDecodingError.Inc()
+			p.markMessageDone(msg)
+			continue
+		}
 
-			if err = proto.Unmarshal(notificationBytes, &emailMessage); err != nil {
-				logger.Debugf(context.Background(), "failed to unmarshal to notification object from decoded string[%s] from message [%s] with err: %v", valueString, stringMsg, err)
-				p.systemMetrics.MessageDecodingError.Inc()
-				p.markMessageDone(msg)
-				continue
-			}
-		} else if p.cloudProvider == common.GCP {
-			if err = proto.Unmarshal(msg.Message(), &emailMessage); err != nil {
-				logger.Debugf(context.Background(), "failed to unmarshal to notification object message [%s] with err: %v", string(msg.Message()), err)
-				p.systemMetrics.MessageDecodingError.Inc()
-				p.markMessageDone(msg)
-				continue
-			}
+		if err = proto.Unmarshal(notificationBytes, &emailMessage); err != nil {
+			logger.Debugf(context.Background(), "failed to unmarshal to notification object from decoded string[%s] from message [%s] with err: %v", valueString, stringMsg, err)
+			p.systemMetrics.MessageDecodingError.Inc()
+			p.markMessageDone(msg)
+			continue
 		}
 
 		if err = p.email.SendEmail(context.Background(), emailMessage); err != nil {
@@ -155,28 +129,10 @@ func (p *Processor) StopProcessing() error {
 	return err
 }
 
-func newProcessorSystemMetrics(scope promutils.Scope) processorSystemMetrics {
-	return processorSystemMetrics{
-		Scope:                scope,
-		MessageTotal:         scope.MustNewCounter("message_total", "overall count of messages processed"),
-		MessageDecodingError: scope.MustNewCounter("message_decoding_error", "count of messages with decoding errors"),
-		MessageDataError:     scope.MustNewCounter("message_data_error", "count of message data processing errors experience when preparing the message to be notified."),
-		MessageDoneError: scope.MustNewCounter("message_done_error",
-			"count of message errors when marking it as done with underlying processor"),
-		MessageProcessorError: scope.MustNewCounter("message_processing_error",
-			"count of errors when interacting with notification processor"),
-		MessageSuccess: scope.MustNewCounter("message_ok",
-			"count of messages successfully processed by underlying notification mechanism"),
-		ChannelClosedError: scope.MustNewCounter("channel_closed_error", "count of channel closing errors"),
-		StopError:          scope.MustNewCounter("stop_error", "count of errors in Stop() method"),
-	}
-}
-
-func NewProcessor(sub pubsub.Subscriber, emailer interfaces.Emailer, scope promutils.Scope, cloudProvider common.CloudProvider) interfaces.Processor {
+func NewProcessor(sub pubsub.Subscriber, emailer interfaces.Emailer, scope promutils.Scope) interfaces.Processor {
 	return &Processor{
 		sub:           sub,
 		email:         emailer,
 		systemMetrics: newProcessorSystemMetrics(scope.NewSubScope("processor")),
-		cloudProvider: cloudProvider,
 	}
 }

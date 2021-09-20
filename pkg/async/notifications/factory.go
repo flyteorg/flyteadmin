@@ -79,7 +79,6 @@ func NewNotificationsProcessor(config runtimeInterfaces.NotificationsConfig, sco
 	reconnectDelay := time.Duration(config.ReconnectDelaySeconds) * time.Second
 	var sub pubsub.Subscriber
 	var emailer interfaces.Emailer
-	var cloudProvider common.CloudProvider
 	switch config.Type {
 	case common.AWS:
 		sqsConfig := gizmoAWS.SQSConfig{
@@ -104,7 +103,7 @@ func NewNotificationsProcessor(config runtimeInterfaces.NotificationsConfig, sco
 			panic(err)
 		}
 		emailer = GetEmailer(config, scope)
-		cloudProvider = common.AWS
+		return implementations.NewProcessor(sub, emailer, scope)
 	case common.GCP:
 		projectID := config.GCPConfig.ProjectID
 		subscibrer := config.NotificationsProcessorConfig.QueueName
@@ -120,7 +119,7 @@ func NewNotificationsProcessor(config runtimeInterfaces.NotificationsConfig, sco
 			panic(err)
 		}
 		emailer = GetEmailer(config, scope)
-		cloudProvider = common.GCP
+		return implementations.NewGcpProcessor(sub, emailer, scope)
 	case common.Local:
 		fallthrough
 	default:
@@ -128,7 +127,6 @@ func NewNotificationsProcessor(config runtimeInterfaces.NotificationsConfig, sco
 			"Using default noop notifications processor implementation for config type [%s]", config.Type)
 		return implementations.NewNoopProcess()
 	}
-	return implementations.NewProcessor(sub, emailer, scope, cloudProvider)
 }
 
 func NewNotificationsPublisher(config runtimeInterfaces.NotificationsConfig, scope promutils.Scope) interfaces.Publisher {

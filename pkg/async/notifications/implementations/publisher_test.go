@@ -10,7 +10,6 @@ import (
 	"github.com/NYTimes/gizmo/pubsub/pubsubtest"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/flyteorg/flyteadmin/pkg/async/notifications/mocks"
-	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/golang/protobuf/proto"
@@ -47,11 +46,15 @@ var testSubscriberMessage = map[string]interface{}{
 	"UnsubscribeURL":   "https://sns.my-region.amazonaws.com/sns:my-region:123:flyte-test-notifications:1-2-3-4-5",
 }
 
+var testSubscriberProtoMessages = []proto.Message{
+	&testEmail,
+}
+
 var (
 	testSubscriber pubsubtest.TestSubscriber
 	mockSub        pubsub.Subscriber = &testSubscriber
 	mockEmail      mocks.MockEmailer
-	testProcessor  = NewProcessor(mockSub, &mockEmail, promutils.NewTestScope(), common.AWS)
+	testProcessor  = NewProcessor(mockSub, &mockEmail, promutils.NewTestScope())
 )
 
 // This method should be invoked before every test around Publisher.
