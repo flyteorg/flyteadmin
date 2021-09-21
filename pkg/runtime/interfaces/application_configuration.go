@@ -232,6 +232,8 @@ func (f *AdminRateLimit) GetBurst() int {
 
 // This configuration is the base configuration for all scheduler-related set-up.
 type SchedulerConfig struct {
+	// Determines which port the profiling server used for scheduler monitoring and application debugging uses.
+	ProfilerPort           int                    `json:"profilerPort"`
 	EventSchedulerConfig   EventSchedulerConfig   `json:"eventScheduler"`
 	WorkflowExecutorConfig WorkflowExecutorConfig `json:"workflowExecutor"`
 	// Specifies the number of times to attempt recreating a workflow executor client should there be any disruptions.
