@@ -39,7 +39,7 @@ var flyteAdminConfig = config.MustRegisterSection(flyteAdmin, &interfaces.Applic
 	AsyncEventsBufferSize: 100,
 })
 var schedulerConfig = config.MustRegisterSection(scheduler, &interfaces.SchedulerConfig{
-	ProfilerPort: 10253,
+	ProfilerPort: config.Port{Port: 10253},
 	EventSchedulerConfig: interfaces.EventSchedulerConfig{
 		Scheme:               common.Local,
 		FlyteSchedulerConfig: &interfaces.FlyteSchedulerConfig{},

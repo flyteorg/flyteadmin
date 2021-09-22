@@ -61,7 +61,7 @@ var schedulerRunCmd = &cobra.Command{
 		// Serve profiling endpoints.
 		go func() {
 			err := profutils.StartProfilingServerWithDefaultHandlers(
-				ctx, schedulerConfiguration.ProfilerPort, nil)
+				ctx, schedulerConfiguration.ProfilerPort.Port, nil)
 			if err != nil {
 				logger.Panicf(ctx, "Failed to Start profiling and Metrics server. Error, %v", err)
 			}
