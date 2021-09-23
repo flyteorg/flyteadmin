@@ -39,19 +39,18 @@ func (p *GcpProcessor) StartProcessing() {
 
 func (p *GcpProcessor) run() error {
 	var emailMessage admin.EmailMessage
-	var err error
 
 	for msg := range p.sub.Start() {
 		p.systemMetrics.MessageTotal.Inc()
 
-		if err = proto.Unmarshal(msg.Message(), &emailMessage); err != nil {
+		if err := proto.Unmarshal(msg.Message(), &emailMessage); err != nil {
 			logger.Debugf(context.Background(), "failed to unmarshal to notification object message [%s] with err: %v", string(msg.Message()), err)
 			p.systemMetrics.MessageDecodingError.Inc()
 			p.markMessageDone(msg)
 			continue
 		}
 
-		if err = p.email.SendEmail(context.Background(), emailMessage); err != nil {
+		if err := p.email.SendEmail(context.Background(), emailMessage); err != nil {
 			p.systemMetrics.MessageProcessorError.Inc()
 			logger.Errorf(context.Background(), "Error sending an email message for message [%s] with emailM with err: %v", emailMessage.String(), err)
 		} else {
@@ -64,13 +63,13 @@ func (p *GcpProcessor) run() error {
 	// According to https://github.com/NYTimes/gizmo/blob/f2b3deec03175b11cdfb6642245a49722751357f/pubsub/pubsub.go#L36-L39,
 	// the channel backing the subscriber will just close if there is an error. The call to Err() is needed to identify
 	// there was an error in the channel or there are no more messages left (resulting in no errors when calling Err()).
-	if err = p.sub.Err(); err != nil {
+	if err := p.sub.Err(); err != nil {
 		p.systemMetrics.ChannelClosedError.Inc()
 		logger.Warningf(context.Background(), "The stream for the subscriber channel closed with err: %v", err)
+		return err
 	}
 
-	// If there are no errors, nil will be returned.
-	return err
+	return nil
 }
 
 func (p *GcpProcessor) markMessageDone(message pubsub.SubscriberMessage) {
@@ -82,10 +81,11 @@ func (p *GcpProcessor) markMessageDone(message pubsub.SubscriberMessage) {
 
 func (p *GcpProcessor) StopProcessing() error {
 	// Note: If the underlying channel is already closed, then Stop() will return an error.
-	err := p.sub.Stop()
-	if err != nil {
+	if err := p.sub.Stop(); err != nil {
 		p.systemMetrics.StopError.Inc()
 		logger.Errorf(context.Background(), "Failed to stop the subscriber channel gracefully with err: %v", err)
+		return err
 	}
-	return err
+
+	return nil
 }
