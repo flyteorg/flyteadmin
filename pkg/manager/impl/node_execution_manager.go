@@ -175,11 +175,15 @@ func (m *NodeExecutionManager) updateNodeExecutionWithEvent(
 			return updateFailed, err
 		}
 	}
+
 	err := transformers.UpdateNodeExecutionModel(request, nodeExecutionModel, childExecutionID, dynamicWorkflowRemoteClosureReference)
 	if err != nil {
 		logger.Debugf(ctx, "failed to update node execution model: %+v with err: %v", request.Event.Id, err)
 		return updateFailed, err
 	}
+
+	logger.Infof(ctx, "Dynamic Workflow Remote Reference: %v. NodeExecModel Ref: %v",
+		dynamicWorkflowRemoteClosureReference, nodeExecutionModel.DynamicWorkflowRemoteClosureReference)
 	err = m.db.NodeExecutionRepo().Update(ctx, nodeExecutionModel)
 	if err != nil {
 		logger.Debugf(ctx, "Failed to update node execution with id [%+v] with err %v",
@@ -237,7 +241,9 @@ func (m *NodeExecutionManager) CreateNodeEvent(ctx context.Context, request admi
 		if err != nil {
 			return nil, err
 		}
+
 		dynamicWorkflowRemoteClosureReference = dynamicWorkflowRemoteClosureDataReference.String()
+		logger.Infof(ctx, "Dynamic Workflow Remote Reference: %v", dynamicWorkflowRemoteClosureReference)
 	}
 
 	nodeExecutionModel, err := m.db.NodeExecutionRepo().Get(ctx, repoInterfaces.NodeExecutionResource{
