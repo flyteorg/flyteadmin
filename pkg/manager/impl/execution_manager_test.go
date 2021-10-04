@@ -3047,12 +3047,29 @@ func TestCreateTaskDefaultLimits(t *testing.T) {
 		assert.Equal(t, resource.MustParse("200Mi"), defaultLimits.Memory)
 		assert.Equal(t, resource.MustParse("200m"), defaultLimits.CPU)
 	})
-	t.Run("use_limits_from_config", func(t *testing.T) {
+	t.Run("use_limits_from_requests", func(t *testing.T) {
 		defaultLimits := createTaskDefaultLimits(context.Background(), task, resourceLimits)
-		assert.Equal(t, resource.MustParse("500Gi"), defaultLimits.Memory)
-		assert.Equal(t, resource.MustParse("300m"), defaultLimits.CPU)
+		assert.Equal(t, resource.MustParse("200Mi"), defaultLimits.Memory)
+		assert.Equal(t, resource.MustParse("200m"), defaultLimits.CPU)
 	})
 	t.Run("use_limits_from_config", func(t *testing.T) {
+		task := &core.CompiledTask{
+			Template: &core.TaskTemplate{
+				Target: &core.TaskTemplate_Container{
+					Container: &core.Container{
+						Resources: &core.Resources{
+							Requests: []*core.Resources_ResourceEntry{
+								{
+									Name:  core.Resources_MEMORY,
+									Value: "200Mi",
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
 		limits := runtimeInterfaces.TaskResourceSet{
 			CPU: resource.MustParse("300m"),
 		}
