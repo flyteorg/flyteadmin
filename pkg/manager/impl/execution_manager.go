@@ -234,13 +234,18 @@ func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask,
 	}
 	taskResourceLimits := runtimeInterfaces.TaskResourceSet{}
 
-	// For resource values, we prefer to use the limits set in the application config over the set resource values.
-	if !configResourceLimits.CPU.IsZero() {
+	// For resource values, we prefer to set unset limits to the request values over the config values.
+	if cpuIndex >= 0 {
+		cpuLimit = resourceRequestEntries[cpuIndex].Value
+		cpu, err := resource.ParseQuantity(cpuLimit)
+		if err != nil {
+			logger.Errorf(ctx, "Failed to parse user cpu limit from task spec [%s] with err [%+v]", cpuLimit, err)
+		} else {
+			taskResourceLimits.CPU = cpu
+		}
+	} else if !configResourceLimits.CPU.IsZero() {
 		taskResourceLimits.CPU = configResourceLimits.CPU
 	} else {
-		if cpuIndex >= 0 {
-			cpuLimit = resourceRequestEntries[cpuIndex].Value
-		}
 		cpu, err := resource.ParseQuantity(cpuLimit)
 		if err != nil {
 			logger.Errorf(ctx, "Failed to parse user cpu limit from task spec [%s] with err [%+v]", cpuLimit, err)
@@ -248,12 +253,17 @@ func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask,
 			taskResourceLimits.CPU = cpu
 		}
 	}
-	if !configResourceLimits.Memory.IsZero() {
+	if memoryIndex >= 0 {
+		memoryLimit = resourceRequestEntries[memoryIndex].Value
+		memory, err := resource.ParseQuantity(memoryLimit)
+		if err != nil {
+			logger.Errorf(ctx, "Failed to parse user memory limit from task spec [%s] with err [%+v]", memoryLimit, err)
+		} else {
+			taskResourceLimits.Memory = memory
+		}
+	} else if !configResourceLimits.Memory.IsZero() {
 		taskResourceLimits.Memory = configResourceLimits.Memory
 	} else {
-		if memoryIndex >= 0 {
-			memoryLimit = resourceRequestEntries[memoryIndex].Value
-		}
 		memory, err := resource.ParseQuantity(memoryLimit)
 		if err != nil {
 			logger.Errorf(ctx, "Failed to parse user memory limit from task spec [%s] with err [%+v]", memoryLimit, err)
@@ -265,9 +275,8 @@ func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask,
 		// When a platform default for GPU exists, but one isn't set in the task resources, use the platform value.
 		taskResourceLimits.GPU = configResourceLimits.GPU
 	}
-	if !configResourceLimits.EphemeralStorage.IsZero() {
-		taskResourceLimits.EphemeralStorage = configResourceLimits.EphemeralStorage
-	} else if ephemeralStorageIndex >= 0 {
+
+	if ephemeralStorageIndex >= 0 {
 		ephemeralStorage, err := resource.ParseQuantity(resourceRequestEntries[ephemeralStorageIndex].Value)
 		if err != nil {
 			logger.Errorf(ctx, "Failed to parse user ephemeral storage limit from task spec [%s] with err [%+v]",
@@ -275,8 +284,10 @@ func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask,
 		} else {
 			taskResourceLimits.EphemeralStorage = ephemeralStorage
 		}
+	} else if !configResourceLimits.EphemeralStorage.IsZero() {
+		taskResourceLimits.EphemeralStorage = configResourceLimits.EphemeralStorage
 	}
-
+	// There doesn't need to an ultimate fallback for ephemeral storage, unlike cpu and memory.
 	return taskResourceLimits
 }
 
