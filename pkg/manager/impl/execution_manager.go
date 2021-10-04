@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"fmt"
+	v1 "k8s.io/api/core/v1"
 	"strconv"
 	"time"
 
@@ -294,6 +295,7 @@ func assignResourcesIfUnset(ctx context.Context, identifier *core.Identifier,
 			ephemeralStorageindex = idx
 		}
 	}
+	logger.Warnf(ctx, "cpu index [%+v]", cpuIndex)
 	if cpuIndex > 0 && memoryIndex > 0 && ephemeralStorageindex > 0 {
 		// nothing to do
 		return resourceEntries
@@ -342,6 +344,7 @@ func assignResourcesIfUnset(ctx context.Context, identifier *core.Identifier,
 			resourceEntries = append(resourceEntries, ephemeralStorageResource)
 		}
 	}
+	logger.Warnf(ctx, "returning [%+v]", resourceEntries)
 	return resourceEntries
 }
 
@@ -387,6 +390,7 @@ func checkTaskRequestsLessThanLimits(ctx context.Context, identifier *core.Ident
 // itself => Limit := Min([Some-Multiplier X Request], System-Max). For now we are using a multiplier of 1. In
 // general we recommend the users to set limits close to requests for more predictability in the system.
 func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *core.CompiledTask, workflowName string) {
+	logger.Warnf(ctx, "setting compiled task defaults")
 	if task == nil {
 		logger.Warningf(ctx, "Can't set default resources for nil task.")
 		return
@@ -421,6 +425,9 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 	if resource != nil && resource.Attributes != nil && resource.Attributes.GetTaskResourceAttributes() != nil {
 		taskResourceSpec = resource.Attributes.GetTaskResourceAttributes().Defaults
 	}
+	logger.Warnf(ctx, "setting task resources with defaults [%+v], task container [%+v], and taskResourceSpec [%+v]",
+		m.config.TaskResourceConfiguration().GetDefaults().CPU.String(),
+		task.Template.GetContainer().Resources.Requests, taskResourceSpec)
 	task.Template.GetContainer().Resources.Requests = assignResourcesIfUnset(
 		ctx, task.Template.Id, m.config.TaskResourceConfiguration().GetDefaults(), task.Template.GetContainer().Resources.Requests,
 		taskResourceSpec)
