@@ -3,7 +3,6 @@ package impl
 import (
 	"context"
 	"fmt"
-	v1 "k8s.io/api/core/v1"
 	"strconv"
 	"time"
 
@@ -426,7 +425,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 		taskResourceSpec = resource.Attributes.GetTaskResourceAttributes().Defaults
 	}
 	logger.Warnf(ctx, "setting task resources with defaults [%+v], task container [%+v], and taskResourceSpec [%+v]",
-		m.config.TaskResourceConfiguration().GetDefaults().CPU.String(),
+		m.config.TaskResourceConfiguration().GetDefaults().CPU	,
 		task.Template.GetContainer().Resources.Requests, taskResourceSpec)
 	task.Template.GetContainer().Resources.Requests = assignResourcesIfUnset(
 		ctx, task.Template.Id, m.config.TaskResourceConfiguration().GetDefaults(), task.Template.GetContainer().Resources.Requests,
@@ -440,7 +439,9 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 	task.Template.GetContainer().Resources.Limits = assignResourcesIfUnset(
 		ctx, task.Template.Id, createTaskDefaultLimits(ctx, task, m.config.TaskResourceConfiguration().GetDefaults()), task.Template.GetContainer().Resources.Limits,
 		taskResourceSpec)
+	logger.Warnf(ctx, "computed task limits [%+v]", task.Template.GetContainer().Resources.Limits)
 	checkTaskRequestsLessThanLimits(ctx, task.Template.Id, task.Template.GetContainer().Resources)
+	logger.Warnf(ctx, "and adjusted requests downwards [%+v]", task.Template.Id, task.Template.GetContainer().Resources)
 }
 
 func fromAdminProtoTaskResourceSpec(ctx context.Context, spec *admin.TaskResourceSpec) runtimeInterfaces.TaskResourceSet {
