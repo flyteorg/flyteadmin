@@ -3019,6 +3019,124 @@ func TestSetDefaults_MissingDefaults(t *testing.T) {
 		task.Template.GetContainer()), fmt.Sprintf("%+v", task.Template.GetContainer()))
 }
 
+func TestSetDefaults_OptionalRequiredResources(t *testing.T) {
+	taskConfigLimits := runtimeInterfaces.TaskResourceSet{
+		CPU:              resource.MustParse("300m"),
+		GPU:              resource.MustParse("1"),
+		Memory:           resource.MustParse("500Gi"),
+		EphemeralStorage: resource.MustParse("501Mi"),
+	}
+
+	task := &core.CompiledTask{
+		Template: &core.TaskTemplate{
+			Target: &core.TaskTemplate_Container{
+				Container: &core.Container{
+					Resources: &core.Resources{
+						Requests: []*core.Resources_ResourceEntry{
+							{
+								Name:  core.Resources_CPU,
+								Value: "200m",
+							},
+						},
+					},
+				},
+			},
+			Id: &taskIdentifier,
+		},
+	}
+	t.Run("don't inject ephemeral storage or gpu when only the limit is set in config", func(t *testing.T) {
+		taskConfig := runtimeMocks.MockTaskResourceConfiguration{
+			Limits: taskConfigLimits,
+			Defaults: runtimeInterfaces.TaskResourceSet{
+				CPU:    resource.MustParse("200m"),
+				Memory: resource.MustParse("200Gi"),
+			},
+		}
+		mockConfig := runtimeMocks.NewMockConfigurationProvider(
+			testutils.GetApplicationConfigWithDefaultDomains(), nil, nil, &taskConfig,
+			runtimeMocks.NewMockWhitelistConfiguration(), nil)
+		execManager := NewExecutionManager(repositoryMocks.NewMockRepository(), mockConfig, getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
+		execManager.(*ExecutionManager).setCompiledTaskDefaults(context.Background(), task, "workflow")
+		assert.True(t, proto.Equal(
+			&core.Container{
+				Resources: &core.Resources{
+					Requests: []*core.Resources_ResourceEntry{
+						{
+							Name:  core.Resources_CPU,
+							Value: "200m",
+						},
+						{
+							Name:  core.Resources_MEMORY,
+							Value: "200Gi",
+						},
+					},
+					Limits: []*core.Resources_ResourceEntry{
+						{
+							Name:  core.Resources_CPU,
+							Value: "200m",
+						},
+						{
+							Name:  core.Resources_MEMORY,
+							Value: "200Gi",
+						},
+					},
+				},
+			},
+			task.Template.GetContainer()), fmt.Sprintf("%+v", task.Template.GetContainer()))
+	})
+
+	t.Run("respect non-required resources when defaults exist in config", func(t *testing.T) {
+		taskConfig := runtimeMocks.MockTaskResourceConfiguration{
+			Limits: taskConfigLimits,
+			Defaults: runtimeInterfaces.TaskResourceSet{
+				CPU:              resource.MustParse("200m"),
+				Memory:           resource.MustParse("200Gi"),
+				EphemeralStorage: resource.MustParse("1"),
+			},
+		}
+		mockConfig := runtimeMocks.NewMockConfigurationProvider(
+			testutils.GetApplicationConfigWithDefaultDomains(), nil, nil, &taskConfig,
+			runtimeMocks.NewMockWhitelistConfiguration(), nil)
+		execManager := NewExecutionManager(repositoryMocks.NewMockRepository(), mockConfig, getMockStorageForExecTest(context.Background()), workflowengineMocks.NewMockExecutor(), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
+		execManager.(*ExecutionManager).setCompiledTaskDefaults(context.Background(), task, "workflow")
+		assert.True(t, proto.Equal(
+			&core.Container{
+				Resources: &core.Resources{
+					Requests: []*core.Resources_ResourceEntry{
+						{
+							Name:  core.Resources_CPU,
+							Value: "200m",
+						},
+						{
+							Name:  core.Resources_MEMORY,
+							Value: "200Gi",
+						},
+						{
+							Name:  core.Resources_EPHEMERAL_STORAGE,
+							Value: "1",
+						},
+					},
+					Limits: []*core.Resources_ResourceEntry{
+						{
+							Name:  core.Resources_CPU,
+							Value: "200m",
+						},
+						{
+							Name:  core.Resources_MEMORY,
+							Value: "200Gi",
+						},
+						{
+							Name:  core.Resources_EPHEMERAL_STORAGE,
+							Value: "1",
+						},
+					},
+				},
+			},
+			task.Template.GetContainer()), fmt.Sprintf("%+v", task.Template.GetContainer()))
+	})
+
+}
+
 func TestCreateTaskDefaultLimits(t *testing.T) {
 	task := &core.CompiledTask{
 		Template: &core.TaskTemplate{

@@ -243,15 +243,6 @@ func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask,
 		} else {
 			taskResourceLimits.CPU = cpu
 		}
-	} else if !configResourceLimits.CPU.IsZero() {
-		taskResourceLimits.CPU = configResourceLimits.CPU
-	} else {
-		cpu, err := resource.ParseQuantity(cpuLimit)
-		if err != nil {
-			logger.Errorf(ctx, "Failed to parse user cpu limit from task spec [%s] with err [%+v]", cpuLimit, err)
-		} else {
-			taskResourceLimits.CPU = cpu
-		}
 	}
 	if memoryIndex >= 0 {
 		memoryLimit = resourceRequestEntries[memoryIndex].Value
