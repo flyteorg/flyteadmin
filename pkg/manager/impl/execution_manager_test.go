@@ -3191,6 +3191,7 @@ func TestCreateTaskDefaultLimits(t *testing.T) {
 		limits := runtimeInterfaces.TaskResourceSet{
 			CPU: resource.MustParse("300m"),
 		}
+
 		defaultLimits := createTaskDefaultLimits(context.Background(), task, limits)
 		assert.Equal(t, resource.MustParse("200Mi"), defaultLimits.Memory)
 		assert.Equal(t, resource.MustParse("300m"), defaultLimits.CPU)

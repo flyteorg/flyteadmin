@@ -211,75 +211,49 @@ func (m *ExecutionManager) offloadInputs(ctx context.Context, literalMap *core.L
 
 func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask,
 	configResourceLimits runtimeInterfaces.TaskResourceSet) runtimeInterfaces.TaskResourceSet {
-	// The values below should never be used (deduce it from the request; request should be set by the time we get here).
-	// Setting them here just in case we end up with requests not set. We are not adding to config because it would add
-	// more confusion as its mostly not used.
-	cpuLimit := "500m"
-	memoryLimit := "500Mi"
 	resourceRequestEntries := task.Template.GetContainer().Resources.Requests
-	var cpuIndex, memoryIndex, ephemeralStorageIndex = -1, -1, -1
-	for idx, entry := range resourceRequestEntries {
+	taskResourceDefaultLimits := runtimeInterfaces.TaskResourceSet{}
+
+	for _, entry := range resourceRequestEntries {
+		parsedValue, err := resource.ParseQuantity(entry.Value)
+		if err != nil {
+			logger.Errorf(ctx, "Failed to resolve resource [%s] limit from task [%s] spec of value [%s] with err [%+v]",
+				entry.Name, task.Template.Id.String(), entry.Value, err)
+			continue
+		}
+
 		switch entry.Name {
 		case core.Resources_CPU:
-			cpuIndex = idx
+			taskResourceDefaultLimits.CPU = parsedValue
 		case core.Resources_MEMORY:
-			memoryIndex = idx
+			taskResourceDefaultLimits.Memory = parsedValue
 		case core.Resources_EPHEMERAL_STORAGE:
-			ephemeralStorageIndex = idx
+			taskResourceDefaultLimits.EphemeralStorage = parsedValue
+		case core.Resources_GPU:
+			taskResourceDefaultLimits.GPU = parsedValue
+		case core.Resources_STORAGE:
+			taskResourceDefaultLimits.Storage = parsedValue
 		}
 	}
 
-	if cpuIndex < 0 || memoryIndex < 0 {
-		logger.Errorf(ctx, "Cpu request and Memory request missing for %s", task.Template.Id)
-	}
-	taskResourceLimits := runtimeInterfaces.TaskResourceSet{}
-
-	// For resource values, we prefer to set unset limits to the request values over the config values.
-	if cpuIndex >= 0 {
-		cpuLimit = resourceRequestEntries[cpuIndex].Value
-		cpu, err := resource.ParseQuantity(cpuLimit)
-		if err != nil {
-			logger.Errorf(ctx, "Failed to parse user cpu limit from task spec [%s] with err [%+v]", cpuLimit, err)
-		} else {
-			taskResourceLimits.CPU = cpu
-		}
-	}
-	if memoryIndex >= 0 {
-		memoryLimit = resourceRequestEntries[memoryIndex].Value
-		memory, err := resource.ParseQuantity(memoryLimit)
-		if err != nil {
-			logger.Errorf(ctx, "Failed to parse user memory limit from task spec [%s] with err [%+v]", memoryLimit, err)
-		} else {
-			taskResourceLimits.Memory = memory
-		}
-	} else if !configResourceLimits.Memory.IsZero() {
-		taskResourceLimits.Memory = configResourceLimits.Memory
-	} else {
-		memory, err := resource.ParseQuantity(memoryLimit)
-		if err != nil {
-			logger.Errorf(ctx, "Failed to parse user memory limit from task spec [%s] with err [%+v]", memoryLimit, err)
-		} else {
-			taskResourceLimits.Memory = memory
-		}
-	}
-	if !taskResourceLimits.GPU.IsZero() && !configResourceLimits.GPU.IsZero() {
-		// When a platform default for GPU exists, but one isn't set in the task resources, use the platform value.
-		taskResourceLimits.GPU = configResourceLimits.GPU
+	if taskResourceDefaultLimits.CPU.IsZero() || taskResourceDefaultLimits.Memory.IsZero() {
+		logger.Errorf(ctx, "Cpu request or/and Memory request missing for %s. CPU Set [%v]. Memory Set [%v]",
+			task.Template.Id, !taskResourceDefaultLimits.CPU.IsZero(), !taskResourceDefaultLimits.Memory.IsZero())
 	}
 
-	if ephemeralStorageIndex >= 0 {
-		ephemeralStorage, err := resource.ParseQuantity(resourceRequestEntries[ephemeralStorageIndex].Value)
-		if err != nil {
-			logger.Errorf(ctx, "Failed to parse user ephemeral storage limit from task spec [%s] with err [%+v]",
-				resourceRequestEntries[ephemeralStorageIndex].Value, err)
-		} else {
-			taskResourceLimits.EphemeralStorage = ephemeralStorage
-		}
-	} else if !configResourceLimits.EphemeralStorage.IsZero() {
-		taskResourceLimits.EphemeralStorage = configResourceLimits.EphemeralStorage
+	if taskResourceDefaultLimits.Storage.IsZero() {
+		taskResourceDefaultLimits.Storage = configResourceLimits.Storage
 	}
-	// There doesn't need to an ultimate fallback for ephemeral storage, unlike cpu and memory.
-	return taskResourceLimits
+	
+	if taskResourceDefaultLimits.EphemeralStorage.IsZero() {
+		taskResourceDefaultLimits.EphemeralStorage = configResourceLimits.EphemeralStorage
+	}
+
+	if taskResourceDefaultLimits.GPU.IsZero() {
+		taskResourceDefaultLimits.GPU = configResourceLimits.GPU
+	}
+
+	return taskResourceDefaultLimits
 }
 
 func assignResourcesIfUnset(ctx context.Context, identifier *core.Identifier,
@@ -408,6 +382,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 			Limits:   []*core.Resources_ResourceEntry{},
 		}
 	}
+
 	resource, err := m.resourceManager.GetResource(ctx, interfaces.ResourceRequest{
 		Project:      task.Template.Id.Project,
 		Domain:       task.Template.Id.Domain,
@@ -419,6 +394,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 		logger.Warningf(ctx, "Failed to fetch override values when assigning task resource default values for [%+v]: %v",
 			task.Template, err)
 	}
+
 	logger.Debugf(ctx, "Assigning task requested resources for [%+v]", task.Template.Id)
 	var taskResourceSpec *admin.TaskResourceSpec
 	if resource != nil && resource.Attributes != nil && resource.Attributes.GetTaskResourceAttributes() != nil {
