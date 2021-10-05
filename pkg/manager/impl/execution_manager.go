@@ -212,7 +212,7 @@ func (m *ExecutionManager) offloadInputs(ctx context.Context, literalMap *core.L
 func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask,
 	configResourceLimits runtimeInterfaces.TaskResourceSet) runtimeInterfaces.TaskResourceSet {
 	resourceRequestEntries := task.Template.GetContainer().Resources.Requests
-	taskResourceDefaultLimits := runtimeInterfaces.TaskResourceSet{}
+	taskResourceDefaultLimits := configResourceLimits
 
 	for _, entry := range resourceRequestEntries {
 		parsedValue, err := resource.ParseQuantity(entry.Value)
@@ -244,7 +244,7 @@ func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask,
 	if taskResourceDefaultLimits.Storage.IsZero() {
 		taskResourceDefaultLimits.Storage = configResourceLimits.Storage
 	}
-	
+
 	if taskResourceDefaultLimits.EphemeralStorage.IsZero() {
 		taskResourceDefaultLimits.EphemeralStorage = configResourceLimits.EphemeralStorage
 	}
@@ -259,7 +259,7 @@ func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask,
 func assignResourcesIfUnset(ctx context.Context, identifier *core.Identifier,
 	platformValues runtimeInterfaces.TaskResourceSet,
 	resourceEntries []*core.Resources_ResourceEntry, taskResourceSpec *admin.TaskResourceSpec) []*core.Resources_ResourceEntry {
-	var cpuIndex, memoryIndex, ephemeralStorageindex = -1, -1, -1
+	var cpuIndex, memoryIndex, ephemeralStorageIndex, gpuIndex = -1, -1, -1, -1
 	for idx, entry := range resourceEntries {
 		switch entry.Name {
 		case core.Resources_CPU:
@@ -267,10 +267,12 @@ func assignResourcesIfUnset(ctx context.Context, identifier *core.Identifier,
 		case core.Resources_MEMORY:
 			memoryIndex = idx
 		case core.Resources_EPHEMERAL_STORAGE:
-			ephemeralStorageindex = idx
+			ephemeralStorageIndex = idx
+		case core.Resources_GPU:
+			gpuIndex = idx
 		}
 	}
-	if cpuIndex > 0 && memoryIndex > 0 && ephemeralStorageindex > 0 {
+	if cpuIndex > 0 && memoryIndex > 0 && ephemeralStorageIndex > 0 && gpuIndex > 0 {
 		// nothing to do
 		return resourceEntries
 	}
@@ -301,7 +303,7 @@ func assignResourcesIfUnset(ctx context.Context, identifier *core.Identifier,
 		logger.Debugf(ctx, "Setting 'memory' for [%+v] to %s", identifier, platformValues.Memory)
 		resourceEntries = append(resourceEntries, memoryResource)
 	}
-	if ephemeralStorageindex < 0 {
+	if ephemeralStorageIndex < 0 {
 		var ephemeralStorageValue string
 		if taskResourceSpec != nil && len(taskResourceSpec.EphemeralStorage) > 0 {
 			// Use the custom attributes from the database rather than the platform defaults from the application config
@@ -316,6 +318,23 @@ func assignResourcesIfUnset(ctx context.Context, identifier *core.Identifier,
 			}
 			logger.Debugf(ctx, "Setting 'ephemeralStorage' for [%+v] to %s", identifier, platformValues.EphemeralStorage)
 			resourceEntries = append(resourceEntries, ephemeralStorageResource)
+		}
+	}
+	if gpuIndex < 0 {
+		var gpuValue string
+		if taskResourceSpec != nil && len(taskResourceSpec.Gpu) > 0 {
+			// Use the custom attributes from the database rather than the platform defaults from the application config
+			gpuValue = taskResourceSpec.Gpu
+		} else if !platformValues.GPU.IsZero() {
+			gpuValue = platformValues.GPU.String()
+		}
+		if len(gpuValue) > 0 {
+			gpuResource := &core.Resources_ResourceEntry{
+				Name:  core.Resources_GPU,
+				Value: gpuValue,
+			}
+			logger.Debugf(ctx, "Setting 'gpu' for [%+v] to %s", identifier, platformValues.GPU)
+			resourceEntries = append(resourceEntries, gpuResource)
 		}
 	}
 	logger.Warnf(ctx, "returning [%+v]", resourceEntries)
