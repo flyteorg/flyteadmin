@@ -2709,6 +2709,10 @@ func TestAssignResourcesIfUnset(t *testing.T) {
 				Name:  core.Resources_EPHEMERAL_STORAGE,
 				Value: taskResourceSpec.EphemeralStorage,
 			},
+			{
+				Name:  core.Resources_GPU,
+				Value: platformValues.GPU.String(),
+			},
 		}, assignedResources)
 	})
 	t.Run("Unset in task resource spec", func(t *testing.T) {
@@ -2731,6 +2735,10 @@ func TestAssignResourcesIfUnset(t *testing.T) {
 			{
 				Name:  core.Resources_EPHEMERAL_STORAGE,
 				Value: platformValues.EphemeralStorage.String(),
+			},
+			{
+				Name:  core.Resources_GPU,
+				Value: platformValues.GPU.String(),
 			},
 		}, assignedResources)
 	})
@@ -2901,7 +2909,7 @@ func TestSetDefaults(t *testing.T) {
 	taskConfig := runtimeMocks.MockTaskResourceConfiguration{}
 	taskConfig.Defaults = runtimeInterfaces.TaskResourceSet{
 		CPU:              resource.MustParse("200m"),
-		GPU:              resource.MustParse("8"),
+		GPU:              resource.MustParse("4"),
 		Memory:           resource.MustParse("200Gi"),
 		EphemeralStorage: resource.MustParse("500Mi"),
 	}
@@ -2932,6 +2940,10 @@ func TestSetDefaults(t *testing.T) {
 						Name:  core.Resources_EPHEMERAL_STORAGE,
 						Value: "500Mi",
 					},
+					{
+						Name:  core.Resources_GPU,
+						Value: "4",
+					},
 				},
 				Limits: []*core.Resources_ResourceEntry{
 					{
@@ -2945,6 +2957,10 @@ func TestSetDefaults(t *testing.T) {
 					{
 						Name:  core.Resources_EPHEMERAL_STORAGE,
 						Value: "500Mi",
+					},
+					{
+						Name:  core.Resources_GPU,
+						Value: "4",
 					},
 				},
 			},
@@ -2979,7 +2995,7 @@ func TestSetDefaults_MissingDefaults(t *testing.T) {
 	taskConfig := runtimeMocks.MockTaskResourceConfiguration{}
 	taskConfig.Defaults = runtimeInterfaces.TaskResourceSet{
 		CPU:    resource.MustParse("200m"),
-		GPU:    resource.MustParse("8"),
+		GPU:    resource.MustParse("4"),
 		Memory: resource.MustParse("200Gi"),
 	}
 	taskConfig.Limits = runtimeInterfaces.TaskResourceSet{
@@ -3003,6 +3019,10 @@ func TestSetDefaults_MissingDefaults(t *testing.T) {
 						Name:  core.Resources_MEMORY,
 						Value: "200Gi",
 					},
+					{
+						Name:  core.Resources_GPU,
+						Value: "4",
+					},
 				},
 				Limits: []*core.Resources_ResourceEntry{
 					{
@@ -3012,6 +3032,10 @@ func TestSetDefaults_MissingDefaults(t *testing.T) {
 					{
 						Name:  core.Resources_MEMORY,
 						Value: "200Gi",
+					},
+					{
+						Name:  core.Resources_GPU,
+						Value: "4",
 					},
 				},
 			},
@@ -3187,9 +3211,9 @@ func TestCreateTaskDefaultLimits(t *testing.T) {
 				},
 			},
 		}
-
 		limits := runtimeInterfaces.TaskResourceSet{
-			CPU: resource.MustParse("300m"),
+			Memory: resource.MustParse("300Mi"),
+			CPU:    resource.MustParse("300m"),
 		}
 
 		defaultLimits := createTaskDefaultLimits(context.Background(), task, limits)
