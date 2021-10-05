@@ -337,7 +337,6 @@ func assignResourcesIfUnset(ctx context.Context, identifier *core.Identifier,
 			resourceEntries = append(resourceEntries, gpuResource)
 		}
 	}
-	logger.Warnf(ctx, "returning [%+v]", resourceEntries)
 	return resourceEntries
 }
 
