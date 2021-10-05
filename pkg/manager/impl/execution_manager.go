@@ -244,7 +244,7 @@ func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask,
 	if taskResourceDefaultLimits.Storage.IsZero() {
 		taskResourceDefaultLimits.Storage = configResourceLimits.Storage
 	}
-
+	
 	if taskResourceDefaultLimits.EphemeralStorage.IsZero() {
 		taskResourceDefaultLimits.EphemeralStorage = configResourceLimits.EphemeralStorage
 	}
