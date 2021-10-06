@@ -2676,6 +2676,90 @@ func TestListExecutions_LegacyModel(t *testing.T) {
 	assert.Empty(t, executionList.Token)
 }
 
+func TestGetTaskResourcesAsSet(t *testing.T) {
+	taskResources := getTaskResourcesAsSet(context.TODO(), &core.Identifier{}, []*core.Resources_ResourceEntry{
+		{
+			Name:  core.Resources_CPU,
+			Value: "100",
+		},
+		{
+			Name:  core.Resources_MEMORY,
+			Value: "200",
+		},
+		{
+			Name:  core.Resources_EPHEMERAL_STORAGE,
+			Value: "300",
+		},
+		{
+			Name:  core.Resources_GPU,
+			Value: "400",
+		},
+	}, "request")
+	assert.True(t, taskResources.CPU.Equal(resource.MustParse("100")))
+	assert.True(t, taskResources.Memory.Equal(resource.MustParse("200")))
+	assert.True(t, taskResources.EphemeralStorage.Equal(resource.MustParse("300")))
+	assert.True(t, taskResources.GPU.Equal(resource.MustParse("400")))
+}
+
+func TestGetCompleteTaskResourceRequirements(t *testing.T) {
+	taskResources := getCompleteTaskResourceRequirements(context.TODO(), &core.Identifier{}, &core.CompiledTask{
+		Template: &core.TaskTemplate{
+			Target: &core.TaskTemplate_Container{
+				Container: &core.Container{
+					Resources: &core.Resources{
+						Requests: []*core.Resources_ResourceEntry{
+							{
+								Name:  core.Resources_CPU,
+								Value: "100",
+							},
+							{
+								Name:  core.Resources_MEMORY,
+								Value: "200",
+							},
+							{
+								Name:  core.Resources_EPHEMERAL_STORAGE,
+								Value: "300",
+							},
+							{
+								Name:  core.Resources_GPU,
+								Value: "400",
+							},
+						},
+						Limits: []*core.Resources_ResourceEntry{
+							{
+								Name:  core.Resources_CPU,
+								Value: "200",
+							},
+							{
+								Name:  core.Resources_MEMORY,
+								Value: "400",
+							},
+							{
+								Name:  core.Resources_EPHEMERAL_STORAGE,
+								Value: "600",
+							},
+							{
+								Name:  core.Resources_GPU,
+								Value: "800",
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	assert.True(t, taskResources.Defaults.CPU.Equal(resource.MustParse("100")))
+	assert.True(t, taskResources.Defaults.Memory.Equal(resource.MustParse("200")))
+	assert.True(t, taskResources.Defaults.EphemeralStorage.Equal(resource.MustParse("300")))
+	assert.True(t, taskResources.Defaults.GPU.Equal(resource.MustParse("400")))
+
+	assert.True(t, taskResources.Limits.CPU.Equal(resource.MustParse("200")))
+	assert.True(t, taskResources.Limits.Memory.Equal(resource.MustParse("400")))
+	assert.True(t, taskResources.Limits.EphemeralStorage.Equal(resource.MustParse("600")))
+	assert.True(t, taskResources.Limits.GPU.Equal(resource.MustParse("800")))
+}
+
 func TestSetDefaults(t *testing.T) {
 	task := &core.CompiledTask{
 		Template: &core.TaskTemplate{
@@ -2685,7 +2769,7 @@ func TestSetDefaults(t *testing.T) {
 						Requests: []*core.Resources_ResourceEntry{
 							{
 								Name:  core.Resources_CPU,
-								Value: "200m",
+								Value: "250m",
 							},
 						},
 					},
@@ -2720,7 +2804,7 @@ func TestSetDefaults(t *testing.T) {
 				Requests: []*core.Resources_ResourceEntry{
 					{
 						Name:  core.Resources_CPU,
-						Value: "200m",
+						Value: "250m",
 					},
 					{
 						Name:  core.Resources_MEMORY,
@@ -2738,7 +2822,7 @@ func TestSetDefaults(t *testing.T) {
 				Limits: []*core.Resources_ResourceEntry{
 					{
 						Name:  core.Resources_CPU,
-						Value: "200m",
+						Value: "250m",
 					},
 					{
 						Name:  core.Resources_MEMORY,
@@ -2758,7 +2842,7 @@ func TestSetDefaults(t *testing.T) {
 		task.Template.GetContainer()), fmt.Sprintf("%+v", task.Template.GetContainer()))
 }
 
-func TestSetDefaults_MissingDefaults(t *testing.T) {
+func TestSetDefaults_MissingRequests_ExistingRequestsPreserved(t *testing.T) {
 	task := &core.CompiledTask{
 		Template: &core.TaskTemplate{
 			Target: &core.TaskTemplate_Container{
@@ -2767,7 +2851,7 @@ func TestSetDefaults_MissingDefaults(t *testing.T) {
 						Requests: []*core.Resources_ResourceEntry{
 							{
 								Name:  core.Resources_CPU,
-								Value: "200m",
+								Value: "250m",
 							},
 						},
 					},
@@ -2791,6 +2875,8 @@ func TestSetDefaults_MissingDefaults(t *testing.T) {
 		Limits: runtimeInterfaces.TaskResourceSet{
 			CPU: resource.MustParse("300m"),
 			GPU: resource.MustParse("8"),
+			// Because only the limit is set, this resource should not be injected.
+			EphemeralStorage: resource.MustParse("100"),
 		},
 	})
 	assert.True(t, proto.Equal(
@@ -2799,7 +2885,7 @@ func TestSetDefaults_MissingDefaults(t *testing.T) {
 				Requests: []*core.Resources_ResourceEntry{
 					{
 						Name:  core.Resources_CPU,
-						Value: "200m",
+						Value: "250m",
 					},
 					{
 						Name:  core.Resources_MEMORY,
@@ -2813,7 +2899,7 @@ func TestSetDefaults_MissingDefaults(t *testing.T) {
 				Limits: []*core.Resources_ResourceEntry{
 					{
 						Name:  core.Resources_CPU,
-						Value: "200m",
+						Value: "250m",
 					},
 					{
 						Name:  core.Resources_MEMORY,
@@ -2937,67 +3023,6 @@ func TestSetDefaults_OptionalRequiredResources(t *testing.T) {
 			task.Template.GetContainer()), fmt.Sprintf("%+v", task.Template.GetContainer()))
 	})
 
-}
-
-func TestCreateTaskDefaultLimits(t *testing.T) {
-	task := &core.CompiledTask{
-		Template: &core.TaskTemplate{
-			Target: &core.TaskTemplate_Container{
-				Container: &core.Container{
-					Resources: &core.Resources{
-						Requests: []*core.Resources_ResourceEntry{
-							{
-								Name:  core.Resources_CPU,
-								Value: "200m",
-							},
-							{
-								Name:  core.Resources_MEMORY,
-								Value: "200Mi",
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	t.Run("missing_limits_in_config", func(t *testing.T) {
-		limits := runtimeInterfaces.TaskResourceSet{}
-
-		defaultLimits := createTaskDefaultLimits(context.Background(), task, limits)
-		assert.Equal(t, resource.MustParse("200Mi"), defaultLimits.Memory)
-		assert.Equal(t, resource.MustParse("200m"), defaultLimits.CPU)
-	})
-	t.Run("use_limits_from_requests", func(t *testing.T) {
-		defaultLimits := createTaskDefaultLimits(context.Background(), task, resourceLimits)
-		assert.Equal(t, resource.MustParse("200Mi"), defaultLimits.Memory)
-		assert.Equal(t, resource.MustParse("200m"), defaultLimits.CPU)
-	})
-	t.Run("use_limits_from_config", func(t *testing.T) {
-		task := &core.CompiledTask{
-			Template: &core.TaskTemplate{
-				Target: &core.TaskTemplate_Container{
-					Container: &core.Container{
-						Resources: &core.Resources{
-							Requests: []*core.Resources_ResourceEntry{
-								{
-									Name:  core.Resources_MEMORY,
-									Value: "200Mi",
-								},
-							},
-						},
-					},
-				},
-			},
-		}
-		limits := runtimeInterfaces.TaskResourceSet{
-			Memory: resource.MustParse("300Mi"),
-			CPU:    resource.MustParse("300m"),
-		}
-
-		defaultLimits := createTaskDefaultLimits(context.Background(), task, limits)
-		assert.Equal(t, resource.MustParse("200Mi"), defaultLimits.Memory)
-		assert.Equal(t, resource.MustParse("300m"), defaultLimits.CPU)
-	})
 }
 
 func TestCreateSingleTaskExecution(t *testing.T) {
