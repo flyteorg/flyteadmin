@@ -211,54 +211,7 @@ func (m *ExecutionManager) offloadInputs(ctx context.Context, literalMap *core.L
 	return inputsURI, nil
 }
 
-func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask,
-	configResourceLimits runtimeInterfaces.TaskResourceSet) runtimeInterfaces.TaskResourceSet {
-	resourceRequestEntries := task.Template.GetContainer().Resources.Requests
-	taskResourceDefaultLimits := configResourceLimits
-
-	for _, entry := range resourceRequestEntries {
-		parsedValue, err := resource.ParseQuantity(entry.Value)
-		if err != nil {
-			logger.Errorf(ctx, "Failed to resolve resource [%s] limit from task [%s] spec of value [%s] with err [%+v]",
-				entry.Name, task.Template.Id.String(), entry.Value, err)
-			continue
-		}
-
-		switch entry.Name {
-		case core.Resources_CPU:
-			taskResourceDefaultLimits.CPU = parsedValue
-		case core.Resources_MEMORY:
-			taskResourceDefaultLimits.Memory = parsedValue
-		case core.Resources_EPHEMERAL_STORAGE:
-			taskResourceDefaultLimits.EphemeralStorage = parsedValue
-		case core.Resources_GPU:
-			taskResourceDefaultLimits.GPU = parsedValue
-		case core.Resources_STORAGE:
-			taskResourceDefaultLimits.Storage = parsedValue
-		}
-	}
-
-	if taskResourceDefaultLimits.CPU.IsZero() || taskResourceDefaultLimits.Memory.IsZero() {
-		logger.Errorf(ctx, "Cpu request or/and Memory request missing for %s. CPU Set [%v]. Memory Set [%v]",
-			task.Template.Id, !taskResourceDefaultLimits.CPU.IsZero(), !taskResourceDefaultLimits.Memory.IsZero())
-	}
-
-	if taskResourceDefaultLimits.Storage.IsZero() {
-		taskResourceDefaultLimits.Storage = configResourceLimits.Storage
-	}
-
-	if taskResourceDefaultLimits.EphemeralStorage.IsZero() {
-		taskResourceDefaultLimits.EphemeralStorage = configResourceLimits.EphemeralStorage
-	}
-
-	if taskResourceDefaultLimits.GPU.IsZero() {
-		taskResourceDefaultLimits.GPU = configResourceLimits.GPU
-	}
-
-	return taskResourceDefaultLimits
-}
-
-type taskResourcesAsSet struct {
+type completeTaskResources struct {
 	Defaults runtimeInterfaces.TaskResourceSet
 	Limits   runtimeInterfaces.TaskResourceSet
 }
@@ -296,8 +249,8 @@ func getTaskResourcesAsSet(ctx context.Context, identifier *core.Identifier, res
 	return result
 }
 
-func getTaskResourceRequirementsAsSet(ctx context.Context, identifier *core.Identifier, task *core.CompiledTask) taskResourcesAsSet {
-	return taskResourcesAsSet{
+func getCompleteTaskResourceRequirements(ctx context.Context, identifier *core.Identifier, task *core.CompiledTask) completeTaskResources {
+	return completeTaskResources{
 		Defaults: getTaskResourcesAsSet(ctx, identifier, task.GetTemplate().GetContainer().Resources.Requests, "requests"),
 		Limits:   getTaskResourcesAsSet(ctx, identifier, task.GetTemplate().GetContainer().Resources.Limits, "limits"),
 	}
@@ -335,7 +288,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 	// The IDL representation for container-type tasks represents resources as a list with string quantities.
 	// In order to easily reason about them we convert them to a set where we can O(1) fetch specific resources (e.g. CPU)
 	// and represent them as comparable quantities rather than strings.
-	taskResourceRequirements := getTaskResourceRequirementsAsSet(ctx, task.Template.Id, task)
+	taskResourceRequirements := getCompleteTaskResourceRequirements(ctx, task.Template.Id, task)
 
 	cpu := flytek8s.AssignResource(taskResourceRequirements.Defaults.CPU, taskResourceRequirements.Limits.CPU,
 		platformTaskResources.Defaults.CPU, platformTaskResources.Limits.CPU)
@@ -359,6 +312,8 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 		Value: memory.Limit.String(),
 	})
 
+	// Only assign ephemeral storage when it is either requested or limited in the task definition, or a platform
+	// default exists.
 	if !taskResourceRequirements.Defaults.EphemeralStorage.IsZero() ||
 		!taskResourceRequirements.Limits.EphemeralStorage.IsZero() ||
 		!platformTaskResources.Defaults.EphemeralStorage.IsZero() {
@@ -373,7 +328,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 			Value: ephemeralStorage.Limit.String(),
 		})
 	}
-
+	// Only assign gpu when it is either requested or limited in the task definition, or a platform default exists.
 	if !taskResourceRequirements.Defaults.GPU.IsZero() ||
 		!taskResourceRequirements.Limits.GPU.IsZero() ||
 		!platformTaskResources.Defaults.GPU.IsZero() {
