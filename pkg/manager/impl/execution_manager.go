@@ -216,36 +216,24 @@ type completeTaskResources struct {
 	Limits   runtimeInterfaces.TaskResourceSet
 }
 
-func getTaskResourcesAsSet(ctx context.Context, identifier *core.Identifier, resourceEntries []*core.Resources_ResourceEntry, resourceName string) runtimeInterfaces.TaskResourceSet {
+func getTaskResourcesAsSet(ctx context.Context, identifier *core.Identifier,
+	resourceEntries []*core.Resources_ResourceEntry, resourceName string) runtimeInterfaces.TaskResourceSet {
+
 	result := runtimeInterfaces.TaskResourceSet{}
 	for _, entry := range resourceEntries {
 		switch entry.Name {
 		case core.Resources_CPU:
-			value, err := resource.ParseQuantity(entry.Value)
-			if err != nil {
-				logger.Infof(ctx, "Failed to parse task [%+v] [%+s] cpu: [%+v] as quantity", identifier.String(), resourceName, entry.Value)
-			}
-			result.CPU = value
+			result.CPU = parseQuantityNoError(ctx, identifier.String(), fmt.Sprintf("%v.cpu", resourceName), entry.Value)
 		case core.Resources_MEMORY:
-			value, err := resource.ParseQuantity(entry.Value)
-			if err != nil {
-				logger.Infof(ctx, "Failed to parse task [%+v] [%+s] memory: [%+v] as quantity", identifier.String(), resourceName, entry.Value)
-			}
-			result.Memory = value
+			result.Memory = parseQuantityNoError(ctx, identifier.String(), fmt.Sprintf("%v.memory", resourceName), entry.Value)
 		case core.Resources_EPHEMERAL_STORAGE:
-			value, err := resource.ParseQuantity(entry.Value)
-			if err != nil {
-				logger.Infof(ctx, "Failed to parse task [%+v] [%+s] ephemeral storage: [%+v] as quantity", identifier.String(), resourceName, entry.Value)
-			}
-			result.EphemeralStorage = value
+			result.EphemeralStorage = parseQuantityNoError(ctx, identifier.String(),
+				fmt.Sprintf("%v.ephemeral storage", resourceName), entry.Value)
 		case core.Resources_GPU:
-			value, err := resource.ParseQuantity(entry.Value)
-			if err != nil {
-				logger.Infof(ctx, "Failed to parse task [%+v] [%+s] gpu: [%+v] as quantity", identifier.String(), resourceName, entry.Value)
-			}
-			result.GPU = value
+			result.GPU = parseQuantityNoError(ctx, identifier.String(), "gpu", entry.Value)
 		}
 	}
+
 	return result
 }
 
@@ -264,10 +252,12 @@ func getCompleteTaskResourceRequirements(ctx context.Context, identifier *core.I
 // general we recommend the users to set limits close to requests for more predictability in the system.
 func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *core.CompiledTask,
 	platformTaskResources workflowengineInterfaces.TaskResources) {
+
 	if task == nil {
 		logger.Warningf(ctx, "Can't set default resources for nil task.")
 		return
 	}
+
 	if task.Template == nil || task.Template.GetContainer() == nil {
 		// Nothing to do
 		logger.Debugf(ctx, "Not setting default resources for task [%+v], no container resources found to check", task)
@@ -282,7 +272,8 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 			Limits:   []*core.Resources_ResourceEntry{},
 		}
 	}
-	var finalizedResourceRequirements = make([]*core.Resources_ResourceEntry, 0)
+
+	var finalizedResourceRequests = make([]*core.Resources_ResourceEntry, 0)
 	var finalizedResourceLimits = make([]*core.Resources_ResourceEntry, 0)
 
 	// The IDL representation for container-type tasks represents resources as a list with string quantities.
@@ -292,7 +283,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 
 	cpu := flytek8s.AssignResource(taskResourceRequirements.Defaults.CPU, taskResourceRequirements.Limits.CPU,
 		platformTaskResources.Defaults.CPU, platformTaskResources.Limits.CPU)
-	finalizedResourceRequirements = append(finalizedResourceRequirements, &core.Resources_ResourceEntry{
+	finalizedResourceRequests = append(finalizedResourceRequests, &core.Resources_ResourceEntry{
 		Name:  core.Resources_CPU,
 		Value: cpu.Request.String(),
 	})
@@ -303,7 +294,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 
 	memory := flytek8s.AssignResource(taskResourceRequirements.Defaults.Memory, taskResourceRequirements.Limits.Memory,
 		platformTaskResources.Defaults.Memory, platformTaskResources.Limits.Memory)
-	finalizedResourceRequirements = append(finalizedResourceRequirements, &core.Resources_ResourceEntry{
+	finalizedResourceRequests = append(finalizedResourceRequests, &core.Resources_ResourceEntry{
 		Name:  core.Resources_MEMORY,
 		Value: memory.Request.String(),
 	})
@@ -319,7 +310,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 		!platformTaskResources.Defaults.EphemeralStorage.IsZero() {
 		ephemeralStorage := flytek8s.AssignResource(taskResourceRequirements.Defaults.EphemeralStorage, taskResourceRequirements.Limits.EphemeralStorage,
 			platformTaskResources.Defaults.EphemeralStorage, platformTaskResources.Limits.EphemeralStorage)
-		finalizedResourceRequirements = append(finalizedResourceRequirements, &core.Resources_ResourceEntry{
+		finalizedResourceRequests = append(finalizedResourceRequests, &core.Resources_ResourceEntry{
 			Name:  core.Resources_EPHEMERAL_STORAGE,
 			Value: ephemeralStorage.Request.String(),
 		})
@@ -328,13 +319,31 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 			Value: ephemeralStorage.Limit.String(),
 		})
 	}
+
+	// Only assign ephemeral storage when it is either requested or limited in the task definition, or a platform
+	// default exists.
+	if !taskResourceRequirements.Defaults.Storage.IsZero() ||
+		!taskResourceRequirements.Limits.Storage.IsZero() ||
+		!platformTaskResources.Defaults.Storage.IsZero() {
+		storageResource := flytek8s.AssignResource(taskResourceRequirements.Defaults.Storage, taskResourceRequirements.Limits.Storage,
+			platformTaskResources.Defaults.Storage, platformTaskResources.Limits.Storage)
+		finalizedResourceRequests = append(finalizedResourceRequests, &core.Resources_ResourceEntry{
+			Name:  core.Resources_STORAGE,
+			Value: storageResource.Request.String(),
+		})
+		finalizedResourceLimits = append(finalizedResourceLimits, &core.Resources_ResourceEntry{
+			Name:  core.Resources_STORAGE,
+			Value: storageResource.Limit.String(),
+		})
+	}
+
 	// Only assign gpu when it is either requested or limited in the task definition, or a platform default exists.
 	if !taskResourceRequirements.Defaults.GPU.IsZero() ||
 		!taskResourceRequirements.Limits.GPU.IsZero() ||
 		!platformTaskResources.Defaults.GPU.IsZero() {
 		gpu := flytek8s.AssignResource(taskResourceRequirements.Defaults.GPU, taskResourceRequirements.Limits.GPU,
 			platformTaskResources.Defaults.GPU, platformTaskResources.Limits.GPU)
-		finalizedResourceRequirements = append(finalizedResourceRequirements, &core.Resources_ResourceEntry{
+		finalizedResourceRequests = append(finalizedResourceRequests, &core.Resources_ResourceEntry{
 			Name:  core.Resources_GPU,
 			Value: gpu.Request.String(),
 		})
@@ -345,44 +354,42 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 	}
 
 	task.Template.GetContainer().Resources = &core.Resources{
-		Requests: finalizedResourceRequirements,
+		Requests: finalizedResourceRequests,
 		Limits:   finalizedResourceLimits,
 	}
 }
 
+func parseQuantityNoError(ctx context.Context, ownerID, name, value string) resource.Quantity {
+	q, err := resource.ParseQuantity(value)
+	if err != nil {
+		logger.Infof(ctx, "Failed to parse owner's [%s] resource [%s]'s value [%s] with err: %v", ownerID, name, value, err)
+	}
+
+	return q
+}
+
 func fromAdminProtoTaskResourceSpec(ctx context.Context, spec *admin.TaskResourceSpec) runtimeInterfaces.TaskResourceSet {
 	result := runtimeInterfaces.TaskResourceSet{}
-	var err error
 	if len(spec.Cpu) > 0 {
-		result.CPU, err = resource.ParseQuantity(spec.Cpu)
-		if err != nil {
-			logger.Infof(ctx, "Failed to parse cpu [%s] from task resource spec with err: %v", spec.Cpu, err)
-		}
+		result.CPU = parseQuantityNoError(ctx, "project", "cpu", spec.Cpu)
 	}
+
 	if len(spec.Memory) > 0 {
-		result.Memory, err = resource.ParseQuantity(spec.Memory)
-		if err != nil {
-			logger.Infof(ctx, "Failed to parse memory [%s] from task resource spec with err: %v", spec.Memory, err)
-		}
+		result.Memory = parseQuantityNoError(ctx, "project", "memory", spec.Memory)
 	}
+
 	if len(spec.Storage) > 0 {
-		result.Storage, err = resource.ParseQuantity(spec.Storage)
-		if err != nil {
-			logger.Infof(ctx, "Failed to parse storage [%s] from task resource spec with err: %v", spec.Storage, err)
-		}
+		result.Storage = parseQuantityNoError(ctx, "project", "storage", spec.Storage)
 	}
+
 	if len(spec.EphemeralStorage) > 0 {
-		result.EphemeralStorage, err = resource.ParseQuantity(spec.EphemeralStorage)
-		if err != nil {
-			logger.Infof(ctx, "Failed to parse ephemeral storage [%s] from task resource spec with err: %v", spec.EphemeralStorage, err)
-		}
+		result.EphemeralStorage = parseQuantityNoError(ctx, "project", "ephemeral storage", spec.EphemeralStorage)
 	}
+
 	if len(spec.Gpu) > 0 {
-		result.GPU, err = resource.ParseQuantity(spec.Gpu)
-		if err != nil {
-			logger.Infof(ctx, "Failed to parse gpu [%s] from task resource spec with err: %v", spec.Gpu, err)
-		}
+		result.GPU = parseQuantityNoError(ctx, "project", "gpu", spec.Gpu)
 	}
+
 	return result
 }
 
@@ -398,6 +405,7 @@ func (m *ExecutionManager) getTaskResources(ctx context.Context, workflow *core.
 		logger.Warningf(ctx, "Failed to fetch override values when assigning task resource default values for [%+v]: %v",
 			workflow, err)
 	}
+
 	logger.Debugf(ctx, "Assigning task requested resources for [%+v]", workflow)
 	var taskResourceAttributes = workflowengineInterfaces.TaskResources{}
 	if resource != nil && resource.Attributes != nil && resource.Attributes.GetTaskResourceAttributes() != nil {
@@ -409,6 +417,7 @@ func (m *ExecutionManager) getTaskResources(ctx context.Context, workflow *core.
 			Limits:   m.config.TaskResourceConfiguration().GetLimits(),
 		}
 	}
+
 	return taskResourceAttributes
 }
 
@@ -553,8 +562,8 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 
 	// Dynamically assign task resource defaults.
 	platformTaskResources := m.getTaskResources(ctx, workflow.Id)
-	for _, task := range workflow.Closure.CompiledWorkflow.Tasks {
-		m.setCompiledTaskDefaults(ctx, task, platformTaskResources)
+	for _, t := range workflow.Closure.CompiledWorkflow.Tasks {
+		m.setCompiledTaskDefaults(ctx, t, platformTaskResources)
 	}
 
 	// Dynamically assign execution queues.
