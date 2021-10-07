@@ -320,7 +320,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 		})
 	}
 
-	// Only assign ephemeral storage when it is either requested or limited in the task definition, or a platform
+	// Only assign storage when it is either requested or limited in the task definition, or a platform
 	// default exists.
 	if !taskResourceRequirements.Defaults.Storage.IsZero() ||
 		!taskResourceRequirements.Limits.Storage.IsZero() ||
