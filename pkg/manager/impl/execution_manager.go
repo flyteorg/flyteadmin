@@ -281,7 +281,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 	// and represent them as comparable quantities rather than strings.
 	taskResourceRequirements := getCompleteTaskResourceRequirements(ctx, task.Template.Id, task)
 
-	cpu := flytek8s.AssignResource(taskResourceRequirements.Defaults.CPU, taskResourceRequirements.Limits.CPU,
+	cpu := flytek8s.AdjustOrDefaultResource(taskResourceRequirements.Defaults.CPU, taskResourceRequirements.Limits.CPU,
 		platformTaskResources.Defaults.CPU, platformTaskResources.Limits.CPU)
 	finalizedResourceRequests = append(finalizedResourceRequests, &core.Resources_ResourceEntry{
 		Name:  core.Resources_CPU,
@@ -292,7 +292,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 		Value: cpu.Limit.String(),
 	})
 
-	memory := flytek8s.AssignResource(taskResourceRequirements.Defaults.Memory, taskResourceRequirements.Limits.Memory,
+	memory := flytek8s.AdjustOrDefaultResource(taskResourceRequirements.Defaults.Memory, taskResourceRequirements.Limits.Memory,
 		platformTaskResources.Defaults.Memory, platformTaskResources.Limits.Memory)
 	finalizedResourceRequests = append(finalizedResourceRequests, &core.Resources_ResourceEntry{
 		Name:  core.Resources_MEMORY,
@@ -308,7 +308,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 	if !taskResourceRequirements.Defaults.EphemeralStorage.IsZero() ||
 		!taskResourceRequirements.Limits.EphemeralStorage.IsZero() ||
 		!platformTaskResources.Defaults.EphemeralStorage.IsZero() {
-		ephemeralStorage := flytek8s.AssignResource(taskResourceRequirements.Defaults.EphemeralStorage, taskResourceRequirements.Limits.EphemeralStorage,
+		ephemeralStorage := flytek8s.AdjustOrDefaultResource(taskResourceRequirements.Defaults.EphemeralStorage, taskResourceRequirements.Limits.EphemeralStorage,
 			platformTaskResources.Defaults.EphemeralStorage, platformTaskResources.Limits.EphemeralStorage)
 		finalizedResourceRequests = append(finalizedResourceRequests, &core.Resources_ResourceEntry{
 			Name:  core.Resources_EPHEMERAL_STORAGE,
@@ -325,7 +325,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 	if !taskResourceRequirements.Defaults.Storage.IsZero() ||
 		!taskResourceRequirements.Limits.Storage.IsZero() ||
 		!platformTaskResources.Defaults.Storage.IsZero() {
-		storageResource := flytek8s.AssignResource(taskResourceRequirements.Defaults.Storage, taskResourceRequirements.Limits.Storage,
+		storageResource := flytek8s.AdjustOrDefaultResource(taskResourceRequirements.Defaults.Storage, taskResourceRequirements.Limits.Storage,
 			platformTaskResources.Defaults.Storage, platformTaskResources.Limits.Storage)
 		finalizedResourceRequests = append(finalizedResourceRequests, &core.Resources_ResourceEntry{
 			Name:  core.Resources_STORAGE,
@@ -341,7 +341,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 	if !taskResourceRequirements.Defaults.GPU.IsZero() ||
 		!taskResourceRequirements.Limits.GPU.IsZero() ||
 		!platformTaskResources.Defaults.GPU.IsZero() {
-		gpu := flytek8s.AssignResource(taskResourceRequirements.Defaults.GPU, taskResourceRequirements.Limits.GPU,
+		gpu := flytek8s.AdjustOrDefaultResource(taskResourceRequirements.Defaults.GPU, taskResourceRequirements.Limits.GPU,
 			platformTaskResources.Defaults.GPU, platformTaskResources.Limits.GPU)
 		finalizedResourceRequests = append(finalizedResourceRequests, &core.Resources_ResourceEntry{
 			Name:  core.Resources_GPU,
