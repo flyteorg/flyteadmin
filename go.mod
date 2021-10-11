@@ -35,7 +35,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.1 // indirect
 	github.com/flyteorg/flyteidl v0.21.4
 	github.com/flyteorg/flyteplugins v0.7.0
-	github.com/flyteorg/flytepropeller v0.14.9-0.20211008215502-600169baf196
+	github.com/flyteorg/flytepropeller v0.14.11
 	github.com/flyteorg/flytestdlib v0.3.36
 	github.com/form3tech-oss/jwt-go v3.2.2+incompatible // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
