@@ -216,6 +216,7 @@ func (c *FlytePropeller) ExecuteWorkflow(ctx context.Context, input interfaces.E
 	}
 
 	logger.Debugf(ctx, "Successfully created workflow execution [%+v]", input.WfClosure.Primary.Template.Id)
+	logger.Debugf(ctx, "Successfully created flyteWf workflow execution [%+v]", flyteWf)
 	c.metrics.ExecutionCreationSuccess.Inc()
 
 	return &interfaces.ExecutionInfo{
