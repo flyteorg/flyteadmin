@@ -103,7 +103,7 @@ func GetOutputs(ctx context.Context, urlData dataInterfaces.RemoteURLInterface,
 		if int64(proto.Size(closure.GetOutputData())) < remoteDataConfig.MaxSizeInBytes {
 			fullOutputs = closure.GetOutputData()
 		} else {
-			logger.Debugf(ctx, "Node execution closure contains output data that exceeds max data size for responses")
+			logger.Debugf(ctx, "execution closure contains output data that exceeds max data size for responses")
 		}
 	} else if shouldFetchOutputData(remoteDataConfig, outputsURLBlob, closure.GetOutputUri()) {
 		err := storageClient.ReadProtobuf(ctx, storage.DataReference(closure.GetOutputUri()), fullOutputs)
