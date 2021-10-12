@@ -48,7 +48,7 @@ func GetInputs(ctx context.Context, urlData dataInterfaces.RemoteURLInterface,
 
 // Defines common methods in NodeExecutionClosure and TaskExecutionClosure used to return output data.
 type ExecutionClosure interface {
-	GetOutputUri() string
+	GetOutputUri() string //nolint
 	GetOutputData() *core.LiteralMap
 }
 
@@ -59,7 +59,7 @@ type workflowExecutionClosure struct {
 	*admin.ExecutionClosure
 }
 
-func (c workflowExecutionClosure) GetOutputUri() string {
+func (c workflowExecutionClosure) GetOutputUri() string { //nolint
 	var outputURI string
 	if c.ExecutionClosure != nil && c.ExecutionClosure.GetOutputs() != nil {
 		outputURI = c.ExecutionClosure.GetOutputs().GetUri()
