@@ -294,48 +294,30 @@ func (m *TaskExecutionManager) GetTaskExecutionData(
 			request.Id, err)
 		return nil, err
 	}
-	signedInputsURLBlob, err := m.urlData.Get(ctx, taskExecution.InputUri)
+
+	inputs, inputURLBlob, err := util.GetInputs(ctx, m.urlData, m.config.ApplicationConfiguration().GetRemoteDataConfig(),
+		m.storageClient, taskExecution.InputUri)
 	if err != nil {
 		return nil, err
 	}
-	signedOutputsURLBlob := admin.UrlBlob{}
-	if taskExecution.Closure.GetOutputUri() != "" {
-		signedOutputsURLBlob, err = m.urlData.Get(ctx, taskExecution.Closure.GetOutputUri())
-		if err != nil {
-			return nil, err
-		}
+	outputs, outputURLBlob, err := util.GetOutputs(ctx, m.urlData, m.config.ApplicationConfiguration().GetRemoteDataConfig(),
+		m.storageClient, taskExecution.Closure)
+	if err != nil {
+		return nil, err
 	}
+
 	response := &admin.TaskExecutionGetDataResponse{
-		Inputs:  &signedInputsURLBlob,
-		Outputs: &signedOutputsURLBlob,
+		Inputs:      inputURLBlob,
+		Outputs:     outputURLBlob,
+		FullInputs:  inputs,
+		FullOutputs: outputs,
 	}
-	if util.ShouldFetchData(m.config.ApplicationConfiguration().GetRemoteDataConfig(), signedInputsURLBlob) {
-		var fullInputs core.LiteralMap
-		err := m.storageClient.ReadProtobuf(ctx, storage.DataReference(taskExecution.InputUri), &fullInputs)
-		if err != nil {
-			logger.Warningf(ctx, "Failed to read inputs from URI [%s] with err: %v", taskExecution.InputUri, err)
-		}
-		response.FullInputs = &fullInputs
-	}
-	var fullOutputs = &core.LiteralMap{}
-	if util.ShouldFetchOutputData(m.config.ApplicationConfiguration().GetRemoteDataConfig(), signedOutputsURLBlob,
-		taskExecution.Closure.GetOutputUri()) {
-		err := m.storageClient.ReadProtobuf(ctx, storage.DataReference(taskExecution.Closure.GetOutputUri()), fullOutputs)
-		if err != nil {
-			logger.Warningf(ctx, "Failed to read outputs from URI [%s] with err: %v",
-				taskExecution.Closure.GetOutputUri(), err)
-		}
-	} else if taskExecution.Closure.GetOutputData() != nil {
-		fullOutputs = taskExecution.Closure.GetOutputData()
-	} else if taskExecution.Closure.GetOutputData() != nil {
-		logger.Debugf(ctx, "Task execution closure contains output data that exceeds max data size for responses")
-	}
-	response.FullOutputs = fullOutputs
+
 	m.metrics.TaskExecutionInputBytes.Observe(float64(response.Inputs.Bytes))
 	if response.Outputs.Bytes > 0 {
 		m.metrics.TaskExecutionOutputBytes.Observe(float64(response.Outputs.Bytes))
-	} else if fullOutputs != nil && int64(proto.Size(fullOutputs)) < m.config.ApplicationConfiguration().GetRemoteDataConfig().MaxSizeInBytes {
-		m.metrics.TaskExecutionOutputBytes.Observe(float64(proto.Size(fullOutputs)))
+	} else if response.FullOutputs != nil {
+		m.metrics.TaskExecutionOutputBytes.Observe(float64(proto.Size(response.FullOutputs)))
 	}
 	return response, nil
 }

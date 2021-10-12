@@ -440,43 +440,23 @@ func (m *NodeExecutionManager) GetNodeExecutionData(
 		logger.Debugf(ctx, "failed to transform node execution model [%+v] when fetching data: %v", request.Id, err)
 		return nil, err
 	}
-	signedInputsURLBlob, err := m.urlData.Get(ctx, nodeExecution.InputUri)
+
+	inputs, inputURLBlob, err := util.GetInputs(ctx, m.urlData, m.config.ApplicationConfiguration().GetRemoteDataConfig(),
+		m.storageClient, nodeExecution.InputUri)
 	if err != nil {
 		return nil, err
 	}
-	signedOutputsURLBlob := admin.UrlBlob{}
-	if nodeExecution.Closure.GetOutputUri() != "" {
-		signedOutputsURLBlob, err = m.urlData.Get(ctx, nodeExecution.Closure.GetOutputUri())
-		if err != nil {
-			return nil, err
-		}
+	outputs, outputURLBlob, err := util.GetOutputs(ctx, m.urlData, m.config.ApplicationConfiguration().GetRemoteDataConfig(),
+		m.storageClient, nodeExecution.Closure)
+	if err != nil {
+		return nil, err
 	}
 	response := &admin.NodeExecutionGetDataResponse{
-		Inputs:  &signedInputsURLBlob,
-		Outputs: &signedOutputsURLBlob,
+		Inputs:      inputURLBlob,
+		Outputs:     outputURLBlob,
+		FullInputs:  inputs,
+		FullOutputs: outputs,
 	}
-	if util.ShouldFetchData(m.config.ApplicationConfiguration().GetRemoteDataConfig(), signedInputsURLBlob) {
-		var fullInputs core.LiteralMap
-		err := m.storageClient.ReadProtobuf(ctx, storage.DataReference(nodeExecution.InputUri), &fullInputs)
-		if err != nil {
-			logger.Warningf(ctx, "Failed to read inputs from URI [%s] with err: %v", nodeExecution.InputUri, err)
-		}
-		response.FullInputs = &fullInputs
-	}
-	var fullOutputs = &core.LiteralMap{}
-	if util.ShouldFetchOutputData(m.config.ApplicationConfiguration().GetRemoteDataConfig(), signedOutputsURLBlob,
-		nodeExecution.Closure.GetOutputUri()) {
-		err := m.storageClient.ReadProtobuf(ctx, storage.DataReference(nodeExecution.Closure.GetOutputUri()), fullOutputs)
-		if err != nil {
-			logger.Warningf(ctx, "Failed to read outputs from URI [%s] with err: %v",
-				nodeExecution.Closure.GetOutputUri(), err)
-		}
-	} else if nodeExecution.Closure.GetOutputData() != nil && int64(proto.Size(nodeExecution.Closure.GetOutputData())) < m.config.ApplicationConfiguration().GetRemoteDataConfig().MaxSizeInBytes {
-		fullOutputs = nodeExecution.Closure.GetOutputData()
-	} else if nodeExecution.Closure.GetOutputData() != nil {
-		logger.Debugf(ctx, "Node execution closure contains output data that exceeds max data size for responses")
-	}
-	response.FullOutputs = fullOutputs
 
 	if len(nodeExecutionModel.DynamicWorkflowRemoteClosureReference) > 0 {
 		closure := &core.CompiledWorkflowClosure{}
@@ -494,8 +474,8 @@ func (m *NodeExecutionManager) GetNodeExecutionData(
 	m.metrics.NodeExecutionInputBytes.Observe(float64(response.Inputs.Bytes))
 	if response.Outputs.Bytes > 0 {
 		m.metrics.NodeExecutionOutputBytes.Observe(float64(response.Outputs.Bytes))
-	} else if fullOutputs != nil {
-		m.metrics.NodeExecutionOutputBytes.Observe(float64(proto.Size(fullOutputs)))
+	} else if response.FullOutputs != nil {
+		m.metrics.NodeExecutionOutputBytes.Observe(float64(proto.Size(response.FullOutputs)))
 	}
 
 	return response, nil
