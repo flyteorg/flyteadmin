@@ -47,7 +47,7 @@ func GetInputs(ctx context.Context, urlData dataInterfaces.RemoteURLInterface,
 }
 
 // Defines common methods in NodeExecutionClosure and TaskExecutionClosure used to return output data.
-type executionClosure interface {
+type ExecutionClosure interface {
 	GetOutputUri() string
 	GetOutputData() *core.LiteralMap
 }
@@ -74,9 +74,9 @@ func (c workflowExecutionClosure) GetOutputData() *core.LiteralMap {
 	return c.ExecutionClosure.GetOutputData()
 }
 
-// Converts a workflow execution closure to an implementation of the executionClosure interface
+// Converts a workflow execution closure to an implementation of the ExecutionClosure interface
 // for use in producing execution output data.
-func ToExecutionClosureInterface(closure *admin.ExecutionClosure) executionClosure {
+func ToExecutionClosureInterface(closure *admin.ExecutionClosure) ExecutionClosure {
 	return &workflowExecutionClosure{
 		ExecutionClosure: closure,
 	}
@@ -84,7 +84,7 @@ func ToExecutionClosureInterface(closure *admin.ExecutionClosure) executionClosu
 
 // Returns an outputs URL blob and if config settings permit, inline outputs data for an execution.
 func GetOutputs(ctx context.Context, urlData dataInterfaces.RemoteURLInterface,
-	remoteDataConfig *runtimeInterfaces.RemoteDataConfig, storageClient *storage.DataStore, closure executionClosure) (
+	remoteDataConfig *runtimeInterfaces.RemoteDataConfig, storageClient *storage.DataStore, closure ExecutionClosure) (
 	*core.LiteralMap, *admin.UrlBlob, error) {
 	if closure == nil {
 		return nil, nil, nil

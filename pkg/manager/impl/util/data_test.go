@@ -118,8 +118,8 @@ func TestGetInputs(t *testing.T) {
 		Bytes: 1000,
 	}
 
-	mockRemoteUrl := urlMocks.NewMockRemoteURL()
-	mockRemoteUrl.(*urlMocks.MockRemoteURL).GetCallback = func(ctx context.Context, uri string) (admin.UrlBlob, error) {
+	mockRemoteURL := urlMocks.NewMockRemoteURL()
+	mockRemoteURL.(*urlMocks.MockRemoteURL).GetCallback = func(ctx context.Context, uri string) (admin.UrlBlob, error) {
 		assert.Equal(t, inputsURI, uri)
 		return expectedURLBlob, nil
 	}
@@ -135,7 +135,7 @@ func TestGetInputs(t *testing.T) {
 		return nil
 	}
 
-	fullInputs, inputURLBlob, err := GetInputs(context.TODO(), mockRemoteUrl, &remoteDataConfig, mockStorage, inputsURI)
+	fullInputs, inputURLBlob, err := GetInputs(context.TODO(), mockRemoteURL, &remoteDataConfig, mockStorage, inputsURI)
 	assert.NoError(t, err)
 	assert.True(t, proto.Equal(fullInputs, testLiteralMap))
 	assert.True(t, proto.Equal(inputURLBlob, &expectedURLBlob))
@@ -148,8 +148,8 @@ func TestGetOutputs(t *testing.T) {
 			Bytes: 1000,
 		}
 
-		mockRemoteUrl := urlMocks.NewMockRemoteURL()
-		mockRemoteUrl.(*urlMocks.MockRemoteURL).GetCallback = func(ctx context.Context, uri string) (admin.UrlBlob, error) {
+		mockRemoteURL := urlMocks.NewMockRemoteURL()
+		mockRemoteURL.(*urlMocks.MockRemoteURL).GetCallback = func(ctx context.Context, uri string) (admin.UrlBlob, error) {
 			assert.Equal(t, testOutputsURI, uri)
 			return expectedURLBlob, nil
 		}
@@ -170,14 +170,14 @@ func TestGetOutputs(t *testing.T) {
 			},
 		}
 
-		fullOutputs, outputURLBlob, err := GetOutputs(context.TODO(), mockRemoteUrl, &remoteDataConfig, mockStorage, closure)
+		fullOutputs, outputURLBlob, err := GetOutputs(context.TODO(), mockRemoteURL, &remoteDataConfig, mockStorage, closure)
 		assert.NoError(t, err)
 		assert.True(t, proto.Equal(fullOutputs, testLiteralMap))
 		assert.True(t, proto.Equal(outputURLBlob, &expectedURLBlob))
 	})
 	t.Run("inline outputs", func(t *testing.T) {
-		mockRemoteUrl := urlMocks.NewMockRemoteURL()
-		mockRemoteUrl.(*urlMocks.MockRemoteURL).GetCallback = func(ctx context.Context, uri string) (admin.UrlBlob, error) {
+		mockRemoteURL := urlMocks.NewMockRemoteURL()
+		mockRemoteURL.(*urlMocks.MockRemoteURL).GetCallback = func(ctx context.Context, uri string) (admin.UrlBlob, error) {
 			t.Fatal("Should not fetch a remote URL for outputs stored inline for an execution model")
 			return admin.UrlBlob{}, nil
 		}
@@ -196,7 +196,7 @@ func TestGetOutputs(t *testing.T) {
 			},
 		}
 
-		fullOutputs, outputURLBlob, err := GetOutputs(context.TODO(), mockRemoteUrl, &remoteDataConfig, mockStorage, closure)
+		fullOutputs, outputURLBlob, err := GetOutputs(context.TODO(), mockRemoteURL, &remoteDataConfig, mockStorage, closure)
 		assert.NoError(t, err)
 		assert.True(t, proto.Equal(fullOutputs, testLiteralMap))
 		assert.Empty(t, outputURLBlob)
