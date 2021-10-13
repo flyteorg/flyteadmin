@@ -258,8 +258,13 @@ func ValidateLimit(limit uint32) error {
 }
 
 func ValidateOutputData(outputData *core.LiteralMap, maxSizeInBytes int64) error {
-	if outputData == nil || int64(proto.Size(outputData)) <= maxSizeInBytes {
+	if outputData == nil {
 		return nil
 	}
-	return errors.NewFlyteAdminErrorf(codes.ResourceExhausted, "Output data size exceeds platform configured threshold (%+v > %v)", proto.Size(outputData), maxSizeInBytes)
+	
+	outputSizeInBytes := int64(proto.Size(outputData))
+	if outputSizeInBytes <= maxSizeInBytes {
+		return nil
+	}
+	return errors.NewFlyteAdminErrorf(codes.ResourceExhausted, "Output data size exceeds platform configured threshold (%+v > %v)", outputSizeInBytes, maxSizeInBytes)
 }
