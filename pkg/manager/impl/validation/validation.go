@@ -261,7 +261,7 @@ func ValidateOutputData(outputData *core.LiteralMap, maxSizeInBytes int64) error
 	if outputData == nil {
 		return nil
 	}
-	
+
 	outputSizeInBytes := int64(proto.Size(outputData))
 	if outputSizeInBytes <= maxSizeInBytes {
 		return nil
