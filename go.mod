@@ -78,3 +78,5 @@ require (
 )
 
 replace github.com/robfig/cron/v3 => github.com/unionai/cron/v3 v3.0.2-0.20210825070134-bfc34418fe84
+
+replace github.com/flyteorg/flytestdlib => github.com/pingsutw/flytestdlib v0.3.37-0.20211012202158-3d41babe8f75

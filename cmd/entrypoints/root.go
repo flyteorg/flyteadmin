@@ -75,8 +75,6 @@ func initConfig(flags *pflag.FlagSet) error {
 		StrictMode:  false,
 	})
 
-	fmt.Println("Using config file: ", configAccessor.ConfigFilesUsed())
-
 	configAccessor.InitializePflags(flags)
 
 	return configAccessor.UpdateConfig(context.TODO())
