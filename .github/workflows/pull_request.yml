@@ -50,6 +50,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - uses: unionai/flytectl-setup-action@v0.0.1
       - id: load-docker-cache
         name: Load Docker Cache
         uses: actions/cache@v1
