@@ -2,9 +2,9 @@ package entrypoints
 
 import (
 	"context"
+	"google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/flyteorg/flyteidl/clients/go/admin"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 	"github.com/flyteorg/flytestdlib/logger"
 
 	"github.com/spf13/cobra"
@@ -37,7 +37,12 @@ var preCheckRunCmd = &cobra.Command{
 					return err
 				}
 
-				_, err = clientSet.AuthMetadataClient().GetOAuth2Metadata(ctx, &service.OAuth2MetadataRequest{})
+				healthCheckResponse, err := clientSet.HealthServiceClient().Check(ctx, &grpc_health_v1.HealthCheckRequest{Service: ""})
+				if err != nil {
+					return err
+				}
+				logger.Infof(ctx, "Status is %v", healthCheckResponse.Status)
+				logger.Infof(ctx, "Health check response is %v", healthCheckResponse)
 				return err
 			},
 		)
