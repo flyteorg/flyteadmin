@@ -2,14 +2,13 @@ package entrypoints
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/flyteorg/flyteidl/clients/go/admin"
 	"github.com/flyteorg/flytestdlib/logger"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc/health/grpc_health_v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 )
@@ -47,7 +46,7 @@ var preCheckRunCmd = &cobra.Command{
 				}
 				if healthCheckResponse.GetStatus() != grpc_health_v1.HealthCheckResponse_SERVING {
 					logger.Errorf(ctx, healthCheckError, healthCheckResponse.GetStatus())
-					return errors.New(fmt.Sprintf(healthCheckError, healthCheckResponse.GetStatus()))
+					return fmt.Errorf(healthCheckError, healthCheckResponse.GetStatus())
 				}
 				logger.Infof(ctx, "Health check response is %v", healthCheckResponse)
 				return nil
