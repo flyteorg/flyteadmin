@@ -31,8 +31,10 @@ COPY --from=builder /artifacts /bin
 
 # Ensure the latest CA certs are present to authenticate SSL connections.
 RUN apk --update add ca-certificates
+RUN mkdir /etc/secrets
 
 RUN addgroup -S flyte && adduser -S flyte -G flyte
+RUN chown -R flyte:flyte /etc/secrets
 USER flyte
 
 CMD ["flyteadmin"]
