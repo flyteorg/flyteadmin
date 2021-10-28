@@ -2,6 +2,8 @@ package entrypoints
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/flyteorg/flyteidl/clients/go/admin"
@@ -14,6 +16,7 @@ import (
 
 const (
 	healthCheckSuccess = "Health check passed, Flyteadmin is up and running"
+	healthCheckError   = "Health check failed with status %v"
 )
 
 var preCheckRunCmd = &cobra.Command{
@@ -37,13 +40,17 @@ var preCheckRunCmd = &cobra.Command{
 					return err
 				}
 
-				healthCheckResponse, err := clientSet.HealthServiceClient().Check(ctx, &grpc_health_v1.HealthCheckRequest{Service: ""})
+				healthCheckResponse, err := clientSet.HealthServiceClient().Check(ctx,
+					&grpc_health_v1.HealthCheckRequest{Service: "flyteadmin"})
 				if err != nil {
 					return err
 				}
-				logger.Infof(ctx, "Status is %v", healthCheckResponse.Status)
+				if healthCheckResponse.GetStatus() != grpc_health_v1.HealthCheckResponse_SERVING {
+					logger.Errorf(ctx, healthCheckError, healthCheckResponse.GetStatus())
+					return errors.New(fmt.Sprintf(healthCheckError, healthCheckResponse.GetStatus()))
+				}
 				logger.Infof(ctx, "Health check response is %v", healthCheckResponse)
-				return err
+				return nil
 			},
 		)
 
