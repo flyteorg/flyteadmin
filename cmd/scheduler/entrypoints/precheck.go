@@ -25,7 +25,7 @@ var preCheckRunCmd = &cobra.Command{
 		ctx := context.Background()
 
 		// Do maximum of 30 retries on failures with constant backoff factor
-		opts := wait.Backoff{Duration: 3000, Factor: 2.0, Steps: 30}
+		opts := wait.Backoff{Duration: 3000, Factor: 2.0, Steps: 30, Jitter: 0.1}
 		err := retry.OnError(opts,
 			func(err error) bool {
 				logger.Errorf(ctx, "Attempt failed due to %v", err)
