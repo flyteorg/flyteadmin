@@ -31,16 +31,14 @@ COPY --from=builder /artifacts /bin
 
 # Ensure the latest CA certs are present to authenticate SSL connections.
 RUN apk --update add ca-certificates
-# Set the uid,gid,group and user
 
-#RUN addgroup -S flyte && adduser -S flyte -G flyte
+# Set the uid,gid,group and user
 ENV UID=1001
 ENV GID=2001
 ENV GROUP=flyte
 ENV USER=flyte
-
+# Add flyte user and group
 RUN addgroup -g ${GID} ${GROUP} 
-# adduser -u ${UID} -g ${GROUP} -s /bin/sh ${USER}
 RUN adduser -D -s /bin/sh -G ${GROUP} -u ${UID} ${USER}
 
 CMD ["flyteadmin"]
