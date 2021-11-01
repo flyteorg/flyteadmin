@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+
 	"github.com/flyteorg/flyteadmin/auth"
 
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -209,175 +211,37 @@ func (m *ExecutionManager) offloadInputs(ctx context.Context, literalMap *core.L
 	return inputsURI, nil
 }
 
-func createTaskDefaultLimits(ctx context.Context, task *core.CompiledTask,
-	configResourceLimits runtimeInterfaces.TaskResourceSet) runtimeInterfaces.TaskResourceSet {
-	// The values below should never be used (deduce it from the request; request should be set by the time we get here).
-	// Setting them here just in case we end up with requests not set. We are not adding to config because it would add
-	// more confusion as its mostly not used.
-	cpuLimit := "500m"
-	memoryLimit := "500Mi"
-	resourceRequestEntries := task.Template.GetContainer().Resources.Requests
-	var cpuIndex, memoryIndex, ephemeralStorageIndex = -1, -1, -1
-	for idx, entry := range resourceRequestEntries {
-		switch entry.Name {
-		case core.Resources_CPU:
-			cpuIndex = idx
-		case core.Resources_MEMORY:
-			memoryIndex = idx
-		case core.Resources_EPHEMERAL_STORAGE:
-			ephemeralStorageIndex = idx
-		}
-	}
-
-	if cpuIndex < 0 || memoryIndex < 0 {
-		logger.Errorf(ctx, "Cpu request and Memory request missing for %s", task.Template.Id)
-	}
-	taskResourceLimits := runtimeInterfaces.TaskResourceSet{}
-
-	// For resource values, we prefer to use the limits set in the application config over the set resource values.
-	if !configResourceLimits.CPU.IsZero() {
-		taskResourceLimits.CPU = configResourceLimits.CPU
-	} else {
-		if cpuIndex >= 0 {
-			cpuLimit = resourceRequestEntries[cpuIndex].Value
-		}
-		cpu, err := resource.ParseQuantity(cpuLimit)
-		if err != nil {
-			logger.Errorf(ctx, "Failed to parse user cpu limit from task spec [%s] with err [%+v]", cpuLimit, err)
-		} else {
-			taskResourceLimits.CPU = cpu
-		}
-	}
-	if !configResourceLimits.Memory.IsZero() {
-		taskResourceLimits.Memory = configResourceLimits.Memory
-	} else {
-		if memoryIndex >= 0 {
-			memoryLimit = resourceRequestEntries[memoryIndex].Value
-		}
-		memory, err := resource.ParseQuantity(memoryLimit)
-		if err != nil {
-			logger.Errorf(ctx, "Failed to parse user memory limit from task spec [%s] with err [%+v]", memoryLimit, err)
-		} else {
-			taskResourceLimits.Memory = memory
-		}
-	}
-	if !taskResourceLimits.GPU.IsZero() && !configResourceLimits.GPU.IsZero() {
-		// When a platform default for GPU exists, but one isn't set in the task resources, use the platform value.
-		taskResourceLimits.GPU = configResourceLimits.GPU
-	}
-	if !configResourceLimits.EphemeralStorage.IsZero() {
-		taskResourceLimits.EphemeralStorage = configResourceLimits.EphemeralStorage
-	} else if ephemeralStorageIndex >= 0 {
-		ephemeralStorage, err := resource.ParseQuantity(resourceRequestEntries[ephemeralStorageIndex].Value)
-		if err != nil {
-			logger.Errorf(ctx, "Failed to parse user ephemeral storage limit from task spec [%s] with err [%+v]",
-				resourceRequestEntries[ephemeralStorageIndex].Value, err)
-		} else {
-			taskResourceLimits.EphemeralStorage = ephemeralStorage
-		}
-	}
-
-	return taskResourceLimits
+type completeTaskResources struct {
+	Defaults runtimeInterfaces.TaskResourceSet
+	Limits   runtimeInterfaces.TaskResourceSet
 }
 
-func assignResourcesIfUnset(ctx context.Context, identifier *core.Identifier,
-	platformValues runtimeInterfaces.TaskResourceSet,
-	resourceEntries []*core.Resources_ResourceEntry, taskResourceSpec *admin.TaskResourceSpec) []*core.Resources_ResourceEntry {
-	var cpuIndex, memoryIndex, ephemeralStorageindex = -1, -1, -1
-	for idx, entry := range resourceEntries {
+func getTaskResourcesAsSet(ctx context.Context, identifier *core.Identifier,
+	resourceEntries []*core.Resources_ResourceEntry, resourceName string) runtimeInterfaces.TaskResourceSet {
+
+	result := runtimeInterfaces.TaskResourceSet{}
+	for _, entry := range resourceEntries {
 		switch entry.Name {
 		case core.Resources_CPU:
-			cpuIndex = idx
+			result.CPU = parseQuantityNoError(ctx, identifier.String(), fmt.Sprintf("%v.cpu", resourceName), entry.Value)
 		case core.Resources_MEMORY:
-			memoryIndex = idx
+			result.Memory = parseQuantityNoError(ctx, identifier.String(), fmt.Sprintf("%v.memory", resourceName), entry.Value)
 		case core.Resources_EPHEMERAL_STORAGE:
-			ephemeralStorageindex = idx
+			result.EphemeralStorage = parseQuantityNoError(ctx, identifier.String(),
+				fmt.Sprintf("%v.ephemeral storage", resourceName), entry.Value)
+		case core.Resources_GPU:
+			result.GPU = parseQuantityNoError(ctx, identifier.String(), "gpu", entry.Value)
 		}
-	}
-	if cpuIndex > 0 && memoryIndex > 0 && ephemeralStorageindex > 0 {
-		// nothing to do
-		return resourceEntries
 	}
 
-	if cpuIndex < 0 && !platformValues.CPU.IsZero() {
-		logger.Debugf(ctx, "Setting 'cpu' for [%+v] to %s", identifier, platformValues.CPU)
-		cpuValue := platformValues.CPU.String()
-		if taskResourceSpec != nil && len(taskResourceSpec.Cpu) > 0 {
-			// Use the custom attributes from the database rather than the platform defaults from the application config
-			cpuValue = taskResourceSpec.Cpu
-		}
-		cpuResource := &core.Resources_ResourceEntry{
-			Name:  core.Resources_CPU,
-			Value: cpuValue,
-		}
-		resourceEntries = append(resourceEntries, cpuResource)
-	}
-	if memoryIndex < 0 && !platformValues.Memory.IsZero() {
-		memoryValue := platformValues.Memory.String()
-		if taskResourceSpec != nil && len(taskResourceSpec.Memory) > 0 {
-			// Use the custom attributes from the database rather than the platform defaults from the application config
-			memoryValue = taskResourceSpec.Memory
-		}
-		memoryResource := &core.Resources_ResourceEntry{
-			Name:  core.Resources_MEMORY,
-			Value: memoryValue,
-		}
-		logger.Debugf(ctx, "Setting 'memory' for [%+v] to %s", identifier, platformValues.Memory)
-		resourceEntries = append(resourceEntries, memoryResource)
-	}
-	if ephemeralStorageindex < 0 {
-		var ephemeralStorageValue string
-		if taskResourceSpec != nil && len(taskResourceSpec.EphemeralStorage) > 0 {
-			// Use the custom attributes from the database rather than the platform defaults from the application config
-			ephemeralStorageValue = taskResourceSpec.EphemeralStorage
-		} else if !platformValues.EphemeralStorage.IsZero() {
-			ephemeralStorageValue = platformValues.EphemeralStorage.String()
-		}
-		if len(ephemeralStorageValue) > 0 {
-			ephemeralStorageResource := &core.Resources_ResourceEntry{
-				Name:  core.Resources_EPHEMERAL_STORAGE,
-				Value: ephemeralStorageValue,
-			}
-			logger.Debugf(ctx, "Setting 'ephemeralStorage' for [%+v] to %s", identifier, platformValues.EphemeralStorage)
-			resourceEntries = append(resourceEntries, ephemeralStorageResource)
-		}
-	}
-	return resourceEntries
+	return result
 }
 
-func checkTaskRequestsLessThanLimits(ctx context.Context, identifier *core.Identifier,
-	taskResources *core.Resources) {
-	// We choose the minimum of the platform request defaults or the limit itself for every resource request.
-	// Otherwise we can find ourselves in confusing scenarios where the injected platform request defaults exceed a
-	// user-specified limit
-	resourceLimits := make(map[core.Resources_ResourceName]string)
-	for _, resourceEntry := range taskResources.Limits {
-		resourceLimits[resourceEntry.Name] = resourceEntry.Value
+func getCompleteTaskResourceRequirements(ctx context.Context, identifier *core.Identifier, task *core.CompiledTask) completeTaskResources {
+	return completeTaskResources{
+		Defaults: getTaskResourcesAsSet(ctx, identifier, task.GetTemplate().GetContainer().Resources.Requests, "requests"),
+		Limits:   getTaskResourcesAsSet(ctx, identifier, task.GetTemplate().GetContainer().Resources.Limits, "limits"),
 	}
-
-	finalizedResourceRequests := make([]*core.Resources_ResourceEntry, 0, len(taskResources.Requests))
-	for _, resourceEntry := range taskResources.Requests {
-		value := resourceEntry.Value
-		quantity := resource.MustParse(resourceEntry.Value)
-		limitValue, ok := resourceLimits[resourceEntry.Name]
-		if !ok {
-			// Unexpected - at this stage both requests and limits should be populated.
-			logger.Warningf(ctx, "No limit specified for [%v] resource [%s] although request was set", identifier,
-				resourceEntry.Name)
-			continue
-		}
-		if quantity.Cmp(resource.MustParse(limitValue)) == 1 {
-			// The quantity is greater than the limit! Course correct below.
-			logger.Infof(ctx, "Updating requested value for task [%+v] resource [%s]. Overriding to smaller limit value [%s] from original request [%s]",
-				identifier, resourceEntry.Name, limitValue, value)
-			value = limitValue
-		}
-		finalizedResourceRequests = append(finalizedResourceRequests, &core.Resources_ResourceEntry{
-			Name:  resourceEntry.Name,
-			Value: value,
-		})
-	}
-	taskResources.Requests = finalizedResourceRequests
 }
 
 // TODO: Delete this code usage after the flyte v0.17.0 release
@@ -386,11 +250,14 @@ func checkTaskRequestsLessThanLimits(ctx context.Context, identifier *core.Ident
 // Note: The system will assign a system-default value for request but for limit it will deduce it from the request
 // itself => Limit := Min([Some-Multiplier X Request], System-Max). For now we are using a multiplier of 1. In
 // general we recommend the users to set limits close to requests for more predictability in the system.
-func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *core.CompiledTask, workflowName string) {
+func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *core.CompiledTask,
+	platformTaskResources workflowengineInterfaces.TaskResources) {
+
 	if task == nil {
 		logger.Warningf(ctx, "Can't set default resources for nil task.")
 		return
 	}
+
 	if task.Template == nil || task.Template.GetContainer() == nil {
 		// Nothing to do
 		logger.Debugf(ctx, "Not setting default resources for task [%+v], no container resources found to check", task)
@@ -405,74 +272,128 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 			Limits:   []*core.Resources_ResourceEntry{},
 		}
 	}
-	resource, err := m.resourceManager.GetResource(ctx, interfaces.ResourceRequest{
-		Project:      task.Template.Id.Project,
-		Domain:       task.Template.Id.Domain,
-		Workflow:     workflowName,
-		ResourceType: admin.MatchableResource_TASK_RESOURCE,
+
+	var finalizedResourceRequests = make([]*core.Resources_ResourceEntry, 0)
+	var finalizedResourceLimits = make([]*core.Resources_ResourceEntry, 0)
+
+	// The IDL representation for container-type tasks represents resources as a list with string quantities.
+	// In order to easily reason about them we convert them to a set where we can O(1) fetch specific resources (e.g. CPU)
+	// and represent them as comparable quantities rather than strings.
+	taskResourceRequirements := getCompleteTaskResourceRequirements(ctx, task.Template.Id, task)
+
+	cpu := flytek8s.AdjustOrDefaultResource(taskResourceRequirements.Defaults.CPU, taskResourceRequirements.Limits.CPU,
+		platformTaskResources.Defaults.CPU, platformTaskResources.Limits.CPU)
+	finalizedResourceRequests = append(finalizedResourceRequests, &core.Resources_ResourceEntry{
+		Name:  core.Resources_CPU,
+		Value: cpu.Request.String(),
+	})
+	finalizedResourceLimits = append(finalizedResourceLimits, &core.Resources_ResourceEntry{
+		Name:  core.Resources_CPU,
+		Value: cpu.Limit.String(),
 	})
 
+	memory := flytek8s.AdjustOrDefaultResource(taskResourceRequirements.Defaults.Memory, taskResourceRequirements.Limits.Memory,
+		platformTaskResources.Defaults.Memory, platformTaskResources.Limits.Memory)
+	finalizedResourceRequests = append(finalizedResourceRequests, &core.Resources_ResourceEntry{
+		Name:  core.Resources_MEMORY,
+		Value: memory.Request.String(),
+	})
+	finalizedResourceLimits = append(finalizedResourceLimits, &core.Resources_ResourceEntry{
+		Name:  core.Resources_MEMORY,
+		Value: memory.Limit.String(),
+	})
+
+	// Only assign ephemeral storage when it is either requested or limited in the task definition, or a platform
+	// default exists.
+	if !taskResourceRequirements.Defaults.EphemeralStorage.IsZero() ||
+		!taskResourceRequirements.Limits.EphemeralStorage.IsZero() ||
+		!platformTaskResources.Defaults.EphemeralStorage.IsZero() {
+		ephemeralStorage := flytek8s.AdjustOrDefaultResource(taskResourceRequirements.Defaults.EphemeralStorage, taskResourceRequirements.Limits.EphemeralStorage,
+			platformTaskResources.Defaults.EphemeralStorage, platformTaskResources.Limits.EphemeralStorage)
+		finalizedResourceRequests = append(finalizedResourceRequests, &core.Resources_ResourceEntry{
+			Name:  core.Resources_EPHEMERAL_STORAGE,
+			Value: ephemeralStorage.Request.String(),
+		})
+		finalizedResourceLimits = append(finalizedResourceLimits, &core.Resources_ResourceEntry{
+			Name:  core.Resources_EPHEMERAL_STORAGE,
+			Value: ephemeralStorage.Limit.String(),
+		})
+	}
+
+	// Only assign storage when it is either requested or limited in the task definition, or a platform
+	// default exists.
+	if !taskResourceRequirements.Defaults.Storage.IsZero() ||
+		!taskResourceRequirements.Limits.Storage.IsZero() ||
+		!platformTaskResources.Defaults.Storage.IsZero() {
+		storageResource := flytek8s.AdjustOrDefaultResource(taskResourceRequirements.Defaults.Storage, taskResourceRequirements.Limits.Storage,
+			platformTaskResources.Defaults.Storage, platformTaskResources.Limits.Storage)
+		finalizedResourceRequests = append(finalizedResourceRequests, &core.Resources_ResourceEntry{
+			Name:  core.Resources_STORAGE,
+			Value: storageResource.Request.String(),
+		})
+		finalizedResourceLimits = append(finalizedResourceLimits, &core.Resources_ResourceEntry{
+			Name:  core.Resources_STORAGE,
+			Value: storageResource.Limit.String(),
+		})
+	}
+
+	// Only assign gpu when it is either requested or limited in the task definition, or a platform default exists.
+	if !taskResourceRequirements.Defaults.GPU.IsZero() ||
+		!taskResourceRequirements.Limits.GPU.IsZero() ||
+		!platformTaskResources.Defaults.GPU.IsZero() {
+		gpu := flytek8s.AdjustOrDefaultResource(taskResourceRequirements.Defaults.GPU, taskResourceRequirements.Limits.GPU,
+			platformTaskResources.Defaults.GPU, platformTaskResources.Limits.GPU)
+		finalizedResourceRequests = append(finalizedResourceRequests, &core.Resources_ResourceEntry{
+			Name:  core.Resources_GPU,
+			Value: gpu.Request.String(),
+		})
+		finalizedResourceLimits = append(finalizedResourceLimits, &core.Resources_ResourceEntry{
+			Name:  core.Resources_GPU,
+			Value: gpu.Limit.String(),
+		})
+	}
+
+	task.Template.GetContainer().Resources = &core.Resources{
+		Requests: finalizedResourceRequests,
+		Limits:   finalizedResourceLimits,
+	}
+}
+
+func parseQuantityNoError(ctx context.Context, ownerID, name, value string) resource.Quantity {
+	q, err := resource.ParseQuantity(value)
 	if err != nil {
-		logger.Warningf(ctx, "Failed to fetch override values when assigning task resource default values for [%+v]: %v",
-			task.Template, err)
-	}
-	logger.Debugf(ctx, "Assigning task requested resources for [%+v]", task.Template.Id)
-	var taskResourceSpec *admin.TaskResourceSpec
-	if resource != nil && resource.Attributes != nil && resource.Attributes.GetTaskResourceAttributes() != nil {
-		taskResourceSpec = resource.Attributes.GetTaskResourceAttributes().Defaults
-	}
-	task.Template.GetContainer().Resources.Requests = assignResourcesIfUnset(
-		ctx, task.Template.Id, m.config.TaskResourceConfiguration().GetDefaults(), task.Template.GetContainer().Resources.Requests,
-		taskResourceSpec)
-
-	logger.Debugf(ctx, "Assigning task resource limits for [%+v]", task.Template.Id)
-	if resource != nil && resource.Attributes != nil && resource.Attributes.GetTaskResourceAttributes() != nil {
-		taskResourceSpec = resource.Attributes.GetTaskResourceAttributes().Limits
+		logger.Infof(ctx, "Failed to parse owner's [%s] resource [%s]'s value [%s] with err: %v", ownerID, name, value, err)
 	}
 
-	task.Template.GetContainer().Resources.Limits = assignResourcesIfUnset(
-		ctx, task.Template.Id, createTaskDefaultLimits(ctx, task, m.config.TaskResourceConfiguration().GetDefaults()), task.Template.GetContainer().Resources.Limits,
-		taskResourceSpec)
-	checkTaskRequestsLessThanLimits(ctx, task.Template.Id, task.Template.GetContainer().Resources)
+	return q
 }
 
 func fromAdminProtoTaskResourceSpec(ctx context.Context, spec *admin.TaskResourceSpec) runtimeInterfaces.TaskResourceSet {
 	result := runtimeInterfaces.TaskResourceSet{}
-	var err error
 	if len(spec.Cpu) > 0 {
-		result.CPU, err = resource.ParseQuantity(spec.Cpu)
-		if err != nil {
-			logger.Infof(ctx, "Failed to parse cpu [%s] from task resource spec with err: %v", spec.Cpu, err)
-		}
+		result.CPU = parseQuantityNoError(ctx, "project", "cpu", spec.Cpu)
 	}
+
 	if len(spec.Memory) > 0 {
-		result.Memory, err = resource.ParseQuantity(spec.Memory)
-		if err != nil {
-			logger.Infof(ctx, "Failed to parse memory [%s] from task resource spec with err: %v", spec.Memory, err)
-		}
+		result.Memory = parseQuantityNoError(ctx, "project", "memory", spec.Memory)
 	}
+
 	if len(spec.Storage) > 0 {
-		result.Storage, err = resource.ParseQuantity(spec.Storage)
-		if err != nil {
-			logger.Infof(ctx, "Failed to parse storage [%s] from task resource spec with err: %v", spec.Storage, err)
-		}
+		result.Storage = parseQuantityNoError(ctx, "project", "storage", spec.Storage)
 	}
+
 	if len(spec.EphemeralStorage) > 0 {
-		result.EphemeralStorage, err = resource.ParseQuantity(spec.EphemeralStorage)
-		if err != nil {
-			logger.Infof(ctx, "Failed to parse ephemeral storage [%s] from task resource spec with err: %v", spec.EphemeralStorage, err)
-		}
+		result.EphemeralStorage = parseQuantityNoError(ctx, "project", "ephemeral storage", spec.EphemeralStorage)
 	}
+
 	if len(spec.Gpu) > 0 {
-		result.GPU, err = resource.ParseQuantity(spec.Gpu)
-		if err != nil {
-			logger.Infof(ctx, "Failed to parse gpu [%s] from task resource spec with err: %v", spec.Gpu, err)
-		}
+		result.GPU = parseQuantityNoError(ctx, "project", "gpu", spec.Gpu)
 	}
+
 	return result
 }
 
-func (m *ExecutionManager) getTaskResources(ctx context.Context, workflow *core.Identifier) *workflowengineInterfaces.TaskResources {
+func (m *ExecutionManager) getTaskResources(ctx context.Context, workflow *core.Identifier) workflowengineInterfaces.TaskResources {
 	resource, err := m.resourceManager.GetResource(ctx, interfaces.ResourceRequest{
 		Project:      workflow.Project,
 		Domain:       workflow.Domain,
@@ -484,17 +405,19 @@ func (m *ExecutionManager) getTaskResources(ctx context.Context, workflow *core.
 		logger.Warningf(ctx, "Failed to fetch override values when assigning task resource default values for [%+v]: %v",
 			workflow, err)
 	}
+
 	logger.Debugf(ctx, "Assigning task requested resources for [%+v]", workflow)
-	var taskResourceAttributes = &workflowengineInterfaces.TaskResources{}
+	var taskResourceAttributes = workflowengineInterfaces.TaskResources{}
 	if resource != nil && resource.Attributes != nil && resource.Attributes.GetTaskResourceAttributes() != nil {
 		taskResourceAttributes.Defaults = fromAdminProtoTaskResourceSpec(ctx, resource.Attributes.GetTaskResourceAttributes().Defaults)
 		taskResourceAttributes.Limits = fromAdminProtoTaskResourceSpec(ctx, resource.Attributes.GetTaskResourceAttributes().Limits)
 	} else {
-		taskResourceAttributes = &workflowengineInterfaces.TaskResources{
+		taskResourceAttributes = workflowengineInterfaces.TaskResources{
 			Defaults: m.config.TaskResourceConfiguration().GetDefaults(),
 			Limits:   m.config.TaskResourceConfiguration().GetLimits(),
 		}
 	}
+
 	return taskResourceAttributes
 }
 
@@ -537,7 +460,8 @@ func (m *ExecutionManager) getInheritedExecMetadata(ctx context.Context, request
 
 // Produces execution-time attributes for workflow execution.
 // Defaults to overridable execution values set in the execution create request, then looks at the launch plan values
-// (if any) before defaulting to values set in the matchable resource db.
+// (if any) before defaulting to values set in the matchable resource db and further if matchable resources don't
+// exist then defaults to one set in application configuration
 func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admin.ExecutionCreateRequest,
 	launchPlan *admin.LaunchPlan) (*admin.WorkflowExecutionConfig, error) {
 	if request.Spec.MaxParallelism > 0 {
@@ -565,7 +489,10 @@ func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admi
 	if resource != nil && resource.Attributes.GetWorkflowExecutionConfig() != nil {
 		return resource.Attributes.GetWorkflowExecutionConfig(), nil
 	}
-	return nil, nil
+	// Defaults to one from the application config
+	return &admin.WorkflowExecutionConfig{
+		MaxParallelism: m.config.ApplicationConfiguration().GetTopLevelConfig().GetMaxParallelism(),
+	}, nil
 }
 
 func (m *ExecutionManager) launchSingleTaskExecution(
@@ -634,8 +561,9 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	}
 
 	// Dynamically assign task resource defaults.
-	for _, task := range workflow.Closure.CompiledWorkflow.Tasks {
-		m.setCompiledTaskDefaults(ctx, task, name)
+	platformTaskResources := m.getTaskResources(ctx, workflow.Id)
+	for _, t := range workflow.Closure.CompiledWorkflow.Tasks {
+		m.setCompiledTaskDefaults(ctx, t, platformTaskResources)
 	}
 
 	// Dynamically assign execution queues.
@@ -671,7 +599,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		Auth:            requestSpec.AuthRole,
 		QueueingBudget:  qualityOfService.QueuingBudget,
 		ExecutionConfig: executionConfig,
-		TaskResources:   m.getTaskResources(ctx, workflow.Id),
+		TaskResources:   &platformTaskResources,
 	}
 	if requestSpec.Labels != nil {
 		executeTaskInputs.Labels = requestSpec.Labels.Values
@@ -738,8 +666,8 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 			workflowExecutionID, err)
 		return nil, nil, err
 	}
+	m.userMetrics.WorkflowExecutionInputBytes.Observe(float64(proto.Size(request.Inputs)))
 	return ctx, executionModel, nil
-
 }
 
 func resolvePermissions(request *admin.ExecutionCreateRequest, launchPlan *admin.LaunchPlan) *admin.AuthRole {
@@ -827,9 +755,10 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		return nil, nil, err
 	}
 
+	platformTaskResources := m.getTaskResources(ctx, workflow.Id)
 	// Dynamically assign task resource defaults.
 	for _, task := range workflow.Closure.CompiledWorkflow.Tasks {
-		m.setCompiledTaskDefaults(ctx, task, name)
+		m.setCompiledTaskDefaults(ctx, task, platformTaskResources)
 	}
 
 	// Dynamically assign execution queues.
@@ -868,7 +797,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		QueueingBudget:  qualityOfService.QueuingBudget,
 		ExecutionConfig: executionConfig,
 		Auth:            resolvePermissions(&request, launchPlan),
-		TaskResources:   m.getTaskResources(ctx, workflow.Id),
+		TaskResources:   &platformTaskResources,
 	}
 	err = m.addLabelsAndAnnotations(request.Spec, &executeWorkflowInputs)
 	if err != nil {
@@ -1219,7 +1148,7 @@ func (m *ExecutionManager) emitOverallWorkflowExecutionTime(
 
 func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admin.WorkflowExecutionEventRequest) (
 	*admin.WorkflowExecutionEventResponse, error) {
-	err := validation.ValidateCreateWorkflowEventRequest(request)
+	err := validation.ValidateCreateWorkflowEventRequest(request, m.config.ApplicationConfiguration().GetRemoteDataConfig().MaxSizeInBytes)
 	if err != nil {
 		logger.Debugf(ctx, "received invalid CreateWorkflowEventRequest [%s]: %v", request.RequestId, err)
 		return nil, err
@@ -1273,6 +1202,9 @@ func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admi
 		m.systemMetrics.ActiveExecutions.Dec()
 		m.systemMetrics.ExecutionsTerminated.Inc()
 		go m.emitOverallWorkflowExecutionTime(executionModel, request.Event.OccurredAt)
+		if request.Event.GetOutputData() != nil {
+			m.userMetrics.WorkflowExecutionOutputBytes.Observe(float64(proto.Size(request.Event.GetOutputData())))
+		}
 
 		err = m.publishNotifications(ctx, request, *executionModel)
 		if err != nil {
@@ -1327,13 +1259,6 @@ func (m *ExecutionManager) GetExecutionData(
 		logger.Debugf(ctx, "Failed to transform execution model [%+v] to proto object with err: %v", request.Id, err)
 		return nil, err
 	}
-	signedOutputsURLBlob := admin.UrlBlob{}
-	if execution.Closure.GetOutputs() != nil && execution.Closure.GetOutputs().GetUri() != "" {
-		signedOutputsURLBlob, err = m.urlData.Get(ctx, execution.Closure.GetOutputs().GetUri())
-		if err != nil {
-			return nil, err
-		}
-	}
 	// Prior to flyteidl v0.15.0, Inputs were held in ExecutionClosure and were not offloaded. Ensure we can return the inputs as expected.
 	if len(executionModel.InputsURI) == 0 {
 		closure := &admin.ExecutionClosure{}
@@ -1351,36 +1276,29 @@ func (m *ExecutionManager) GetExecutionData(
 			return nil, err
 		}
 	}
-	inputsURLBlob, err := m.urlData.Get(ctx, executionModel.InputsURI.String())
+	inputs, inputURLBlob, err := util.GetInputs(ctx, m.urlData, m.config.ApplicationConfiguration().GetRemoteDataConfig(),
+		m.storageClient, executionModel.InputsURI.String())
+	if err != nil {
+		return nil, err
+	}
+	outputs, outputURLBlob, err := util.GetOutputs(ctx, m.urlData, m.config.ApplicationConfiguration().GetRemoteDataConfig(),
+		m.storageClient, util.ToExecutionClosureInterface(execution.Closure))
 	if err != nil {
 		return nil, err
 	}
 	response := &admin.WorkflowExecutionGetDataResponse{
-		Outputs: &signedOutputsURLBlob,
-		Inputs:  &inputsURLBlob,
-	}
-	maxDataSize := m.config.ApplicationConfiguration().GetRemoteDataConfig().MaxSizeInBytes
-	remoteDataScheme := m.config.ApplicationConfiguration().GetRemoteDataConfig().Scheme
-	if util.ShouldFetchData(m.config.ApplicationConfiguration().GetRemoteDataConfig(), inputsURLBlob) {
-		var fullInputs core.LiteralMap
-		err := m.storageClient.ReadProtobuf(ctx, executionModel.InputsURI, &fullInputs)
-		if err != nil {
-			logger.Warningf(ctx, "Failed to read inputs from URI [%s] with err: %v", executionModel.InputsURI, err)
-		}
-		response.FullInputs = &fullInputs
-	}
-	if remoteDataScheme == common.Local || remoteDataScheme == common.None || (signedOutputsURLBlob.Bytes < maxDataSize && execution.Closure.GetOutputs() != nil) {
-		var fullOutputs core.LiteralMap
-		outputsURI := execution.Closure.GetOutputs().GetUri()
-		err := m.storageClient.ReadProtobuf(ctx, storage.DataReference(outputsURI), &fullOutputs)
-		if err != nil {
-			logger.Warningf(ctx, "Failed to read outputs from URI [%s] with err: %v", outputsURI, err)
-		}
-		response.FullOutputs = &fullOutputs
+		Inputs:      inputURLBlob,
+		Outputs:     outputURLBlob,
+		FullInputs:  inputs,
+		FullOutputs: outputs,
 	}
 
 	m.userMetrics.WorkflowExecutionInputBytes.Observe(float64(response.Inputs.Bytes))
-	m.userMetrics.WorkflowExecutionOutputBytes.Observe(float64(response.Outputs.Bytes))
+	if response.Outputs.Bytes > 0 {
+		m.userMetrics.WorkflowExecutionOutputBytes.Observe(float64(response.Outputs.Bytes))
+	} else if response.FullOutputs != nil {
+		m.userMetrics.WorkflowExecutionOutputBytes.Observe(float64(proto.Size(response.FullOutputs)))
+	}
 	return response, nil
 }
 

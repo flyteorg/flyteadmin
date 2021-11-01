@@ -1,6 +1,9 @@
 package interfaces
 
-import "golang.org/x/time/rate"
+import (
+	"github.com/flyteorg/flytestdlib/config"
+	"golang.org/x/time/rate"
+)
 
 // This configuration section is used to for initiating the database connection with the store that holds registered
 // entities (e.g. workflows, tasks, launch plans...)
@@ -54,6 +57,38 @@ type ApplicationConfig struct {
 	EventVersion int `json:"eventVersion"`
 	// Specifies the shared buffer size which is used to queue asynchronous event writes.
 	AsyncEventsBufferSize int `json:"asyncEventsBufferSize"`
+	// Controls the maximum number of task nodes that can be run in parallel for the entire workflow.
+	// This is useful to achieve fairness. Note: MapTasks are regarded as one unit,
+	// and parallelism/concurrency of MapTasks is independent from this.
+	MaxParallelism int32 `json:"maxParallelism"`
+}
+
+func (a *ApplicationConfig) GetRoleNameKey() string {
+	return a.RoleNameKey
+}
+
+func (a *ApplicationConfig) GetMetricsScope() string {
+	return a.MetricsScope
+}
+
+func (a *ApplicationConfig) GetProfilerPort() int {
+	return a.ProfilerPort
+}
+
+func (a *ApplicationConfig) GetMetadataStoragePrefix() []string {
+	return a.MetadataStoragePrefix
+}
+
+func (a *ApplicationConfig) GetEventVersion() int {
+	return a.EventVersion
+}
+
+func (a *ApplicationConfig) GetAsyncEventsBufferSize() int {
+	return a.AsyncEventsBufferSize
+}
+
+func (a *ApplicationConfig) GetMaxParallelism() int32 {
+	return a.MaxParallelism
 }
 
 // This section holds common config for AWS
@@ -232,6 +267,8 @@ func (f *AdminRateLimit) GetBurst() int {
 
 // This configuration is the base configuration for all scheduler-related set-up.
 type SchedulerConfig struct {
+	// Determines which port the profiling server used for scheduler monitoring and application debugging uses.
+	ProfilerPort           config.Port            `json:"profilerPort"`
 	EventSchedulerConfig   EventSchedulerConfig   `json:"eventScheduler"`
 	WorkflowExecutorConfig WorkflowExecutorConfig `json:"workflowExecutor"`
 	// Specifies the number of times to attempt recreating a workflow executor client should there be any disruptions.
