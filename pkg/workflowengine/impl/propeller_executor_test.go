@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"fmt"
+	"github.com/flyteorg/flyteadmin/pkg/workflowengine/flytek8s/mocks"
 	"testing"
 	"time"
 
@@ -133,6 +134,7 @@ func getFakeExecutionCluster() interfaces2.ClusterInterface {
 
 func TestExecuteWorkflowHappyCase(t *testing.T) {
 	cluster := cluster_mock.MockCluster{}
+	executor := mocks.FlyteK8sWorkflowExecutor{}
 	execID := core.WorkflowExecutionIdentifier{
 		Project: "p",
 		Domain:  "d",

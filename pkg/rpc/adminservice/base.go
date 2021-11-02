@@ -3,6 +3,7 @@ package adminservice
 import (
 	"context"
 	"fmt"
+	"github.com/flyteorg/flyteadmin/pkg/workflowengine/flytek8s"
 	"runtime/debug"
 
 	eventWriter "github.com/flyteorg/flyteadmin/pkg/async/events/implementations"
@@ -98,6 +99,9 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 		adminScope.NewSubScope("executor").NewSubScope("flytepropeller"),
 		configuration.NamespaceMappingConfiguration(), applicationConfiguration.GetEventVersion())
 	logger.Info(context.Background(), "Successfully created a workflow executor engine")
+
+	flytek8s.RegisterDefaultWorkflowExecutor(execCluster)
+
 	dataStorageClient, err := storage.NewDataStore(storeConfig, adminScope.NewSubScope("storage"))
 	if err != nil {
 		logger.Error(context.Background(), "Failed to initialize storage config")
