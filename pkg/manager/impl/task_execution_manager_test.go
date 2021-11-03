@@ -936,14 +936,8 @@ func TestGetTaskExecutionData(t *testing.T) {
 	assert.Nil(t, err)
 	assert.True(t, getTaskCalled)
 	assert.True(t, proto.Equal(&admin.TaskExecutionGetDataResponse{
-		Inputs: &admin.UrlBlob{
-			Url:   "inputs",
-			Bytes: 100,
-		},
-		Outputs: &admin.UrlBlob{
-			Url:   "outputs",
-			Bytes: 200,
-		},
+		Inputs:      &admin.UrlBlob{},
+		Outputs:     &admin.UrlBlob{},
 		FullInputs:  fullInputs,
 		FullOutputs: fullOutputs,
 	}, dataResponse))
