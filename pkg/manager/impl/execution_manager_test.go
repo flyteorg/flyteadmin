@@ -2269,8 +2269,14 @@ func TestGetExecutionData(t *testing.T) {
 	})
 	assert.Nil(t, err)
 	assert.True(t, proto.Equal(&admin.WorkflowExecutionGetDataResponse{
-		Inputs:      &admin.UrlBlob{},
-		Outputs:     &admin.UrlBlob{},
+		Outputs: &admin.UrlBlob{
+			Url:   "outputs",
+			Bytes: 200,
+		},
+		Inputs: &admin.UrlBlob{
+			Url:   "inputs",
+			Bytes: 200,
+		},
 		FullInputs:  fullInputs,
 		FullOutputs: fullOutputs,
 	}, dataResponse))
@@ -2474,8 +2480,14 @@ func TestGetExecutionData_LegacyModel(t *testing.T) {
 	})
 	assert.Nil(t, err)
 	assert.True(t, proto.Equal(&admin.WorkflowExecutionGetDataResponse{
-		Inputs:  &admin.UrlBlob{},
-		Outputs: &admin.UrlBlob{},
+		Outputs: &admin.UrlBlob{
+			Url:   "outputs",
+			Bytes: 200,
+		},
+		Inputs: &admin.UrlBlob{
+			Url:   "inputs",
+			Bytes: 200,
+		},
 		FullInputs: &core.LiteralMap{
 			Literals: map[string]*core.Literal{
 				"foo": testutils.MakeStringLiteral("foo-value-1"),
