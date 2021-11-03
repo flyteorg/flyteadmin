@@ -57,8 +57,9 @@ var schedulerConfig = config.MustRegisterSection(scheduler, &interfaces.Schedule
 	},
 })
 var remoteDataConfig = config.MustRegisterSection(remoteData, &interfaces.RemoteDataConfig{
-	Scheme:         common.None,
-	MaxSizeInBytes: 2 * MB,
+	Scheme:                common.None,
+	MaxSizeInBytes:        2 * MB,
+	InlineEventDataPolicy: interfaces.InlineEventDataPolicyOffload,
 })
 var notificationsConfig = config.MustRegisterSection(notifications, &interfaces.NotificationsConfig{
 	Type: common.Local,
