@@ -81,7 +81,7 @@ func addTaskTerminalState(
 				request.Event.ParentNodeExecutionId.ExecutionId.Project, request.Event.ParentNodeExecutionId.ExecutionId.Domain,
 				request.Event.ParentNodeExecutionId.ExecutionId.Name, request.Event.ParentNodeExecutionId.NodeId,
 				request.Event.TaskId.Project, request.Event.TaskId.Domain, request.Event.TaskId.Name, request.Event.TaskId.Version,
-				strconv.FormatUint(uint64(request.Event.RetryAttempt), 10), Outputs)
+				strconv.FormatUint(uint64(request.Event.RetryAttempt), 10), OutputsObjectSuffix)
 			if err != nil {
 				return err
 			}

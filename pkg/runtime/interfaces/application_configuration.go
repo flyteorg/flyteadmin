@@ -323,7 +323,7 @@ type RemoteDataConfig struct {
 	// Specifies the max size in bytes for which execution data such as inputs and outputs will be populated in line.
 	MaxSizeInBytes int64 `json:"maxSizeInBytes"`
 	// Specifies how inline execution event data should be saved in the backend
-	InlineEventDataPolicy InlineEventDataPolicy `json:"inlineEventDataPolicy"`
+	InlineEventDataPolicy InlineEventDataPolicy `json:"inlineEventDataPolicy" pflag:",Specifies how inline execution event data should be saved in the backend"`
 }
 
 // This section handles configuration for the workflow notifications pipeline.

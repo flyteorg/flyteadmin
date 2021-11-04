@@ -155,7 +155,7 @@ func UpdateExecutionModelState(
 		default:
 			logger.Debugf(ctx, "Offloading outputs per InlineEventDataPolicy")
 			uri, err := common.OffloadLiteralMap(ctx, storageClient, request.Event.GetOutputData(),
-				request.Event.ExecutionId.Project, request.Event.ExecutionId.Domain, request.Event.ExecutionId.Name, Outputs)
+				request.Event.ExecutionId.Project, request.Event.ExecutionId.Domain, request.Event.ExecutionId.Name, OutputsObjectSuffix)
 			if err != nil {
 				return err
 			}

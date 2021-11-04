@@ -79,7 +79,7 @@ func addTerminalState(
 			logger.Debugf(ctx, "Offloading outputs per InlineEventDataPolicy")
 			uri, err := common.OffloadLiteralMap(ctx, storageClient, request.Event.GetOutputData(),
 				request.Event.Id.ExecutionId.Project, request.Event.Id.ExecutionId.Domain, request.Event.Id.ExecutionId.Name,
-				request.Event.Id.NodeId, Outputs)
+				request.Event.Id.NodeId, OutputsObjectSuffix)
 			if err != nil {
 				return err
 			}
