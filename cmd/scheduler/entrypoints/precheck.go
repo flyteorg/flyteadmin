@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/flyteorg/flyteadmin/pkg/runtime"
 	"github.com/flyteorg/flyteidl/clients/go/admin"
 	"github.com/flyteorg/flytestdlib/logger"
 
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/health/grpc_health_v1"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 )
 
@@ -24,8 +24,9 @@ var preCheckRunCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
 
-		// Do maximum of 30 retries on failures with constant backoff factor
-		opts := wait.Backoff{Duration: 3000, Factor: 2.0, Steps: 30, Jitter: 0.1}
+		appConfig := runtime.NewApplicationConfigurationProvider()
+		opts := appConfig.GetSchedulerConfig().GetPrecheckBackoff()
+
 		err := retry.OnError(opts,
 			func(err error) bool {
 				logger.Errorf(ctx, "Attempt failed due to %v", err)
