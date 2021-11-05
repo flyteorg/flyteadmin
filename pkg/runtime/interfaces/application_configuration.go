@@ -275,9 +275,9 @@ type SchedulerConfig struct {
 	// Specifies the number of times to attempt recreating a workflow executor client should there be any disruptions.
 	ReconnectAttempts int `json:"reconnectAttempts"`
 	// Specifies the time interval to wait before attempting to reconnect the workflow executor client.
-	ReconnectDelaySeconds int          `json:"reconnectDelaySeconds"`
+	ReconnectDelaySeconds int `json:"reconnectDelaySeconds"`
 	// Specifies the backoff settings when scheduler checks for the flyteadmin health during startup.
-	PrecheckBackoff       wait.Backoff `json:"backoff"`
+	PrecheckBackoff wait.Backoff `json:"backoff"`
 }
 
 func (s *SchedulerConfig) GetEventSchedulerConfig() EventSchedulerConfig {
