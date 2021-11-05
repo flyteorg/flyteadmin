@@ -375,8 +375,8 @@ func TestGetTaskExecutionData(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, resp)
 
-	assert.NotEmpty(t, resp.Inputs.Url)
-	assert.Equal(t, int64(25), resp.Inputs.Bytes)
-	assert.NotEmpty(t, resp.Outputs.Url)
-	assert.Equal(t, int64(26), resp.Outputs.Bytes)
+	assert.Empty(t, resp.Inputs)
+	assert.NotEmpty(t, resp.FullInputs)
+	assert.Empty(t, resp.Outputs)
+	assert.NotEmpty(t, resp.FullOutputs)
 }

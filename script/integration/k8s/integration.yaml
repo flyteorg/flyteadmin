@@ -296,7 +296,6 @@ data:
       region: "my-region"
       scheme: local
       signedUrls:
-        enabled: true
         durationMinutes: 3
     Logger:
       show-source: true
