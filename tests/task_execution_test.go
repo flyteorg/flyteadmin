@@ -323,7 +323,7 @@ func TestGetTaskExecutionData(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to construct data reference [%s]. Error: %v", taskExecInputURI, err)
 	}
-	taskInputs := core.LiteralMap{
+	taskInputs := &core.LiteralMap{
 		Literals: map[string]*core.Literal{
 			"foo": {
 				Value: &core.Literal_Scalar{
@@ -350,7 +350,7 @@ func TestGetTaskExecutionData(t *testing.T) {
 		t.Fatalf("Failed to construct data reference. Error: %v", err)
 	}
 
-	taskOutputs := core.LiteralMap{
+	taskOutputs := &core.LiteralMap{
 		Literals: map[string]*core.Literal{
 			"bar": {
 				Value: &core.Literal_Scalar{
