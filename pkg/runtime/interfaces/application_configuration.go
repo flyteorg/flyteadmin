@@ -301,15 +301,16 @@ type SignedURL struct {
 	SigningPrincipal string `json:"signingPrincipal"`
 }
 
-type InlineEventDataPolicy = string
+//go:generate enumer -type=InlineEventDataPolicy -trimprefix=InlineEventDataPolicy
+type InlineEventDataPolicy = int
 
 const (
 	// InlineEventDataPolicyOffload specifies that inline execution event data (e.g. outputs) should be offloaded to the
 	// configured cloud blob store.
-	InlineEventDataPolicyOffload = "offload"
+	InlineEventDataPolicyOffload InlineEventDataPolicy = iota
 	// InlineEventDataPolicyStoreInline specifies that inline execution event data should be saved inline with execution
 	// database entries.
-	InlineEventDataPolicyStoreInline = "inline"
+	InlineEventDataPolicyStoreInline
 )
 
 // This configuration handles all requests to get and write remote data such as execution inputs & outputs.
