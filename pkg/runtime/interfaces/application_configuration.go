@@ -297,7 +297,7 @@ func (s *SchedulerConfig) GetReconnectDelaySeconds() int {
 type SignedURL struct {
 	// Whether signed urls should even be returned with GetExecutionData, GetNodeExecutionData and GetTaskExecutionData
 	// response objects.
-	Enabled bool `json:"enabled"`
+	Enabled bool `json:"enabled" pflag:",Whether signed urls should even be returned with GetExecutionData, GetNodeExecutionData and GetTaskExecutionData response objects."`
 	// The amount of time for which a signed URL is valid.
 	DurationMinutes int `json:"durationMinutes"`
 	// The principal that signs the URL. This is only applicable to GCS URL.
