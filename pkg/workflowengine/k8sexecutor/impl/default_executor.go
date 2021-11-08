@@ -1,10 +1,12 @@
-package flytek8s
+package impl
 
 import (
 	"context"
+
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/executioncluster"
-	"github.com/flyteorg/flyteadmin/pkg/executioncluster/interfaces"
+	execClusterInterfaces "github.com/flyteorg/flyteadmin/pkg/executioncluster/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/workflowengine/k8sexecutor/interfaces"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytestdlib/logger"
 	"google.golang.org/grpc/codes"
@@ -12,14 +14,19 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-
 var deletePropagationBackground = v1.DeletePropagationBackground
 
+const defaultIdentifier = "DefaultK8sExecutor"
+
 type defaultWorkflowExecutor struct {
-	executionCluster interfaces.ClusterInterface
+	executionCluster execClusterInterfaces.ClusterInterface
 }
 
-func (d defaultWorkflowExecutor) Execute(ctx context.Context, flyteWf *v1alpha1.FlyteWorkflow, data ExecutionData) (ExecutionResponse, error) {
+func (d defaultWorkflowExecutor) ID() string {
+	return defaultIdentifier
+}
+
+func (d defaultWorkflowExecutor) Execute(ctx context.Context, flyteWf *v1alpha1.FlyteWorkflow, data interfaces.ExecutionData) (interfaces.ExecutionResponse, error) {
 	executionTargetSpec := executioncluster.ExecutionTargetSpec{
 		Project:     data.ExecutionID.Project,
 		Domain:      data.ExecutionID.Domain,
@@ -29,21 +36,21 @@ func (d defaultWorkflowExecutor) Execute(ctx context.Context, flyteWf *v1alpha1.
 	}
 	targetCluster, err := d.executionCluster.GetTarget(ctx, &executionTargetSpec)
 	if err != nil {
-		return ExecutionResponse{}, errors.NewFlyteAdminErrorf(codes.Internal, "failed to create workflow in propeller %v", err)
+		return interfaces.ExecutionResponse{}, errors.NewFlyteAdminErrorf(codes.Internal, "failed to create workflow in propeller %v", err)
 	}
 	_, err = targetCluster.FlyteClient.FlyteworkflowV1alpha1().FlyteWorkflows(data.Namespace).Create(ctx, flyteWf, v1.CreateOptions{})
 	if err != nil {
 		if !k8_api_err.IsAlreadyExists(err) {
 			logger.Debugf(context.TODO(), "Failed to create execution [%+v] in cluster: %s", data.ExecutionID, targetCluster.ID)
-			return ExecutionResponse{}, errors.NewFlyteAdminErrorf(codes.Internal, "failed to create workflow in propeller %v", err)
+			return interfaces.ExecutionResponse{}, errors.NewFlyteAdminErrorf(codes.Internal, "failed to create workflow in propeller %v", err)
 		}
 	}
-	return ExecutionResponse{
+	return interfaces.ExecutionResponse{
 		Cluster: targetCluster.ID,
 	}, nil
 }
 
-func (d defaultWorkflowExecutor) Abort(ctx context.Context, data AbortData) error {
+func (d defaultWorkflowExecutor) Abort(ctx context.Context, data interfaces.AbortData) error {
 	target, err := d.executionCluster.GetTarget(ctx, &executioncluster.ExecutionTargetSpec{
 		TargetID: data.Cluster,
 	})
@@ -60,11 +67,8 @@ func (d defaultWorkflowExecutor) Abort(ctx context.Context, data AbortData) erro
 	return nil
 }
 
-func RegisterDefaultWorkflowExecutor(execClusterInterface interfaces.ClusterInterface) {
-	executor := defaultWorkflowExecutor{
-		executionCluster: execClusterInterface,
+func NewDefaultWorkflowExecutor(executionCluster execClusterInterfaces.ClusterInterface) interfaces.K8sWorkflowExecutor {
+	return &defaultWorkflowExecutor{
+		executionCluster: executionCluster,
 	}
-	GetRegistry().Register(executor)
 }
-
-

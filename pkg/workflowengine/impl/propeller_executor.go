@@ -2,7 +2,9 @@ package impl
 
 import (
 	"context"
-	"github.com/flyteorg/flyteadmin/pkg/workflowengine/flytek8s"
+
+	"github.com/flyteorg/flyteadmin/pkg/workflowengine/k8sexecutor"
+	flytek8sInterfaces "github.com/flyteorg/flyteadmin/pkg/workflowengine/k8sexecutor/interfaces"
 
 	interfaces2 "github.com/flyteorg/flyteadmin/pkg/executioncluster/interfaces"
 
@@ -191,16 +193,16 @@ func (c *FlytePropeller) ExecuteWorkflow(ctx context.Context, input interfaces.E
 		flyteWf.QueuingBudgetSeconds = &queueingBudgetSeconds
 	*/
 
-	executionResult, err := flytek8s.GetRegistry().GetExecutor().Execute(ctx, flyteWf, flytek8s.ExecutionData{
-		Namespace: namespace,
-		ExecutionID: input.ExecutionID,
-		ReferenceWorkflowName: input.Reference.Spec.WorkflowId.Name,
+	executionResult, err := k8sexecutor.GetRegistry().GetExecutor().Execute(ctx, flyteWf, flytek8sInterfaces.ExecutionData{
+		Namespace:               namespace,
+		ExecutionID:             input.ExecutionID,
+		ReferenceWorkflowName:   input.Reference.Spec.WorkflowId.Name,
 		ReferenceLaunchPlanName: input.Reference.Id.Name,
 	})
 	if err != nil {
-			logger.Debugf(ctx, "failed to create workflow [%+v] %v", input.WfClosure.Primary.Template.Id, err)
-			c.metrics.ExecutionCreationFailure.Inc()
-			return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to create workflow in propeller %v", err)
+		logger.Debugf(ctx, "failed to create workflow [%+v] %v", input.WfClosure.Primary.Template.Id, err)
+		c.metrics.ExecutionCreationFailure.Inc()
+		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to create workflow in propeller %v", err)
 	}
 
 	logger.Debugf(ctx, "Successfully created workflow execution [%+v]", input.WfClosure.Primary.Template.Id)
@@ -259,10 +261,10 @@ func (c *FlytePropeller) ExecuteTask(ctx context.Context, input interfaces.Execu
 		flyteWf.QueuingBudgetSeconds = &queueingBudgetSeconds
 	*/
 
-	executionResult, err := flytek8s.GetRegistry().GetExecutor().Execute(ctx, flyteWf, flytek8s.ExecutionData{
-		Namespace: namespace,
-		ExecutionID: input.ExecutionID,
-		ReferenceWorkflowName: input.ReferenceName,
+	executionResult, err := k8sexecutor.GetRegistry().GetExecutor().Execute(ctx, flyteWf, flytek8sInterfaces.ExecutionData{
+		Namespace:               namespace,
+		ExecutionID:             input.ExecutionID,
+		ReferenceWorkflowName:   input.ReferenceName,
 		ReferenceLaunchPlanName: input.ReferenceName,
 	})
 	if err != nil {
@@ -286,10 +288,10 @@ func (c *FlytePropeller) TerminateWorkflowExecution(
 		return errors.NewFlyteAdminErrorf(codes.Internal, "invalid execution id")
 	}
 	namespace := common.GetNamespaceName(c.config.GetNamespaceTemplate(), input.ExecutionID.GetProject(), input.ExecutionID.GetDomain())
-	err := flytek8s.GetRegistry().GetExecutor().Abort(ctx, flytek8s.AbortData{
-		Namespace: namespace,
+	err := k8sexecutor.GetRegistry().GetExecutor().Abort(ctx, flytek8sInterfaces.AbortData{
+		Namespace:   namespace,
 		ExecutionID: input.ExecutionID,
-		Cluster: input.Cluster,
+		Cluster:     input.Cluster,
 	})
 	if err != nil {
 		c.metrics.TerminateExecutionFailure.Inc()

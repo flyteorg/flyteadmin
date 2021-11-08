@@ -3,7 +3,6 @@ package adminservice
 import (
 	"context"
 	"fmt"
-	"github.com/flyteorg/flyteadmin/pkg/workflowengine/flytek8s"
 	"runtime/debug"
 
 	eventWriter "github.com/flyteorg/flyteadmin/pkg/async/events/implementations"
@@ -21,6 +20,9 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories"
 	repositoryConfig "github.com/flyteorg/flyteadmin/pkg/repositories/config"
 	"github.com/flyteorg/flyteadmin/pkg/runtime"
+	"github.com/flyteorg/flyteadmin/pkg/workflowengine/k8sexecutor"
+	k8sclientImpl "github.com/flyteorg/flyteadmin/pkg/workflowengine/k8sexecutor/impl"
+
 	workflowengine "github.com/flyteorg/flyteadmin/pkg/workflowengine/impl"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/profutils"
@@ -99,8 +101,7 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 		adminScope.NewSubScope("executor").NewSubScope("flytepropeller"),
 		configuration.NamespaceMappingConfiguration(), applicationConfiguration.GetEventVersion())
 	logger.Info(context.Background(), "Successfully created a workflow executor engine")
-
-	flytek8s.RegisterDefaultWorkflowExecutor(execCluster)
+	k8sexecutor.GetRegistry().RegisterDefault(k8sclientImpl.NewDefaultWorkflowExecutor(execCluster))
 
 	dataStorageClient, err := storage.NewDataStore(storeConfig, adminScope.NewSubScope("storage"))
 	if err != nil {

@@ -3,9 +3,10 @@ package impl
 import (
 	"context"
 	"fmt"
-	"github.com/flyteorg/flyteadmin/pkg/workflowengine/flytek8s/mocks"
 	"testing"
 	"time"
+
+	"github.com/flyteorg/flyteadmin/pkg/workflowengine/k8sexecutor/mocks"
 
 	"k8s.io/apimachinery/pkg/api/resource"
 
