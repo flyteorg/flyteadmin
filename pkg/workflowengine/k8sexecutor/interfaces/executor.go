@@ -18,6 +18,8 @@ type ExecutionData struct {
 	ReferenceWorkflowName string
 	// Launch plan name used to trigger the execution.
 	ReferenceLaunchPlanName string
+	// Compiled workflow closure used to build the flyte workflow
+	WorkflowClosure *core.CompiledWorkflowClosure
 }
 
 type ExecutionResponse struct {

@@ -198,6 +198,7 @@ func (c *FlytePropeller) ExecuteWorkflow(ctx context.Context, input interfaces.E
 		ExecutionID:             input.ExecutionID,
 		ReferenceWorkflowName:   input.Reference.Spec.WorkflowId.Name,
 		ReferenceLaunchPlanName: input.Reference.Id.Name,
+		WorkflowClosure:         &input.WfClosure,
 	})
 	if err != nil {
 		logger.Debugf(ctx, "failed to create workflow [%+v] %v", input.WfClosure.Primary.Template.Id, err)
