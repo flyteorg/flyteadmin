@@ -3,7 +3,6 @@ package impl
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/flyteorg/flyteadmin/pkg/workflowengine/k8sexecutor/interfaces"
@@ -87,9 +86,6 @@ var flyteWf = &v1alpha1.FlyteWorkflow{
 func getFakeExecutionCluster() execClusterIfaces.ClusterInterface {
 	fakeCluster := clusterMock.MockCluster{}
 	fakeCluster.SetGetTargetCallback(func(ctx context.Context, spec *executioncluster.ExecutionTargetSpec) (target *executioncluster.ExecutionTarget, e error) {
-		if spec.TargetID != clusterID {
-			return nil, errors.New(fmt.Sprintf("unexepected target id [%s]", spec.TargetID))
-		}
 		return &executioncluster.ExecutionTarget{
 			ID:          clusterID,
 			FlyteClient: &FakeK8FlyteClient{},
