@@ -133,11 +133,15 @@ func (p Provider) ValidateAccessToken(ctx context.Context, expectedAudience, tok
 
 func verifyClaims(expectedAudience sets.String, claimsRaw map[string]interface{}) (interfaces.IdentityContext, error) {
 	claims := jwtx.ParseMapStringInterfaceClaims(claimsRaw)
-	if len(claims.Audience) != 1 {
-		return nil, fmt.Errorf("expected exactly one granted audience. found [%v]", len(claims.Audience))
+
+	foundAud := false
+	for _, aud := range claims.Audience {
+		if expectedAudience.Has(aud) {
+			foundAud = true
+		}
 	}
 
-	if !expectedAudience.Has(claims.Audience[0]) {
+	if !foundAud {
 		return nil, fmt.Errorf("invalid audience [%v]", claims.Audience[0])
 	}
 
