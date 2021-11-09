@@ -192,7 +192,7 @@ func (c *FlytePropeller) ExecuteWorkflow(ctx context.Context, input interfaces.E
 		queueingBudgetSeconds := int64(input.QueueingBudget.Seconds())
 		flyteWf.QueuingBudgetSeconds = &queueingBudgetSeconds
 	*/
-
+	logger.Debugf(ctx, "Execution workflow [%+v] with executor [%s]", input.ExecutionID, k8sexecutor.GetRegistry().GetExecutor().ID())
 	executionResult, err := k8sexecutor.GetRegistry().GetExecutor().Execute(ctx, flyteWf, flytek8sInterfaces.ExecutionData{
 		Namespace:               namespace,
 		ExecutionID:             input.ExecutionID,
