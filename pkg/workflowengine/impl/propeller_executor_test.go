@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/flyteorg/flyteadmin/pkg/workflowengine/k8sexecutor/mocks"
+	"github.com/stretchr/testify/mock"
 
 	"k8s.io/apimachinery/pkg/api/resource"
 
@@ -26,19 +26,16 @@ import (
 
 	flyte_admin_error "github.com/flyteorg/flyteadmin/pkg/errors"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/workflowengine/k8sexecutor"
+	k8sexecutorIfaces "github.com/flyteorg/flyteadmin/pkg/workflowengine/k8sexecutor/interfaces"
+	k8sexecutorMocks "github.com/flyteorg/flyteadmin/pkg/workflowengine/k8sexecutor/mocks"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	flyteclient "github.com/flyteorg/flytepropeller/pkg/client/clientset/versioned"
-	v1alpha12 "github.com/flyteorg/flytepropeller/pkg/client/clientset/versioned/typed/flyteworkflow/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
-	k8_api_err "k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-var fakeFlyteWF = FakeFlyteWorkflowV1alpha1{}
 var scope = promutils.NewTestScope()
 var propellerTestMetrics = newPropellerMetrics(scope)
 var config = runtime.NewConfigurationProvider().NamespaceMappingConfiguration()
@@ -77,57 +74,11 @@ func (b *FlyteWorkflowBuilderTest) BuildFlyteWorkflow(
 	return &v1alpha1.FlyteWorkflow{}, nil
 }
 
-type createCallback func(*v1alpha1.FlyteWorkflow, v1.CreateOptions) (*v1alpha1.FlyteWorkflow, error)
-type deleteCallback func(name string, options *v1.DeleteOptions) error
-type FakeFlyteWorkflow struct {
-	v1alpha12.FlyteWorkflowInterface
-	createCallback createCallback
-	deleteCallback deleteCallback
-}
-
-func (b *FakeFlyteWorkflow) Create(ctx context.Context, wf *v1alpha1.FlyteWorkflow, opts v1.CreateOptions) (*v1alpha1.FlyteWorkflow, error) {
-	if b.createCallback != nil {
-		return b.createCallback(wf, opts)
-	}
-	return nil, nil
-}
-
-func (b *FakeFlyteWorkflow) Delete(ctx context.Context, name string, options v1.DeleteOptions) error {
-	if b.deleteCallback != nil {
-		return b.deleteCallback(name, &options)
-	}
-	return nil
-}
-
-type flyteWorkflowsCallback func(string) v1alpha12.FlyteWorkflowInterface
-
-type FakeFlyteWorkflowV1alpha1 struct {
-	v1alpha12.FlyteworkflowV1alpha1Interface
-	flyteWorkflowsCallback flyteWorkflowsCallback
-}
-
-func (b *FakeFlyteWorkflowV1alpha1) FlyteWorkflows(namespace string) v1alpha12.FlyteWorkflowInterface {
-	if b.flyteWorkflowsCallback != nil {
-		return b.flyteWorkflowsCallback(namespace)
-	}
-	return &FakeFlyteWorkflow{}
-}
-
-type FakeK8FlyteClient struct {
-	flyteclient.Interface
-	ID string
-}
-
-func (b *FakeK8FlyteClient) FlyteworkflowV1alpha1() v1alpha12.FlyteworkflowV1alpha1Interface {
-	return &fakeFlyteWF
-}
-
 func getFakeExecutionCluster() interfaces2.ClusterInterface {
 	fakeCluster := cluster_mock.MockCluster{}
 	fakeCluster.SetGetTargetCallback(func(ctx context.Context, spec *executioncluster.ExecutionTargetSpec) (target *executioncluster.ExecutionTarget, e error) {
 		return &executioncluster.ExecutionTarget{
-			ID:          "C1",
-			FlyteClient: &FakeK8FlyteClient{},
+			ID: "C1",
 		}, nil
 	})
 	return &fakeCluster
@@ -135,7 +86,6 @@ func getFakeExecutionCluster() interfaces2.ClusterInterface {
 
 func TestExecuteWorkflowHappyCase(t *testing.T) {
 	cluster := cluster_mock.MockCluster{}
-	executor := mocks.FlyteK8sWorkflowExecutor{}
 	execID := core.WorkflowExecutionIdentifier{
 		Project: "p",
 		Domain:  "d",
@@ -144,8 +94,7 @@ func TestExecuteWorkflowHappyCase(t *testing.T) {
 	cluster.SetGetTargetCallback(func(ctx context.Context, spec *executioncluster.ExecutionTargetSpec) (target *executioncluster.ExecutionTarget, e error) {
 		assert.Equal(t, execID.Name, spec.ExecutionID)
 		return &executioncluster.ExecutionTarget{
-			ID:          "C1",
-			FlyteClient: &FakeK8FlyteClient{},
+			ID: "C1",
 		}, nil
 	})
 	recoveryNodeExecutionID := &core.WorkflowExecutionIdentifier{
@@ -153,34 +102,38 @@ func TestExecuteWorkflowHappyCase(t *testing.T) {
 		Domain:  "d",
 		Name:    "original",
 	}
-	fakeFlyteWorkflow := FakeFlyteWorkflow{
-		createCallback: func(workflow *v1alpha1.FlyteWorkflow, opts v1.CreateOptions) (*v1alpha1.FlyteWorkflow, error) {
-			assert.EqualValues(t, map[string]string{
-				"customlabel": "labelval",
-			}, workflow.Labels)
-			expectedAnnotations := map[string]string{
-				roleNameKey:        testRole,
-				"customannotation": "annotationval",
-			}
-			assert.EqualValues(t, expectedAnnotations, workflow.Annotations)
-
-			assert.EqualValues(t, map[string]v1alpha1.TaskPluginOverride{
-				"python": {
-					PluginIDs:             []string{"plugin a"},
-					MissingPluginBehavior: admin.PluginOverride_USE_DEFAULT,
-				},
-			}, workflow.ExecutionConfig.TaskPluginImpls)
-			assert.Empty(t, opts)
-			assert.Equal(t, workflow.ServiceAccountName, testK8sServiceAccount)
-			assert.True(t, proto.Equal(recoveryNodeExecutionID, workflow.ExecutionConfig.RecoveryExecution.WorkflowExecutionIdentifier))
-			return nil, nil
-		},
-	}
-	fakeFlyteWF.flyteWorkflowsCallback = func(namespace string) v1alpha12.FlyteWorkflowInterface {
-		assert.Equal(t, "p-d", namespace)
-		return &fakeFlyteWorkflow
-	}
 	propeller := getFlytePropellerForTest(&cluster, &FlyteWorkflowBuilderTest{})
+
+	mockExecutor := &k8sexecutorMocks.K8sWorkflowExecutor{}
+	mockExecutor.OnID().Return("default")
+	mockExecutor.OnExecuteMatch(mock.Anything, mock.MatchedBy(func(workflow *v1alpha1.FlyteWorkflow) bool {
+		assert.EqualValues(t, map[string]string{
+			"customlabel": "labelval",
+		}, workflow.Labels)
+		expectedAnnotations := map[string]string{
+			roleNameKey:        testRole,
+			"customannotation": "annotationval",
+		}
+		assert.EqualValues(t, expectedAnnotations, workflow.Annotations)
+
+		assert.EqualValues(t, map[string]v1alpha1.TaskPluginOverride{
+			"python": {
+				PluginIDs:             []string{"plugin a"},
+				MissingPluginBehavior: admin.PluginOverride_USE_DEFAULT,
+			},
+		}, workflow.ExecutionConfig.TaskPluginImpls)
+		assert.Equal(t, workflow.ServiceAccountName, testK8sServiceAccount)
+		assert.True(t, proto.Equal(recoveryNodeExecutionID, workflow.ExecutionConfig.RecoveryExecution.WorkflowExecutionIdentifier))
+		return true
+	}), mock.MatchedBy(func(data k8sexecutorIfaces.ExecutionData) bool {
+		assert.Equal(t, "p-d", data.Namespace)
+		assert.True(t, proto.Equal(&execID, data.ExecutionID))
+		assert.Equal(t, "wf", data.ReferenceWorkflowName)
+		return true
+	})).Return(k8sexecutorIfaces.ExecutionResponse{
+		Cluster: "C1",
+	}, nil)
+	k8sexecutor.GetRegistry().RegisterDefault(mockExecutor)
 
 	execInfo, err := propeller.ExecuteWorkflow(
 		context.Background(),
@@ -229,20 +182,13 @@ func TestExecuteWorkflowHappyCase(t *testing.T) {
 
 func TestExecuteWorkflowCallFailed(t *testing.T) {
 	cluster := getFakeExecutionCluster()
-	fakeFlyteWorkflow := FakeFlyteWorkflow{
-		createCallback: func(workflow *v1alpha1.FlyteWorkflow, opts v1.CreateOptions) (*v1alpha1.FlyteWorkflow, error) {
-			expectedAnnotations := map[string]string{
-				roleNameKey: testRole,
-			}
-			assert.EqualValues(t, expectedAnnotations, workflow.Annotations)
-			assert.Empty(t, opts)
-			return nil, errors.New("call failed")
-		},
-	}
-	fakeFlyteWF.flyteWorkflowsCallback = func(namespace string) v1alpha12.FlyteWorkflowInterface {
-		assert.Equal(t, "p-d", namespace)
-		return &fakeFlyteWorkflow
-	}
+
+	mockExecutor := &k8sexecutorMocks.K8sWorkflowExecutor{}
+	mockExecutor.OnID().Return("default")
+	mockExecutor.OnExecuteMatch(mock.Anything, mock.Anything, mock.Anything).Return(
+		k8sexecutorIfaces.ExecutionResponse{}, errors.New("call failed"))
+	k8sexecutor.GetRegistry().RegisterDefault(mockExecutor)
+
 	propeller := getFlytePropellerForTest(cluster, &FlyteWorkflowBuilderTest{})
 
 	execInfo, err := propeller.ExecuteWorkflow(
@@ -280,59 +226,6 @@ func TestExecuteWorkflowCallFailed(t *testing.T) {
 	assert.EqualError(t, err, "failed to create workflow in propeller call failed")
 	assert.Equal(t, codes.Internal, err.(flyte_admin_error.FlyteAdminError).Code())
 
-}
-
-func TestExecuteWorkflowAlreadyExistsNoError(t *testing.T) {
-	cluster := getFakeExecutionCluster()
-	fakeFlyteWorkflow := FakeFlyteWorkflow{
-		createCallback: func(workflow *v1alpha1.FlyteWorkflow, opts v1.CreateOptions) (*v1alpha1.FlyteWorkflow, error) {
-			expectedAnnotations := map[string]string{
-				"iam.amazonaws.com/role": "role-1",
-			}
-			assert.EqualValues(t, expectedAnnotations, workflow.Annotations)
-			assert.Empty(t, opts)
-			return nil, k8_api_err.NewAlreadyExists(schema.GroupResource{}, "")
-		},
-	}
-	fakeFlyteWF.flyteWorkflowsCallback = func(namespace string) v1alpha12.FlyteWorkflowInterface {
-		assert.Equal(t, "p-d", namespace)
-		return &fakeFlyteWorkflow
-	}
-	propeller := getFlytePropellerForTest(cluster, &FlyteWorkflowBuilderTest{})
-
-	execInfo, err := propeller.ExecuteWorkflow(
-		context.Background(),
-		interfaces.ExecuteWorkflowInput{
-			ExecutionID: &core.WorkflowExecutionIdentifier{
-				Project: "p",
-				Domain:  "d",
-				Name:    "n",
-			},
-			WfClosure: core.CompiledWorkflowClosure{
-				Primary: &core.CompiledWorkflow{
-					Template: &core.WorkflowTemplate{},
-				},
-			},
-			Reference: admin.LaunchPlan{
-				Id: &core.Identifier{
-					Project: "p",
-					Domain:  "d",
-				},
-				Spec: &admin.LaunchPlanSpec{
-					WorkflowId: &core.Identifier{
-						Name: "wf",
-					},
-				},
-			},
-			AcceptedAt: acceptedAt,
-			Auth: &admin.AuthRole{
-				AssumableIamRole: "role-1",
-			},
-		})
-
-	assert.Nil(t, err)
-	assert.NotNil(t, execInfo)
-	assert.Equal(t, clusterName, execInfo.Cluster)
 }
 
 func TestExecuteWorkflowBuildFailed(t *testing.T) {
@@ -383,15 +276,12 @@ func TestExecuteWorkflowRoleKeyNotRequired(t *testing.T) {
 	cluster := getFakeExecutionCluster()
 	builder := FlyteWorkflowBuilderTest{}
 
-	fakeFlyteWorkflow := FakeFlyteWorkflow{
-		createCallback: func(workflow *v1alpha1.FlyteWorkflow, opts v1.CreateOptions) (*v1alpha1.FlyteWorkflow, error) {
-			return nil, nil
-		},
-	}
-	fakeFlyteWF.flyteWorkflowsCallback = func(namespace string) v1alpha12.FlyteWorkflowInterface {
-		assert.Equal(t, "p-d", namespace)
-		return &fakeFlyteWorkflow
-	}
+	mockExecutor := &k8sexecutorMocks.K8sWorkflowExecutor{}
+	mockExecutor.OnID().Return("default")
+	mockExecutor.OnExecuteMatch(mock.Anything, mock.Anything, mock.Anything).Return(k8sexecutorIfaces.ExecutionResponse{
+		Cluster: "C1",
+	}, nil)
+	k8sexecutor.GetRegistry().RegisterDefault(mockExecutor)
 	propeller := getFlytePropellerForTest(cluster, &builder)
 	execInfo, err := propeller.ExecuteWorkflow(
 		context.Background(),
@@ -428,27 +318,26 @@ func TestTerminateExecution(t *testing.T) {
 	target, err := cluster.GetTarget(context.Background(), nil)
 	assert.Nil(t, err)
 	target.ID = "C2"
-	builder := FlyteWorkflowBuilderTest{}
-
-	fakeFlyteWorkflow := FakeFlyteWorkflow{
-		deleteCallback: func(name string, options *v1.DeleteOptions) error {
-			assert.Equal(t, "n", name)
-			return errors.New("expected error")
-		},
+	execID := &core.WorkflowExecutionIdentifier{
+		Project: "p",
+		Domain:  "d",
+		Name:    "n",
 	}
-	fakeFlyteWF.flyteWorkflowsCallback = func(namespace string) v1alpha12.FlyteWorkflowInterface {
-		assert.Equal(t, "p-d", namespace)
-		return &fakeFlyteWorkflow
-	}
-	propeller := getFlytePropellerForTest(cluster, &builder)
 
+	mockExecutor := &k8sexecutorMocks.K8sWorkflowExecutor{}
+	mockExecutor.OnID().Return("default")
+	mockExecutor.OnAbortMatch(mock.Anything, mock.MatchedBy(func(data k8sexecutorIfaces.AbortData) bool {
+		assert.Equal(t, "p-d", data.Namespace)
+		assert.True(t, proto.Equal(execID, data.ExecutionID))
+		assert.Equal(t, target.ID, data.Cluster)
+		return true
+	})).Return(errors.New("expected error"))
+	k8sexecutor.GetRegistry().RegisterDefault(mockExecutor)
+
+	propeller := getFlytePropellerForTest(cluster, &FlyteWorkflowBuilderTest{})
 	err = propeller.TerminateWorkflowExecution(context.Background(), interfaces.TerminateWorkflowInput{
-		ExecutionID: &core.WorkflowExecutionIdentifier{
-			Project: "p",
-			Domain:  "d",
-			Name:    "n",
-		},
-		Cluster: "C2",
+		ExecutionID: execID,
+		Cluster:     "C2",
 	})
 	assert.EqualError(t, err,
 		"failed to terminate execution: project:\"p\" domain:\"d\" name:\"n\"  with err expected error")
