@@ -28,7 +28,7 @@ func (r *flyteK8sWorkflowExecutorRegistry) Register(executor interfaces.K8sWorkf
 func (r *flyteK8sWorkflowExecutorRegistry) RegisterDefault(executor interfaces.K8sWorkflowExecutor) {
 	r.m.Lock()
 	defer r.m.Unlock()
-	if r.executor == nil {
+	if r.defaultExecutor == nil {
 		logger.Debugf(context.TODO(), "setting default flyte k8s workflow executor [%s]", executor.ID())
 	} else {
 		logger.Debugf(context.TODO(), "updating default flyte k8s workflow executor [%s]", executor.ID())

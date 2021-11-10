@@ -192,7 +192,6 @@ func (c *FlytePropeller) ExecuteWorkflow(ctx context.Context, input interfaces.E
 		queueingBudgetSeconds := int64(input.QueueingBudget.Seconds())
 		flyteWf.QueuingBudgetSeconds = &queueingBudgetSeconds
 	*/
-	logger.Debugf(ctx, "Execution workflow [%+v] with executor [%s]", input.ExecutionID, k8sexecutor.GetRegistry().GetExecutor().ID())
 	executionResult, err := k8sexecutor.GetRegistry().GetExecutor().Execute(ctx, flyteWf, flytek8sInterfaces.ExecutionData{
 		Namespace:               namespace,
 		ExecutionID:             input.ExecutionID,
@@ -201,7 +200,7 @@ func (c *FlytePropeller) ExecuteWorkflow(ctx context.Context, input interfaces.E
 		WorkflowClosure:         &input.WfClosure,
 	})
 	if err != nil {
-		logger.Debugf(ctx, "failed to create workflow [%+v] %v", input.WfClosure.Primary.Template.Id, err)
+		logger.Debugf(ctx, "failed to create workflow [%+v] %v using executor [%s]", input.WfClosure.Primary.Template.Id, err, k8sexecutor.GetRegistry().GetExecutor().ID())
 		c.metrics.ExecutionCreationFailure.Inc()
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to create workflow in propeller %v", err)
 	}
