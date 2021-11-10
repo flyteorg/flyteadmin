@@ -9,6 +9,7 @@ import (
 
 //go:generate mockery -name=K8sWorkflowExecutor -output=../mocks/ -case=underscore
 
+// ExecutionData includes all parameters required to create an execution CRD object.
 type ExecutionData struct {
 	// Execution namespace.
 	Namespace string
@@ -22,11 +23,13 @@ type ExecutionData struct {
 	WorkflowClosure *core.CompiledWorkflowClosure
 }
 
+// ExecutionResponse is returned when a Flyte workflow execution is successfully created.
 type ExecutionResponse struct {
 	// Cluster identifier where the execution was created
 	Cluster string
 }
 
+// AbortData includes all parameters required to abort an execution CRD object.
 type AbortData struct {
 	// Execution namespace.
 	Namespace string
@@ -38,7 +41,10 @@ type AbortData struct {
 
 // K8sWorkflowExecutor is a client interface used to create and delete Flyte workflow CRD objects.
 type K8sWorkflowExecutor interface {
+	// Returns the unique name of this executor implementation.
 	ID() string
+	// Creates a Flyte workflow execution CRD object.
 	Execute(ctx context.Context, workflow *v1alpha1.FlyteWorkflow, data ExecutionData) (ExecutionResponse, error)
+	// Aborts a running Flyte workflow execution CRD object.
 	Abort(ctx context.Context, data AbortData) error
 }

@@ -8,7 +8,9 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 )
 
+// Implements interfaces.FlyteK8sWorkflowExecutorRegistry.
 type flyteK8sWorkflowExecutorRegistry struct {
+	// m is a read/write lock used for fetching and updating the K8sWorkflowExecutors.
 	m               sync.Mutex
 	executor        interfaces.K8sWorkflowExecutor
 	defaultExecutor interfaces.K8sWorkflowExecutor

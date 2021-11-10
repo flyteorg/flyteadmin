@@ -268,7 +268,8 @@ func (c *FlytePropeller) ExecuteTask(ctx context.Context, input interfaces.Execu
 		ReferenceLaunchPlanName: input.ReferenceName,
 	})
 	if err != nil {
-		logger.Debugf(ctx, "failed to create workflow [%+v] %v", input.WfClosure.Primary.Template.Id, err)
+		logger.Debugf(ctx, "failed to create workflow [%+v] %v using executor [%s]",
+			input.WfClosure.Primary.Template.Id, err, k8sexecutor.GetRegistry().GetExecutor().ID())
 		c.metrics.ExecutionCreationFailure.Inc()
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to create workflow in propeller %v", err)
 	}

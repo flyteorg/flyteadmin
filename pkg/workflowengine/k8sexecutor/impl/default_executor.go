@@ -18,6 +18,8 @@ var deletePropagationBackground = v1.DeletePropagationBackground
 
 const defaultIdentifier = "DefaultK8sExecutor"
 
+// Default K8sWorkflowExecutor implementation. Directly creates and delete Flyte workflow execution CRD objects
+// using the configured execution cluster interface.
 type defaultWorkflowExecutor struct {
 	executionCluster execClusterInterfaces.ClusterInterface
 }
