@@ -13,7 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/flyteorg/flyteadmin/pkg/errors"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 	"github.com/lib/pq"
 	"google.golang.org/grpc/codes"
 )

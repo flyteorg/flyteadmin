@@ -9,7 +9,8 @@ import (
 
 	mocket "github.com/Selvatico/go-mocket"
 	"github.com/flyteorg/flyteadmin/pkg/common"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
+	gormTests "gorm.io/gorm/utils/tests"
 )
 
 const project = "project"
@@ -21,7 +22,7 @@ const version = "XYZ"
 
 func GetDbForTest(t *testing.T) *gorm.DB {
 	mocket.Catcher.Register()
-	db, err := gorm.Open(mocket.DriverName, "fake args")
+	db, err := gorm.Open(gormTests.DummyDialector{})
 	if err != nil {
 		t.Fatal(fmt.Sprintf("Failed to open mock db with err %v", err))
 	}

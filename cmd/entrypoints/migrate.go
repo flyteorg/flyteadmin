@@ -2,6 +2,7 @@ package entrypoints
 
 import (
 	"context"
+	"gorm.io/driver/postgres"
 
 	"github.com/flyteorg/flyteadmin/pkg/runtime"
 
@@ -10,10 +11,10 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories/config"
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres" // Required to import database driver.
+	gormigrate "github.com/go-gormigrate/gormigrate/v2"
 	"github.com/spf13/cobra"
-	gormigrate "gopkg.in/gormigrate.v1"
+	_ "gorm.io/driver/postgres" // Required to import database driver.
+	"gorm.io/gorm"
 )
 
 var parentMigrateCmd = &cobra.Command{
@@ -44,15 +45,18 @@ var migrateCmd = &cobra.Command{
 			Password:     databaseConfig.Password,
 			ExtraOptions: databaseConfig.ExtraOptions,
 		}, migrateScope)
-		db, err := gorm.Open(postgresConfigProvider.GetType(), postgresConfigProvider.GetArgs())
+		postgres.New(postgres.Config{
+
+		})
+		db, err := gorm.Open(postgres.Open(postgresConfigProvider.GetArgs()), &gorm.Config{})
 		if err != nil {
 			logger.Fatal(ctx, err)
 		}
-		defer db.Close()
-		db.LogMode(true)
-		if err = db.DB().Ping(); err != nil {
-			logger.Fatal(ctx, err)
-		}
+		//defer db.Close()
+		//db.LogMode(true)
+		//if err = db.DB().Ping(); err != nil {
+		//	logger.Fatal(ctx, err)
+		//}
 
 		m := gormigrate.New(db, gormigrate.DefaultOptions, config.Migrations)
 		if err = m.Migrate(); err != nil {
@@ -82,15 +86,15 @@ var rollbackCmd = &cobra.Command{
 			ExtraOptions: databaseConfig.ExtraOptions,
 		}, rollbackScope)
 
-		db, err := gorm.Open(postgresConfigProvider.GetType(), postgresConfigProvider.GetArgs())
+		db, err := gorm.Open(postgres.Open(postgresConfigProvider.GetArgs()), &gorm.Config{})
 		if err != nil {
 			logger.Fatal(ctx, err)
 		}
-		defer db.Close()
-		db.LogMode(true)
-		if err = db.DB().Ping(); err != nil {
-			logger.Fatal(ctx, err)
-		}
+		//defer db.Close()
+		//db.LogMode(true)
+		//if err = db.DB().Ping(); err != nil {
+		//	logger.Fatal(ctx, err)
+		//}
 
 		m := gormigrate.New(db, gormigrate.DefaultOptions, config.Migrations)
 		err = m.RollbackLast()
@@ -120,12 +124,12 @@ var seedProjectsCmd = &cobra.Command{
 			Password:     databaseConfig.Password,
 			ExtraOptions: databaseConfig.ExtraOptions,
 		}, migrateScope)
-		db, err := gorm.Open(postgresConfigProvider.GetType(), postgresConfigProvider.GetArgs())
+		db, err := gorm.Open(postgres.Open(postgresConfigProvider.GetArgs()), &gorm.Config{})
 		if err != nil {
 			logger.Fatal(ctx, err)
 		}
-		defer db.Close()
-		db.LogMode(true)
+		//defer db.Close()
+		//db.LogMode(true)
 
 		if err = config.SeedProjects(db, args); err != nil {
 			logger.Fatalf(ctx, "Could not add projects to database with err: %v", err)

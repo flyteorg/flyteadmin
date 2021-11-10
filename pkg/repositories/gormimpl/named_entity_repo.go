@@ -13,7 +13,7 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/flyteorg/flytestdlib/promutils"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 const innerJoinTableAlias = "entities"
@@ -41,7 +41,7 @@ func getSubQueryJoin(db *gorm.DB, tableName string, input interfaces.ListNamedEn
 		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
 	}
 
-	return db.Joins(fmt.Sprintf(joinString, input.ResourceType), tx.SubQuery())
+	return db.Joins(fmt.Sprintf(joinString, input.ResourceType), tx)
 }
 
 var leftJoinWorkflowNameToMetadata = fmt.Sprintf(

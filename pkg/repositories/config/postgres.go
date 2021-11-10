@@ -2,11 +2,11 @@ package config
 
 import (
 	"fmt"
+	"gorm.io/driver/postgres"
 
 	"github.com/flyteorg/flytestdlib/promutils"
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres" // Required to import database driver.
-	"github.com/qor/validations"
+	_ "gorm.io/driver/postgres" // Required to import database driver.
+	"gorm.io/gorm"
 )
 
 const Postgres = "postgres"
@@ -72,11 +72,11 @@ func (p *PostgresConfigProvider) IsDebug() bool {
 // Opens a connection to the database specified in the config.
 // You must call CloseDbConnection at the end of your session!
 func OpenDbConnection(config DbConnectionConfigProvider) *gorm.DB {
-	db, err := gorm.Open(config.GetType(), config.GetArgs())
+	db, err := gorm.Open(postgres.Open(config.GetArgs()), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
-	db.LogMode(config.IsDebug())
-	validations.RegisterCallbacks(db)
+	//db.LogMode(config.IsDebug())
+	//validations.RegisterCallbacks(db)
 	return db
 }

@@ -2,19 +2,19 @@ package gormimpl
 
 import (
 	"context"
+	"errors"
 
-	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
+	flyteSchedulerDbErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	interfaces2 "github.com/flyteorg/flyteadmin/scheduler/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/scheduler/repositories/models"
 	"github.com/flyteorg/flytestdlib/promutils"
-
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 // ScheduleEntitiesSnapshotRepo Implementation of ScheduleEntitiesSnapshotRepoInterface.
 type ScheduleEntitiesSnapshotRepo struct {
 	db               *gorm.DB
-	errorTransformer errors.ErrorTransformer
+	errorTransformer flyteSchedulerDbErrors.ErrorTransformer
 	metrics          gormMetrics
 }
 
@@ -36,8 +36,8 @@ func (r *ScheduleEntitiesSnapshotRepo) Read(ctx context.Context) (models.Schedul
 	timer.Stop()
 
 	if tx.Error != nil {
-		if tx.RecordNotFound() {
-			return models.ScheduleEntitiesSnapshot{}, errors.GetSingletonMissingEntityError("schedule_entities_snapshots")
+		if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
+			return models.ScheduleEntitiesSnapshot{}, flyteSchedulerDbErrors.GetSingletonMissingEntityError("schedule_entities_snapshots")
 		}
 		return models.ScheduleEntitiesSnapshot{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
 	}
@@ -47,7 +47,7 @@ func (r *ScheduleEntitiesSnapshotRepo) Read(ctx context.Context) (models.Schedul
 
 // NewScheduleEntitiesSnapshotRepo Returns an instance of ScheduleEntitiesSnapshotRepoInterface
 func NewScheduleEntitiesSnapshotRepo(
-	db *gorm.DB, errorTransformer errors.ErrorTransformer, scope promutils.Scope) interfaces2.ScheduleEntitiesSnapShotRepoInterface {
+	db *gorm.DB, errorTransformer flyteSchedulerDbErrors.ErrorTransformer, scope promutils.Scope) interfaces2.ScheduleEntitiesSnapShotRepoInterface {
 	metrics := newMetrics(scope)
 	return &ScheduleEntitiesSnapshotRepo{
 		db:               db,

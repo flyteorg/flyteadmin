@@ -2,12 +2,12 @@ package gormimpl
 
 import (
 	"context"
+	"gorm.io/gorm"
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/flyteorg/flytestdlib/promutils"
-	"github.com/jinzhu/gorm"
 )
 
 type ExecutionEventRepo struct {

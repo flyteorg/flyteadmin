@@ -2,21 +2,22 @@ package gormimpl
 
 import (
 	"context"
+	"errors"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/flyteorg/flytestdlib/promutils"
 
-	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
+	flyteAdminDbErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 // Implementation of TaskExecutionInterface.
 type TaskExecutionRepo struct {
 	db               *gorm.DB
-	errorTransformer errors.ErrorTransformer
+	errorTransformer flyteAdminDbErrors.ErrorTransformer
 	metrics          gormMetrics
 }
 
@@ -56,9 +57,9 @@ func (r *TaskExecutionRepo) Get(ctx context.Context, input interfaces.GetTaskExe
 	if tx.Error != nil {
 		return models.TaskExecution{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
 	}
-	if tx.RecordNotFound() {
+	if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
 		return models.TaskExecution{},
-			errors.GetMissingEntityError("task execution", &core.TaskExecutionIdentifier{
+			flyteAdminDbErrors.GetMissingEntityError("task execution", &core.TaskExecutionIdentifier{
 				TaskId: &core.Identifier{
 					Project: input.TaskExecutionID.TaskId.Project,
 					Domain:  input.TaskExecutionID.TaskId.Domain,
@@ -130,7 +131,7 @@ func (r *TaskExecutionRepo) List(ctx context.Context, input interfaces.ListResou
 
 // Returns an instance of TaskExecutionRepoInterface
 func NewTaskExecutionRepo(
-	db *gorm.DB, errorTransformer errors.ErrorTransformer, scope promutils.Scope) interfaces.TaskExecutionRepoInterface {
+	db *gorm.DB, errorTransformer flyteAdminDbErrors.ErrorTransformer, scope promutils.Scope) interfaces.TaskExecutionRepoInterface {
 	metrics := newMetrics(scope)
 	return &TaskExecutionRepo{
 		db:               db,

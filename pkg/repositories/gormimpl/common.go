@@ -7,7 +7,7 @@ import (
 	adminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 	"google.golang.org/grpc/codes"
 )
 

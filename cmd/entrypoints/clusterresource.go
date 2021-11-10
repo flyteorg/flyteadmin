@@ -14,7 +14,7 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories"
 	repositoryConfig "github.com/flyteorg/flyteadmin/pkg/repositories/config"
 	"github.com/flyteorg/flytestdlib/promutils"
-	_ "github.com/jinzhu/gorm/dialects/postgres" // Required to import database driver.
+	_ "gorm.io/driver/postgres" // Required to import database driver.
 	"github.com/spf13/cobra"
 )
 

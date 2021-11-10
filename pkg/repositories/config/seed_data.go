@@ -6,7 +6,7 @@ import (
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/flyteorg/flytestdlib/logger"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 // Returns a function to seed the database with default values.

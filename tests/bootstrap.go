@@ -4,8 +4,7 @@ package tests
 
 import (
 	"fmt"
-
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 
 	database_config "github.com/flyteorg/flyteadmin/pkg/repositories/config"
 	"github.com/flyteorg/flytestdlib/promutils"
