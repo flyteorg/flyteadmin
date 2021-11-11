@@ -3,8 +3,8 @@ package impl
 import (
 	"testing"
 
-	"github.com/flyteorg/flyteadmin/pkg/workflowengine/k8sexecutor/interfaces"
-	"github.com/flyteorg/flyteadmin/pkg/workflowengine/k8sexecutor/mocks"
+	"github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/workflowengine/mocks"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"runtime/debug"
 
+	workflowengine2 "github.com/flyteorg/flyteadmin/pkg/workflowengine"
+
 	eventWriter "github.com/flyteorg/flyteadmin/pkg/async/events/implementations"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
@@ -20,9 +22,6 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories"
 	repositoryConfig "github.com/flyteorg/flyteadmin/pkg/repositories/config"
 	"github.com/flyteorg/flyteadmin/pkg/runtime"
-	"github.com/flyteorg/flyteadmin/pkg/workflowengine/k8sexecutor"
-	k8sclientImpl "github.com/flyteorg/flyteadmin/pkg/workflowengine/k8sexecutor/impl"
-
 	workflowengine "github.com/flyteorg/flyteadmin/pkg/workflowengine/impl"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/profutils"
@@ -95,13 +94,11 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 		master,
 		configuration,
 		db)
-	workflowExecutor := workflowengine.NewFlytePropeller(
-		applicationConfiguration.GetRoleNameKey(),
-		execCluster,
-		adminScope.NewSubScope("executor").NewSubScope("flytepropeller"),
-		configuration.NamespaceMappingConfiguration(), applicationConfiguration.GetEventVersion())
+	workflowBuilder := workflowengine.NewFlyteWorkflowBuilder(
+		adminScope.NewSubScope("builder").NewSubScope("flytepropeller"))
+	workflowExecutor := workflowengine.NewDefaultWorkflowExecutor(execCluster)
 	logger.Info(context.Background(), "Successfully created a workflow executor engine")
-	k8sexecutor.GetRegistry().RegisterDefault(k8sclientImpl.NewDefaultWorkflowExecutor(execCluster))
+	workflowengine2.GetRegistry().RegisterDefault(workflowengine.NewDefaultWorkflowExecutor(execCluster))
 
 	dataStorageClient, err := storage.NewDataStore(storeConfig, adminScope.NewSubScope("storage"))
 	if err != nil {
@@ -150,7 +147,7 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 		executionEventWriter.Run()
 	}()
 
-	executionManager := manager.NewExecutionManager(db, configuration, dataStorageClient, workflowExecutor,
+	executionManager := manager.NewExecutionManager(db, configuration, dataStorageClient, workflowBuilder, workflowExecutor,
 		adminScope.NewSubScope("execution_manager"), adminScope.NewSubScope("user_execution_metrics"),
 		publisher, urlData, workflowManager, namedEntityManager, eventPublisher, executionEventWriter)
 	versionManager := manager.NewVersionManager()

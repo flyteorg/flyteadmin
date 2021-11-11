@@ -55,19 +55,22 @@ const childContainerQueueKey = "child_queue"
 type projectDomainScopedStopWatchMap = map[string]map[string]*promutils.StopWatch
 
 type executionSystemMetrics struct {
-	Scope                    promutils.Scope
-	ActiveExecutions         prometheus.Gauge
-	ExecutionsCreated        prometheus.Counter
-	ExecutionsTerminated     prometheus.Counter
-	ExecutionEventsCreated   prometheus.Counter
-	PropellerFailures        prometheus.Counter
-	PublishNotificationError prometheus.Counter
-	TransformerError         prometheus.Counter
-	UnexpectedDataError      prometheus.Counter
-	SpecSizeBytes            prometheus.Summary
-	ClosureSizeBytes         prometheus.Summary
-	AcceptanceDelay          prometheus.Summary
-	PublishEventError        prometheus.Counter
+	Scope                     promutils.Scope
+	ActiveExecutions          prometheus.Gauge
+	ExecutionsCreated         prometheus.Counter
+	ExecutionsTerminated      prometheus.Counter
+	ExecutionEventsCreated    prometheus.Counter
+	PropellerFailures         prometheus.Counter
+	PublishNotificationError  prometheus.Counter
+	TransformerError          prometheus.Counter
+	UnexpectedDataError       prometheus.Counter
+	SpecSizeBytes             prometheus.Summary
+	ClosureSizeBytes          prometheus.Summary
+	AcceptanceDelay           prometheus.Summary
+	PublishEventError         prometheus.Counter
+	WorkflowBuildSuccess      prometheus.Counter
+	WorkflowBuildFailure      prometheus.Counter
+	TerminateExecutionFailure prometheus.Counter
 }
 
 type executionUserMetrics struct {
@@ -82,7 +85,8 @@ type ExecutionManager struct {
 	db                        repositories.RepositoryInterface
 	config                    runtimeInterfaces.Configuration
 	storageClient             *storage.DataStore
-	workflowExecutor          workflowengineInterfaces.Executor
+	workflowBuilder           workflowengineInterfaces.FlyteWorkflowBuilder
+	workflowExecutor          workflowengineInterfaces.K8sWorkflowExecutor
 	queueAllocator            executions.QueueAllocator
 	_clock                    clock.Clock
 	systemMetrics             executionSystemMetrics
@@ -140,40 +144,23 @@ func validateMapSize(maxEntries int, candidate map[string]string, candidateName 
 	return nil
 }
 
-// Labels and annotations defined in the execution spec are preferred over those defined in the
-// reference launch plan spec.
-func (m *ExecutionManager) addLabelsAndAnnotations(requestSpec *admin.ExecutionSpec,
-	partiallyPopulatedInputs *workflowengineInterfaces.ExecuteWorkflowInput) error {
+type mapLikeThing interface {
+	GetValues() map[string]string
+}
 
-	var labels map[string]string
-	if requestSpec.Labels != nil && requestSpec.Labels.Values != nil {
-		labels = requestSpec.Labels.Values
-	} else if partiallyPopulatedInputs.Reference.Spec.Labels != nil &&
-		partiallyPopulatedInputs.Reference.Spec.Labels.Values != nil {
-		labels = partiallyPopulatedInputs.Reference.Spec.Labels.Values
+func (m *ExecutionManager) resolveStringMap(preferredValues, defaultValues mapLikeThing, valueName string, maxEntries int) (map[string]string, error) {
+	var response = make(map[string]string)
+	if preferredValues != nil && preferredValues.GetValues() != nil {
+		response = preferredValues.GetValues()
+	} else if defaultValues != nil && defaultValues.GetValues() != nil {
+		response = defaultValues.GetValues()
 	}
 
-	var annotations map[string]string
-	if requestSpec.Annotations != nil && requestSpec.Annotations.Values != nil {
-		annotations = requestSpec.Annotations.Values
-	} else if partiallyPopulatedInputs.Reference.Spec.Annotations != nil &&
-		partiallyPopulatedInputs.Reference.Spec.Annotations.Values != nil {
-		annotations = partiallyPopulatedInputs.Reference.Spec.Annotations.Values
-	}
-
-	err := validateMapSize(m.config.RegistrationValidationConfiguration().GetMaxLabelEntries(), labels, "Labels")
+	err := validateMapSize(maxEntries, response, valueName)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	err = validateMapSize(
-		m.config.RegistrationValidationConfiguration().GetMaxAnnotationEntries(), annotations, "Annotations")
-	if err != nil {
-		return err
-	}
-
-	partiallyPopulatedInputs.Labels = labels
-	partiallyPopulatedInputs.Annotations = annotations
-	return nil
+	return response, nil
 }
 
 func (m *ExecutionManager) addPluginOverrides(ctx context.Context, executionID *core.WorkflowExecutionIdentifier,
@@ -251,7 +238,7 @@ func getCompleteTaskResourceRequirements(ctx context.Context, identifier *core.I
 // itself => Limit := Min([Some-Multiplier X Request], System-Max). For now we are using a multiplier of 1. In
 // general we recommend the users to set limits close to requests for more predictability in the system.
 func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *core.CompiledTask,
-	platformTaskResources workflowengineInterfaces.TaskResources) {
+	platformTaskResources executions.TaskResources) {
 
 	if task == nil {
 		logger.Warningf(ctx, "Can't set default resources for nil task.")
@@ -393,7 +380,7 @@ func fromAdminProtoTaskResourceSpec(ctx context.Context, spec *admin.TaskResourc
 	return result
 }
 
-func (m *ExecutionManager) getTaskResources(ctx context.Context, workflow *core.Identifier) workflowengineInterfaces.TaskResources {
+func (m *ExecutionManager) getTaskResources(ctx context.Context, workflow *core.Identifier) executions.TaskResources {
 	resource, err := m.resourceManager.GetResource(ctx, interfaces.ResourceRequest{
 		Project:      workflow.Project,
 		Domain:       workflow.Domain,
@@ -407,12 +394,12 @@ func (m *ExecutionManager) getTaskResources(ctx context.Context, workflow *core.
 	}
 
 	logger.Debugf(ctx, "Assigning task requested resources for [%+v]", workflow)
-	var taskResourceAttributes = workflowengineInterfaces.TaskResources{}
+	var taskResourceAttributes = executions.TaskResources{}
 	if resource != nil && resource.Attributes != nil && resource.Attributes.GetTaskResourceAttributes() != nil {
 		taskResourceAttributes.Defaults = fromAdminProtoTaskResourceSpec(ctx, resource.Attributes.GetTaskResourceAttributes().Defaults)
 		taskResourceAttributes.Limits = fromAdminProtoTaskResourceSpec(ctx, resource.Attributes.GetTaskResourceAttributes().Limits)
 	} else {
-		taskResourceAttributes = workflowengineInterfaces.TaskResources{
+		taskResourceAttributes = executions.TaskResources{
 			Defaults: m.config.TaskResourceConfiguration().GetDefaults(),
 			Limits:   m.config.TaskResourceConfiguration().GetLimits(),
 		}
@@ -545,6 +532,17 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		Name:    name,
 	}
 	ctx = getExecutionContext(ctx, &workflowExecutionID)
+	namespace := common.GetNamespaceName(
+		m.config.NamespaceMappingConfiguration().GetNamespaceTemplate(), workflowExecutionID.Project, workflowExecutionID.Domain)
+
+	// TODO: Reduce CRD size and use offloaded input URI to blob store instead.
+	flyteWf, err := m.workflowBuilder.Build(workflow.Closure.CompiledWorkflow, request.Inputs, &workflowExecutionID, namespace)
+	if err != nil {
+		m.systemMetrics.WorkflowBuildFailure.Inc()
+		logger.Infof(ctx, "failed to build the workflow [%+v] %v",
+			workflow.Closure.CompiledWorkflow.Primary.Template.Id, err)
+		return nil, nil, err
+	}
 
 	requestSpec := request.Spec
 	if requestSpec.Metadata == nil {
@@ -590,27 +588,32 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	if err != nil {
 		return nil, nil, err
 	}
-	executeTaskInputs := workflowengineInterfaces.ExecuteTaskInput{
-		ExecutionID:     &workflowExecutionID,
-		WfClosure:       *workflow.Closure.CompiledWorkflow,
-		Inputs:          request.Inputs,
-		ReferenceName:   taskIdentifier.Name,
-		AcceptedAt:      requestedAt,
-		Auth:            requestSpec.AuthRole,
-		QueueingBudget:  qualityOfService.QueuingBudget,
-		ExecutionConfig: executionConfig,
-		TaskResources:   &platformTaskResources,
-	}
+
+	var labels map[string]string
 	if requestSpec.Labels != nil {
-		executeTaskInputs.Labels = requestSpec.Labels.Values
+		labels = requestSpec.Labels.Values
 	}
-	executeTaskInputs.Labels, err = m.addProjectLabels(ctx, request.Project, executeTaskInputs.Labels)
+	labels, err = m.addProjectLabels(ctx, request.Project, labels)
 	if err != nil {
 		return nil, nil, err
 	}
-
+	var annotations map[string]string
 	if requestSpec.Annotations != nil {
-		executeTaskInputs.Annotations = requestSpec.Annotations.Values
+		annotations = requestSpec.Annotations.Values
+	}
+
+	prepareWorkflowInput := executions.PrepareFlyteWorkflowInput{
+		ExecutionID:         &workflowExecutionID,
+		AcceptedAt:          requestedAt,
+		Labels:              labels,
+		Annotations:         annotations,
+		QueueingBudget:      qualityOfService.QueuingBudget,
+		ExecutionConfig:     executionConfig,
+		Auth:                resolvePermissions(&request, launchPlan),
+		TaskResources:       &platformTaskResources,
+		EventVersion:        m.config.ApplicationConfiguration().GetTopLevelConfig().EventVersion,
+		RoleNameKey:         m.config.ApplicationConfiguration().GetTopLevelConfig().RoleNameKey,
+		RawOutputDataConfig: launchPlan.Spec.RawOutputDataConfig,
 	}
 
 	overrides, err := m.addPluginOverrides(ctx, &workflowExecutionID, workflowExecutionID.Name, "")
@@ -618,10 +621,21 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		return nil, nil, err
 	}
 	if overrides != nil {
-		executeTaskInputs.TaskPluginOverrides = overrides
+		prepareWorkflowInput.TaskPluginOverrides = overrides
+	}
+	if request.Spec.Metadata != nil && request.Spec.Metadata.ReferenceExecution != nil &&
+		request.Spec.Metadata.Mode == admin.ExecutionMetadata_RECOVERED {
+		prepareWorkflowInput.RecoveryExecution = request.Spec.Metadata.ReferenceExecution
 	}
 
-	execInfo, err := m.workflowExecutor.ExecuteTask(ctx, executeTaskInputs)
+	execInfo, err := m.workflowExecutor.Execute(ctx, flyteWf, workflowengineInterfaces.ExecutionData{
+		Namespace:               namespace,
+		ExecutionID:             &workflowExecutionID,
+		ReferenceWorkflowName:   workflow.Id.Name,
+		ReferenceLaunchPlanName: launchPlan.Id.Name,
+		WorkflowClosure:         workflow.Closure.CompiledWorkflow,
+	})
+
 	if err != nil {
 		m.systemMetrics.PropellerFailures.Inc()
 		logger.Infof(ctx, "Failed to execute workflow %+v with execution id %+v and inputs %+v with err %v",
@@ -787,25 +801,45 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		return nil, nil, err
 	}
 
+	namespace := common.GetNamespaceName(
+		m.config.NamespaceMappingConfiguration().GetNamespaceTemplate(), workflowExecutionID.Project, workflowExecutionID.Domain)
+
 	// TODO: Reduce CRD size and use offloaded input URI to blob store instead.
-	executeWorkflowInputs := workflowengineInterfaces.ExecuteWorkflowInput{
-		ExecutionID:     &workflowExecutionID,
-		WfClosure:       *workflow.Closure.CompiledWorkflow,
-		Inputs:          executionInputs,
-		Reference:       *launchPlan,
-		AcceptedAt:      requestedAt,
-		QueueingBudget:  qualityOfService.QueuingBudget,
-		ExecutionConfig: executionConfig,
-		Auth:            resolvePermissions(&request, launchPlan),
-		TaskResources:   &platformTaskResources,
+	flyteWf, err := m.workflowBuilder.Build(workflow.Closure.CompiledWorkflow, executionInputs, &workflowExecutionID, namespace)
+	if err != nil {
+		m.systemMetrics.WorkflowBuildFailure.Inc()
+		logger.Infof(ctx, "failed to build the workflow [%+v] %v",
+			workflow.Closure.CompiledWorkflow.Primary.Template.Id, err)
+		return nil, nil, err
 	}
-	err = m.addLabelsAndAnnotations(request.Spec, &executeWorkflowInputs)
+
+	m.systemMetrics.WorkflowBuildSuccess.Inc()
+
+	labels, err := m.resolveStringMap(requestSpec.GetLabels(), launchPlan.Spec.Labels, "labels", m.config.RegistrationValidationConfiguration().GetMaxLabelEntries())
 	if err != nil {
 		return nil, nil, err
 	}
-	executeWorkflowInputs.Labels, err = m.addProjectLabels(ctx, request.Project, executeWorkflowInputs.Labels)
+	labels, err = m.addProjectLabels(ctx, request.Project, labels)
 	if err != nil {
 		return nil, nil, err
+	}
+	annotations, err := m.resolveStringMap(requestSpec.GetAnnotations(), launchPlan.Spec.Annotations, "annotations", m.config.RegistrationValidationConfiguration().GetMaxAnnotationEntries())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	prepareWorkflowInput := executions.PrepareFlyteWorkflowInput{
+		ExecutionID:         &workflowExecutionID,
+		AcceptedAt:          requestedAt,
+		Labels:              labels,
+		Annotations:         annotations,
+		QueueingBudget:      qualityOfService.QueuingBudget,
+		ExecutionConfig:     executionConfig,
+		Auth:                resolvePermissions(&request, launchPlan),
+		TaskResources:       &platformTaskResources,
+		EventVersion:        m.config.ApplicationConfiguration().GetTopLevelConfig().EventVersion,
+		RoleNameKey:         m.config.ApplicationConfiguration().GetTopLevelConfig().RoleNameKey,
+		RawOutputDataConfig: launchPlan.Spec.RawOutputDataConfig,
 	}
 
 	overrides, err := m.addPluginOverrides(ctx, &workflowExecutionID, launchPlan.GetSpec().WorkflowId.Name, launchPlan.Id.Name)
@@ -813,14 +847,27 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		return nil, nil, err
 	}
 	if overrides != nil {
-		executeWorkflowInputs.TaskPluginOverrides = overrides
-	}
-	if request.Spec.Metadata != nil && request.Spec.Metadata.ReferenceExecution != nil &&
-		request.Spec.Metadata.Mode == admin.ExecutionMetadata_RECOVERED {
-		executeWorkflowInputs.RecoveryExecution = request.Spec.Metadata.ReferenceExecution
+		prepareWorkflowInput.TaskPluginOverrides = overrides
 	}
 
-	execInfo, err := m.workflowExecutor.ExecuteWorkflow(ctx, executeWorkflowInputs)
+	if request.Spec.Metadata != nil && request.Spec.Metadata.ReferenceExecution != nil &&
+		request.Spec.Metadata.Mode == admin.ExecutionMetadata_RECOVERED {
+		prepareWorkflowInput.RecoveryExecution = request.Spec.Metadata.ReferenceExecution
+	}
+
+	err = executions.PrepareFlyteWorkflow(prepareWorkflowInput, flyteWf)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	execInfo, err := m.workflowExecutor.Execute(ctx, flyteWf, workflowengineInterfaces.ExecutionData{
+		Namespace:               namespace,
+		ExecutionID:             &workflowExecutionID,
+		ReferenceWorkflowName:   workflow.Id.Name,
+		ReferenceLaunchPlanName: launchPlan.Id.Name,
+		WorkflowClosure:         workflow.Closure.CompiledWorkflow,
+	})
+
 	if err != nil {
 		m.systemMetrics.PropellerFailures.Inc()
 		logger.Infof(ctx, "Failed to execute workflow %+v with execution id %+v and inputs %+v with err %v",
@@ -1451,11 +1498,15 @@ func (m *ExecutionManager) TerminateExecution(
 		return nil, err
 	}
 
-	err = m.workflowExecutor.TerminateWorkflowExecution(ctx, workflowengineInterfaces.TerminateWorkflowInput{
+	err = m.workflowExecutor.Abort(ctx, workflowengineInterfaces.AbortData{
+		Namespace: common.GetNamespaceName(
+			m.config.NamespaceMappingConfiguration().GetNamespaceTemplate(), request.Id.Project, request.Id.Domain),
+
 		ExecutionID: request.Id,
 		Cluster:     executionModel.Cluster,
 	})
 	if err != nil {
+		m.systemMetrics.TerminateExecutionFailure.Inc()
 		return nil, err
 	}
 
@@ -1497,11 +1548,19 @@ func newExecutionSystemMetrics(scope promutils.Scope) executionSystemMetrics {
 			"delay in seconds from when an execution was requested to be created and when it actually was"),
 		PublishEventError: scope.MustNewCounter("publish_event_error",
 			"overall count of publish event errors when invoking publish()"),
+
+		WorkflowBuildSuccess: scope.MustNewCounter("build_success",
+			"count of workflows built by propeller without error"),
+		WorkflowBuildFailure: scope.MustNewCounter("build_failure",
+			"count of workflows built by propeller with errors"),
+		TerminateExecutionFailure: scope.MustNewCounter("execution_termination_failure",
+			"count of failed workflow executions terminations"),
 	}
 }
 
 func NewExecutionManager(db repositories.RepositoryInterface, config runtimeInterfaces.Configuration,
-	storageClient *storage.DataStore, workflowExecutor workflowengineInterfaces.Executor, systemScope promutils.Scope,
+	storageClient *storage.DataStore, workflowBuilder workflowengineInterfaces.FlyteWorkflowBuilder,
+	workflowExecutor workflowengineInterfaces.K8sWorkflowExecutor, systemScope promutils.Scope,
 	userScope promutils.Scope, publisher notificationInterfaces.Publisher, urlData dataInterfaces.RemoteURLInterface,
 	workflowManager interfaces.WorkflowInterface, namedEntityManager interfaces.NamedEntityInterface,
 	eventPublisher notificationInterfaces.Publisher, eventWriter eventWriter.WorkflowExecutionEventWriter) interfaces.ExecutionInterface {
@@ -1523,6 +1582,7 @@ func NewExecutionManager(db repositories.RepositoryInterface, config runtimeInte
 		db:                        db,
 		config:                    config,
 		storageClient:             storageClient,
+		workflowBuilder:           workflowBuilder,
 		workflowExecutor:          workflowExecutor,
 		queueAllocator:            queueAllocator,
 		_clock:                    clock.New(),

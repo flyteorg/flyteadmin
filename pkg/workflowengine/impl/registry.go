@@ -4,7 +4,9 @@ import (
 	"context"
 	"sync"
 
-	"github.com/flyteorg/flyteadmin/pkg/workflowengine/k8sexecutor/interfaces"
+	interfaces2 "github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
+
+	"github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
 	"github.com/flyteorg/flytestdlib/logger"
 )
 
@@ -47,6 +49,6 @@ func (r *flyteK8sWorkflowExecutorRegistry) GetExecutor() interfaces.K8sWorkflowE
 	return r.executor
 }
 
-func NewRegistry() interfaces.FlyteK8sWorkflowExecutorRegistry {
+func NewRegistry() interfaces2.FlyteK8sWorkflowExecutorRegistry {
 	return &flyteK8sWorkflowExecutorRegistry{}
 }

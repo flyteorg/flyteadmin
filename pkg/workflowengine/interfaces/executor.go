@@ -2,69 +2,49 @@ package interfaces
 
 import (
 	"context"
-	"time"
 
-	runtime "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
-
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 )
 
-type TaskResources struct {
-	Defaults runtime.TaskResourceSet
-	Limits   runtime.TaskResourceSet
-}
+//go:generate mockery -name=K8sWorkflowExecutor -output=../mocks/ -case=underscore
 
-type ExecuteWorkflowInput struct {
-	ExecutionID         *core.WorkflowExecutionIdentifier
-	WfClosure           core.CompiledWorkflowClosure
-	Inputs              *core.LiteralMap
-	Reference           admin.LaunchPlan
-	AcceptedAt          time.Time
-	Labels              map[string]string
-	Annotations         map[string]string
-	QueueingBudget      time.Duration
-	TaskPluginOverrides []*admin.PluginOverride
-	ExecutionConfig     *admin.WorkflowExecutionConfig
-	Auth                *admin.AuthRole
-	RecoveryExecution   *core.WorkflowExecutionIdentifier
-	TaskResources       *TaskResources
-}
-
-type ExecuteTaskInput struct {
-	ExecutionID         *core.WorkflowExecutionIdentifier
-	WfClosure           core.CompiledWorkflowClosure
-	Inputs              *core.LiteralMap
-	ReferenceName       string
-	Auth                *admin.AuthRole
-	AcceptedAt          time.Time
-	Labels              map[string]string
-	Annotations         map[string]string
-	QueueingBudget      time.Duration
-	TaskPluginOverrides []*admin.PluginOverride
-	ExecutionConfig     *admin.WorkflowExecutionConfig
-	TaskResources       *TaskResources
-}
-
-type TerminateWorkflowInput struct {
+// ExecutionData includes all parameters required to create an execution CRD object.
+type ExecutionData struct {
+	// Execution namespace.
+	Namespace string
+	// Execution identifier.
 	ExecutionID *core.WorkflowExecutionIdentifier
-	Cluster     string
+	// Underlying workflow name for the execution.
+	ReferenceWorkflowName string
+	// Launch plan name used to trigger the execution.
+	ReferenceLaunchPlanName string
+	// Compiled workflow closure used to build the flyte workflow
+	WorkflowClosure *core.CompiledWorkflowClosure
 }
 
-type ExecutionInfo struct {
+// ExecutionResponse is returned when a Flyte workflow execution is successfully created.
+type ExecutionResponse struct {
+	// Cluster identifier where the execution was created
 	Cluster string
 }
 
-type FlyteWorkflowInterface interface {
-	BuildFlyteWorkflow(
-		wfClosure *core.CompiledWorkflowClosure, inputs *core.LiteralMap, executionID *core.WorkflowExecutionIdentifier,
-		namespace string) (*v1alpha1.FlyteWorkflow, error)
+// AbortData includes all parameters required to abort an execution CRD object.
+type AbortData struct {
+	// Execution namespace.
+	Namespace string
+	// Execution identifier.
+	ExecutionID *core.WorkflowExecutionIdentifier
+	// Cluster identifier where the execution was created
+	Cluster string
 }
 
-type Executor interface {
-	ExecuteWorkflow(
-		ctx context.Context, input ExecuteWorkflowInput) (*ExecutionInfo, error)
-	ExecuteTask(ctx context.Context, input ExecuteTaskInput) (*ExecutionInfo, error)
-	TerminateWorkflowExecution(ctx context.Context, input TerminateWorkflowInput) error
+// K8sWorkflowExecutor is a client interface used to create and delete Flyte workflow CRD objects.
+type K8sWorkflowExecutor interface {
+	// Returns the unique name of this executor implementation.
+	ID() string
+	// Creates a Flyte workflow execution CRD object.
+	Execute(ctx context.Context, workflow *v1alpha1.FlyteWorkflow, data ExecutionData) (ExecutionResponse, error)
+	// Aborts a running Flyte workflow execution CRD object.
+	Abort(ctx context.Context, data AbortData) error
 }

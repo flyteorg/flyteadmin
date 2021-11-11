@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/flyteorg/flyteadmin/pkg/workflowengine/k8sexecutor/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
 	"github.com/stretchr/testify/assert"
 	k8_api_err "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
