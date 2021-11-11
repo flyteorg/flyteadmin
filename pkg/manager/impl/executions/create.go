@@ -22,7 +22,6 @@ type PrepareFlyteWorkflowInput struct {
 	AcceptedAt          time.Time
 	Labels              map[string]string
 	Annotations         map[string]string
-	QueueingBudget      time.Duration
 	TaskPluginOverrides []*admin.PluginOverride
 	ExecutionConfig     *admin.WorkflowExecutionConfig
 	Auth                *admin.AuthRole

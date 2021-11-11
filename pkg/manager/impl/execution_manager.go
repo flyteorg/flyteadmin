@@ -575,15 +575,6 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	if err != nil {
 		return nil, nil, err
 	}
-	qualityOfService, err := m.qualityOfServiceAllocator.GetQualityOfService(ctx, executions.GetQualityOfServiceInput{
-		Workflow:               &workflow,
-		LaunchPlan:             launchPlan,
-		ExecutionCreateRequest: &request,
-	})
-	if err != nil {
-		logger.Errorf(ctx, "Failed to get quality of service for [%+v] with error: %v", workflowExecutionID, err)
-		return nil, nil, err
-	}
 	executionConfig, err := m.getExecutionConfig(ctx, &request, nil)
 	if err != nil {
 		return nil, nil, err
@@ -607,7 +598,6 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		AcceptedAt:          requestedAt,
 		Labels:              labels,
 		Annotations:         annotations,
-		QueueingBudget:      qualityOfService.QueuingBudget,
 		ExecutionConfig:     executionConfig,
 		Auth:                resolvePermissions(&request, launchPlan),
 		TaskResources:       &platformTaskResources,
@@ -787,15 +777,6 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		return nil, nil, err
 	}
 
-	qualityOfService, err := m.qualityOfServiceAllocator.GetQualityOfService(ctx, executions.GetQualityOfServiceInput{
-		Workflow:               workflow,
-		LaunchPlan:             launchPlan,
-		ExecutionCreateRequest: &request,
-	})
-	if err != nil {
-		logger.Errorf(ctx, "Failed to get quality of service for [%+v] with error: %v", workflowExecutionID, err)
-		return nil, nil, err
-	}
 	executionConfig, err := m.getExecutionConfig(ctx, &request, launchPlan)
 	if err != nil {
 		return nil, nil, err
@@ -833,7 +814,6 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		AcceptedAt:          requestedAt,
 		Labels:              labels,
 		Annotations:         annotations,
-		QueueingBudget:      qualityOfService.QueuingBudget,
 		ExecutionConfig:     executionConfig,
 		Auth:                resolvePermissions(&request, launchPlan),
 		TaskResources:       &platformTaskResources,

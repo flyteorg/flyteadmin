@@ -2435,15 +2435,13 @@ func TestAddPluginOverrides(t *testing.T) {
 			Attributes: bytes,
 		}, nil
 	}
-	partiallyPopulatedInputs := workflowengineInterfaces.ExecuteWorkflowInput{}
-
 	execManager := NewExecutionManager(db, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), nil, nil, mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
 
 	taskPluginOverrides, err := execManager.(*ExecutionManager).addPluginOverrides(
 		context.Background(), executionID, workflowName, launchPlanName)
 	assert.NoError(t, err)
 	assert.Len(t, taskPluginOverrides, 2)
-	for _, override := range partiallyPopulatedInputs.TaskPluginOverrides {
+	for _, override := range taskPluginOverrides {
 		if override.TaskType == "python" {
 			assert.EqualValues(t, []string{"plugin a"}, override.PluginId)
 		} else if override.TaskType == "hive" {
@@ -3491,7 +3489,7 @@ func TestGetTaskResources(t *testing.T) {
 	t.Run("use runtime application values", func(t *testing.T) {
 		execManager := NewExecutionManager(repositoryMocks.NewMockRepository(), mockConfig, getMockStorageForExecTest(context.Background()), nil, nil, mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
 		taskResourceAttrs := execManager.(*ExecutionManager).getTaskResources(context.TODO(), &workflowIdentifier)
-		assert.EqualValues(t, taskResourceAttrs, workflowengineInterfaces.TaskResources{
+		assert.EqualValues(t, taskResourceAttrs, executions.TaskResources{
 			Defaults: runtimeInterfaces.TaskResourceSet{
 				CPU:              resource.MustParse("200m"),
 				GPU:              resource.MustParse("8"),
@@ -3546,7 +3544,7 @@ func TestGetTaskResources(t *testing.T) {
 			config:          mockConfig,
 		}
 		taskResourceAttrs := executionManager.getTaskResources(context.TODO(), &workflowIdentifier)
-		assert.EqualValues(t, taskResourceAttrs, workflowengineInterfaces.TaskResources{
+		assert.EqualValues(t, taskResourceAttrs, executions.TaskResources{
 			Defaults: runtimeInterfaces.TaskResourceSet{
 				CPU:              resource.MustParse("1200m"),
 				GPU:              resource.MustParse("18"),
