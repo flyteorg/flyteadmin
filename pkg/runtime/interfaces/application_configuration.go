@@ -3,6 +3,7 @@ package interfaces
 import (
 	"github.com/flyteorg/flytestdlib/config"
 	"golang.org/x/time/rate"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 // This configuration section is used to for initiating the database connection with the store that holds registered
@@ -275,6 +276,8 @@ type SchedulerConfig struct {
 	ReconnectAttempts int `json:"reconnectAttempts"`
 	// Specifies the time interval to wait before attempting to reconnect the workflow executor client.
 	ReconnectDelaySeconds int `json:"reconnectDelaySeconds"`
+	// Specifies the backoff settings when scheduler checks for the flyteadmin health during startup.
+	PrecheckBackoff wait.Backoff `json:"backoff"`
 }
 
 func (s *SchedulerConfig) GetEventSchedulerConfig() EventSchedulerConfig {
@@ -293,15 +296,34 @@ func (s *SchedulerConfig) GetReconnectDelaySeconds() int {
 	return s.ReconnectDelaySeconds
 }
 
+func (s *SchedulerConfig) GetPrecheckBackoff() wait.Backoff {
+	return s.PrecheckBackoff
+}
+
 // Configuration specific to setting up signed urls.
 type SignedURL struct {
+	// Whether signed urls should even be returned with GetExecutionData, GetNodeExecutionData and GetTaskExecutionData
+	// response objects.
+	Enabled bool `json:"enabled" pflag:",Whether signed urls should even be returned with GetExecutionData, GetNodeExecutionData and GetTaskExecutionData response objects."`
 	// The amount of time for which a signed URL is valid.
 	DurationMinutes int `json:"durationMinutes"`
 	// The principal that signs the URL. This is only applicable to GCS URL.
 	SigningPrincipal string `json:"signingPrincipal"`
 }
 
-// This configuration handles all requests to get remote data such as execution inputs & outputs.
+//go:generate enumer -type=InlineEventDataPolicy -trimprefix=InlineEventDataPolicy
+type InlineEventDataPolicy = int
+
+const (
+	// InlineEventDataPolicyOffload specifies that inline execution event data (e.g. outputs) should be offloaded to the
+	// configured cloud blob store.
+	InlineEventDataPolicyOffload InlineEventDataPolicy = iota
+	// InlineEventDataPolicyStoreInline specifies that inline execution event data should be saved inline with execution
+	// database entries.
+	InlineEventDataPolicyStoreInline
+)
+
+// This configuration handles all requests to get and write remote data such as execution inputs & outputs.
 type RemoteDataConfig struct {
 	// Defines the cloud provider that backs the scheduler. In the absence of a specification the no-op, 'local'
 	// scheme is used.
@@ -311,6 +333,8 @@ type RemoteDataConfig struct {
 	SignedURL SignedURL `json:"signedUrls"`
 	// Specifies the max size in bytes for which execution data such as inputs and outputs will be populated in line.
 	MaxSizeInBytes int64 `json:"maxSizeInBytes"`
+	// Specifies how inline execution event data should be saved in the backend
+	InlineEventDataPolicy InlineEventDataPolicy `json:"inlineEventDataPolicy" pflag:",Specifies how inline execution event data should be saved in the backend"`
 }
 
 // This section handles configuration for the workflow notifications pipeline.

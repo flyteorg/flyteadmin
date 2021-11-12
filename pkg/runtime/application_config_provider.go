@@ -4,11 +4,15 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flytestdlib/config"
 	"github.com/flyteorg/flytestdlib/logger"
+
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 const database = "database"
@@ -55,10 +59,17 @@ var schedulerConfig = config.MustRegisterSection(scheduler, &interfaces.Schedule
 			},
 		},
 	},
+	PrecheckBackoff: wait.Backoff{
+		Duration: time.Second, Factor: 2.0, Steps: 30, Jitter: 0.1,
+	},
 })
 var remoteDataConfig = config.MustRegisterSection(remoteData, &interfaces.RemoteDataConfig{
-	Scheme:         common.None,
-	MaxSizeInBytes: 2 * MB,
+	Scheme:                common.None,
+	MaxSizeInBytes:        2 * MB,
+	InlineEventDataPolicy: interfaces.InlineEventDataPolicyOffload,
+	SignedURL: interfaces.SignedURL{
+		Enabled: false,
+	},
 })
 var notificationsConfig = config.MustRegisterSection(notifications, &interfaces.NotificationsConfig{
 	Type: common.Local,
@@ -97,7 +108,9 @@ func (p *ApplicationConfigurationProvider) GetDbConfig() interfaces.DbConfig {
 			logger.Fatalf(context.Background(), "failed to read database password from path [%s] with err: %v",
 				dbConfigSection.PasswordPath, err)
 		}
-		password = string(passwordVal)
+		// Passwords can contain special characters as long as they are percent encoded
+		// https://www.postgresql.org/docs/current/libpq-connect.html
+		password = strings.TrimSpace(string(passwordVal))
 	}
 	return interfaces.DbConfig{
 		Host:         dbConfigSection.Host,
