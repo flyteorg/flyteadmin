@@ -583,6 +583,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	}
 
 	executionParameters := workflowengineInterfaces.ExecutionParameters{
+		Inputs:              request.Inputs,
 		AcceptedAt:          requestedAt,
 		Labels:              labels,
 		Annotations:         annotations,
@@ -788,6 +789,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	}
 
 	executionParameters := workflowengineInterfaces.ExecutionParameters{
+		Inputs:              executionInputs,
 		AcceptedAt:          requestedAt,
 		Labels:              labels,
 		Annotations:         annotations,
