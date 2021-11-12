@@ -24,18 +24,21 @@ type K8sWorkflowExecutor struct {
 	workflowBuilder  interfaces.FlyteWorkflowBuilder
 }
 
-func (d K8sWorkflowExecutor) ID() string {
+func (e K8sWorkflowExecutor) ID() string {
 	return defaultIdentifier
 }
 
-func (d K8sWorkflowExecutor) Execute(ctx context.Context, data interfaces.ExecutionData) (interfaces.ExecutionResponse, error) {
+func (e K8sWorkflowExecutor) Execute(ctx context.Context, data interfaces.ExecutionData) (interfaces.ExecutionResponse, error) {
 	// TODO: Reduce CRD size and use offloaded input URI to blob store instead.
-	flyteWf, err := d.workflowBuilder.Build(data.WorkflowClosure.Primary.Template, request.Inputs, data.ExecutionID, data.Namespace)
+	flyteWf, err := e.workflowBuilder.Build(data.WorkflowClosure, data.ExecutionParameters.Inputs, data.ExecutionID, data.Namespace)
 	if err != nil {
-		m.systemMetrics.WorkflowBuildFailures.Inc()
 		logger.Infof(ctx, "failed to build the workflow [%+v] %v",
-			workflow.Closure.CompiledWorkflow.Primary.Template.Id, err)
-		return nil, nil, err
+			data.WorkflowClosure.Primary.Template.Id, err)
+		return interfaces.ExecutionResponse{}, err
+	}
+	err = PrepareFlyteWorkflow(data, flyteWf)
+	if err != nil {
+		return interfaces.ExecutionResponse{}, err
 	}
 
 	executionTargetSpec := executioncluster.ExecutionTargetSpec{
@@ -45,7 +48,7 @@ func (d K8sWorkflowExecutor) Execute(ctx context.Context, data interfaces.Execut
 		LaunchPlan:  data.ReferenceWorkflowName,
 		ExecutionID: data.ExecutionID.Name,
 	}
-	targetCluster, err := d.executionCluster.GetTarget(ctx, &executionTargetSpec)
+	targetCluster, err := e.executionCluster.GetTarget(ctx, &executionTargetSpec)
 	if err != nil {
 		return interfaces.ExecutionResponse{}, errors.NewFlyteAdminErrorf(codes.Internal, "failed to create workflow in propeller %v", err)
 	}
@@ -61,8 +64,8 @@ func (d K8sWorkflowExecutor) Execute(ctx context.Context, data interfaces.Execut
 	}, nil
 }
 
-func (d K8sWorkflowExecutor) Abort(ctx context.Context, data interfaces.AbortData) error {
-	target, err := d.executionCluster.GetTarget(ctx, &executioncluster.ExecutionTargetSpec{
+func (e K8sWorkflowExecutor) Abort(ctx context.Context, data interfaces.AbortData) error {
+	target, err := e.executionCluster.GetTarget(ctx, &executioncluster.ExecutionTargetSpec{
 		TargetID: data.Cluster,
 	})
 	if err != nil {

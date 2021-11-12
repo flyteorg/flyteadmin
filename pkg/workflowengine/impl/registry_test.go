@@ -9,7 +9,7 @@ import (
 )
 
 func getMockK8sWorkflowExecutor(id string) interfaces.WorkflowExecutor {
-	exec := mocks.K8sWorkflowExecutor{}
+	exec := mocks.WorkflowExecutor{}
 	exec.OnID().Return(id)
 	return &exec
 }

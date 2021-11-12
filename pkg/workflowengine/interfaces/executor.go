@@ -2,11 +2,35 @@ package interfaces
 
 import (
 	"context"
+	"time"
+
+	runtime "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 )
 
-//go:generate mockery -name=K8sWorkflowExecutor -output=../mocks/ -case=underscore
+//go:generate mockery -name=WorkflowExecutor -output=../mocks/ -case=underscore
+
+type TaskResources struct {
+	Defaults runtime.TaskResourceSet
+	Limits   runtime.TaskResourceSet
+}
+
+type ExecutionParameters struct {
+	Inputs              *core.LiteralMap
+	AcceptedAt          time.Time
+	Labels              map[string]string
+	Annotations         map[string]string
+	TaskPluginOverrides []*admin.PluginOverride
+	ExecutionConfig     *admin.WorkflowExecutionConfig
+	Auth                *admin.AuthRole
+	RecoveryExecution   *core.WorkflowExecutionIdentifier
+	TaskResources       *TaskResources
+	EventVersion        int
+	RoleNameKey         string
+	RawOutputDataConfig *admin.RawOutputDataConfig
+}
 
 // ExecutionData includes all parameters required to create an execution CRD object.
 type ExecutionData struct {
@@ -20,6 +44,8 @@ type ExecutionData struct {
 	ReferenceLaunchPlanName string
 	// Compiled workflow closure used to build the flyte workflow
 	WorkflowClosure *core.CompiledWorkflowClosure
+	// Additional parameters used to build a workflow execution
+	ExecutionParameters ExecutionParameters
 }
 
 // ExecutionResponse is returned when a Flyte workflow execution is successfully created.

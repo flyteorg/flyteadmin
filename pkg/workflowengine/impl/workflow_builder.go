@@ -12,10 +12,10 @@ import (
 )
 
 type builderMetrics struct {
-	Scope                promutils.Scope
-	WorkflowBuildSuccess prometheus.Counter
-	WorkflowBuildFailure prometheus.Counter
-	InvalidExecutionID   prometheus.Counter
+	Scope                  promutils.Scope
+	WorkflowBuildSuccesses prometheus.Counter
+	WorkflowBuildFailures  prometheus.Counter
+	InvalidExecutionID     prometheus.Counter
 }
 
 type flyteWorkflowBuilder struct {
@@ -25,15 +25,21 @@ type flyteWorkflowBuilder struct {
 func (b *flyteWorkflowBuilder) Build(
 	wfClosure *core.CompiledWorkflowClosure, inputs *core.LiteralMap, executionID *core.WorkflowExecutionIdentifier,
 	namespace string) (*v1alpha1.FlyteWorkflow, error) {
-	return k8s.BuildFlyteWorkflow(wfClosure, inputs, executionID, namespace)
+	flyteWorkflow, err := k8s.BuildFlyteWorkflow(wfClosure, inputs, executionID, namespace)
+	if err != nil {
+		b.metrics.WorkflowBuildFailures.Inc()
+		return nil, err
+	}
+	b.metrics.WorkflowBuildSuccesses.Inc()
+	return flyteWorkflow, nil
 }
 
 func newBuilderMetrics(scope promutils.Scope) builderMetrics {
 	return builderMetrics{
 		Scope: scope,
-		WorkflowBuildSuccess: scope.MustNewCounter("build_success",
+		WorkflowBuildSuccesses: scope.MustNewCounter("build_successes",
 			"count of workflows built by propeller without error"),
-		WorkflowBuildFailure: scope.MustNewCounter("build_failure",
+		WorkflowBuildFailures: scope.MustNewCounter("build_failures",
 			"count of workflows built by propeller with errors"),
 	}
 }

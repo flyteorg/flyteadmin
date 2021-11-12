@@ -70,8 +70,6 @@ type executionSystemMetrics struct {
 	ClosureSizeBytes           prometheus.Summary
 	AcceptanceDelay            prometheus.Summary
 	PublishEventError          prometheus.Counter
-	WorkflowBuildSuccesses     prometheus.Counter
-	WorkflowBuildFailures      prometheus.Counter
 	TerminateExecutionFailures prometheus.Counter
 }
 
@@ -238,7 +236,7 @@ func getCompleteTaskResourceRequirements(ctx context.Context, identifier *core.I
 // itself => Limit := Min([Some-Multiplier X Request], System-Max). For now we are using a multiplier of 1. In
 // general we recommend the users to set limits close to requests for more predictability in the system.
 func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *core.CompiledTask,
-	platformTaskResources executions.TaskResources) {
+	platformTaskResources workflowengineInterfaces.TaskResources) {
 
 	if task == nil {
 		logger.Warningf(ctx, "Can't set default resources for nil task.")
@@ -380,7 +378,7 @@ func fromAdminProtoTaskResourceSpec(ctx context.Context, spec *admin.TaskResourc
 	return result
 }
 
-func (m *ExecutionManager) getTaskResources(ctx context.Context, workflow *core.Identifier) executions.TaskResources {
+func (m *ExecutionManager) getTaskResources(ctx context.Context, workflow *core.Identifier) workflowengineInterfaces.TaskResources {
 	resource, err := m.resourceManager.GetResource(ctx, interfaces.ResourceRequest{
 		Project:      workflow.Project,
 		Domain:       workflow.Domain,
@@ -394,12 +392,12 @@ func (m *ExecutionManager) getTaskResources(ctx context.Context, workflow *core.
 	}
 
 	logger.Debugf(ctx, "Assigning task requested resources for [%+v]", workflow)
-	var taskResourceAttributes = executions.TaskResources{}
+	var taskResourceAttributes = workflowengineInterfaces.TaskResources{}
 	if resource != nil && resource.Attributes != nil && resource.Attributes.GetTaskResourceAttributes() != nil {
 		taskResourceAttributes.Defaults = fromAdminProtoTaskResourceSpec(ctx, resource.Attributes.GetTaskResourceAttributes().Defaults)
 		taskResourceAttributes.Limits = fromAdminProtoTaskResourceSpec(ctx, resource.Attributes.GetTaskResourceAttributes().Limits)
 	} else {
-		taskResourceAttributes = executions.TaskResources{
+		taskResourceAttributes = workflowengineInterfaces.TaskResources{
 			Defaults: m.config.TaskResourceConfiguration().GetDefaults(),
 			Limits:   m.config.TaskResourceConfiguration().GetLimits(),
 		}
@@ -584,8 +582,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		annotations = requestSpec.Annotations.Values
 	}
 
-	prepareWorkflowInput := executions.PrepareFlyteWorkflowInput{
-		ExecutionID:         &workflowExecutionID,
+	executionParameters := workflowengineInterfaces.ExecutionParameters{
 		AcceptedAt:          requestedAt,
 		Labels:              labels,
 		Annotations:         annotations,
@@ -602,11 +599,11 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		return nil, nil, err
 	}
 	if overrides != nil {
-		prepareWorkflowInput.TaskPluginOverrides = overrides
+		executionParameters.TaskPluginOverrides = overrides
 	}
 	if request.Spec.Metadata != nil && request.Spec.Metadata.ReferenceExecution != nil &&
 		request.Spec.Metadata.Mode == admin.ExecutionMetadata_RECOVERED {
-		prepareWorkflowInput.RecoveryExecution = request.Spec.Metadata.ReferenceExecution
+		executionParameters.RecoveryExecution = request.Spec.Metadata.ReferenceExecution
 	}
 
 	execInfo, err := workflowengine.GetRegistry().GetExecutor().Execute(ctx, workflowengineInterfaces.ExecutionData{
@@ -615,7 +612,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		ReferenceWorkflowName:   workflow.Id.Name,
 		ReferenceLaunchPlanName: launchPlan.Id.Name,
 		WorkflowClosure:         workflow.Closure.CompiledWorkflow,
-		PrepareWorkflowInput: prepareWorkflowInput,
+		ExecutionParameters:     executionParameters,
 	})
 
 	if err != nil {
@@ -777,17 +774,6 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	namespace := common.GetNamespaceName(
 		m.config.NamespaceMappingConfiguration().GetNamespaceTemplate(), workflowExecutionID.Project, workflowExecutionID.Domain)
 
-	// TODO: Reduce CRD size and use offloaded input URI to blob store instead.
-	flyteWf, err := m.workflowBuilder.Build(workflow.Closure.CompiledWorkflow, executionInputs, &workflowExecutionID, namespace)
-	if err != nil {
-		m.systemMetrics.WorkflowBuildFailures.Inc()
-		logger.Infof(ctx, "failed to build the workflow [%+v] %v",
-			workflow.Closure.CompiledWorkflow.Primary.Template.Id, err)
-		return nil, nil, err
-	}
-
-	m.systemMetrics.WorkflowBuildSuccesses.Inc()
-
 	labels, err := resolveStringMap(requestSpec.GetLabels(), launchPlan.Spec.Labels, "labels", m.config.RegistrationValidationConfiguration().GetMaxLabelEntries())
 	if err != nil {
 		return nil, nil, err
@@ -801,8 +787,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		return nil, nil, err
 	}
 
-	prepareWorkflowInput := executions.PrepareFlyteWorkflowInput{
-		ExecutionID:         &workflowExecutionID,
+	executionParameters := workflowengineInterfaces.ExecutionParameters{
 		AcceptedAt:          requestedAt,
 		Labels:              labels,
 		Annotations:         annotations,
@@ -819,25 +804,21 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		return nil, nil, err
 	}
 	if overrides != nil {
-		prepareWorkflowInput.TaskPluginOverrides = overrides
+		executionParameters.TaskPluginOverrides = overrides
 	}
 
 	if request.Spec.Metadata != nil && request.Spec.Metadata.ReferenceExecution != nil &&
 		request.Spec.Metadata.Mode == admin.ExecutionMetadata_RECOVERED {
-		prepareWorkflowInput.RecoveryExecution = request.Spec.Metadata.ReferenceExecution
+		executionParameters.RecoveryExecution = request.Spec.Metadata.ReferenceExecution
 	}
 
-	err = executions.PrepareFlyteWorkflow(prepareWorkflowInput, flyteWf)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	execInfo, err := workflowengine.GetRegistry().GetExecutor().Execute(ctx, flyteWf, workflowengineInterfaces.ExecutionData{
+	execInfo, err := workflowengine.GetRegistry().GetExecutor().Execute(ctx, workflowengineInterfaces.ExecutionData{
 		Namespace:               namespace,
 		ExecutionID:             &workflowExecutionID,
 		ReferenceWorkflowName:   workflow.Id.Name,
 		ReferenceLaunchPlanName: launchPlan.Id.Name,
 		WorkflowClosure:         workflow.Closure.CompiledWorkflow,
+		ExecutionParameters:     executionParameters,
 	})
 
 	if err != nil {
@@ -1520,19 +1501,14 @@ func newExecutionSystemMetrics(scope promutils.Scope) executionSystemMetrics {
 			"delay in seconds from when an execution was requested to be created and when it actually was"),
 		PublishEventError: scope.MustNewCounter("publish_event_error",
 			"overall count of publish event errors when invoking publish()"),
-
-		WorkflowBuildSuccesses: scope.MustNewCounter("workflow_build_success",
-			"count of workflows built by propeller without error"),
-		WorkflowBuildFailures: scope.MustNewCounter("workflow_build_failure",
-			"count of workflows built by propeller with errors"),
 		TerminateExecutionFailures: scope.MustNewCounter("execution_termination_failure",
 			"count of failed workflow executions terminations"),
 	}
 }
 
 func NewExecutionManager(db repositories.RepositoryInterface, config runtimeInterfaces.Configuration,
-	storageClient *storage.DataStore, workflowBuilder workflowengineInterfaces.FlyteWorkflowBuilder,
-	systemScope promutils.Scope, userScope promutils.Scope, publisher notificationInterfaces.Publisher, urlData dataInterfaces.RemoteURLInterface,
+	storageClient *storage.DataStore, systemScope promutils.Scope, userScope promutils.Scope,
+	publisher notificationInterfaces.Publisher, urlData dataInterfaces.RemoteURLInterface,
 	workflowManager interfaces.WorkflowInterface, namedEntityManager interfaces.NamedEntityInterface,
 	eventPublisher notificationInterfaces.Publisher, eventWriter eventWriter.WorkflowExecutionEventWriter) interfaces.ExecutionInterface {
 	queueAllocator := executions.NewQueueAllocator(config, db)
@@ -1553,7 +1529,6 @@ func NewExecutionManager(db repositories.RepositoryInterface, config runtimeInte
 		db:                        db,
 		config:                    config,
 		storageClient:             storageClient,
-		workflowBuilder:           workflowBuilder,
 		queueAllocator:            queueAllocator,
 		_clock:                    clock.New(),
 		systemMetrics:             systemMetrics,

@@ -95,7 +95,7 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 		db)
 	workflowBuilder := workflowengineImpl.NewFlyteWorkflowBuilder(
 		adminScope.NewSubScope("builder").NewSubScope("flytepropeller"))
-	workflowExecutor := workflowengineImpl.NewK8sWorkflowExecutor(execCluster)
+	workflowExecutor := workflowengineImpl.NewK8sWorkflowExecutor(execCluster, workflowBuilder)
 	logger.Info(context.Background(), "Successfully created a workflow executor engine")
 	workflowengine.GetRegistry().RegisterDefault(workflowExecutor)
 
@@ -146,7 +146,7 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 		executionEventWriter.Run()
 	}()
 
-	executionManager := manager.NewExecutionManager(db, configuration, dataStorageClient, workflowBuilder,
+	executionManager := manager.NewExecutionManager(db, configuration, dataStorageClient,
 		adminScope.NewSubScope("execution_manager"), adminScope.NewSubScope("user_execution_metrics"),
 		publisher, urlData, workflowManager, namedEntityManager, eventPublisher, executionEventWriter)
 	versionManager := manager.NewVersionManager()

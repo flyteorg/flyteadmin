@@ -5,6 +5,10 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/flyteorg/flyteadmin/pkg/workflowengine/mocks"
+	"github.com/golang/protobuf/proto"
+	"github.com/stretchr/testify/mock"
+
 	"github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
 	"github.com/stretchr/testify/assert"
 	k8_api_err "k8s.io/apimachinery/pkg/api/errors"
@@ -83,6 +87,24 @@ var flyteWf = &v1alpha1.FlyteWorkflow{
 	},
 }
 
+var testInputs = &core.LiteralMap{
+	Literals: map[string]*core.Literal{
+		"foo": {
+			Value: &core.Literal_Scalar{
+				Scalar: &core.Scalar{
+					Value: &core.Scalar_Primitive{
+						Primitive: &core.Primitive{
+							Value: &core.Primitive_Integer{
+								Integer: 4,
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+}
+
 func getFakeExecutionCluster() execClusterIfaces.ClusterInterface {
 	fakeCluster := clusterMock.MockCluster{}
 	fakeCluster.SetGetTargetCallback(func(ctx context.Context, spec *executioncluster.ExecutionTargetSpec) (target *executioncluster.ExecutionTarget, e error) {
@@ -110,15 +132,40 @@ func TestExecute(t *testing.T) {
 		assert.Equal(t, namespace, ns)
 		return &fakeFlyteWorkflow
 	}
+	mockBuilder := mocks.FlyteWorkflowBuilder{}
+	workflowClosure := core.CompiledWorkflowClosure{
+		Primary: &core.CompiledWorkflow{
+			Template: &core.WorkflowTemplate{
+				Id: &core.Identifier{
+					Project: "p",
+					Domain:  "d",
+					Name:    "n",
+					Version: "version",
+				},
+			},
+		},
+	}
+	mockBuilder.OnBuildMatch(mock.MatchedBy(func(wfClosure *core.CompiledWorkflowClosure) bool {
+		return proto.Equal(wfClosure, &workflowClosure)
+	}), mock.MatchedBy(func(inputs *core.LiteralMap) bool {
+		return proto.Equal(inputs, testInputs)
+	}), mock.MatchedBy(func(executionID *core.WorkflowExecutionIdentifier) bool {
+		return proto.Equal(executionID, execID)
+	}), namespace).Return(flyteWf, nil)
 	executor := K8sWorkflowExecutor{
+		workflowBuilder:  &mockBuilder,
 		executionCluster: getFakeExecutionCluster(),
 	}
 
-	resp, err := executor.Execute(context.TODO(), flyteWf, interfaces.ExecutionData{
+	resp, err := executor.Execute(context.TODO(), interfaces.ExecutionData{
 		Namespace:               namespace,
 		ExecutionID:             execID,
 		ReferenceWorkflowName:   "ref_workflow_name",
 		ReferenceLaunchPlanName: "ref_lp_name",
+		WorkflowClosure:         &workflowClosure,
+		ExecutionParameters: interfaces.ExecutionParameters{
+			Inputs: testInputs,
+		},
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, resp.Cluster, clusterID)
@@ -133,11 +180,14 @@ func TestExecute_AlreadyExists(t *testing.T) {
 		assert.Equal(t, namespace, ns)
 		return &fakeFlyteWorkflow
 	}
+	mockBuilder := mocks.FlyteWorkflowBuilder{}
+	mockBuilder.OnBuildMatch(mock.Anything, mock.Anything, mock.Anything, namespace).Return(flyteWf, nil)
 	executor := K8sWorkflowExecutor{
+		workflowBuilder:  &mockBuilder,
 		executionCluster: getFakeExecutionCluster(),
 	}
 
-	resp, err := executor.Execute(context.TODO(), flyteWf, interfaces.ExecutionData{
+	resp, err := executor.Execute(context.TODO(), interfaces.ExecutionData{
 		Namespace:               namespace,
 		ExecutionID:             execID,
 		ReferenceWorkflowName:   "ref_workflow_name",
@@ -156,11 +206,14 @@ func TestExecute_MiscError(t *testing.T) {
 		assert.Equal(t, namespace, ns)
 		return &fakeFlyteWorkflow
 	}
+	mockBuilder := mocks.FlyteWorkflowBuilder{}
+	mockBuilder.OnBuildMatch(mock.Anything, mock.Anything, mock.Anything, namespace).Return(flyteWf, nil)
 	executor := K8sWorkflowExecutor{
+		workflowBuilder:  &mockBuilder,
 		executionCluster: getFakeExecutionCluster(),
 	}
 
-	_, err := executor.Execute(context.TODO(), flyteWf, interfaces.ExecutionData{
+	_, err := executor.Execute(context.TODO(), interfaces.ExecutionData{
 		Namespace:               namespace,
 		ExecutionID:             execID,
 		ReferenceWorkflowName:   "ref_workflow_name",

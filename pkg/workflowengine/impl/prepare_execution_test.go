@@ -1,8 +1,10 @@
-package executions
+package impl
 
 import (
 	"testing"
 	"time"
+
+	"github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
 
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
@@ -95,7 +97,7 @@ func TestAddExecutionOverrides(t *testing.T) {
 	})
 	t.Run("task resources", func(t *testing.T) {
 		workflow := &v1alpha1.FlyteWorkflow{}
-		addExecutionOverrides(nil, nil, nil, &TaskResources{
+		addExecutionOverrides(nil, nil, nil, &interfaces.TaskResources{
 			Defaults: runtimeInterfaces.TaskResourceSet{
 				CPU:    resource.MustParse("1"),
 				Memory: resource.MustParse("100Gi"),
@@ -137,34 +139,36 @@ func TestPrepareFlyteWorkflow(t *testing.T) {
 	}
 
 	var acceptedAt = time.Now()
-	err := PrepareFlyteWorkflow(PrepareFlyteWorkflowInput{
+	err := PrepareFlyteWorkflow(interfaces.ExecutionData{
 		ExecutionID: &execID,
-		AcceptedAt:  acceptedAt,
-		Labels: map[string]string{
-			"customlabel": "labelval",
-		},
-		Annotations: map[string]string{
-			"customannotation": "annotationval",
-		},
-		TaskPluginOverrides: []*admin.PluginOverride{
-			{
-				TaskType:              "python",
-				PluginId:              []string{"plugin a"},
-				MissingPluginBehavior: admin.PluginOverride_USE_DEFAULT,
+		ExecutionParameters: interfaces.ExecutionParameters{
+			AcceptedAt: acceptedAt,
+			Labels: map[string]string{
+				"customlabel": "labelval",
 			},
-		},
-		ExecutionConfig: &admin.WorkflowExecutionConfig{
-			MaxParallelism: 50,
-		},
-		Auth: &admin.AuthRole{
-			AssumableIamRole:         testRole,
-			KubernetesServiceAccount: testK8sServiceAccount,
-		},
-		RecoveryExecution: recoveryNodeExecutionID,
-		EventVersion:      1,
-		RoleNameKey:       roleNameKey,
-		RawOutputDataConfig: &admin.RawOutputDataConfig{
-			OutputLocationPrefix: "s3://bucket/key",
+			Annotations: map[string]string{
+				"customannotation": "annotationval",
+			},
+			TaskPluginOverrides: []*admin.PluginOverride{
+				{
+					TaskType:              "python",
+					PluginId:              []string{"plugin a"},
+					MissingPluginBehavior: admin.PluginOverride_USE_DEFAULT,
+				},
+			},
+			ExecutionConfig: &admin.WorkflowExecutionConfig{
+				MaxParallelism: 50,
+			},
+			Auth: &admin.AuthRole{
+				AssumableIamRole:         testRole,
+				KubernetesServiceAccount: testK8sServiceAccount,
+			},
+			RecoveryExecution: recoveryNodeExecutionID,
+			EventVersion:      1,
+			RoleNameKey:       roleNameKey,
+			RawOutputDataConfig: &admin.RawOutputDataConfig{
+				OutputLocationPrefix: "s3://bucket/key",
+			},
 		},
 	}, &flyteWorkflow)
 	assert.NoError(t, err)
