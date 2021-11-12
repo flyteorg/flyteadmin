@@ -7,7 +7,6 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/executioncluster"
 	execClusterInterfaces "github.com/flyteorg/flyteadmin/pkg/executioncluster/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
-	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytestdlib/logger"
 	"google.golang.org/grpc/codes"
 	k8_api_err "k8s.io/apimachinery/pkg/api/errors"
@@ -18,17 +17,27 @@ var deletePropagationBackground = v1.DeletePropagationBackground
 
 const defaultIdentifier = "DefaultK8sExecutor"
 
-// Default K8sWorkflowExecutor implementation. Directly creates and delete Flyte workflow execution CRD objects
-// using the configured execution cluster interface.
-type defaultWorkflowExecutor struct {
+// K8sWorkflowExecutor directly creates and delete Flyte workflow execution CRD objects using the configured execution
+// cluster interface.
+type K8sWorkflowExecutor struct {
 	executionCluster execClusterInterfaces.ClusterInterface
+	workflowBuilder  interfaces.FlyteWorkflowBuilder
 }
 
-func (d defaultWorkflowExecutor) ID() string {
+func (d K8sWorkflowExecutor) ID() string {
 	return defaultIdentifier
 }
 
-func (d defaultWorkflowExecutor) Execute(ctx context.Context, flyteWf *v1alpha1.FlyteWorkflow, data interfaces.ExecutionData) (interfaces.ExecutionResponse, error) {
+func (d K8sWorkflowExecutor) Execute(ctx context.Context, data interfaces.ExecutionData) (interfaces.ExecutionResponse, error) {
+	// TODO: Reduce CRD size and use offloaded input URI to blob store instead.
+	flyteWf, err := d.workflowBuilder.Build(data.WorkflowClosure.Primary.Template, request.Inputs, data.ExecutionID, data.Namespace)
+	if err != nil {
+		m.systemMetrics.WorkflowBuildFailures.Inc()
+		logger.Infof(ctx, "failed to build the workflow [%+v] %v",
+			workflow.Closure.CompiledWorkflow.Primary.Template.Id, err)
+		return nil, nil, err
+	}
+
 	executionTargetSpec := executioncluster.ExecutionTargetSpec{
 		Project:     data.ExecutionID.Project,
 		Domain:      data.ExecutionID.Domain,
@@ -52,7 +61,7 @@ func (d defaultWorkflowExecutor) Execute(ctx context.Context, flyteWf *v1alpha1.
 	}, nil
 }
 
-func (d defaultWorkflowExecutor) Abort(ctx context.Context, data interfaces.AbortData) error {
+func (d K8sWorkflowExecutor) Abort(ctx context.Context, data interfaces.AbortData) error {
 	target, err := d.executionCluster.GetTarget(ctx, &executioncluster.ExecutionTargetSpec{
 		TargetID: data.Cluster,
 	})
@@ -69,8 +78,11 @@ func (d defaultWorkflowExecutor) Abort(ctx context.Context, data interfaces.Abor
 	return nil
 }
 
-func NewDefaultWorkflowExecutor(executionCluster execClusterInterfaces.ClusterInterface) interfaces.K8sWorkflowExecutor {
-	return &defaultWorkflowExecutor{
+func NewK8sWorkflowExecutor(executionCluster execClusterInterfaces.ClusterInterface,
+	workflowBuilder interfaces.FlyteWorkflowBuilder) *K8sWorkflowExecutor {
+
+	return &K8sWorkflowExecutor{
 		executionCluster: executionCluster,
+		workflowBuilder:  workflowBuilder,
 	}
 }

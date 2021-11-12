@@ -10,15 +10,15 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 )
 
-// Implements interfaces.FlyteK8sWorkflowExecutorRegistry.
-type flyteK8sWorkflowExecutorRegistry struct {
+// Implements interfaces.WorkflowExecutorRegistry.
+type workflowExecutorRegistry struct {
 	// m is a read/write lock used for fetching and updating the K8sWorkflowExecutors.
-	m               sync.Mutex
-	executor        interfaces.K8sWorkflowExecutor
-	defaultExecutor interfaces.K8sWorkflowExecutor
+	m               sync.RWMutex
+	executor        interfaces.WorkflowExecutor
+	defaultExecutor interfaces.WorkflowExecutor
 }
 
-func (r *flyteK8sWorkflowExecutorRegistry) Register(executor interfaces.K8sWorkflowExecutor) {
+func (r *workflowExecutorRegistry) Register(executor interfaces.WorkflowExecutor) {
 	r.m.Lock()
 	defer r.m.Unlock()
 	if r.executor == nil {
@@ -29,7 +29,7 @@ func (r *flyteK8sWorkflowExecutorRegistry) Register(executor interfaces.K8sWorkf
 	r.executor = executor
 }
 
-func (r *flyteK8sWorkflowExecutorRegistry) RegisterDefault(executor interfaces.K8sWorkflowExecutor) {
+func (r *workflowExecutorRegistry) RegisterDefault(executor interfaces.WorkflowExecutor) {
 	r.m.Lock()
 	defer r.m.Unlock()
 	if r.defaultExecutor == nil {
@@ -40,15 +40,15 @@ func (r *flyteK8sWorkflowExecutorRegistry) RegisterDefault(executor interfaces.K
 	r.defaultExecutor = executor
 }
 
-func (r *flyteK8sWorkflowExecutorRegistry) GetExecutor() interfaces.K8sWorkflowExecutor {
-	r.m.Lock()
-	defer r.m.Unlock()
+func (r *workflowExecutorRegistry) GetExecutor() interfaces.WorkflowExecutor {
+	r.m.RLock()
+	defer r.m.RUnlock()
 	if r.executor == nil {
 		return r.defaultExecutor
 	}
 	return r.executor
 }
 
-func NewRegistry() interfaces2.FlyteK8sWorkflowExecutorRegistry {
-	return &flyteK8sWorkflowExecutorRegistry{}
+func NewRegistry() interfaces2.WorkflowExecutorRegistry {
+	return &workflowExecutorRegistry{}
 }

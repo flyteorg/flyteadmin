@@ -87,7 +87,6 @@ type ExecutionManager struct {
 	db                        repositories.RepositoryInterface
 	config                    runtimeInterfaces.Configuration
 	storageClient             *storage.DataStore
-	workflowBuilder           workflowengineInterfaces.FlyteWorkflowBuilder
 	queueAllocator            executions.QueueAllocator
 	_clock                    clock.Clock
 	systemMetrics             executionSystemMetrics
@@ -536,15 +535,6 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	namespace := common.GetNamespaceName(
 		m.config.NamespaceMappingConfiguration().GetNamespaceTemplate(), workflowExecutionID.Project, workflowExecutionID.Domain)
 
-	// TODO: Reduce CRD size and use offloaded input URI to blob store instead.
-	flyteWf, err := m.workflowBuilder.Build(workflow.Closure.CompiledWorkflow, request.Inputs, &workflowExecutionID, namespace)
-	if err != nil {
-		m.systemMetrics.WorkflowBuildFailures.Inc()
-		logger.Infof(ctx, "failed to build the workflow [%+v] %v",
-			workflow.Closure.CompiledWorkflow.Primary.Template.Id, err)
-		return nil, nil, err
-	}
-
 	requestSpec := request.Spec
 	if requestSpec.Metadata == nil {
 		requestSpec.Metadata = &admin.ExecutionMetadata{}
@@ -619,12 +609,13 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		prepareWorkflowInput.RecoveryExecution = request.Spec.Metadata.ReferenceExecution
 	}
 
-	execInfo, err := workflowengine.GetRegistry().GetExecutor().Execute(ctx, flyteWf, workflowengineInterfaces.ExecutionData{
+	execInfo, err := workflowengine.GetRegistry().GetExecutor().Execute(ctx, workflowengineInterfaces.ExecutionData{
 		Namespace:               namespace,
 		ExecutionID:             &workflowExecutionID,
 		ReferenceWorkflowName:   workflow.Id.Name,
 		ReferenceLaunchPlanName: launchPlan.Id.Name,
 		WorkflowClosure:         workflow.Closure.CompiledWorkflow,
+		PrepareWorkflowInput: prepareWorkflowInput,
 	})
 
 	if err != nil {
