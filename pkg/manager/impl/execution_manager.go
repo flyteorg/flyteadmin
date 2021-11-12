@@ -57,22 +57,22 @@ const childContainerQueueKey = "child_queue"
 type projectDomainScopedStopWatchMap = map[string]map[string]*promutils.StopWatch
 
 type executionSystemMetrics struct {
-	Scope                     promutils.Scope
-	ActiveExecutions          prometheus.Gauge
-	ExecutionsCreated         prometheus.Counter
-	ExecutionsTerminated      prometheus.Counter
-	ExecutionEventsCreated    prometheus.Counter
-	PropellerFailures         prometheus.Counter
-	PublishNotificationError  prometheus.Counter
-	TransformerError          prometheus.Counter
-	UnexpectedDataError       prometheus.Counter
-	SpecSizeBytes             prometheus.Summary
-	ClosureSizeBytes          prometheus.Summary
-	AcceptanceDelay           prometheus.Summary
-	PublishEventError         prometheus.Counter
-	WorkflowBuildSuccess      prometheus.Counter
-	WorkflowBuildFailure      prometheus.Counter
-	TerminateExecutionFailure prometheus.Counter
+	Scope                      promutils.Scope
+	ActiveExecutions           prometheus.Gauge
+	ExecutionsCreated          prometheus.Counter
+	ExecutionsTerminated       prometheus.Counter
+	ExecutionEventsCreated     prometheus.Counter
+	PropellerFailures          prometheus.Counter
+	PublishNotificationError   prometheus.Counter
+	TransformerError           prometheus.Counter
+	UnexpectedDataError        prometheus.Counter
+	SpecSizeBytes              prometheus.Summary
+	ClosureSizeBytes           prometheus.Summary
+	AcceptanceDelay            prometheus.Summary
+	PublishEventError          prometheus.Counter
+	WorkflowBuildSuccesses     prometheus.Counter
+	WorkflowBuildFailures      prometheus.Counter
+	TerminateExecutionFailures prometheus.Counter
 }
 
 type executionUserMetrics struct {
@@ -539,7 +539,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	// TODO: Reduce CRD size and use offloaded input URI to blob store instead.
 	flyteWf, err := m.workflowBuilder.Build(workflow.Closure.CompiledWorkflow, request.Inputs, &workflowExecutionID, namespace)
 	if err != nil {
-		m.systemMetrics.WorkflowBuildFailure.Inc()
+		m.systemMetrics.WorkflowBuildFailures.Inc()
 		logger.Infof(ctx, "failed to build the workflow [%+v] %v",
 			workflow.Closure.CompiledWorkflow.Primary.Template.Id, err)
 		return nil, nil, err
@@ -789,13 +789,13 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	// TODO: Reduce CRD size and use offloaded input URI to blob store instead.
 	flyteWf, err := m.workflowBuilder.Build(workflow.Closure.CompiledWorkflow, executionInputs, &workflowExecutionID, namespace)
 	if err != nil {
-		m.systemMetrics.WorkflowBuildFailure.Inc()
+		m.systemMetrics.WorkflowBuildFailures.Inc()
 		logger.Infof(ctx, "failed to build the workflow [%+v] %v",
 			workflow.Closure.CompiledWorkflow.Primary.Template.Id, err)
 		return nil, nil, err
 	}
 
-	m.systemMetrics.WorkflowBuildSuccess.Inc()
+	m.systemMetrics.WorkflowBuildSuccesses.Inc()
 
 	labels, err := resolveStringMap(requestSpec.GetLabels(), launchPlan.Spec.Labels, "labels", m.config.RegistrationValidationConfiguration().GetMaxLabelEntries())
 	if err != nil {
@@ -1487,7 +1487,7 @@ func (m *ExecutionManager) TerminateExecution(
 		Cluster:     executionModel.Cluster,
 	})
 	if err != nil {
-		m.systemMetrics.TerminateExecutionFailure.Inc()
+		m.systemMetrics.TerminateExecutionFailures.Inc()
 		return nil, err
 	}
 
@@ -1530,11 +1530,11 @@ func newExecutionSystemMetrics(scope promutils.Scope) executionSystemMetrics {
 		PublishEventError: scope.MustNewCounter("publish_event_error",
 			"overall count of publish event errors when invoking publish()"),
 
-		WorkflowBuildSuccess: scope.MustNewCounter("workflow_build_success",
+		WorkflowBuildSuccesses: scope.MustNewCounter("workflow_build_success",
 			"count of workflows built by propeller without error"),
-		WorkflowBuildFailure: scope.MustNewCounter("workflow_build_failure",
+		WorkflowBuildFailures: scope.MustNewCounter("workflow_build_failure",
 			"count of workflows built by propeller with errors"),
-		TerminateExecutionFailure: scope.MustNewCounter("execution_termination_failure",
+		TerminateExecutionFailures: scope.MustNewCounter("execution_termination_failure",
 			"count of failed workflow executions terminations"),
 	}
 }
