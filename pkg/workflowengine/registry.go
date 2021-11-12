@@ -7,6 +7,6 @@ import (
 
 var registry = impl.NewRegistry()
 
-func GetRegistry() interfaces.FlyteK8sWorkflowExecutorRegistry {
+func GetRegistry() interfaces.WorkflowExecutorRegistry {
 	return registry
 }

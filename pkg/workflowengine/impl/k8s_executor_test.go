@@ -95,7 +95,7 @@ func getFakeExecutionCluster() execClusterIfaces.ClusterInterface {
 }
 
 func TestGetID(t *testing.T) {
-	executor := defaultWorkflowExecutor{}
+	executor := K8sWorkflowExecutor{}
 	assert.Equal(t, defaultIdentifier, executor.ID())
 }
 
@@ -110,7 +110,7 @@ func TestExecute(t *testing.T) {
 		assert.Equal(t, namespace, ns)
 		return &fakeFlyteWorkflow
 	}
-	executor := defaultWorkflowExecutor{
+	executor := K8sWorkflowExecutor{
 		executionCluster: getFakeExecutionCluster(),
 	}
 
@@ -133,7 +133,7 @@ func TestExecute_AlreadyExists(t *testing.T) {
 		assert.Equal(t, namespace, ns)
 		return &fakeFlyteWorkflow
 	}
-	executor := defaultWorkflowExecutor{
+	executor := K8sWorkflowExecutor{
 		executionCluster: getFakeExecutionCluster(),
 	}
 
@@ -156,7 +156,7 @@ func TestExecute_MiscError(t *testing.T) {
 		assert.Equal(t, namespace, ns)
 		return &fakeFlyteWorkflow
 	}
-	executor := defaultWorkflowExecutor{
+	executor := K8sWorkflowExecutor{
 		executionCluster: getFakeExecutionCluster(),
 	}
 
@@ -180,7 +180,7 @@ func TestAbort(t *testing.T) {
 		assert.Equal(t, namespace, ns)
 		return &fakeFlyteWorkflow
 	}
-	executor := defaultWorkflowExecutor{
+	executor := K8sWorkflowExecutor{
 		executionCluster: getFakeExecutionCluster(),
 	}
 	err := executor.Abort(context.TODO(), interfaces.AbortData{
@@ -203,7 +203,7 @@ func TestAbort_Notfound(t *testing.T) {
 		assert.Equal(t, namespace, ns)
 		return &fakeFlyteWorkflow
 	}
-	executor := defaultWorkflowExecutor{
+	executor := K8sWorkflowExecutor{
 		executionCluster: getFakeExecutionCluster(),
 	}
 	err := executor.Abort(context.TODO(), interfaces.AbortData{
@@ -223,7 +223,7 @@ func TestAbort_MiscError(t *testing.T) {
 		assert.Equal(t, namespace, ns)
 		return &fakeFlyteWorkflow
 	}
-	executor := defaultWorkflowExecutor{
+	executor := K8sWorkflowExecutor{
 		executionCluster: getFakeExecutionCluster(),
 	}
 	err := executor.Abort(context.TODO(), interfaces.AbortData{

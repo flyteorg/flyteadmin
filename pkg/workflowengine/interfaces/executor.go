@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 )
 
 //go:generate mockery -name=K8sWorkflowExecutor -output=../mocks/ -case=underscore
@@ -39,12 +38,12 @@ type AbortData struct {
 	Cluster string
 }
 
-// K8sWorkflowExecutor is a client interface used to create and delete Flyte workflow CRD objects.
-type K8sWorkflowExecutor interface {
-	// Returns the unique name of this executor implementation.
+// WorkflowExecutor is a client interface used to create and delete Flyte workflow CRD objects.
+type WorkflowExecutor interface {
+	// ID returns the unique name of this executor implementation.
 	ID() string
-	// Creates a Flyte workflow execution CRD object.
-	Execute(ctx context.Context, workflow *v1alpha1.FlyteWorkflow, data ExecutionData) (ExecutionResponse, error)
-	// Aborts a running Flyte workflow execution CRD object.
+	// Execute creates a Flyte workflow execution CRD object.
+	Execute(ctx context.Context, data ExecutionData) (ExecutionResponse, error)
+	// Abort aborts a running Flyte workflow execution CRD object.
 	Abort(ctx context.Context, data AbortData) error
 }
