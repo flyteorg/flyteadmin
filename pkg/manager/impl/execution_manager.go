@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/flyteorg/flyteadmin/pkg/workflowengine"
+
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 
 	"github.com/flyteorg/flyteadmin/auth"
@@ -86,7 +88,6 @@ type ExecutionManager struct {
 	config                    runtimeInterfaces.Configuration
 	storageClient             *storage.DataStore
 	workflowBuilder           workflowengineInterfaces.FlyteWorkflowBuilder
-	workflowExecutor          workflowengineInterfaces.K8sWorkflowExecutor
 	queueAllocator            executions.QueueAllocator
 	_clock                    clock.Clock
 	systemMetrics             executionSystemMetrics
@@ -618,7 +619,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		prepareWorkflowInput.RecoveryExecution = request.Spec.Metadata.ReferenceExecution
 	}
 
-	execInfo, err := m.workflowExecutor.Execute(ctx, flyteWf, workflowengineInterfaces.ExecutionData{
+	execInfo, err := workflowengine.GetRegistry().GetExecutor().Execute(ctx, flyteWf, workflowengineInterfaces.ExecutionData{
 		Namespace:               namespace,
 		ExecutionID:             &workflowExecutionID,
 		ReferenceWorkflowName:   workflow.Id.Name,
@@ -840,7 +841,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		return nil, nil, err
 	}
 
-	execInfo, err := m.workflowExecutor.Execute(ctx, flyteWf, workflowengineInterfaces.ExecutionData{
+	execInfo, err := workflowengine.GetRegistry().GetExecutor().Execute(ctx, flyteWf, workflowengineInterfaces.ExecutionData{
 		Namespace:               namespace,
 		ExecutionID:             &workflowExecutionID,
 		ReferenceWorkflowName:   workflow.Id.Name,
@@ -1478,7 +1479,7 @@ func (m *ExecutionManager) TerminateExecution(
 		return nil, err
 	}
 
-	err = m.workflowExecutor.Abort(ctx, workflowengineInterfaces.AbortData{
+	err = workflowengine.GetRegistry().GetExecutor().Abort(ctx, workflowengineInterfaces.AbortData{
 		Namespace: common.GetNamespaceName(
 			m.config.NamespaceMappingConfiguration().GetNamespaceTemplate(), request.Id.Project, request.Id.Domain),
 
@@ -1540,8 +1541,7 @@ func newExecutionSystemMetrics(scope promutils.Scope) executionSystemMetrics {
 
 func NewExecutionManager(db repositories.RepositoryInterface, config runtimeInterfaces.Configuration,
 	storageClient *storage.DataStore, workflowBuilder workflowengineInterfaces.FlyteWorkflowBuilder,
-	workflowExecutor workflowengineInterfaces.K8sWorkflowExecutor, systemScope promutils.Scope,
-	userScope promutils.Scope, publisher notificationInterfaces.Publisher, urlData dataInterfaces.RemoteURLInterface,
+	systemScope promutils.Scope, userScope promutils.Scope, publisher notificationInterfaces.Publisher, urlData dataInterfaces.RemoteURLInterface,
 	workflowManager interfaces.WorkflowInterface, namedEntityManager interfaces.NamedEntityInterface,
 	eventPublisher notificationInterfaces.Publisher, eventWriter eventWriter.WorkflowExecutionEventWriter) interfaces.ExecutionInterface {
 	queueAllocator := executions.NewQueueAllocator(config, db)
@@ -1563,7 +1563,6 @@ func NewExecutionManager(db repositories.RepositoryInterface, config runtimeInte
 		config:                    config,
 		storageClient:             storageClient,
 		workflowBuilder:           workflowBuilder,
-		workflowExecutor:          workflowExecutor,
 		queueAllocator:            queueAllocator,
 		_clock:                    clock.New(),
 		systemMetrics:             systemMetrics,
