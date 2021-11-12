@@ -145,11 +145,11 @@ func validateMapSize(maxEntries int, candidate map[string]string, candidateName 
 	return nil
 }
 
-type mapLikeThing interface {
+type mapWithValues interface {
 	GetValues() map[string]string
 }
 
-func (m *ExecutionManager) resolveStringMap(preferredValues, defaultValues mapLikeThing, valueName string, maxEntries int) (map[string]string, error) {
+func resolveStringMap(preferredValues, defaultValues mapWithValues, valueName string, maxEntries int) (map[string]string, error) {
 	var response = make(map[string]string)
 	if preferredValues != nil && preferredValues.GetValues() != nil {
 		response = preferredValues.GetValues()
@@ -797,7 +797,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 
 	m.systemMetrics.WorkflowBuildSuccess.Inc()
 
-	labels, err := m.resolveStringMap(requestSpec.GetLabels(), launchPlan.Spec.Labels, "labels", m.config.RegistrationValidationConfiguration().GetMaxLabelEntries())
+	labels, err := resolveStringMap(requestSpec.GetLabels(), launchPlan.Spec.Labels, "labels", m.config.RegistrationValidationConfiguration().GetMaxLabelEntries())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -805,7 +805,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	if err != nil {
 		return nil, nil, err
 	}
-	annotations, err := m.resolveStringMap(requestSpec.GetAnnotations(), launchPlan.Spec.Annotations, "annotations", m.config.RegistrationValidationConfiguration().GetMaxAnnotationEntries())
+	annotations, err := resolveStringMap(requestSpec.GetAnnotations(), launchPlan.Spec.Annotations, "annotations", m.config.RegistrationValidationConfiguration().GetMaxAnnotationEntries())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1530,9 +1530,9 @@ func newExecutionSystemMetrics(scope promutils.Scope) executionSystemMetrics {
 		PublishEventError: scope.MustNewCounter("publish_event_error",
 			"overall count of publish event errors when invoking publish()"),
 
-		WorkflowBuildSuccess: scope.MustNewCounter("build_success",
+		WorkflowBuildSuccess: scope.MustNewCounter("workflow_build_success",
 			"count of workflows built by propeller without error"),
-		WorkflowBuildFailure: scope.MustNewCounter("build_failure",
+		WorkflowBuildFailure: scope.MustNewCounter("workflow_build_failure",
 			"count of workflows built by propeller with errors"),
 		TerminateExecutionFailure: scope.MustNewCounter("execution_termination_failure",
 			"count of failed workflow executions terminations"),

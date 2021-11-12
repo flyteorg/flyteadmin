@@ -2441,17 +2441,7 @@ func TestGetExecutionData(t *testing.T) {
 }
 
 func TestResolveStringMap_RuntimeLimitsObserved(t *testing.T) {
-	repository := repositoryMocks.NewMockRepository()
-	setDefaultLpCallbackForExecTest(repository)
-
-	mockRegistrationValidationConfig := runtimeMocks.NewMockRegistrationValidationProvider()
-	mockRegistrationValidationConfig.(*runtimeMocks.MockRegistrationValidationProvider).MaxAnnotationEntries = 1
-
-	configProvider := getMockExecutionsConfigProvider()
-	configProvider.(*runtimeMocks.MockConfigurationProvider).AddRegistrationValidationConfiguration(
-		mockRegistrationValidationConfig)
-	execManager := NewExecutionManager(repository, configProvider, getMockStorageForExecTest(context.Background()), nil, mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
-	_, err := execManager.(*ExecutionManager).resolveStringMap(&admin.Labels{
+	_, err := resolveStringMap(&admin.Labels{
 		Values: map[string]string{
 			"dynamiclabel1": "dynamic1",
 			"dynamiclabel2": "dynamic2",
@@ -2462,7 +2452,6 @@ func TestResolveStringMap_RuntimeLimitsObserved(t *testing.T) {
 		},
 	}, "labels", 1)
 	assert.EqualError(t, err, "labels has too many entries [2 > 1]")
-
 }
 
 func TestAddPluginOverrides(t *testing.T) {
