@@ -11,16 +11,16 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 
 # This is a separate function so that we can potentially reuse in the future when we have more than one test
 function wait_for_flyte_deploys() {
-    SECONDS=0
-    echo ""
-    echo "waiting for flyte deploy to complete..."
-    echo ""
+SECONDS=0
+echo ""
+echo "waiting for flyte deploy to complete..."
+echo ""
 
-    # wait for flyteadmin deployment to complete
-    kubectl -n flyte rollout status deployment flyteadmin
-    echo ""
+# wait for flyteadmin deployment to complete
+kubectl -n flyte rollout status deployment flyteadmin
+echo ""
 
-    echo "Flyte deployed in $SECONDS seconds."
+echo "Flyte deployed in $SECONDS seconds."
 }
 
 wait_for_flyte_deploys
