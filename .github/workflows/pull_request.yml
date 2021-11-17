@@ -97,7 +97,7 @@ jobs:
           key: /tmp/docker-images-${{ github.event.after }}
       - name: Create Sandbox Cluster
         run: |
-          cp /tmp/tmp/docker-images/snapshot-builder.tar snapshot.tar
+          cp /tmp/tmp/docker-images/snapshot.tar snapshot.tar
           flytectl config init
           flytectl sandbox start --source=$(pwd)
       - name: Prime docker cache
