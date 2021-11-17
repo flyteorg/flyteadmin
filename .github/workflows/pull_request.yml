@@ -95,14 +95,14 @@ jobs:
           key: /tmp/docker-images-${{ github.event.after }}
       - name: Create Sandbox Cluster
         run: |
-          cp /tmp/tmp/docker-images/snapshot.tar snapshot.tar
+          cp /tmp/tmp/docker-images/snapshot-builder.tar snapshot.tar
           flytectl config init
           flytectl sandbox start --source=$(pwd)
       - name: Prime docker cache
         run: |
           flytectl sandbox exec -- docker load -i /root/snapshot.tar
       - name: Upgrade Helm charts
-        run:  flytectl sandbox exec -- helm upgrade flyte -n flyte --kubeconfig=/etc/rancher/k3s/k3s.yaml /flyteorg/share/flyte -f /flyteorg/share/flyte/values-sandbox.yaml --set flyteadmin.image.repository=cr.flyte.org/flyteorg/flyteadmin,flyteadmin.image.tag=latest
+        run:  flytectl sandbox exec -- helm upgrade flyte -n flyte --kubeconfig=/etc/rancher/k3s/k3s.yaml /flyteorg/share/flyte -f /flyteorg/share/flyte/values-sandbox.yaml --set flyteadmin.image.repository=cr.flyte.org/flyteorg/flyteadmin,flyteadmin.image.tag=builder
       - name: Integration
         env:
           KUBECONFIG: /home/runner/.flyte/k3s/k3s.yaml
