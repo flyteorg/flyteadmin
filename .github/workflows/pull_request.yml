@@ -68,7 +68,7 @@ jobs:
           flytectl sandbox exec -- docker load -i /root/snapshot.tar
           flytectl sandbox exec -- docker images
       - name: Upgrade Helm charts
-        run:  flytectl sandbox exec -- helm upgrade flyte -n flyte --kubeconfig=/etc/rancher/k3s/k3s.yaml /flyteorg/share/flyte -f /flyteorg/share/flyte/values-sandbox.yaml --set flytepropeller.image.repository=flyteorg/${{ github.event.repository.name }},flytepropeller.image.tag=latest
+        run:  flytectl sandbox exec -- helm upgrade flyte -n flyte --kubeconfig=/etc/rancher/k3s/k3s.yaml /flyteorg/share/flyte -f /flyteorg/share/flyte/values-sandbox.yaml --set flyteadmin.image.repository=flyteorg/${{ github.event.repository.name }},flyteadmin.image.tag=latest
       - name: End2End
         env:
           KUBECONFIG: /home/runner/.flyte/k3s/k3s.yaml
@@ -105,7 +105,7 @@ jobs:
           flytectl sandbox exec -- docker load -i /root/snapshot.tar
           flytectl sandbox exec -- docker images
       - name: Upgrade Helm charts
-        run:  flytectl sandbox exec -- helm upgrade flyte -n flyte --kubeconfig=/etc/rancher/k3s/k3s.yaml /flyteorg/share/flyte -f /flyteorg/share/flyte/values-sandbox.yaml --set flytepropeller.image.repository=flyteorg/${{ github.event.repository.name }},flytepropeller.image.tag=latest
+        run:  flytectl sandbox exec -- helm upgrade flyte -n flyte --kubeconfig=/etc/rancher/k3s/k3s.yaml /flyteorg/share/flyte -f /flyteorg/share/flyte/values-sandbox.yaml --set flyteadmin.image.repository=flyteorg/${{ github.event.repository.name }},flyteadmin.image.tag=latest
       - name: Integration
         env:
           KUBECONFIG: /home/runner/.flyte/k3s/k3s.yaml
