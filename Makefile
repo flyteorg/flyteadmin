@@ -22,7 +22,7 @@ docker_build_scheduler:
 
 .PHONY: integration
 integration:
-	GOCACHE=off CGO_ENABLED=0 GOFLAGS="-count=1" go test -v -tags=integration ./tests/...
+	CGO_ENABLED=0 GOFLAGS="-count=1" go test -v -tags=integration ./tests/...
 
 .PHONY: k8s_integration
 k8s_integration:
