@@ -3,10 +3,6 @@ package clusterresource
 import (
 	"context"
 	"encoding/json"
-
-	"github.com/flyteorg/flyteadmin/pkg/executioncluster"
-	"k8s.io/apimachinery/pkg/types"
-
 	//"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -17,7 +13,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/flyteorg/flyteadmin/pkg/executioncluster"
+	"github.com/flyteorg/flyteadmin/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+
 	"k8s.io/apimachinery/pkg/api/meta"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/discovery/cached/memory"
@@ -40,6 +41,8 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 
+	ccscheme "github.com/GoogleCloudPlatform/k8s-config-connector/pkg/client/clientset/versioned/scheme"
+
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -52,7 +55,6 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories"
 	repositoriesInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
-	"github.com/flyteorg/flyteadmin/pkg/runtime"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flytestdlib/promutils"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -102,6 +104,8 @@ type controller struct {
 	lastAppliedTemplateDir string
 	// Map of [namespace -> [templateFileName -> last modified time]]
 	appliedTemplates NamespaceCache
+	// K8S manifest template decoder
+	decoder k8sruntime.Decoder
 }
 
 var descCreatedAtSortParam, _ = common.NewSortParameter(admin.Sort{
@@ -284,10 +288,11 @@ func prepareDynamicCreate(target executioncluster.ExecutionTarget, config string
 
 // This function loops through the kubernetes resource template files in the configured template directory.
 // For each unapplied template file (wrt the namespace) this func attempts to
-//   1) read the template file
-//   2) substitute templatized variables with their resolved values
-//   3) decode the output of the above into a kubernetes resource
-//   4) create the resource on the kubernetes cluster and cache successful outcomes
+//   1) create k8s object resource from template by performing:
+//      a) read template file
+//      b) substitute templatized variables with their resolved values
+//      c) decode the output of the above into a kubernetes resource
+//   2) create the resource on the kubernetes cluster and cache successful outcomes
 func (c *controller) syncNamespace(ctx context.Context, project models.Project, domain runtimeInterfaces.Domain, namespace NamespaceName,
 	templateValues, customTemplateValues templateValuesType) error {
 	templateDir := c.config.ClusterResourceConfiguration().GetTemplatePath()
@@ -319,52 +324,14 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 			continue
 		}
 
-		// 1) read the template file
-		template, err := ioutil.ReadFile(path.Join(templateDir, templateFileName))
+		// 1) create resource from template:
+		k8sObj, k8sManifest, err := c.createResourceFromTemplate(ctx, templateDir, templateFileName, project, domain, namespace, templateValues, customTemplateValues)
 		if err != nil {
-			logger.Warningf(ctx,
-				"failed to read config template from path [%s] for namespace [%s] with err: %v",
-				templateFileName, namespace, err)
-			err := errors.NewFlyteAdminErrorf(
-				codes.Internal, "failed to read config template from path [%s] for namespace [%s] with err: %v",
-				templateFileName, namespace, err)
 			collectedErrs = append(collectedErrs, err)
-			c.metrics.TemplateReadErrors.Inc()
-			continue
-		}
-		logger.Debugf(ctx, "successfully read template config file [%s]", templateFileName)
-
-		// 2) substitute templatized variables with their resolved values
-		// First, add the special case namespace template which is always substituted by the system
-		// rather than fetched via a user-specified source.
-		templateValues[fmt.Sprintf(templateVariableFormat, namespaceVariable)] = namespace
-		templateValues[fmt.Sprintf(templateVariableFormat, projectVariable)] = project.Identifier
-		templateValues[fmt.Sprintf(templateVariableFormat, domainVariable)] = domain.ID
-
-		var config = string(template)
-		for templateKey, templateValue := range templateValues {
-			config = strings.Replace(config, templateKey, templateValue, replaceAllInstancesOfString)
-		}
-		// Replace remaining template variables from domain specific defaults.
-		for templateKey, templateValue := range customTemplateValues {
-			config = strings.Replace(config, templateKey, templateValue, replaceAllInstancesOfString)
-		}
-
-		// 3) decode the kubernetes resource template file into an actual resource object
-		decode := scheme.Codecs.UniversalDeserializer().Decode
-		k8sObj, _, err := decode([]byte(config), nil, nil)
-		if err != nil {
-			logger.Warningf(ctx, "Failed to decode config template [%s] for namespace [%s] into a kubernetes object with err: %v",
-				templateFileName, namespace, err)
-			err := errors.NewFlyteAdminErrorf(codes.InvalidArgument,
-				"Failed to decode namespace config template [%s] for namespace [%s] into a kubernetes object with err: %v",
-				templateFileName, namespace, err)
-			collectedErrs = append(collectedErrs, err)
-			c.metrics.TemplateDecodeErrors.Inc()
 			continue
 		}
 
-		// 4) create the resource on the kubernetes cluster and cache successful outcomes
+		// 2) create the resource on the kubernetes cluster and cache successful outcomes
 		if _, ok := c.appliedTemplates[namespace]; !ok {
 			c.appliedTemplates[namespace] = make(LastModTimeCache)
 		}
@@ -373,7 +340,7 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 			logger.Debugf(ctx, "Attempting to create resource [%+v] in cluster [%v] for namespace [%s]",
 				k8sObj.GetObjectKind().GroupVersionKind().Kind, target.ID, namespace)
 
-			dynamicObj, err := prepareDynamicCreate(target, config)
+			dynamicObj, err := prepareDynamicCreate(target, k8sManifest)
 			if err != nil {
 				logger.Warningf(ctx, "Failed to transform kubernetes template file for [%+v] for namespace [%s] "+
 					"into a dynamic unstructured mapping with err: %v", k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace, err)
@@ -450,6 +417,59 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 		return errors.NewCollectedFlyteAdminError(codes.Internal, collectedErrs)
 	}
 	return nil
+}
+
+// createResourceFromTemplate this method perform following processes:
+//      1) read template file pointed by templateDir and templateFileName
+//      2) substitute templatized variables with their resolved values
+//      3) decode the output of the above into a kubernetes resource
+// the method will return the kubernetes resource object and its raw manifest
+func (c *controller) createResourceFromTemplate(ctx context.Context, templateDir string,
+	templateFileName string, project models.Project, domain runtimeInterfaces.Domain, namespace NamespaceName,
+	templateValues, customTemplateValues templateValuesType) (k8sruntime.Object, string, error) {
+	// 1) read the template file
+	template, err := ioutil.ReadFile(path.Join(templateDir, templateFileName))
+	if err != nil {
+		logger.Warningf(ctx,
+			"failed to read config template from path [%s] for namespace [%s] with err: %v",
+			templateFileName, namespace, err)
+		err := errors.NewFlyteAdminErrorf(
+			codes.Internal, "failed to read config template from path [%s] for namespace [%s] with err: %v",
+			templateFileName, namespace, err)
+		c.metrics.TemplateReadErrors.Inc()
+		return nil, "", err
+	}
+	logger.Debugf(ctx, "successfully read template config file [%s]", templateFileName)
+
+	// 2) substitute templatized variables with their resolved values
+	// First, add the special case namespace template which is always substituted by the system
+	// rather than fetched via a user-specified source.
+	templateValues[fmt.Sprintf(templateVariableFormat, namespaceVariable)] = namespace
+	templateValues[fmt.Sprintf(templateVariableFormat, projectVariable)] = project.Identifier
+	templateValues[fmt.Sprintf(templateVariableFormat, domainVariable)] = domain.ID
+
+	var k8sManifest = string(template)
+	for templateKey, templateValue := range templateValues {
+		k8sManifest = strings.Replace(k8sManifest, templateKey, templateValue, replaceAllInstancesOfString)
+	}
+	// Replace remaining template variables from domain specific defaults.
+	for templateKey, templateValue := range customTemplateValues {
+		k8sManifest = strings.Replace(k8sManifest, templateKey, templateValue, replaceAllInstancesOfString)
+	}
+
+	// 3) decode the kubernetes resource template file into an actual resource object
+	k8sObj, _, err := c.decoder.Decode([]byte(k8sManifest), nil, nil)
+	if err != nil {
+		logger.Warningf(ctx, "Failed to decode config template [%s] for namespace [%s] into a kubernetes object with err: %v",
+			templateFileName, namespace, err)
+		err := errors.NewFlyteAdminErrorf(codes.InvalidArgument,
+			"Failed to decode namespace config template [%s] for namespace [%s] into a kubernetes object with err: %v",
+			templateFileName, namespace, err)
+		c.metrics.TemplateDecodeErrors.Inc()
+		return nil, "", err
+	}
+
+	return k8sObj, k8sManifest, nil
 }
 
 func (c *controller) Sync(ctx context.Context) error {
@@ -553,8 +573,13 @@ func newMetrics(scope promutils.Scope) controllerMetrics {
 	}
 }
 
-func NewClusterResourceController(db repositories.RepositoryInterface, executionCluster interfaces.ClusterInterface, scope promutils.Scope) Controller {
+func NewClusterResourceController(db repositories.RepositoryInterface, executionCluster interfaces.ClusterInterface, scope promutils.Scope) (Controller, error) {
 	config := runtime.NewConfigurationProvider()
+	// allow resources from github.com/GoogleCloudPlatform/k8s-config-connector to be recognized by the controller's decoder
+	if err := ccscheme.AddToScheme(scheme.Scheme); err != nil {
+		return nil, err
+	}
+
 	return &controller{
 		db:               db,
 		config:           config,
@@ -563,5 +588,6 @@ func NewClusterResourceController(db repositories.RepositoryInterface, execution
 		poller:           make(chan struct{}),
 		metrics:          newMetrics(scope),
 		appliedTemplates: make(map[string]map[string]time.Time),
-	}
+		decoder:          scheme.Codecs.UniversalDeserializer(),
+	}, nil
 }

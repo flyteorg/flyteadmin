@@ -62,7 +62,11 @@ var controllerRunCmd = &cobra.Command{
 			configuration,
 			db)
 
-		clusterResourceController := clusterresource.NewClusterResourceController(db, executionCluster, scope)
+		clusterResourceController, err := clusterresource.NewClusterResourceController(db, executionCluster, scope)
+		if err != nil {
+			logger.Fatalf(ctx, "Failed to initialise ClusterResourceController [%+v]", err)
+		}
+
 		clusterResourceController.Run()
 		logger.Infof(ctx, "ClusterResourceController started successfully")
 	},
@@ -98,8 +102,12 @@ var controllerSyncCmd = &cobra.Command{
 			configuration,
 			db)
 
-		clusterResourceController := clusterresource.NewClusterResourceController(db, executionCluster, scope)
-		err := clusterResourceController.Sync(ctx)
+		clusterResourceController, err := clusterresource.NewClusterResourceController(db, executionCluster, scope)
+		if err != nil {
+			logger.Fatalf(ctx, "Failed to initialise ClusterResourceController [%+v]", err)
+		}
+
+		err = clusterResourceController.Sync(ctx)
 		if err != nil {
 			logger.Fatalf(ctx, "Failed to sync cluster resources [%+v]", err)
 		}

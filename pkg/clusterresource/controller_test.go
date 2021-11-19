@@ -7,13 +7,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
-
+	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/apis/iam/v1beta1"
+	"github.com/flyteorg/flyteadmin/pkg/executioncluster/mocks"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/resources"
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
-
 	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	mockScope "github.com/flyteorg/flytestdlib/promutils"
@@ -228,4 +231,211 @@ func TestGetCustomTemplateValues_InvalidDBModel(t *testing.T) {
 	})
 	assert.NotNil(t, err,
 		"invalid project-domain combinations in the db should result in the config defaults being applied")
+}
+
+func Test_controller_createResourceFromTemplate(t *testing.T) {
+	type args struct {
+		ctx                  context.Context
+		templateDir          string
+		templateFileName     string
+		project              models.Project
+		domain               runtimeInterfaces.Domain
+		namespace            NamespaceName
+		templateValues       templateValuesType
+		customTemplateValues templateValuesType
+	}
+	tests := []struct {
+		name            string
+		args            args
+		wantK8sObject   k8sruntime.Object
+		wantK8sManifest string
+		wantErr         bool
+	}{
+		{
+			name: "test create resource from namespace.yaml",
+			args: args{
+				ctx:              context.Background(),
+				templateDir:      "testdata",
+				templateFileName: "namespace.yaml",
+				project: models.Project{
+					Name:       "my-project",
+					Identifier: "my-project",
+				},
+				domain: runtimeInterfaces.Domain{
+					ID:   "dev",
+					Name: "dev",
+				},
+				namespace:            "my-project-dev",
+				templateValues:       templateValuesType{},
+				customTemplateValues: templateValuesType{},
+			},
+			wantK8sObject: &v1.Namespace{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Namespace",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "my-project-dev",
+				},
+				Spec: v1.NamespaceSpec{
+					Finalizers: []v1.FinalizerName{
+						"kubernetes",
+					},
+				},
+			},
+			wantK8sManifest: `apiVersion: v1
+kind: Namespace
+metadata:
+  name: my-project-dev
+spec:
+  finalizers:
+  - kubernetes
+`,
+			wantErr: false,
+		},
+		{
+			name: "test create resource from docker.yaml",
+			args: args{
+				ctx:              context.Background(),
+				templateDir:      "testdata",
+				templateFileName: "docker.yaml",
+				project: models.Project{
+					Name:       "my-project",
+					Identifier: "my-project",
+				},
+				domain: runtimeInterfaces.Domain{
+					ID:   "dev",
+					Name: "dev",
+				},
+				namespace: "my-project-dev",
+				templateValues: templateValuesType{
+					"{{ dockerSecret }}": "myDockerSecret",
+					"{{ dockerAuth }}":   "myDockerAuth",
+				},
+				customTemplateValues: templateValuesType{},
+			},
+			wantK8sObject: &v1.Secret{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Secret",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "dockerhub",
+					Namespace: "my-project-dev",
+				},
+				StringData: map[string]string{
+					".dockerconfigjson": `{"auths":{"docker.io":{"username":"mydockerusername","password":"myDockerSecret","email":"none","auth":" myDockerAuth"}}}`,
+				},
+				Type: "kubernetes.io/dockerconfigjson",
+			},
+			wantK8sManifest: `apiVersion: v1
+kind: Secret
+metadata:
+  name: dockerhub
+  namespace: my-project-dev
+stringData:
+  .dockerconfigjson: '{"auths":{"docker.io":{"username":"mydockerusername","password":"myDockerSecret","email":"none","auth":" myDockerAuth"}}}'
+type: kubernetes.io/dockerconfigjson
+`,
+			wantErr: false,
+		},
+		{
+			name: "test create resource from imagepullsecrets.yaml",
+			args: args{
+				ctx:              context.Background(),
+				templateDir:      "testdata",
+				templateFileName: "imagepullsecrets.yaml",
+				project: models.Project{
+					Name:       "my-project",
+					Identifier: "my-project",
+				},
+				domain: runtimeInterfaces.Domain{
+					ID:   "dev",
+					Name: "dev",
+				},
+				namespace:            "my-project-dev",
+				templateValues:       templateValuesType{},
+				customTemplateValues: templateValuesType{},
+			},
+			wantK8sObject: &v1.ServiceAccount{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ServiceAccount",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default",
+					Namespace: "my-project-dev",
+				},
+				ImagePullSecrets: []v1.LocalObjectReference{
+					{
+						Name: "dockerhub",
+					},
+				},
+			},
+			wantK8sManifest: `apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: default
+  namespace: my-project-dev
+imagePullSecrets:
+- name: dockerhub
+`,
+			wantErr: false,
+		},
+		{
+			name: "test create resource from gsa.yaml",
+			args: args{
+				ctx:              context.Background(),
+				templateDir:      "testdata",
+				templateFileName: "gsa.yaml",
+				project: models.Project{
+					Name:       "my-project",
+					Identifier: "my-project",
+				},
+				domain: runtimeInterfaces.Domain{
+					ID:   "dev",
+					Name: "dev",
+				},
+				namespace:            "my-project-dev",
+				templateValues:       templateValuesType{},
+				customTemplateValues: templateValuesType{},
+			},
+			wantK8sObject: &v1beta1.IAMServiceAccount{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "IAMServiceAccount",
+					APIVersion: "iam.cnrm.cloud.google.com/v1beta1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "my-project-dev-gsa",
+					Namespace: "my-project-dev",
+				},
+			},
+			wantK8sManifest: `apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMServiceAccount
+metadata:
+  name: my-project-dev-gsa
+  namespace: my-project-dev
+`,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockRepository := repositoryMocks.NewMockRepository()
+			mockCluster := &mocks.MockCluster{}
+			mockPromScope := mockScope.NewTestScope()
+			c, err := NewClusterResourceController(mockRepository, mockCluster, mockPromScope)
+			assert.NoError(t, err, "error creating testController")
+			testController := c.(*controller)
+
+			gotK8sObject, gotK8sManifest, err := testController.createResourceFromTemplate(tt.args.ctx, tt.args.templateDir, tt.args.templateFileName, tt.args.project, tt.args.domain, tt.args.namespace, tt.args.templateValues, tt.args.customTemplateValues)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("createResourceFromTemplate() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			assert.Equal(t, tt.wantK8sObject, gotK8sObject)
+			assert.Equal(t, tt.wantK8sManifest, gotK8sManifest)
+		})
+	}
 }
