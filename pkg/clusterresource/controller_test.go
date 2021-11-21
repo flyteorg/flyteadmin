@@ -365,8 +365,7 @@ metadata:
 			mockRepository := repositoryMocks.NewMockRepository()
 			mockCluster := &mocks.MockCluster{}
 			mockPromScope := mockScope.NewTestScope()
-			c, err := NewClusterResourceController(mockRepository, mockCluster, mockPromScope)
-			assert.NoError(t, err, "error creating testController")
+			c := NewClusterResourceController(mockRepository, mockCluster, mockPromScope)
 			testController := c.(*controller)
 
 			gotK8sManifest, err := testController.createResourceFromTemplate(tt.args.ctx, tt.args.templateDir, tt.args.templateFileName, tt.args.project, tt.args.domain, tt.args.namespace, tt.args.templateValues, tt.args.customTemplateValues)

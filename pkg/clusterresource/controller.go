@@ -548,7 +548,7 @@ func newMetrics(scope promutils.Scope) controllerMetrics {
 	}
 }
 
-func NewClusterResourceController(db repositories.RepositoryInterface, executionCluster interfaces.ClusterInterface, scope promutils.Scope) (Controller, error) {
+func NewClusterResourceController(db repositories.RepositoryInterface, executionCluster interfaces.ClusterInterface, scope promutils.Scope) Controller {
 	config := runtime.NewConfigurationProvider()
 
 	return &controller{
@@ -559,5 +559,5 @@ func NewClusterResourceController(db repositories.RepositoryInterface, execution
 		poller:           make(chan struct{}),
 		metrics:          newMetrics(scope),
 		appliedTemplates: make(map[string]map[string]time.Time),
-	}, nil
+	}
 }
