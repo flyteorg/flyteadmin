@@ -3,8 +3,6 @@ package clusterresource
 import (
 	"context"
 	"encoding/json"
-
-	//"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -19,7 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"k8s.io/apimachinery/pkg/api/meta"
-	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/discovery/cached/memory"
@@ -28,8 +25,6 @@ import (
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-
-	//"k8s.io/apimachinery/pkg/types"
 
 	v1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -101,8 +96,6 @@ type controller struct {
 	lastAppliedTemplateDir string
 	// Map of [namespace -> [templateFileName -> last modified time]]
 	appliedTemplates NamespaceCache
-	// K8S manifest template decoder
-	decoder k8sruntime.Decoder
 }
 
 var descCreatedAtSortParam, _ = common.NewSortParameter(admin.Sort{
