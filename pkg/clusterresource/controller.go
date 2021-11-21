@@ -3,7 +3,6 @@ package clusterresource
 import (
 	"context"
 	"encoding/json"
-
 	//"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -42,13 +41,9 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 
-	ccscheme "github.com/GoogleCloudPlatform/k8s-config-connector/pkg/client/clientset/versioned/scheme"
-
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/prometheus/client_golang/prometheus"
-
-	"k8s.io/client-go/kubernetes/scheme"
 
 	"github.com/flyteorg/flytestdlib/logger"
 	"google.golang.org/grpc/codes"
@@ -292,7 +287,6 @@ func prepareDynamicCreate(target executioncluster.ExecutionTarget, config string
 //   1) create k8s object resource from template by performing:
 //      a) read template file
 //      b) substitute templatized variables with their resolved values
-//      c) decode the output of the above into a kubernetes resource
 //   2) create the resource on the kubernetes cluster and cache successful outcomes
 func (c *controller) syncNamespace(ctx context.Context, project models.Project, domain runtimeInterfaces.Domain, namespace NamespaceName,
 	templateValues, customTemplateValues templateValuesType) error {
@@ -326,7 +320,7 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 		}
 
 		// 1) create resource from template:
-		k8sObj, k8sManifest, err := c.createResourceFromTemplate(ctx, templateDir, templateFileName, project, domain, namespace, templateValues, customTemplateValues)
+		k8sManifest, err := c.createResourceFromTemplate(ctx, templateDir, templateFileName, project, domain, namespace, templateValues, customTemplateValues)
 		if err != nil {
 			collectedErrs = append(collectedErrs, err)
 			continue
@@ -337,18 +331,17 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 			c.appliedTemplates[namespace] = make(LastModTimeCache)
 		}
 		for _, target := range c.executionCluster.GetAllValidTargets() {
-			k8sObjCopy := k8sObj.DeepCopyObject()
-			logger.Debugf(ctx, "Attempting to create resource [%+v] in cluster [%v] for namespace [%s]",
-				k8sObj.GetObjectKind().GroupVersionKind().Kind, target.ID, namespace)
-
 			dynamicObj, err := prepareDynamicCreate(target, k8sManifest)
 			if err != nil {
-				logger.Warningf(ctx, "Failed to transform kubernetes template file for [%+v] for namespace [%s] "+
-					"into a dynamic unstructured mapping with err: %v", k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace, err)
+				logger.Warningf(ctx, "Failed to transform kubernetes manifest for namespace [%s] "+
+					"into a dynamic unstructured mapping with err: %v, manifest: %v", namespace, err, k8sManifest)
 				collectedErrs = append(collectedErrs, err)
 				c.metrics.KubernetesResourcesCreateErrors.Inc()
 				continue
 			}
+
+			logger.Debugf(ctx, "Attempting to create resource [%+v] in cluster [%v] for namespace [%s]",
+				dynamicObj.obj.GetKind(), target.ID, namespace)
 
 			dr := getDynamicResourceInterface(dynamicObj.mapping, target.DynamicClient, namespace)
 			_, err = dr.Create(ctx, dynamicObj.obj, metav1.CreateOptions{})
@@ -356,17 +349,17 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 			if err != nil {
 				if k8serrors.IsAlreadyExists(err) {
 					logger.Debugf(ctx, "Type [%+v] in namespace [%s] already exists - attempting update instead",
-						k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace)
+						dynamicObj.obj.GetKind(), namespace)
 					c.metrics.AppliedTemplateExists.Inc()
 
 					// Update can be performed in 1 of 2 ways. For specific kinds, like ServiceAccount, we use merge-patch.
 					// For all other kinds we use a simple update.
-					if ok := strategicPatchTypes[k8sObjCopy.GetObjectKind().GroupVersionKind().Kind]; ok {
+					if ok := strategicPatchTypes[dynamicObj.obj.GetKind()]; ok {
 						data, err := json.Marshal(dynamicObj.obj)
 						if err != nil {
 							c.metrics.TemplateUpdateErrors.Inc()
 							logger.Warningf(ctx, "Failed to marshal resource [%+v] in namespace [%s] to json with err: %v",
-								k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace, err)
+								dynamicObj.obj.GetKind(), namespace, err)
 							collectedErrs = append(collectedErrs, err)
 							continue
 						}
@@ -377,7 +370,7 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 						if err != nil {
 							c.metrics.TemplateUpdateErrors.Inc()
 							logger.Warningf(ctx, "Failed to merge patch resource [%+v] in namespace [%s] with err: %v",
-								k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace, err)
+								dynamicObj.obj.GetKind(), namespace, err)
 							collectedErrs = append(collectedErrs, err)
 							continue
 						}
@@ -387,14 +380,14 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 						if err != nil && !k8serrors.IsAlreadyExists(err) {
 							c.metrics.TemplateUpdateErrors.Inc()
 							logger.Warningf(ctx, "Failed to dynamically update resource [%+v] in namespace [%s] with err :%v",
-								k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace, err)
+								dynamicObj.obj.GetKind(), namespace, err)
 							collectedErrs = append(collectedErrs, err)
 							continue
 						}
 					}
 
 					logger.Debugf(ctx, "Successfully updated resource [%+v] in namespace [%s]",
-						k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace)
+						dynamicObj.obj.GetKind(), namespace)
 					c.appliedTemplates[namespace][templateFile.Name()] = templateFile.ModTime()
 				} else {
 					// Some error other than AlreadyExists was raised when we tried to Create the k8s object.
@@ -408,7 +401,7 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 				}
 			} else {
 				logger.Debugf(ctx, "Created resource [%+v] for namespace [%s] in kubernetes",
-					k8sObj.GetObjectKind().GroupVersionKind().Kind, namespace)
+					dynamicObj.obj.GetKind(), namespace)
 				c.metrics.KubernetesResourcesCreated.Inc()
 				c.appliedTemplates[namespace][templateFile.Name()] = templateFile.ModTime()
 			}
@@ -423,11 +416,10 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 // createResourceFromTemplate this method perform following processes:
 //      1) read template file pointed by templateDir and templateFileName
 //      2) substitute templatized variables with their resolved values
-//      3) decode the output of the above into a kubernetes resource
-// the method will return the kubernetes resource object and its raw manifest
+// the method will return the kubernetes raw manifest
 func (c *controller) createResourceFromTemplate(ctx context.Context, templateDir string,
 	templateFileName string, project models.Project, domain runtimeInterfaces.Domain, namespace NamespaceName,
-	templateValues, customTemplateValues templateValuesType) (k8sruntime.Object, string, error) {
+	templateValues, customTemplateValues templateValuesType) (string, error) {
 	// 1) read the template file
 	template, err := ioutil.ReadFile(path.Join(templateDir, templateFileName))
 	if err != nil {
@@ -438,7 +430,7 @@ func (c *controller) createResourceFromTemplate(ctx context.Context, templateDir
 			codes.Internal, "failed to read config template from path [%s] for namespace [%s] with err: %v",
 			templateFileName, namespace, err)
 		c.metrics.TemplateReadErrors.Inc()
-		return nil, "", err
+		return "", err
 	}
 	logger.Debugf(ctx, "successfully read template config file [%s]", templateFileName)
 
@@ -458,19 +450,7 @@ func (c *controller) createResourceFromTemplate(ctx context.Context, templateDir
 		k8sManifest = strings.Replace(k8sManifest, templateKey, templateValue, replaceAllInstancesOfString)
 	}
 
-	// 3) decode the kubernetes resource template file into an actual resource object
-	k8sObj, _, err := c.decoder.Decode([]byte(k8sManifest), nil, nil)
-	if err != nil {
-		logger.Warningf(ctx, "Failed to decode config template [%s] for namespace [%s] into a kubernetes object with err: %v",
-			templateFileName, namespace, err)
-		err := errors.NewFlyteAdminErrorf(codes.InvalidArgument,
-			"Failed to decode namespace config template [%s] for namespace [%s] into a kubernetes object with err: %v",
-			templateFileName, namespace, err)
-		c.metrics.TemplateDecodeErrors.Inc()
-		return nil, "", err
-	}
-
-	return k8sObj, k8sManifest, nil
+	return k8sManifest, nil
 }
 
 func (c *controller) Sync(ctx context.Context) error {
@@ -576,10 +556,6 @@ func newMetrics(scope promutils.Scope) controllerMetrics {
 
 func NewClusterResourceController(db repositories.RepositoryInterface, executionCluster interfaces.ClusterInterface, scope promutils.Scope) (Controller, error) {
 	config := runtime.NewConfigurationProvider()
-	// allow resources from github.com/GoogleCloudPlatform/k8s-config-connector to be recognized by the controller's decoder
-	if err := ccscheme.AddToScheme(scheme.Scheme); err != nil {
-		return nil, err
-	}
 
 	return &controller{
 		db:               db,
@@ -589,6 +565,5 @@ func NewClusterResourceController(db repositories.RepositoryInterface, execution
 		poller:           make(chan struct{}),
 		metrics:          newMetrics(scope),
 		appliedTemplates: make(map[string]map[string]time.Time),
-		decoder:          scheme.Codecs.UniversalDeserializer(),
 	}, nil
 }
