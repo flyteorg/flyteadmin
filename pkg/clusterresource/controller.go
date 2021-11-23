@@ -506,7 +506,7 @@ func (c *controller) createResourceFromTemplate(ctx context.Context, templateDir
 func (c *controller) createPatch(mapping *meta.RESTMapping, currentObj *unstructured.Unstructured, modified []byte, namespace string) ([]byte, types.PatchType, error) {
 	current, err := k8sruntime.Encode(unstructured.UnstructuredJSONScheme, currentObj)
 	if err != nil {
-		return nil, "", fmt.Errorf("Failed to encode [%+v] in namespace [%s] to json with err: %v",
+		return nil, "", fmt.Errorf("failed to encode [%+v] in namespace [%s] to json with err: %v",
 			currentObj.GetKind(), namespace, err)
 	}
 
@@ -521,13 +521,13 @@ func (c *controller) createPatch(mapping *meta.RESTMapping, currentObj *unstruct
 		if patch == nil {
 			lookupPatchMeta, err := strategicpatch.NewPatchMetaFromStruct(obj)
 			if err != nil {
-				return nil, "", fmt.Errorf("Failed to create lookup patch meta for [%+v] in namespace [%s] with err: %v",
+				return nil, "", fmt.Errorf("failed to create lookup patch meta for [%+v] in namespace [%s] with err: %v",
 					currentObj.GetKind(), namespace, err)
 			}
 
 			patch, err = strategicpatch.CreateThreeWayMergePatch(original, modified, current, lookupPatchMeta, true)
 			if err != nil {
-				return nil, "", fmt.Errorf("Failed to create 3 way merge patch for resource [%+v] in namespace [%s] with err: %v\noriginal:\n%s\nmodified:\n%s\ncurrent:\n%s",
+				return nil, "", fmt.Errorf("failed to create 3 way merge patch for resource [%+v] in namespace [%s] with err: %v\noriginal:\n%s\nmodified:\n%s\ncurrent:\n%s",
 					currentObj.GetKind(), namespace, err, original, modified, current)
 			}
 		}
@@ -537,11 +537,11 @@ func (c *controller) createPatch(mapping *meta.RESTMapping, currentObj *unstruct
 			mergepatch.RequireKeyUnchanged("kind"), mergepatch.RequireMetadataKeyUnchanged("name")}
 		patch, err = jsonmergepatch.CreateThreeWayJSONMergePatch(original, modified, current, preconditions...)
 		if err != nil {
-			return nil, "", fmt.Errorf("Failed to create 3 way merge patch for resource [%+v] in namespace [%s] with err: %v",
+			return nil, "", fmt.Errorf("failed to create 3 way merge patch for resource [%+v] in namespace [%s] with err: %v",
 				currentObj.GetKind(), namespace, err)
 		}
 	case err != nil:
-		return nil, "", fmt.Errorf("Failed to create get instance of versioned object [%+v] in namespace [%s] with err: %v",
+		return nil, "", fmt.Errorf("failed to create get instance of versioned object [%+v] in namespace [%s] with err: %v",
 			currentObj.GetKind(), namespace, err)
 
 	}
@@ -554,7 +554,7 @@ func (c *controller) createPatch(mapping *meta.RESTMapping, currentObj *unstruct
 	if currentObj.GetResourceVersion() != "" {
 		patch, err = addResourceVersion(patch, currentObj.GetResourceVersion())
 		if err != nil {
-			return nil, "", fmt.Errorf("Failed adding resource version for object [%+v] in namespace [%s] with err: %v",
+			return nil, "", fmt.Errorf("failed adding resource version for object [%+v] in namespace [%s] with err: %v",
 				currentObj.GetKind(), namespace, err)
 		}
 	}
