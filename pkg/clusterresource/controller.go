@@ -15,6 +15,7 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/executioncluster"
 	"github.com/flyteorg/flyteadmin/pkg/runtime"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/jsonmergepatch"
 	"k8s.io/apimachinery/pkg/util/mergepatch"
@@ -32,7 +33,6 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	v1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/resources"
@@ -108,18 +108,6 @@ var descCreatedAtSortParam, _ = common.NewSortParameter(admin.Sort{
 	Direction: admin.Sort_DESCENDING,
 	Key:       "created_at",
 })
-
-// Use a strategic-merge-patch to mimic `kubectl apply` behavior for serviceaccounts.
-// Kubectl defaults to using the StrategicMergePatch strategy.
-// However the controller-runtime only has an implementation for MergePatch which we were formerly
-// using but failed to actually always merge resources in the Patch call.
-// INTERESTINGLY Patch doesn't actually appear to update the majority of resources. We default to using Update but
-// whitelist the specific set of resources that require a Patch to work instead.
-// If you use update with a ServiceAccount - *every* call to Update results in a new corresponding secret being created
-// which has the (not so) fun side-effect of overwhelming API server when this Sync script is run as a cron.
-var strategicPatchTypes = map[string]bool{
-	v1.ServiceAccountKind: true,
-}
 
 func (c *controller) templateAlreadyApplied(namespace NamespaceName, templateFile os.FileInfo) bool {
 	namespacedAppliedTemplates, ok := c.appliedTemplates[namespace]
@@ -370,7 +358,7 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 						continue
 					}
 
-					patch, patchType, err := c.createPatch(dynamicObj.mapping, currentObj, modified, namespace)
+					patch, patchType, err := c.createPatch(dynamicObj.mapping.GroupVersionKind, currentObj, modified, namespace)
 					if err != nil {
 						c.metrics.TemplateUpdateErrors.Inc()
 						logger.Warningf(ctx, "Failed to create patch for resource [%+v] in namespace [%s] err: %v",
@@ -503,7 +491,7 @@ func (c *controller) createResourceFromTemplate(ctx context.Context, templateDir
 // for native k8s resource, strategic merge patch is used
 // for custom resource, json merge patch is used
 // heavily inspired by kubectl's patcher
-func (c *controller) createPatch(mapping *meta.RESTMapping, currentObj *unstructured.Unstructured, modified []byte, namespace string) ([]byte, types.PatchType, error) {
+func (c *controller) createPatch(gvk schema.GroupVersionKind, currentObj *unstructured.Unstructured, modified []byte, namespace string) ([]byte, types.PatchType, error) {
 	current, err := k8sruntime.Encode(unstructured.UnstructuredJSONScheme, currentObj)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to encode [%+v] in namespace [%s] to json with err: %v",
@@ -511,10 +499,14 @@ func (c *controller) createPatch(mapping *meta.RESTMapping, currentObj *unstruct
 	}
 
 	original, err := getLastApplied(currentObj)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to get original resource [%+v] in namespace [%s] with err: %v",
+			currentObj.GetKind(), namespace, err)
+	}
 
 	var patch []byte
 	patchType := types.StrategicMergePatchType
-	obj, err := scheme.Scheme.New(mapping.GroupVersionKind)
+	obj, err := scheme.Scheme.New(gvk)
 	switch {
 	case err == nil:
 		patchType = types.StrategicMergePatchType
