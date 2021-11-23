@@ -14,9 +14,15 @@ import (
 
 	"github.com/flyteorg/flyteadmin/pkg/executioncluster"
 	"github.com/flyteorg/flyteadmin/pkg/runtime"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/jsonmergepatch"
+	"k8s.io/apimachinery/pkg/util/mergepatch"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
+	"k8s.io/client-go/kubernetes/scheme"
 
 	"k8s.io/apimachinery/pkg/api/meta"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/discovery/cached/memory"
@@ -346,38 +352,47 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 						dynamicObj.obj.GetKind(), namespace)
 					c.metrics.AppliedTemplateExists.Inc()
 
-					// Update can be performed in 1 of 2 ways. For specific kinds, like ServiceAccount, we use merge-patch.
-					// For all other kinds we use a simple update.
-					if ok := strategicPatchTypes[dynamicObj.obj.GetKind()]; ok {
-						data, err := json.Marshal(dynamicObj.obj)
-						if err != nil {
-							c.metrics.TemplateUpdateErrors.Inc()
-							logger.Warningf(ctx, "Failed to marshal resource [%+v] in namespace [%s] to json with err: %v",
-								dynamicObj.obj.GetKind(), namespace, err)
-							collectedErrs = append(collectedErrs, err)
-							continue
-						}
+					currentObj, err := dr.Get(ctx, dynamicObj.obj.GetName(), metav1.GetOptions{})
+					if err != nil {
+						c.metrics.TemplateUpdateErrors.Inc()
+						logger.Warningf(ctx, "Failed to get current resource from server [%+v] in namespace [%s] with err: %v",
+							dynamicObj.obj.GetKind(), namespace, err)
+						collectedErrs = append(collectedErrs, err)
+						continue
+					}
 
-						dr := getDynamicResourceInterface(dynamicObj.mapping, target.DynamicClient, namespace)
-						_, err = dr.Patch(ctx, dynamicObj.obj.GetName(),
-							types.StrategicMergePatchType, data, metav1.PatchOptions{})
-						if err != nil {
-							c.metrics.TemplateUpdateErrors.Inc()
-							logger.Warningf(ctx, "Failed to merge patch resource [%+v] in namespace [%s] with err: %v",
-								dynamicObj.obj.GetKind(), namespace, err)
-							collectedErrs = append(collectedErrs, err)
-							continue
-						}
-					} else {
-						dr := getDynamicResourceInterface(dynamicObj.mapping, target.DynamicClient, namespace)
-						_, err = dr.Update(ctx, dynamicObj.obj, metav1.UpdateOptions{})
-						if err != nil && !k8serrors.IsAlreadyExists(err) {
-							c.metrics.TemplateUpdateErrors.Inc()
-							logger.Warningf(ctx, "Failed to dynamically update resource [%+v] in namespace [%s] with err :%v",
-								dynamicObj.obj.GetKind(), namespace, err)
-							collectedErrs = append(collectedErrs, err)
-							continue
-						}
+					modified, err := json.Marshal(dynamicObj.obj)
+					if err != nil {
+						c.metrics.TemplateUpdateErrors.Inc()
+						logger.Warningf(ctx, "Failed to marshal resource [%+v] in namespace [%s] to json with err: %v",
+							dynamicObj.obj.GetKind(), namespace, err)
+						collectedErrs = append(collectedErrs, err)
+						continue
+					}
+
+					patch, patchType, err := c.createPatch(dynamicObj.mapping, currentObj, modified, namespace)
+					if err != nil {
+						c.metrics.TemplateUpdateErrors.Inc()
+						logger.Warningf(ctx, "Failed to create patch for resource [%+v] in namespace [%s] err: %v",
+							dynamicObj.obj.GetKind(), namespace, err)
+						collectedErrs = append(collectedErrs, err)
+						continue
+					}
+
+					if string(patch) == "{}" {
+						logger.Infof(ctx, "Resource [%+v] in namespace [%s] is not modified",
+							dynamicObj.obj.GetKind(), namespace)
+						continue
+					}
+
+					_, err = dr.Patch(ctx, dynamicObj.obj.GetName(),
+						patchType, patch, metav1.PatchOptions{})
+					if err != nil {
+						c.metrics.TemplateUpdateErrors.Inc()
+						logger.Warningf(ctx, "Failed to patch resource [%+v] in namespace [%s] with err: %v",
+							dynamicObj.obj.GetKind(), namespace, err)
+						collectedErrs = append(collectedErrs, err)
+						continue
 					}
 
 					logger.Debugf(ctx, "Successfully updated resource [%+v] in namespace [%s]",
@@ -405,6 +420,43 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 		return errors.NewCollectedFlyteAdminError(codes.Internal, collectedErrs)
 	}
 	return nil
+}
+
+var metadataAccessor = meta.NewAccessor()
+
+// getLastApplied get last applied manifest from object's annotation
+func getLastApplied(obj k8sruntime.Object) ([]byte, error) {
+	annots, err := metadataAccessor.Annotations(obj)
+	if err != nil {
+		return nil, err
+	}
+
+	if annots == nil {
+		return nil, nil
+	}
+
+	lastApplied, ok := annots[corev1.LastAppliedConfigAnnotation]
+	if !ok {
+		return nil, nil
+	}
+
+	return []byte(lastApplied), nil
+}
+
+func addResourceVersion(patch []byte, rv string) ([]byte, error) {
+	var patchMap map[string]interface{}
+	err := json.Unmarshal(patch, &patchMap)
+	if err != nil {
+		return nil, err
+	}
+	u := unstructured.Unstructured{Object: patchMap}
+	a, err := meta.Accessor(&u)
+	if err != nil {
+		return nil, err
+	}
+	a.SetResourceVersion(rv)
+
+	return json.Marshal(patchMap)
 }
 
 // createResourceFromTemplate this method perform following processes:
@@ -445,6 +497,69 @@ func (c *controller) createResourceFromTemplate(ctx context.Context, templateDir
 	}
 
 	return k8sManifest, nil
+}
+
+// createPatch create 3-way merge patch of current object, original object (retrieved from last applied annotation), and the modification
+// for native k8s resource, strategic merge patch is used
+// for custom resource, json merge patch is used
+// heavily inspired by kubectl's patcher
+func (c *controller) createPatch(mapping *meta.RESTMapping, currentObj *unstructured.Unstructured, modified []byte, namespace string) ([]byte, types.PatchType, error) {
+	current, err := k8sruntime.Encode(unstructured.UnstructuredJSONScheme, currentObj)
+	if err != nil {
+		return nil, "", fmt.Errorf("Failed to encode [%+v] in namespace [%s] to json with err: %v",
+			currentObj.GetKind(), namespace, err)
+	}
+
+	original, err := getLastApplied(currentObj)
+
+	var patch []byte
+	patchType := types.StrategicMergePatchType
+	obj, err := scheme.Scheme.New(mapping.GroupVersionKind)
+	switch {
+	case err == nil:
+		patchType = types.StrategicMergePatchType
+		if patch == nil {
+			lookupPatchMeta, err := strategicpatch.NewPatchMetaFromStruct(obj)
+			if err != nil {
+				return nil, "", fmt.Errorf("Failed to create lookup patch meta for [%+v] in namespace [%s] with err: %v",
+					currentObj.GetKind(), namespace, err)
+			}
+
+			patch, err = strategicpatch.CreateThreeWayMergePatch(original, modified, current, lookupPatchMeta, true)
+			if err != nil {
+				return nil, "", fmt.Errorf("Failed to create 3 way merge patch for resource [%+v] in namespace [%s] with err: %v\noriginal:\n%s\nmodified:\n%s\ncurrent:\n%s",
+					currentObj.GetKind(), namespace, err, original, modified, current)
+			}
+		}
+	case k8sruntime.IsNotRegisteredError(err):
+		patchType = types.MergePatchType
+		preconditions := []mergepatch.PreconditionFunc{mergepatch.RequireKeyUnchanged("apiVersion"),
+			mergepatch.RequireKeyUnchanged("kind"), mergepatch.RequireMetadataKeyUnchanged("name")}
+		patch, err = jsonmergepatch.CreateThreeWayJSONMergePatch(original, modified, current, preconditions...)
+		if err != nil {
+			return nil, "", fmt.Errorf("Failed to create 3 way merge patch for resource [%+v] in namespace [%s] with err: %v",
+				currentObj.GetKind(), namespace, err)
+		}
+	case err != nil:
+		return nil, "", fmt.Errorf("Failed to create get instance of versioned object [%+v] in namespace [%s] with err: %v",
+			currentObj.GetKind(), namespace, err)
+
+	}
+
+	if string(patch) == "{}" {
+		// not modified
+		return patch, patchType, nil
+	}
+
+	if currentObj.GetResourceVersion() != "" {
+		patch, err = addResourceVersion(patch, currentObj.GetResourceVersion())
+		if err != nil {
+			return nil, "", fmt.Errorf("Failed adding resource version for object [%+v] in namespace [%s] with err: %v",
+				currentObj.GetKind(), namespace, err)
+		}
+	}
+
+	return patch, patchType, nil
 }
 
 func (c *controller) Sync(ctx context.Context) error {
