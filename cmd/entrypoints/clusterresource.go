@@ -63,7 +63,6 @@ var controllerRunCmd = &cobra.Command{
 			db)
 
 		clusterResourceController := clusterresource.NewClusterResourceController(db, executionCluster, scope)
-
 		clusterResourceController.Run()
 		logger.Infof(ctx, "ClusterResourceController started successfully")
 	},
