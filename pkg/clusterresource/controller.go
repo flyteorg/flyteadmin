@@ -63,6 +63,7 @@ const projectVariable = "project"
 const domainVariable = "domain"
 const templateVariableFormat = "{{ %s }}"
 const replaceAllInstancesOfString = -1
+const noChange = "{}"
 
 // The clusterresource Controller manages applying desired templatized kubernetes resource files as resources
 // in the execution kubernetes cluster.
@@ -367,7 +368,7 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 						continue
 					}
 
-					if string(patch) == "{}" {
+					if string(patch) == noChange {
 						logger.Infof(ctx, "Resource [%+v] in namespace [%s] is not modified",
 							dynamicObj.obj.GetKind(), namespace)
 						continue
@@ -509,19 +510,16 @@ func (c *controller) createPatch(gvk schema.GroupVersionKind, currentObj *unstru
 	obj, err := scheme.Scheme.New(gvk)
 	switch {
 	case err == nil:
-		patchType = types.StrategicMergePatchType
-		if patch == nil {
-			lookupPatchMeta, err := strategicpatch.NewPatchMetaFromStruct(obj)
-			if err != nil {
-				return nil, "", fmt.Errorf("failed to create lookup patch meta for [%+v] in namespace [%s] with err: %v",
-					currentObj.GetKind(), namespace, err)
-			}
+		lookupPatchMeta, err := strategicpatch.NewPatchMetaFromStruct(obj)
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to create lookup patch meta for [%+v] in namespace [%s] with err: %v",
+				currentObj.GetKind(), namespace, err)
+		}
 
-			patch, err = strategicpatch.CreateThreeWayMergePatch(original, modified, current, lookupPatchMeta, true)
-			if err != nil {
-				return nil, "", fmt.Errorf("failed to create 3 way merge patch for resource [%+v] in namespace [%s] with err: %v\noriginal:\n%s\nmodified:\n%s\ncurrent:\n%s",
-					currentObj.GetKind(), namespace, err, original, modified, current)
-			}
+		patch, err = strategicpatch.CreateThreeWayMergePatch(original, modified, current, lookupPatchMeta, true)
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to create 3 way merge patch for resource [%+v] in namespace [%s] with err: %v\noriginal:\n%s\nmodified:\n%s\ncurrent:\n%s",
+				currentObj.GetKind(), namespace, err, original, modified, current)
 		}
 	case k8sruntime.IsNotRegisteredError(err):
 		patchType = types.MergePatchType
@@ -532,18 +530,18 @@ func (c *controller) createPatch(gvk schema.GroupVersionKind, currentObj *unstru
 			return nil, "", fmt.Errorf("failed to create 3 way merge patch for resource [%+v] in namespace [%s] with err: %v",
 				currentObj.GetKind(), namespace, err)
 		}
-	case err != nil:
+	default:
 		return nil, "", fmt.Errorf("failed to create get instance of versioned object [%+v] in namespace [%s] with err: %v",
 			currentObj.GetKind(), namespace, err)
 
 	}
 
-	if string(patch) == "{}" {
+	if string(patch) == noChange {
 		// not modified
 		return patch, patchType, nil
 	}
 
-	if currentObj.GetResourceVersion() != "" {
+	if len(currentObj.GetResourceVersion()) > 0 {
 		patch, err = addResourceVersion(patch, currentObj.GetResourceVersion())
 		if err != nil {
 			return nil, "", fmt.Errorf("failed adding resource version for object [%+v] in namespace [%s] with err: %v",
