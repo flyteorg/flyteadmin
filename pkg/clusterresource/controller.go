@@ -527,7 +527,7 @@ func (c *controller) createPatch(gvk schema.GroupVersionKind, currentObj *unstru
 			mergepatch.RequireKeyUnchanged("kind"), mergepatch.RequireMetadataKeyUnchanged("name")}
 		patch, err = jsonmergepatch.CreateThreeWayJSONMergePatch(original, modified, current, preconditions...)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to create 3 way merge patch for resource [%+v] in namespace [%s] with err: %v",
+			return nil, "", fmt.Errorf("failed to create 3 way json merge patch for resource [%+v] in namespace [%s] with err: %v",
 				currentObj.GetKind(), namespace, err)
 		}
 	default:
