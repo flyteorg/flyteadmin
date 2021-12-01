@@ -275,20 +275,14 @@ func ValidateDatetime(datetime string) error {
 	if datetime == "" {
 		return nil
 	}
-	//timestamp := timestamppb.Timestamp.AsTime()
-	//if timestamp == nil {
-	//	return errors.NewFlyteAdminErrorf("")
-	//}
-	//timestamppb.Timestamp.CheckValid()
-	result, err := time.Parse(time.RFC3339, datetime)
+	result, err := time.Parse(time.RFC3339, datetime) // TODO fix format/layout
 	if err != nil {
 		return err
-	} // TODO fix format/layout
+	}
 	timestamp := timestamppb.Timestamp{Seconds: int64(result.Second()), Nanos: int32(result.Nanosecond())}
 	err = timestamp.CheckValid() // TODO do we need this?
 	if err != nil {
 		return err
 	}
 	return nil
-
 }
