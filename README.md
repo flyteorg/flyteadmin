@@ -24,13 +24,13 @@ Flyte Admin has a few useful make targets for linting and testing. Please use th
 minor bugs and linting errors.
 
 ```
-  $ make goimports
+  $ make compile
 ```
 
 ```
-  $ make test_unit
+  $ make integration
 ```
 
 ```
-  $ make lint
+  $ make all
 ```

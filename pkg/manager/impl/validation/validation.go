@@ -1,8 +1,10 @@
 package validation
 
 import (
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -267,4 +269,26 @@ func ValidateOutputData(outputData *core.LiteralMap, maxSizeInBytes int64) error
 		return nil
 	}
 	return errors.NewFlyteAdminErrorf(codes.ResourceExhausted, "Output data size exceeds platform configured threshold (%+v > %v)", outputSizeInBytes, maxSizeInBytes)
+}
+
+func ValidateDatetime(datetime string) error {
+	if datetime == "" {
+		return nil
+	}
+	//timestamp := timestamppb.Timestamp.AsTime()
+	//if timestamp == nil {
+	//	return errors.NewFlyteAdminErrorf("")
+	//}
+	//timestamppb.Timestamp.CheckValid()
+	result, err := time.Parse(time.RFC3339, datetime)
+	if err != nil {
+		return err
+	} // TODO fix format/layout
+	timestamp := timestamppb.Timestamp{Seconds: int64(result.Second()), Nanos: int32(result.Nanosecond())}
+	err = timestamp.CheckValid() // TODO do we need this?
+	if err != nil {
+		return err
+	}
+	return nil
+
 }
