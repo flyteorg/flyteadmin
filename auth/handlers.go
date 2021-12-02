@@ -46,10 +46,27 @@ func RegisterHandlers(ctx context.Context, handler interfaces.HandlerRegisterer,
 
 	// These endpoints require authentication
 	handler.HandleFunc("/logout", GetLogoutEndpointHandler(ctx, authCtx))
+	handler.HandleFunc("/auth", GetAuthVerifierHandler(ctx, authCtx))
 }
 
-// Look for access token and refresh token, if both are present and the access token is expired, then attempt to
-// refresh. Otherwise do nothing and proceed to the next handler. If successfully refreshed, proceed to the landing page.
+// GetAuthVerifierHandler can be used to validate whether a request is authenticated or not. If a token or a valid cookie
+// is present, it'll return 202 Accepted response. Otherwise, it'll return 401 Unauthorized response.
+func GetAuthVerifierHandler(ctx context.Context, authCtx interfaces.AuthenticationContext) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		_, err := IdentityContextFromRequest(ctx, request, authCtx)
+		if err != nil {
+			logger.Debugf(ctx, "Request unauthenticated. Error: %v", err)
+			writer.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		writer.WriteHeader(http.StatusAccepted)
+	}
+}
+
+// RefreshTokensIfExists looks for access token and refresh token, if both are present and the access token is expired,
+// then attempt to refresh. Otherwise, do nothing and proceed to the next handler. If successfully refreshed, proceed to
+// the landing page.
 func RefreshTokensIfExists(ctx context.Context, authCtx interfaces.AuthenticationContext, authHandler http.HandlerFunc) http.HandlerFunc {
 
 	return func(writer http.ResponseWriter, request *http.Request) {
@@ -271,11 +288,11 @@ func WithAuditFields(ctx context.Context, subject string, clientIds []string, to
 	})
 }
 
-// This is effectively middleware for the grpc gateway, it allows us to modify the translation between HTTP request
-// and gRPC request. There are two potential sources for bearer tokens, it can come from an authorization header (not
-// yet implemented), or encrypted cookies. Note that when deploying behind Envoy, you have the option to look for a
-// configurable, non-standard header name. The token is extracted and turned into a metadata object which is then
-// attached to the request, from which the token is extracted later for verification.
+// GetHTTPRequestCookieToMetadataHandler is effectively a middleware for the grpc gateway, it allows us to modify the
+// translation between HTTP request and gRPC request. There are two potential sources for bearer tokens, it can come
+// from an authorization header (not yet implemented), or encrypted cookies. Note that when deploying behind Envoy, you
+// have the option to look for a configurable, non-standard header name. The token is extracted and turned into a
+// metadata object which is then attached to the request, from which the token is extracted later for verification.
 func GetHTTPRequestCookieToMetadataHandler(authCtx interfaces.AuthenticationContext) HTTPRequestToMetadataAnnotator {
 	return func(ctx context.Context, request *http.Request) metadata.MD {
 		// TODO: Improve error handling
@@ -320,8 +337,8 @@ func GetHTTPRequestCookieToMetadataHandler(authCtx interfaces.AuthenticationCont
 	}
 }
 
-// Intercepts the incoming HTTP requests and marks it as such so that the downstream code can use it to enforce auth.
-// See the enforceHTTP/Grpc options for more information.
+// GetHTTPMetadataTaggingHandler intercepts the incoming HTTP requests and marks it as such so that the downstream code
+// can use it to enforce auth. See the enforceHTTP/Grpc options for more information.
 func GetHTTPMetadataTaggingHandler() HTTPRequestToMetadataAnnotator {
 	return func(ctx context.Context, request *http.Request) metadata.MD {
 		return metadata.MD{
@@ -412,8 +429,8 @@ func QueryUserInfoUsingAccessToken(ctx context.Context, originalRequest *http.Re
 	return resp, err
 }
 
-// This returns a handler that will redirect (303) to the well-known metadata endpoint for the OAuth2 authorization server
-// See https://tools.ietf.org/html/rfc8414 for more information.
+// GetOIdCMetadataEndpointRedirectHandler returns a handler that will redirect (303) to the well-known metadata endpoint
+// for the OAuth2 authorization server. See https://tools.ietf.org/html/rfc8414 for more information.
 func GetOIdCMetadataEndpointRedirectHandler(ctx context.Context, authCtx interfaces.AuthenticationContext) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		metadataURL := authCtx.Options().UserAuth.OpenID.BaseURL.ResolveReference(authCtx.GetOIdCMetadataURL())

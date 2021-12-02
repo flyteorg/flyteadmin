@@ -62,6 +62,19 @@ func addCsrfCookie(request *http.Request) {
 	request.AddCookie(&cookie)
 }
 
+func TestGetAuthVerifierHandler(t *testing.T) {
+	ctx := context.Background()
+	localServer := httptest.NewServer(http.HandlerFunc(hf))
+	defer localServer.Close()
+	http.DefaultClient = localServer.Client()
+	mockAuthCtx := setupMockedAuthContextAtEndpoint(localServer.URL)
+	hf := GetAuthVerifierHandler(ctx, mockAuthCtx)
+	request := httptest.NewRequest("GET", localServer.URL+"/auth", nil)
+	writer := httptest.NewRecorder()
+	hf(writer, request)
+	assert.Equal(t, "403 Forbidden", writer.Result().Status)
+}
+
 func TestGetCallbackHandlerWithErrorOnToken(t *testing.T) {
 	ctx := context.Background()
 	hf := func(w http.ResponseWriter, r *http.Request) {
