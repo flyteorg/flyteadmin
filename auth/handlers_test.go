@@ -34,6 +34,7 @@ func setupMockedAuthContextAtEndpoint(endpoint string) *mocks.AuthenticationCont
 	mockAuthCtx := &mocks.AuthenticationContext{}
 	mockAuthCtx.OnOptions().Return(&config.Config{})
 	mockCookieHandler := new(mocks.CookieHandler)
+	mockCookieHandler.OnRetrieveTokenValuesMatch(mock.Anything, mock.Anything).Return("", "", "", nil)
 	dummyOAuth2Config := oauth2.Config{
 		ClientID: "abc",
 		Endpoint: oauth2.Endpoint{
@@ -63,16 +64,18 @@ func addCsrfCookie(request *http.Request) {
 }
 
 func TestGetAuthVerifierHandler(t *testing.T) {
-	ctx := context.Background()
-	localServer := httptest.NewServer(http.HandlerFunc(hf))
-	defer localServer.Close()
-	http.DefaultClient = localServer.Client()
-	mockAuthCtx := setupMockedAuthContextAtEndpoint(localServer.URL)
-	hf := GetAuthVerifierHandler(ctx, mockAuthCtx)
-	request := httptest.NewRequest("GET", localServer.URL+"/auth", nil)
-	writer := httptest.NewRecorder()
-	hf(writer, request)
-	assert.Equal(t, "403 Forbidden", writer.Result().Status)
+	t.Run("No auth", func(t *testing.T) {
+		ctx := context.Background()
+		mockAuthCtx := setupMockedAuthContextAtEndpoint("endpoint")
+		hf := GetAuthVerifierHandler(ctx, mockAuthCtx)
+		localServer := httptest.NewServer(hf)
+		defer localServer.Close()
+		http.DefaultClient = localServer.Client()
+		request := httptest.NewRequest("GET", localServer.URL+"/auth", nil)
+		writer := httptest.NewRecorder()
+		hf(writer, request)
+		assert.Equal(t, "401 Unauthorized", writer.Result().Status)
+	})
 }
 
 func TestGetCallbackHandlerWithErrorOnToken(t *testing.T) {
