@@ -70,4 +70,4 @@ seed_projects:
 all: compile
 
 generate: download_tooling
-	@go generate ./...
+	@script/go-gen.sh
