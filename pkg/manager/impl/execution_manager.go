@@ -574,7 +574,8 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		Labels:              labels,
 		Annotations:         annotations,
 		ExecutionConfig:     executionConfig,
-		Auth:                resolvePermissions(&request, launchPlan),
+		Auth:                resolvePermissions(request, launchPlan),
+		SecurityContext:     resolvePermissionsFromSecurityCtx(ctx, request, launchPlan),
 		TaskResources:       &platformTaskResources,
 		EventVersion:        m.config.ApplicationConfiguration().GetTopLevelConfig().EventVersion,
 		RoleNameKey:         m.config.ApplicationConfiguration().GetTopLevelConfig().RoleNameKey,
@@ -650,7 +651,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	return ctx, executionModel, nil
 }
 
-func resolvePermissions(request *admin.ExecutionCreateRequest, launchPlan *admin.LaunchPlan) *admin.AuthRole {
+func resolvePermissions(request admin.ExecutionCreateRequest, launchPlan *admin.LaunchPlan) *admin.AuthRole {
 	if request.Spec.AuthRole != nil {
 		return request.Spec.AuthRole
 	}
@@ -670,6 +671,20 @@ func resolvePermissions(request *admin.ExecutionCreateRequest, launchPlan *admin
 		}
 	}
 	return &admin.AuthRole{}
+}
+
+func resolvePermissionsFromSecurityCtx(ctx context.Context, request admin.ExecutionCreateRequest, launchPlan *admin.LaunchPlan) *core.SecurityContext {
+	// Use security context from the request if its set
+	if request.Spec.SecurityContext != nil {
+		return request.Spec.SecurityContext
+	}
+
+	// Use launchplans security context if its set
+	if launchPlan.Spec.SecurityContext != nil {
+		return launchPlan.Spec.SecurityContext
+	}
+	logger.Warn(ctx, "Setting an empty security context")
+	return &core.SecurityContext{}
 }
 
 func (m *ExecutionManager) launchExecutionAndPrepareModel(
@@ -780,7 +795,8 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		Labels:              labels,
 		Annotations:         annotations,
 		ExecutionConfig:     executionConfig,
-		Auth:                resolvePermissions(&request, launchPlan),
+		Auth:                resolvePermissions(request, launchPlan),
+		SecurityContext:     resolvePermissionsFromSecurityCtx(ctx, request, launchPlan),
 		TaskResources:       &platformTaskResources,
 		EventVersion:        m.config.ApplicationConfiguration().GetTopLevelConfig().EventVersion,
 		RoleNameKey:         m.config.ApplicationConfiguration().GetTopLevelConfig().RoleNameKey,

@@ -25,6 +25,7 @@ type ExecutionParameters struct {
 	TaskPluginOverrides []*admin.PluginOverride
 	ExecutionConfig     *admin.WorkflowExecutionConfig
 	Auth                *admin.AuthRole
+	SecurityContext     *core.SecurityContext
 	RecoveryExecution   *core.WorkflowExecutionIdentifier
 	TaskResources       *TaskResources
 	EventVersion        int

@@ -40,6 +40,21 @@ func addPermissions(auth *admin.AuthRole, roleNameKey string, flyteWf *v1alpha1.
 	}
 }
 
+func addPermissionsFromSecurtiyCtx(securityCtx *core.SecurityContext, roleNameKey string, flyteWf *v1alpha1.FlyteWorkflow) {
+	if securityCtx == nil || securityCtx.RunAs == nil {
+		return
+	}
+	if len(securityCtx.RunAs.IamRole) > 0 {
+		if flyteWf.Annotations == nil {
+			flyteWf.Annotations = map[string]string{}
+		}
+		flyteWf.Annotations[roleNameKey] = securityCtx.RunAs.IamRole
+	}
+	if len(securityCtx.RunAs.K8SServiceAccount) > 0 {
+		flyteWf.ServiceAccountName = securityCtx.RunAs.K8SServiceAccount
+	}
+}
+
 func addExecutionOverrides(taskPluginOverrides []*admin.PluginOverride,
 	workflowExecutionConfig *admin.WorkflowExecutionConfig, recoveryExecution *core.WorkflowExecutionIdentifier,
 	taskResources *interfaces.TaskResources, flyteWf *v1alpha1.FlyteWorkflow) {
@@ -118,6 +133,7 @@ func PrepareFlyteWorkflow(data interfaces.ExecutionData, flyteWorkflow *v1alpha1
 	flyteWorkflow.AcceptedAt = &acceptAtWrapper
 
 	addPermissions(data.ExecutionParameters.Auth, data.ExecutionParameters.RoleNameKey, flyteWorkflow)
+	addPermissionsFromSecurtiyCtx(data.ExecutionParameters.SecurityContext, data.ExecutionParameters.RoleNameKey, flyteWorkflow)
 
 	labels := addMapValues(data.ExecutionParameters.Labels, flyteWorkflow.Labels)
 	flyteWorkflow.Labels = labels

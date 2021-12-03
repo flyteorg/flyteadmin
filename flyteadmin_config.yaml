@@ -64,7 +64,7 @@ database:
   port: 5432
   username: postgres
   host: localhost
-  dbname: postgres
+  dbname: flyteadmin
   options: "sslmode=disable"
 scheduler:
   eventScheduler:
@@ -120,7 +120,7 @@ storage:
     auth-type: accesskey
     secret-key: miniostorage
     disable-ssl: true
-    endpoint: "http://localhost:9000"
+    endpoint: "http://localhost:30084"
     region: my-region
   cache:
     max_size_mbs: 10
@@ -157,13 +157,12 @@ queues:
 task_resources:
   defaults:
     cpu: 100m
-    gpu: 20m
-    memory: 1Mi
-    storage: 10M
+    memory: 100Mi
+    storage: 100Mi
   limits:
     cpu: 500m
-    gpu: 100m
-    memory: 1Mi
+    gpu: 1
+    memory: 1000Mi
     storage: 10G
 task_type_whitelist:
   sparkonk8s:
