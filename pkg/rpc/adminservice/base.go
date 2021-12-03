@@ -14,7 +14,6 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/async/notifications"
 	"github.com/flyteorg/flyteadmin/pkg/async/schedule"
 	"github.com/flyteorg/flyteadmin/pkg/data"
-	executionCluster "github.com/flyteorg/flyteadmin/pkg/executioncluster/impl"
 	manager "github.com/flyteorg/flyteadmin/pkg/manager/impl"
 	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories"
@@ -87,15 +86,9 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 	db := repositories.GetRepository(
 		repositories.POSTGRES, dbConfig, adminScope.NewSubScope("database"))
 	storeConfig := storage.GetConfig()
-	execCluster := executionCluster.GetExecutionCluster(
-		adminScope.NewSubScope("executor").NewSubScope("cluster"),
-		kubeConfig,
-		master,
-		configuration,
-		db)
 	workflowBuilder := workflowengineImpl.NewFlyteWorkflowBuilder(
 		adminScope.NewSubScope("builder").NewSubScope("flytepropeller"))
-	workflowExecutor := workflowengineImpl.NewK8sWorkflowExecutor(execCluster, workflowBuilder)
+	workflowExecutor := workflowengineImpl.NewK8sWorkflowExecutor(nil, workflowBuilder)
 	logger.Info(context.Background(), "Successfully created a workflow executor engine")
 	workflowengine.GetRegistry().RegisterDefault(workflowExecutor)
 
