@@ -53,6 +53,7 @@ func RegisterHandlers(ctx context.Context, handler interfaces.HandlerRegisterer,
 // is present, it'll return 202 Accepted response. Otherwise, it'll return 401 Unauthorized response.
 func GetAuthVerifierHandler(ctx context.Context, authCtx interfaces.AuthenticationContext) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
+		logger.Debugf(ctx, "Request headers: %+v", request.Header)
 		_, err := IdentityContextFromRequest(ctx, request, authCtx)
 		if err != nil {
 			logger.Debugf(ctx, "Request unauthenticated. Error: %v", err)

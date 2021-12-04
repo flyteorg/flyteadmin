@@ -18,7 +18,7 @@ type OAuth2MetadataProvider struct {
 	cfg *authConfig.Config
 }
 
-// Override auth func to enforce anonymous access on the implemented APIs
+// AuthFuncOverride overrides auth func to enforce anonymous access on the implemented APIs
 // Ref: https://github.com/grpc-ecosystem/go-grpc-middleware/blob/master/auth/auth.go#L31
 func (s OAuth2MetadataProvider) AuthFuncOverride(ctx context.Context, fullMethodName string) (context.Context, error) {
 	return ctx, nil
