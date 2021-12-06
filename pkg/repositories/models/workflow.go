@@ -14,8 +14,6 @@ type Workflow struct {
 	WorkflowKey
 	TypedInterface          []byte
 	RemoteClosureIdentifier string `gorm:"not null" valid:"length(0|255)"`
-	LaunchPlans             []LaunchPlan
-	Executions              []Execution
 	// Hash of the compiled workflow closure
 	Digest []byte
 }

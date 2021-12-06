@@ -28,7 +28,6 @@ type LaunchPlan struct {
 	Closure    []byte `gorm:"not null"`
 	// GORM doesn't save the zero value for ints, so we use a pointer for the State field
 	State      *int32 `gorm:"default:0"`
-	Executions []Execution
 	// Hash of the launch plan
 	Digest       []byte
 	ScheduleType LaunchPlanScheduleType

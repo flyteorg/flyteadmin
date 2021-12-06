@@ -49,7 +49,6 @@ func getMockLaunchPlanResponseFromDb(expected models.LaunchPlan) map[string]inte
 	launchPlan["workflow_id"] = expected.WorkflowID
 	launchPlan["closure"] = expected.Closure
 	launchPlan["inactive"] = expected.State
-	launchPlan["executions"] = expected.Executions
 	return launchPlan
 }
 
