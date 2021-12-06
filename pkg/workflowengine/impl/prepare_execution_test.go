@@ -18,6 +18,9 @@ import (
 const testRole = "role"
 const testK8sServiceAccount = "sa"
 
+const testRoleSc = "roleSc"
+const testK8sServiceAccountSc = "saSc"
+
 var roleNameKey = "iam.amazonaws.com/role"
 
 func TestAddMapValues(t *testing.T) {
@@ -53,10 +56,16 @@ func TestAddPermissions(t *testing.T) {
 		AssumableIamRole:         testRole,
 		KubernetesServiceAccount: testK8sServiceAccount,
 	}, roleNameKey, &flyteWf)
+	addPermissionsFromSecurtiyCtx(&core.SecurityContext{
+		RunAs: &core.Identity{
+			IamRole:           testRoleSc,
+			K8SServiceAccount: testK8sServiceAccountSc,
+		},
+	}, roleNameKey, &flyteWf)
 	assert.EqualValues(t, flyteWf.Annotations, map[string]string{
-		roleNameKey: testRole,
+		roleNameKey: testRoleSc,
 	})
-	assert.Equal(t, testK8sServiceAccount, flyteWf.ServiceAccountName)
+	assert.Equal(t, testK8sServiceAccountSc, flyteWf.ServiceAccountName)
 }
 
 func TestAddExecutionOverrides(t *testing.T) {

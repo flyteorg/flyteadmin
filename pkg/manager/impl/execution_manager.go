@@ -683,7 +683,7 @@ func resolvePermissionsFromSecurityCtx(ctx context.Context, request admin.Execut
 	if launchPlan.Spec.SecurityContext != nil {
 		return launchPlan.Spec.SecurityContext
 	}
-	logger.Warn(ctx, "Setting an empty security context")
+	logger.Warn(ctx, "Returning an empty security context")
 	return &core.SecurityContext{}
 }
 
