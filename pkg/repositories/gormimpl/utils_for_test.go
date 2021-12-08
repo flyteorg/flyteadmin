@@ -3,13 +3,13 @@ package gormimpl
 
 import (
 	"fmt"
-	"gorm.io/driver/postgres"
 	"testing"
 
+	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	mocket "github.com/Selvatico/go-mocket"
-	"github.com/flyteorg/flyteadmin/pkg/common"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 

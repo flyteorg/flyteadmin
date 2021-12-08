@@ -2,17 +2,15 @@ package entrypoints
 
 import (
 	"context"
-	"gorm.io/driver/postgres"
-
-	"github.com/flyteorg/flyteadmin/pkg/runtime"
-
-	"github.com/flyteorg/flytestdlib/promutils"
-
-	"github.com/flyteorg/flytestdlib/logger"
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories/config"
+	"github.com/flyteorg/flyteadmin/pkg/runtime"
+	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/promutils"
+
 	"github.com/go-gormigrate/gormigrate/v2"
 	"github.com/spf13/cobra"
+	"gorm.io/driver/postgres"
 	_ "gorm.io/driver/postgres" // Required to import database driver.
 	"gorm.io/gorm"
 	gormLogger "gorm.io/gorm/logger"

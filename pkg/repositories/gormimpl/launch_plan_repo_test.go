@@ -49,7 +49,7 @@ func getMockLaunchPlanResponseFromDb(expected models.LaunchPlan) map[string]inte
 	launchPlan["spec"] = expected.Spec
 	launchPlan["workflow_id"] = expected.WorkflowID
 	launchPlan["closure"] = expected.Closure
-	launchPlan["inactive"] = expected.State
+	launchPlan["state"] = expected.State
 	return launchPlan
 }
 
@@ -264,9 +264,7 @@ func TestListLaunchPlans_Pagination(t *testing.T) {
 	GlobalMock := mocket.Catcher.Reset()
 
 	GlobalMock.NewMock().WithQuery(
-		`SELECT "launch_plans".* FROM "launch_plans" inner join workflows on launch_plans.workflow_id = workflows.id ` +
-			`WHERE "launch_plans"."deleted_at" IS NULL AND ((launch_plans.project = project) ` +
-			`AND (launch_plans.domain = domain) AND (launch_plans.name = name)) LIMIT 2 OFFSET 1`).WithReply(launchPlans)
+		`SELECT "launch_plans"."id","launch_plans"."created_at","launch_plans"."updated_at","launch_plans"."deleted_at","launch_plans"."project","launch_plans"."domain","launch_plans"."name","launch_plans"."version","launch_plans"."spec","launch_plans"."workflow_id","launch_plans"."closure","launch_plans"."state","launch_plans"."digest","launch_plans"."schedule_type" FROM "launch_plans" inner join workflows on launch_plans.workflow_id = workflows.id WHERE launch_plans.project = $1 AND launch_plans.domain = $2 AND launch_plans.name = $3 LIMIT 2 OFFSET 1`).WithReply(launchPlans)
 
 	collection, err := launchPlanRepo.List(context.Background(), interfaces.ListResourceInput{
 		InlineFilters: []common.InlineFilter{
@@ -405,14 +403,8 @@ func TestListLaunchPlansForWorkflow(t *testing.T) {
 	// HACK: gorm orders the filters on join clauses non-deterministically. Ordering of filters doesn't affect
 	// correctness, but because the mocket library only pattern matches on substrings, both variations of the (valid)
 	// SQL that gorm produces are checked below.
-	query := `SELECT "launch_plans".* FROM "launch_plans" inner join workflows on ` +
-		`launch_plans.workflow_id = workflows.id WHERE "launch_plans"."deleted_at" IS NULL AND ` +
-		`((launch_plans.project = project) AND (launch_plans.domain = domain) AND (launch_plans.name = name) AND ` +
-		`(workflows.deleted_at = foo)) LIMIT 20 OFFSET 0`
-	alternateQuery := `SELECT "launch_plans".* FROM "launch_plans" inner join workflows on ` +
-		`launch_plans.workflow_id = workflows.id WHERE "launch_plans"."deleted_at" IS NULL AND ` +
-		`((workflows.deleted_at = foo) AND (launch_plans.project = project) AND (launch_plans.domain = domain) AND ` +
-		`(launch_plans.name = name)) LIMIT 20 OFFSET 0`
+	query := `SELECT "launch_plans"."id","launch_plans"."created_at","launch_plans"."updated_at","launch_plans"."deleted_at","launch_plans"."project","launch_plans"."domain","launch_plans"."name","launch_plans"."version","launch_plans"."spec","launch_plans"."workflow_id","launch_plans"."closure","launch_plans"."state","launch_plans"."digest","launch_plans"."schedule_type" FROM "launch_plans" inner join workflows on launch_plans.workflow_id = workflows.id WHERE launch_plans.project = $1 AND launch_plans.domain = $2 AND launch_plans.name = $3 AND (workflows.deleted_at = $4) LIMIT 20`
+	alternateQuery := `SELECT "launch_plans"."id","launch_plans"."created_at","launch_plans"."updated_at","launch_plans"."deleted_at","launch_plans"."project","launch_plans"."domain","launch_plans"."name","launch_plans"."version","launch_plans"."spec","launch_plans"."workflow_id","launch_plans"."closure","launch_plans"."state","launch_plans"."digest","launch_plans"."schedule_type" FROM "launch_plans" inner join workflows on launch_plans.workflow_id = workflows.id WHERE launch_plans.project = $1 AND launch_plans.domain = $2 AND launch_plans.name = $3 AND (workflows.deleted_at = $4) LIMIT 20`
 	GlobalMock.NewMock().WithQuery(query).WithReply(launchPlans)
 	GlobalMock.NewMock().WithQuery(alternateQuery).WithReply(launchPlans)
 

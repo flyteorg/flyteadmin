@@ -370,8 +370,7 @@ func TestExecutionExists(t *testing.T) {
 	GlobalMock.Logging = true
 
 	// Only match on queries that append expected filters
-	GlobalMock.NewMock().WithQuery(`SELECT "id" FROM "executions" WHERE "executions"."execution_project" = $1`+
-		`AND "executions"."execution_domain" = $2 AND "executions"."execution_name" = $3 LIMIT 1`).WithReply(executions)
+	GlobalMock.NewMock().WithQuery(`SELECT "id" FROM "executions" WHERE "executions"."execution_project" = $1 AND "executions"."execution_domain" = $2 AND "executions"."execution_name" = $3 LIMIT 1`).WithReply(executions)
 
 	exists, err := executionRepo.Exists(context.Background(), interfaces.Identifier{
 		Project: "project",

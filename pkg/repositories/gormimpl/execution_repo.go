@@ -6,13 +6,12 @@ import (
 	"fmt"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
-
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-
 	adminErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/promutils"
+
 	"gorm.io/gorm"
 )
 
@@ -47,7 +46,7 @@ func (r *ExecutionRepo) Get(ctx context.Context, input interfaces.Identifier) (m
 	if tx.Error != nil {
 		return models.Execution{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
 	}
-	if errors.Is(tx.Error, gorm.ErrRecordNotFound)  {
+	if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
 		return models.Execution{}, adminErrors.GetMissingEntityError("execution", &core.Identifier{
 			Project: input.Project,
 			Domain:  input.Domain,

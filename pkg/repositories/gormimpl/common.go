@@ -8,8 +8,8 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 
-	"gorm.io/gorm"
 	"google.golang.org/grpc/codes"
+	"gorm.io/gorm"
 )
 
 const Project = "project"
