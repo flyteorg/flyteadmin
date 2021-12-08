@@ -11,10 +11,11 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories/config"
-	gormigrate "github.com/go-gormigrate/gormigrate/v2"
+	"github.com/go-gormigrate/gormigrate/v2"
 	"github.com/spf13/cobra"
 	_ "gorm.io/driver/postgres" // Required to import database driver.
 	"gorm.io/gorm"
+	gormLogger "gorm.io/gorm/logger"
 )
 
 var parentMigrateCmd = &cobra.Command{
@@ -36,7 +37,8 @@ var migrateCmd = &cobra.Command{
 		databaseConfig := configuration.ApplicationConfiguration().GetDbConfig()
 		postgresConfigProvider := config.NewPostgresConfigProvider(config.DbConfig{
 			BaseConfig: config.BaseConfig{
-				IsDebug: databaseConfig.Debug,
+				LogLevel:                                 3,
+				DisableForeignKeyConstraintWhenMigrating: true,
 			},
 			Host:         databaseConfig.Host,
 			Port:         databaseConfig.Port,
@@ -45,19 +47,27 @@ var migrateCmd = &cobra.Command{
 			Password:     databaseConfig.Password,
 			ExtraOptions: databaseConfig.ExtraOptions,
 		}, migrateScope)
-		postgres.New(postgres.Config{
-
+		db, err := gorm.Open(postgres.Open(postgresConfigProvider.GetDSN()), &gorm.Config{
+			Logger: gormLogger.Default.LogMode(gormLogger.Info),
 		})
-		db, err := gorm.Open(postgres.Open(postgresConfigProvider.GetArgs()), &gorm.Config{})
 		if err != nil {
 			logger.Fatal(ctx, err)
 		}
-		//defer db.Close()
-		//db.LogMode(true)
-		//if err = db.DB().Ping(); err != nil {
-		//	logger.Fatal(ctx, err)
-		//}
 
+		sqlDB, err := db.DB()
+		if err != nil {
+			logger.Fatal(ctx, err)
+		}
+
+		defer func(deferCtx context.Context) {
+			if err = sqlDB.Close(); err != nil {
+				logger.Fatal(deferCtx, err)
+			}
+		}(ctx)
+
+		if err = sqlDB.Ping(); err != nil {
+			logger.Fatal(ctx, err)
+		}
 		m := gormigrate.New(db, gormigrate.DefaultOptions, config.Migrations)
 		if err = m.Migrate(); err != nil {
 			logger.Fatalf(ctx, "Could not migrate: %v", err)
@@ -76,7 +86,8 @@ var rollbackCmd = &cobra.Command{
 		databaseConfig := configuration.ApplicationConfiguration().GetDbConfig()
 		postgresConfigProvider := config.NewPostgresConfigProvider(config.DbConfig{
 			BaseConfig: config.BaseConfig{
-				IsDebug: databaseConfig.Debug,
+				LogLevel:                                 3,
+				DisableForeignKeyConstraintWhenMigrating: true,
 			},
 			Host:         databaseConfig.Host,
 			Port:         databaseConfig.Port,
@@ -86,15 +97,25 @@ var rollbackCmd = &cobra.Command{
 			ExtraOptions: databaseConfig.ExtraOptions,
 		}, rollbackScope)
 
-		db, err := gorm.Open(postgres.Open(postgresConfigProvider.GetArgs()), &gorm.Config{})
+		db, err := gorm.Open(postgres.Open(postgresConfigProvider.GetDSN()), &gorm.Config{
+			Logger: gormLogger.Default.LogMode(gormLogger.Info),
+		})
 		if err != nil {
 			logger.Fatal(ctx, err)
 		}
-		//defer db.Close()
-		//db.LogMode(true)
-		//if err = db.DB().Ping(); err != nil {
-		//	logger.Fatal(ctx, err)
-		//}
+		sqlDB, err := db.DB()
+		if err != nil {
+			logger.Fatal(ctx, err)
+		}
+		defer func(deferCtx context.Context) {
+			if err = sqlDB.Close(); err != nil {
+				logger.Fatal(deferCtx, err)
+			}
+		}(ctx)
+
+		if err = sqlDB.Ping(); err != nil {
+			logger.Fatal(ctx, err)
+		}
 
 		m := gormigrate.New(db, gormigrate.DefaultOptions, config.Migrations)
 		err = m.RollbackLast()
@@ -115,7 +136,8 @@ var seedProjectsCmd = &cobra.Command{
 		databaseConfig := configuration.ApplicationConfiguration().GetDbConfig()
 		postgresConfigProvider := config.NewPostgresConfigProvider(config.DbConfig{
 			BaseConfig: config.BaseConfig{
-				IsDebug: databaseConfig.Debug,
+				LogLevel:                                 3,
+				DisableForeignKeyConstraintWhenMigrating: true,
 			},
 			Host:         databaseConfig.Host,
 			Port:         databaseConfig.Port,
@@ -124,12 +146,27 @@ var seedProjectsCmd = &cobra.Command{
 			Password:     databaseConfig.Password,
 			ExtraOptions: databaseConfig.ExtraOptions,
 		}, migrateScope)
-		db, err := gorm.Open(postgres.Open(postgresConfigProvider.GetArgs()), &gorm.Config{})
+		db, err := gorm.Open(postgres.Open(postgresConfigProvider.GetDSN()), &gorm.Config{
+			Logger: gormLogger.Default.LogMode(gormLogger.Info),
+		})
 		if err != nil {
 			logger.Fatal(ctx, err)
 		}
-		//defer db.Close()
-		//db.LogMode(true)
+
+		sqlDB, err := db.DB()
+		if err != nil {
+			logger.Fatal(ctx, err)
+		}
+
+		defer func(deferCtx context.Context) {
+			if err = sqlDB.Close(); err != nil {
+				logger.Fatal(deferCtx, err)
+			}
+		}(ctx)
+
+		if err = sqlDB.Ping(); err != nil {
+			logger.Fatal(ctx, err)
+		}
 
 		if err = config.SeedProjects(db, args); err != nil {
 			logger.Fatalf(ctx, "Could not add projects to database with err: %v", err)

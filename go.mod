@@ -30,8 +30,8 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/gtank/cryptopasta v0.0.0-20170601214702-1f550f6f2f69
+	github.com/jackc/pgconn v1.10.0
 	github.com/lestrrat-go/jwx v1.1.6
-	github.com/lib/pq v1.10.2
 	github.com/magiconair/properties v1.8.4
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/ory/fosite v0.39.0
@@ -96,7 +96,6 @@ require (
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
-	github.com/jackc/pgconn v1.10.0 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgproto3/v2 v2.1.1 // indirect

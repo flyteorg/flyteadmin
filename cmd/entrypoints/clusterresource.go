@@ -14,8 +14,8 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories"
 	repositoryConfig "github.com/flyteorg/flyteadmin/pkg/repositories/config"
 	"github.com/flyteorg/flytestdlib/promutils"
-	_ "gorm.io/driver/postgres" // Required to import database driver.
 	"github.com/spf13/cobra"
+	_ "gorm.io/driver/postgres" // Required to import database driver.
 )
 
 var parentClusterResourceCmd = &cobra.Command{
@@ -42,7 +42,8 @@ var controllerRunCmd = &cobra.Command{
 		dbConfigValues := configuration.ApplicationConfiguration().GetDbConfig()
 		dbConfig := repositoryConfig.DbConfig{
 			BaseConfig: repositoryConfig.BaseConfig{
-				IsDebug: dbConfigValues.Debug,
+				LogLevel:                                 3,
+				DisableForeignKeyConstraintWhenMigrating: true,
 			},
 			Host:         dbConfigValues.Host,
 			Port:         dbConfigValues.Port,
@@ -78,7 +79,8 @@ var controllerSyncCmd = &cobra.Command{
 		dbConfigValues := configuration.ApplicationConfiguration().GetDbConfig()
 		dbConfig := repositoryConfig.DbConfig{
 			BaseConfig: repositoryConfig.BaseConfig{
-				IsDebug: dbConfigValues.Debug,
+				LogLevel:                                 3,
+				DisableForeignKeyConstraintWhenMigrating: true,
 			},
 			Host:         dbConfigValues.Host,
 			Port:         dbConfigValues.Port,

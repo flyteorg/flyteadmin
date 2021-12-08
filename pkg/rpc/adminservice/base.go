@@ -75,7 +75,8 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 	dbConfigValues := configuration.ApplicationConfiguration().GetDbConfig()
 	dbConfig := repositoryConfig.DbConfig{
 		BaseConfig: repositoryConfig.BaseConfig{
-			IsDebug: dbConfigValues.Debug,
+			LogLevel:                                 3,
+			DisableForeignKeyConstraintWhenMigrating: true,
 		},
 		Host:         dbConfigValues.Host,
 		Port:         dbConfigValues.Port,

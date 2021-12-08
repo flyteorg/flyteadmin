@@ -3,6 +3,7 @@ package gormimpl
 
 import (
 	"fmt"
+	"gorm.io/driver/postgres"
 	"testing"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -10,7 +11,6 @@ import (
 	mocket "github.com/Selvatico/go-mocket"
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"gorm.io/gorm"
-	gormTests "gorm.io/gorm/utils/tests"
 )
 
 const project = "project"
@@ -22,7 +22,7 @@ const version = "XYZ"
 
 func GetDbForTest(t *testing.T) *gorm.DB {
 	mocket.Catcher.Register()
-	db, err := gorm.Open(gormTests.DummyDialector{})
+	db, err := gorm.Open(postgres.New(postgres.Config{DriverName: mocket.DriverName}))
 	if err != nil {
 		t.Fatal(fmt.Sprintf("Failed to open mock db with err %v", err))
 	}

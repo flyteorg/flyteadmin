@@ -33,7 +33,7 @@ type NodeExecution struct {
 	// Parent that spawned this node execution - value is empty for executions at level 0
 	ParentID *uint `sql:"default:null" gorm:"index"`
 	// List of child node executions - for cases like Dynamic task, sub workflow, etc
-	ChildNodeExecutions []NodeExecution  `gorm:"foreignKey:ParentID;references:ID"`
+	ChildNodeExecutions []NodeExecution `gorm:"foreignKey:ParentID;references:ID"`
 	// The task execution (if any) which launched this node execution.
 	// TO BE DEPRECATED - as we have now introduced ParentID
 	ParentTaskExecutionID uint `sql:"default:null" gorm:"index"`

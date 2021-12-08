@@ -177,7 +177,7 @@ var Migrations = []*gormigrate.Migration{
 			return tx.AutoMigrate(&models.NamedEntityMetadata{})
 		},
 		Rollback: func(tx *gorm.DB) error {
-			return tx.Table("named_entity_metadata").Migrator().DropColumn(&models.NamedEntityMetadata{},"state")
+			return tx.Table("named_entity_metadata").Migrator().DropColumn(&models.NamedEntityMetadata{}, "state")
 		},
 	},
 	// Set default state value for workflow model
@@ -240,7 +240,7 @@ var Migrations = []*gormigrate.Migration{
 			return tx.AutoMigrate(&models.NodeExecution{})
 		},
 		Rollback: func(tx *gorm.DB) error {
-			return tx.Model(&models.NodeExecution{}).Migrator().DropColumn(&models.NodeExecution{},"cache_status")
+			return tx.Model(&models.NodeExecution{}).Migrator().DropColumn(&models.NodeExecution{}, "cache_status")
 		},
 	},
 	{
