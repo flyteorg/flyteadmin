@@ -568,14 +568,16 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		annotations = requestSpec.Annotations.Values
 	}
 
+	resolvedAuthRole := resolvePermissions(request, launchPlan)
+	resolvedSecurityCtx := resolveSecurityCtx(ctx, request, launchPlan, resolvedAuthRole)
 	executionParameters := workflowengineInterfaces.ExecutionParameters{
 		Inputs:              request.Inputs,
 		AcceptedAt:          requestedAt,
 		Labels:              labels,
 		Annotations:         annotations,
 		ExecutionConfig:     executionConfig,
-		Auth:                resolvePermissions(request, launchPlan),
-		SecurityContext:     resolvePermissionsFromSecurityCtx(ctx, request, launchPlan),
+		Auth:                resolvedAuthRole,
+		SecurityContext:     resolvedSecurityCtx,
 		TaskResources:       &platformTaskResources,
 		EventVersion:        m.config.ApplicationConfiguration().GetTopLevelConfig().EventVersion,
 		RoleNameKey:         m.config.ApplicationConfiguration().GetTopLevelConfig().RoleNameKey,
@@ -673,7 +675,8 @@ func resolvePermissions(request admin.ExecutionCreateRequest, launchPlan *admin.
 	return &admin.AuthRole{}
 }
 
-func resolvePermissionsFromSecurityCtx(ctx context.Context, request admin.ExecutionCreateRequest, launchPlan *admin.LaunchPlan) *core.SecurityContext {
+func resolveSecurityCtx(ctx context.Context, request admin.ExecutionCreateRequest, launchPlan *admin.LaunchPlan,
+	resolvedAuthRole *admin.AuthRole) *core.SecurityContext {
 	// Use security context from the request if its set
 	if request.Spec.SecurityContext != nil {
 		return request.Spec.SecurityContext
@@ -683,8 +686,13 @@ func resolvePermissionsFromSecurityCtx(ctx context.Context, request admin.Execut
 	if launchPlan.Spec.SecurityContext != nil {
 		return launchPlan.Spec.SecurityContext
 	}
-	logger.Warn(ctx, "Returning an empty security context")
-	return &core.SecurityContext{}
+	logger.Warn(ctx, "Setting security context from auth Role")
+	return &core.SecurityContext{
+		RunAs: &core.Identity{
+			IamRole:           resolvedAuthRole.AssumableIamRole,
+			K8SServiceAccount: resolvedAuthRole.KubernetesServiceAccount,
+		},
+	}
 }
 
 func (m *ExecutionManager) launchExecutionAndPrepareModel(
@@ -789,14 +797,16 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		return nil, nil, err
 	}
 
+	resolvedAuthRole := resolvePermissions(request, launchPlan)
+	resolvedSecurityCtx := resolveSecurityCtx(ctx, request, launchPlan, resolvedAuthRole)
 	executionParameters := workflowengineInterfaces.ExecutionParameters{
 		Inputs:              executionInputs,
 		AcceptedAt:          requestedAt,
 		Labels:              labels,
 		Annotations:         annotations,
 		ExecutionConfig:     executionConfig,
-		Auth:                resolvePermissions(request, launchPlan),
-		SecurityContext:     resolvePermissionsFromSecurityCtx(ctx, request, launchPlan),
+		Auth:                resolvedAuthRole,
+		SecurityContext:     resolvedSecurityCtx,
 		TaskResources:       &platformTaskResources,
 		EventVersion:        m.config.ApplicationConfiguration().GetTopLevelConfig().EventVersion,
 		RoleNameKey:         m.config.ApplicationConfiguration().GetTopLevelConfig().RoleNameKey,

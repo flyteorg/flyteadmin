@@ -64,7 +64,7 @@ database:
   port: 5432
   username: postgres
   host: localhost
-  dbname: flyteadmin
+  dbname: postgres
   options: "sslmode=disable"
 scheduler:
   eventScheduler:
@@ -125,7 +125,7 @@ storage:
   cache:
     max_size_mbs: 10
     target_gc_percent: 100
-  container: "flyte"
+  container: "my-s3-bucket"
 queues:
   executionQueues:
     - dynamic: "gpu_dynamic"
@@ -157,12 +157,12 @@ queues:
 task_resources:
   defaults:
     cpu: 100m
-    memory: 100Mi
-    storage: 100Mi
+    memory: 200Mi
+    storage: 100M
   limits:
     cpu: 500m
     gpu: 1
-    memory: 1000Mi
+    memory: 300Mi
     storage: 10G
 task_type_whitelist:
   sparkonk8s:

@@ -23,7 +23,13 @@ func addMapValues(overrides map[string]string, defaultValues map[string]string) 
 	return defaultValues
 }
 
-func addPermissions(auth *admin.AuthRole, roleNameKey string, flyteWf *v1alpha1.FlyteWorkflow) {
+func addPermissions(auth *admin.AuthRole, securityCtx *core.SecurityContext, roleNameKey string,
+	flyteWf *v1alpha1.FlyteWorkflow) {
+	addPermissionsFromAuthRole(auth, roleNameKey, flyteWf)
+	addPermissionsFromSecurtiyCtx(securityCtx, roleNameKey, flyteWf)
+}
+
+func addPermissionsFromAuthRole(auth *admin.AuthRole, roleNameKey string, flyteWf *v1alpha1.FlyteWorkflow) {
 	// Set role permissions based on launch plan Auth values.
 	// The branched-ness of this check is due to the presence numerous deprecated fields
 	if auth == nil {
@@ -132,8 +138,10 @@ func PrepareFlyteWorkflow(data interfaces.ExecutionData, flyteWorkflow *v1alpha1
 	acceptAtWrapper := v1.NewTime(data.ExecutionParameters.AcceptedAt)
 	flyteWorkflow.AcceptedAt = &acceptAtWrapper
 
-	addPermissions(data.ExecutionParameters.Auth, data.ExecutionParameters.RoleNameKey, flyteWorkflow)
-	addPermissionsFromSecurtiyCtx(data.ExecutionParameters.SecurityContext, data.ExecutionParameters.RoleNameKey, flyteWorkflow)
+	// add permissions from auth and security context. Adding permissions from auth would be removed once all clients
+	// have migrated over to security context
+	addPermissions(data.ExecutionParameters.Auth, data.ExecutionParameters.SecurityContext,
+		data.ExecutionParameters.RoleNameKey, flyteWorkflow)
 
 	labels := addMapValues(data.ExecutionParameters.Labels, flyteWorkflow.Labels)
 	flyteWorkflow.Labels = labels

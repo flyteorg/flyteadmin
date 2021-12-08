@@ -51,21 +51,33 @@ func TestAddMapValues(t *testing.T) {
 }
 
 func TestAddPermissions(t *testing.T) {
-	flyteWf := v1alpha1.FlyteWorkflow{}
-	addPermissions(&admin.AuthRole{
+	authRole := &admin.AuthRole{
 		AssumableIamRole:         testRole,
 		KubernetesServiceAccount: testK8sServiceAccount,
-	}, roleNameKey, &flyteWf)
-	addPermissionsFromSecurtiyCtx(&core.SecurityContext{
+	}
+	securityCtx := &core.SecurityContext{
 		RunAs: &core.Identity{
 			IamRole:           testRoleSc,
 			K8SServiceAccount: testK8sServiceAccountSc,
 		},
-	}, roleNameKey, &flyteWf)
-	assert.EqualValues(t, flyteWf.Annotations, map[string]string{
-		roleNameKey: testRoleSc,
+	}
+	t.Run("empty security ctx", func(t *testing.T) {
+		flyteWf := v1alpha1.FlyteWorkflow{}
+		addPermissions(authRole, nil, roleNameKey, &flyteWf)
+		assert.EqualValues(t, flyteWf.Annotations, map[string]string{
+			roleNameKey: testRole,
+		})
+		assert.Equal(t, testK8sServiceAccount, flyteWf.ServiceAccountName)
 	})
-	assert.Equal(t, testK8sServiceAccountSc, flyteWf.ServiceAccountName)
+
+	t.Run("override using security ctx", func(t *testing.T) {
+		flyteWf := v1alpha1.FlyteWorkflow{}
+		addPermissions(authRole, securityCtx, roleNameKey, &flyteWf)
+		assert.EqualValues(t, flyteWf.Annotations, map[string]string{
+			roleNameKey: testRoleSc,
+		})
+		assert.Equal(t, testK8sServiceAccountSc, flyteWf.ServiceAccountName)
+	})
 }
 
 func TestAddExecutionOverrides(t *testing.T) {
