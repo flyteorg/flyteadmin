@@ -3405,7 +3405,7 @@ func TestResolvePermissions(t *testing.T) {
 				},
 			},
 		}
-		authRole := resolvePermissions(execRequest, lp)
+		authRole := resolveAuthRole(execRequest, lp)
 		sc := resolveSecurityCtx(context.TODO(), execRequest, lp, authRole)
 		assert.Equal(t, assumableIamRole, authRole.AssumableIamRole)
 		assert.Equal(t, k8sServiceAccount, authRole.KubernetesServiceAccount)
@@ -3436,7 +3436,7 @@ func TestResolvePermissions(t *testing.T) {
 				},
 			},
 		}
-		authRole := resolvePermissions(execRequest, lp)
+		authRole := resolveAuthRole(execRequest, lp)
 		sc := resolveSecurityCtx(context.TODO(), execRequest, lp, authRole)
 		assert.Equal(t, "", authRole.AssumableIamRole)
 		assert.Equal(t, "", authRole.KubernetesServiceAccount)
@@ -3459,7 +3459,7 @@ func TestResolvePermissions(t *testing.T) {
 				},
 			},
 		}
-		authRole := resolvePermissions(execRequest, lp)
+		authRole := resolveAuthRole(execRequest, lp)
 		sc := resolveSecurityCtx(context.TODO(), execRequest, lp, authRole)
 		assert.Equal(t, assumableIamRole, authRole.AssumableIamRole)
 		assert.Equal(t, k8sServiceAccount, authRole.KubernetesServiceAccount)
@@ -3499,7 +3499,7 @@ func TestResolvePermissions(t *testing.T) {
 				},
 			},
 		}
-		authRole := resolvePermissions(execRequest, lp)
+		authRole := resolveAuthRole(execRequest, lp)
 		sc := resolveSecurityCtx(context.TODO(), execRequest, lp, authRole)
 		assert.Equal(t, assumableIamRole, authRole.AssumableIamRole)
 		assert.Equal(t, k8sServiceAccount, authRole.KubernetesServiceAccount)
@@ -3519,7 +3519,7 @@ func TestResolvePermissions(t *testing.T) {
 				Role: "old role",
 			},
 		}
-		authRole := resolvePermissions(execRequest, lp)
+		authRole := resolveAuthRole(execRequest, lp)
 		sc := resolveSecurityCtx(context.TODO(), execRequest, lp, authRole)
 		assert.Equal(t, assumableIamRole, authRole.AssumableIamRole)
 		assert.Equal(t, k8sServiceAccount, authRole.KubernetesServiceAccount)
@@ -3531,7 +3531,7 @@ func TestResolvePermissions(t *testing.T) {
 		}, sc)
 	})
 	t.Run("prefer lp auth over role", func(t *testing.T) {
-		authRole := resolvePermissions(admin.ExecutionCreateRequest{
+		authRole := resolveAuthRole(admin.ExecutionCreateRequest{
 			Spec: &admin.ExecutionSpec{},
 		}, &admin.LaunchPlan{
 			Spec: &admin.LaunchPlanSpec{

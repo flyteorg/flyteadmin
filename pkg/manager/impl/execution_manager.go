@@ -568,7 +568,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		annotations = requestSpec.Annotations.Values
 	}
 
-	resolvedAuthRole := resolvePermissions(request, launchPlan)
+	resolvedAuthRole := resolveAuthRole(request, launchPlan)
 	resolvedSecurityCtx := resolveSecurityCtx(ctx, request, launchPlan, resolvedAuthRole)
 	executionParameters := workflowengineInterfaces.ExecutionParameters{
 		Inputs:              request.Inputs,
@@ -576,7 +576,6 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		Labels:              labels,
 		Annotations:         annotations,
 		ExecutionConfig:     executionConfig,
-		Auth:                resolvedAuthRole,
 		SecurityContext:     resolvedSecurityCtx,
 		TaskResources:       &platformTaskResources,
 		EventVersion:        m.config.ApplicationConfiguration().GetTopLevelConfig().EventVersion,
@@ -653,7 +652,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	return ctx, executionModel, nil
 }
 
-func resolvePermissions(request admin.ExecutionCreateRequest, launchPlan *admin.LaunchPlan) *admin.AuthRole {
+func resolveAuthRole(request admin.ExecutionCreateRequest, launchPlan *admin.LaunchPlan) *admin.AuthRole {
 	if request.Spec.AuthRole != nil {
 		return request.Spec.AuthRole
 	}
@@ -797,7 +796,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		return nil, nil, err
 	}
 
-	resolvedAuthRole := resolvePermissions(request, launchPlan)
+	resolvedAuthRole := resolveAuthRole(request, launchPlan)
 	resolvedSecurityCtx := resolveSecurityCtx(ctx, request, launchPlan, resolvedAuthRole)
 	executionParameters := workflowengineInterfaces.ExecutionParameters{
 		Inputs:              executionInputs,
@@ -805,7 +804,6 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		Labels:              labels,
 		Annotations:         annotations,
 		ExecutionConfig:     executionConfig,
-		Auth:                resolvedAuthRole,
 		SecurityContext:     resolvedSecurityCtx,
 		TaskResources:       &platformTaskResources,
 		EventVersion:        m.config.ApplicationConfiguration().GetTopLevelConfig().EventVersion,
