@@ -2,7 +2,6 @@ package entrypoints
 
 import (
 	"context"
-
 	"github.com/flyteorg/flyteadmin/pkg/repositories/config"
 	"github.com/flyteorg/flyteadmin/pkg/runtime"
 	"github.com/flyteorg/flytestdlib/logger"
@@ -47,6 +46,7 @@ var migrateCmd = &cobra.Command{
 		}, migrateScope)
 		db, err := gorm.Open(postgres.Open(postgresConfigProvider.GetDSN()), &gorm.Config{
 			Logger: gormLogger.Default.LogMode(gormLogger.Info),
+			DisableForeignKeyConstraintWhenMigrating: postgresConfigProvider.GetDBConfig().DisableForeignKeyConstraintWhenMigrating,
 		})
 		if err != nil {
 			logger.Fatal(ctx, err)
