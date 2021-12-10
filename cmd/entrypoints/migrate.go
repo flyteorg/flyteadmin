@@ -46,7 +46,7 @@ var migrateCmd = &cobra.Command{
 			ExtraOptions: databaseConfig.ExtraOptions,
 		}, migrateScope)
 		db, err := gorm.Open(postgres.Open(postgresConfigProvider.GetDSN()), &gorm.Config{
-			Logger: gormLogger.Default.LogMode(gormLogger.Info),
+			Logger:                                   gormLogger.Default.LogMode(gormLogger.Info),
 			DisableForeignKeyConstraintWhenMigrating: postgresConfigProvider.GetDBConfig().DisableForeignKeyConstraintWhenMigrating,
 		})
 		if err != nil {
