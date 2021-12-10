@@ -5,6 +5,7 @@ package tests
 import (
 	"context"
 	"fmt"
+	database_config "github.com/flyteorg/flyteadmin/pkg/repositories/config"
 	"testing"
 	"time"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/stretchr/testify/assert"
 
-	database_config "github.com/flyteorg/flyteadmin/pkg/repositories/config"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
@@ -156,7 +156,8 @@ func populateWorkflowExecutionsForTestingOnly() {
 		fmt.Sprintf(insertExecutionQueryStr, "project1", "domain2", "name1", "RUNNING", 1, 2),
 		fmt.Sprintf(insertExecutionQueryStr, "project2", "domain2", "name1", "SUCCEEDED", 1, 2),
 	}
-	db := database_config.OpenDbConnection(database_config.NewPostgresConfigProvider(getDbConfig(), adminScope))
+	db, err := databaseConfig.OpenDbConnection(database_config.NewPostgresConfigProvider(getDbConfig(), adminScope))
+	assert.Nil(t, err)
 	defer db.Close()
 
 	// Insert dummy launch plans;

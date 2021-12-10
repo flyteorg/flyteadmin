@@ -30,7 +30,8 @@ func TestUpdateProjectDomainAttributes(t *testing.T) {
 	client, conn := GetTestAdminServiceClient()
 	defer conn.Close()
 
-	db := databaseConfig.OpenDbConnection(databaseConfig.NewPostgresConfigProvider(getDbConfig(), adminScope))
+	db, err := databaseConfig.OpenDbConnection(databaseConfig.NewPostgresConfigProvider(getDbConfig(), adminScope))
+	assert.Nil(t, err)
 	truncateTableForTesting(db, "resources")
 	db.Close()
 
@@ -102,7 +103,8 @@ func TestUpdateWorkflowAttributes(t *testing.T) {
 	client, conn := GetTestAdminServiceClient()
 	defer conn.Close()
 
-	db := databaseConfig.OpenDbConnection(databaseConfig.NewPostgresConfigProvider(getDbConfig(), adminScope))
+	db, err := databaseConfig.OpenDbConnection(databaseConfig.NewPostgresConfigProvider(getDbConfig(), adminScope))
+	assert.Nil(t, err)
 	truncateTableForTesting(db, "resources")
 	db.Close()
 
@@ -159,7 +161,8 @@ func TestListAllMatchableAttributes(t *testing.T) {
 	client, conn := GetTestAdminServiceClient()
 	defer conn.Close()
 
-	db := databaseConfig.OpenDbConnection(databaseConfig.NewPostgresConfigProvider(getDbConfig(), adminScope))
+	db, err := databaseConfig.OpenDbConnection(databaseConfig.NewPostgresConfigProvider(getDbConfig(), adminScope))
+	assert.Nil(t, err)
 	truncateTableForTesting(db, "resources")
 	db.Close()
 
