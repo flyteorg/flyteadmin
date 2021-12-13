@@ -6,7 +6,7 @@ import "time"
 // This is nearly identical to http://doc.gorm.io/models.html#conventions except that flyteadmin models define their
 // own primary keys rather than use the ID as the primary key
 type BaseModel struct {
-	ID        uint `gorm:"index;AUTO_INCREMENT"`
+	ID        uint `gorm:"index;autoIncrement:true"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt *time.Time `sql:"index"`
