@@ -33,7 +33,10 @@ func TestUpdateProjectDomainAttributes(t *testing.T) {
 	db, err := databaseConfig.OpenDbConnection(databaseConfig.NewPostgresConfigProvider(getDbConfig(), adminScope))
 	assert.Nil(t, err)
 	truncateTableForTesting(db, "resources")
-	db.Close()
+	sqlDB, err := db.DB()
+	assert.Nil(t, err)
+	err = sqlDB.Close()
+	assert.Nil(t, err)
 
 	req := admin.ProjectDomainAttributesUpdateRequest{
 		Attributes: &admin.ProjectDomainAttributes{
@@ -43,7 +46,7 @@ func TestUpdateProjectDomainAttributes(t *testing.T) {
 		},
 	}
 
-	_, err := client.UpdateProjectDomainAttributes(ctx, &req)
+	_, err = client.UpdateProjectDomainAttributes(ctx, &req)
 	fmt.Println(err)
 	assert.Nil(t, err)
 
@@ -106,7 +109,10 @@ func TestUpdateWorkflowAttributes(t *testing.T) {
 	db, err := databaseConfig.OpenDbConnection(databaseConfig.NewPostgresConfigProvider(getDbConfig(), adminScope))
 	assert.Nil(t, err)
 	truncateTableForTesting(db, "resources")
-	db.Close()
+	sqlDB, err := db.DB()
+	assert.Nil(t, err)
+	err = sqlDB.Close()
+	assert.Nil(t, err)
 
 	req := admin.WorkflowAttributesUpdateRequest{
 		Attributes: &admin.WorkflowAttributes{
@@ -117,7 +123,7 @@ func TestUpdateWorkflowAttributes(t *testing.T) {
 		},
 	}
 
-	_, err := client.UpdateWorkflowAttributes(ctx, &req)
+	_, err = client.UpdateWorkflowAttributes(ctx, &req)
 	fmt.Println(err)
 	assert.Nil(t, err)
 
@@ -164,7 +170,10 @@ func TestListAllMatchableAttributes(t *testing.T) {
 	db, err := databaseConfig.OpenDbConnection(databaseConfig.NewPostgresConfigProvider(getDbConfig(), adminScope))
 	assert.Nil(t, err)
 	truncateTableForTesting(db, "resources")
-	db.Close()
+	sqlDB, err := db.DB()
+	assert.Nil(t, err)
+	err = sqlDB.Close()
+	assert.Nil(t, err)
 
 	req := admin.ProjectDomainAttributesUpdateRequest{
 		Attributes: &admin.ProjectDomainAttributes{
@@ -174,7 +183,7 @@ func TestListAllMatchableAttributes(t *testing.T) {
 		},
 	}
 
-	_, err := client.UpdateProjectDomainAttributes(ctx, &req)
+	_, err = client.UpdateProjectDomainAttributes(ctx, &req)
 	assert.Nil(t, err)
 
 	response, err := client.ListMatchableAttributes(ctx, &admin.ListMatchableAttributesRequest{
