@@ -24,7 +24,7 @@ var resourceTypeToTableName = map[core.ResourceType]string{
 	core.ResourceType_TASK:        taskTableName,
 }
 
-var joinString = "RIGHT JOIN ? AS entities ON named_entity_metadata.resource_type = %d AND " +
+var joinString = "RIGHT JOIN (?) AS entities ON named_entity_metadata.resource_type = %d AND " +
 	"named_entity_metadata.project = entities.project AND named_entity_metadata.domain = entities.domain AND " +
 	"named_entity_metadata.name = entities.name"
 
