@@ -43,15 +43,15 @@ func (r *ExecutionRepo) Get(ctx context.Context, input interfaces.Identifier) (m
 		},
 	}).Take(&execution)
 	timer.Stop()
-	if tx.Error != nil {
-		return models.Execution{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
-	}
-	if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
+
+	if tx.Error != nil && errors.Is(tx.Error, gorm.ErrRecordNotFound) {
 		return models.Execution{}, adminErrors.GetMissingEntityError("execution", &core.Identifier{
 			Project: input.Project,
 			Domain:  input.Domain,
 			Name:    input.Name,
 		})
+	} else if tx.Error != nil {
+		return models.Execution{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
 	}
 	return execution, nil
 }
@@ -125,7 +125,7 @@ func (r *ExecutionRepo) Exists(ctx context.Context, input interfaces.Identifier)
 	if tx.Error != nil {
 		return false, r.errorTransformer.ToFlyteAdminError(tx.Error)
 	}
-	return !errors.Is(tx.Error, gorm.ErrRecordNotFound), nil
+	return true, nil
 }
 
 // Returns an instance of ExecutionRepoInterface

@@ -61,10 +61,8 @@ func (r *LaunchPlanRepo) Get(ctx context.Context, input interfaces.Identifier) (
 		},
 	}).Take(&launchPlan)
 	timer.Stop()
-	if tx.Error != nil {
-		return models.LaunchPlan{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
-	}
-	if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
+
+	if tx.Error != nil && errors.Is(tx.Error, gorm.ErrRecordNotFound) {
 		return models.LaunchPlan{},
 			adminErrors.GetMissingEntityError(core.ResourceType_LAUNCH_PLAN.String(), &core.Identifier{
 				Project: input.Project,
@@ -72,6 +70,8 @@ func (r *LaunchPlanRepo) Get(ctx context.Context, input interfaces.Identifier) (
 				Name:    input.Name,
 				Version: input.Version,
 			})
+	} else if tx.Error != nil {
+		return models.LaunchPlan{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
 	}
 	return launchPlan, nil
 }

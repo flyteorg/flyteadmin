@@ -109,12 +109,11 @@ func (r *ResourceRepo) Get(ctx context.Context, ID interfaces.ResourceID) (model
 	tx.Order(priorityDescending).First(&resources)
 	timer.Stop()
 
-	if tx.Error != nil {
-		return models.Resource{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
-	}
-	if errors.Is(tx.Error, gorm.ErrRecordNotFound) || len(resources) == 0 {
+	if (tx.Error != nil && errors.Is(tx.Error, gorm.ErrRecordNotFound)) || len(resources) == 0 {
 		return models.Resource{}, flyteAdminErrors.NewFlyteAdminErrorf(codes.NotFound,
 			"Resource [%+v] not found", ID)
+	} else if tx.Error != nil {
+		return models.Resource{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
 	}
 	return resources[0], nil
 }
@@ -133,12 +132,12 @@ func (r *ResourceRepo) GetRaw(ctx context.Context, ID interfaces.ResourceID) (mo
 		ResourceType: ID.ResourceType,
 	}).First(&model)
 	timer.Stop()
-	if tx.Error != nil {
-		return models.Resource{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
-	}
-	if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
+
+	if tx.Error != nil && errors.Is(tx.Error, gorm.ErrRecordNotFound) {
 		return models.Resource{}, flyteAdminErrors.NewFlyteAdminErrorf(codes.NotFound,
 			"%v", ID)
+	} else if tx.Error != nil {
+		return models.Resource{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
 	}
 	return model, nil
 }
@@ -167,11 +166,11 @@ func (r *ResourceRepo) Delete(ctx context.Context, ID interfaces.ResourceID) err
 			ResourceType: ID.ResourceType,
 		}).Unscoped().Delete(models.Resource{})
 	})
-	if tx.Error != nil {
-		return r.errorTransformer.ToFlyteAdminError(tx.Error)
-	}
-	if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
+
+	if tx.Error != nil && errors.Is(tx.Error, gorm.ErrRecordNotFound) {
 		return flyteAdminErrors.NewFlyteAdminErrorf(codes.NotFound, "%v", ID)
+	} else if tx.Error != nil {
+		return r.errorTransformer.ToFlyteAdminError(tx.Error)
 	}
 	return nil
 }

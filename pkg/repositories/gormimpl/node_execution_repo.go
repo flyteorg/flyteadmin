@@ -46,10 +46,8 @@ func (r *NodeExecutionRepo) Get(ctx context.Context, input interfaces.NodeExecut
 		},
 	}).Preload("ChildNodeExecutions").Take(&nodeExecution)
 	timer.Stop()
-	if tx.Error != nil {
-		return models.NodeExecution{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
-	}
-	if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
+
+	if tx.Error != nil && errors.Is(tx.Error, gorm.ErrRecordNotFound) {
 		return models.NodeExecution{},
 			adminErrors.GetMissingEntityError("node execution", &core.NodeExecutionIdentifier{
 				NodeId: input.NodeExecutionIdentifier.NodeId,
@@ -59,7 +57,10 @@ func (r *NodeExecutionRepo) Get(ctx context.Context, input interfaces.NodeExecut
 					Name:    input.NodeExecutionIdentifier.ExecutionId.Name,
 				},
 			})
+	} else if tx.Error != nil {
+		return models.NodeExecution{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
 	}
+
 	return nodeExecution, nil
 }
 
@@ -160,7 +161,7 @@ func (r *NodeExecutionRepo) Exists(ctx context.Context, input interfaces.NodeExe
 	if tx.Error != nil {
 		return false, r.errorTransformer.ToFlyteAdminError(tx.Error)
 	}
-	return !errors.Is(tx.Error, gorm.ErrRecordNotFound), nil
+	return true, nil
 }
 
 // Returns an instance of NodeExecutionRepoInterface
