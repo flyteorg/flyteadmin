@@ -25,7 +25,7 @@ type SchedulableEntityRepo struct {
 func (r *SchedulableEntityRepo) Create(ctx context.Context, input models.SchedulableEntity) error {
 	timer := r.metrics.GetDuration.Start()
 	var record models.SchedulableEntity
-	tx := r.db.FirstOrCreate(&record, input)
+	tx := r.db.Omit("id").FirstOrCreate(&record, input)
 	timer.Stop()
 	if tx.Error != nil {
 		return r.errorTransformer.ToFlyteAdminError(tx.Error)

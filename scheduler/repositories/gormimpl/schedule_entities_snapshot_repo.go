@@ -21,7 +21,7 @@ type ScheduleEntitiesSnapshotRepo struct {
 // TODO : always overwrite the exisiting snapshot instead of creating new rows
 func (r *ScheduleEntitiesSnapshotRepo) Write(ctx context.Context, input models.ScheduleEntitiesSnapshot) error {
 	timer := r.metrics.GetDuration.Start()
-	tx := r.db.Create(&input)
+	tx := r.db.Omit("id").Create(&input)
 	timer.Stop()
 	if tx.Error != nil {
 		return r.errorTransformer.ToFlyteAdminError(tx.Error)
