@@ -25,7 +25,7 @@ type ProjectRepo struct {
 
 func (r *ProjectRepo) Create(ctx context.Context, project models.Project) error {
 	timer := r.metrics.CreateDuration.Start()
-	tx := r.db.Create(&project)
+	tx := r.db.Omit("id").Create(&project)
 	timer.Stop()
 	if tx.Error != nil {
 		return r.errorTransformer.ToFlyteAdminError(tx.Error)

@@ -23,7 +23,7 @@ type TaskExecutionRepo struct {
 
 func (r *TaskExecutionRepo) Create(ctx context.Context, input models.TaskExecution) error {
 	timer := r.metrics.CreateDuration.Start()
-	tx := r.db.Create(&input)
+	tx := r.db.Omit("id").Create(&input)
 	timer.Stop()
 	if tx.Error != nil {
 		return r.errorTransformer.ToFlyteAdminError(tx.Error)

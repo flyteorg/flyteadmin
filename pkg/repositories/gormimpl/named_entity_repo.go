@@ -121,7 +121,7 @@ func (r *NamedEntityRepo) Update(ctx context.Context, input models.NamedEntity) 
 			Domain:       input.Domain,
 			Name:         input.Name,
 		},
-	}).Assign(input.NamedEntityMetadataFields).FirstOrCreate(&metadata)
+	}).Assign(input.NamedEntityMetadataFields).Omit("id").FirstOrCreate(&metadata)
 	timer.Stop()
 	if tx.Error != nil {
 		return r.errorTransformer.ToFlyteAdminError(tx.Error)

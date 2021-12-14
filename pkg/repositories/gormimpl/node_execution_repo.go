@@ -24,7 +24,7 @@ type NodeExecutionRepo struct {
 
 func (r *NodeExecutionRepo) Create(ctx context.Context, execution *models.NodeExecution) error {
 	timer := r.metrics.CreateDuration.Start()
-	tx := r.db.Create(&execution)
+	tx := r.db.Omit("id").Create(&execution)
 	timer.Stop()
 	if tx.Error != nil {
 		return r.errorTransformer.ToFlyteAdminError(tx.Error)
