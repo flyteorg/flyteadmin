@@ -42,8 +42,8 @@ var controllerRunCmd = &cobra.Command{
 		dbConfigValues := configuration.ApplicationConfiguration().GetDbConfig()
 		dbConfig := repositoryConfig.DbConfig{
 			BaseConfig: repositoryConfig.BaseConfig{
-				LogLevel:                                 3,
-				DisableForeignKeyConstraintWhenMigrating: true,
+				LogLevel:                                 dbConfigValues.LogLevel,
+				DisableForeignKeyConstraintWhenMigrating: dbConfigValues.DisableForeignKeyConstraintWhenMigrating,
 			},
 			Host:         dbConfigValues.Host,
 			Port:         dbConfigValues.Port,
@@ -79,8 +79,8 @@ var controllerSyncCmd = &cobra.Command{
 		dbConfigValues := configuration.ApplicationConfiguration().GetDbConfig()
 		dbConfig := repositoryConfig.DbConfig{
 			BaseConfig: repositoryConfig.BaseConfig{
-				LogLevel:                                 3,
-				DisableForeignKeyConstraintWhenMigrating: true,
+				LogLevel:                                 dbConfigValues.LogLevel,
+				DisableForeignKeyConstraintWhenMigrating: dbConfigValues.DisableForeignKeyConstraintWhenMigrating,
 			},
 			Host:         dbConfigValues.Host,
 			Port:         dbConfigValues.Port,

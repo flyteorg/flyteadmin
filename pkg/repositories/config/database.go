@@ -16,8 +16,8 @@ type DbConfig struct {
 func NewDbConfig(dbConfigValues interfaces.DbConfig) DbConfig {
 	return DbConfig{
 		BaseConfig: BaseConfig{
-			LogLevel:                                 3,
-			DisableForeignKeyConstraintWhenMigrating: true,
+			LogLevel:                                 dbConfigValues.LogLevel,
+			DisableForeignKeyConstraintWhenMigrating: dbConfigValues.DisableForeignKeyConstraintWhenMigrating,
 		},
 		Host:         dbConfigValues.Host,
 		Port:         dbConfigValues.Port,

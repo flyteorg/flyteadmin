@@ -35,8 +35,8 @@ var migrateCmd = &cobra.Command{
 		databaseConfig := configuration.ApplicationConfiguration().GetDbConfig()
 		postgresConfigProvider := config.NewPostgresConfigProvider(config.DbConfig{
 			BaseConfig: config.BaseConfig{
-				LogLevel:                                 3,
-				DisableForeignKeyConstraintWhenMigrating: true,
+				LogLevel:                                 databaseConfig.LogLevel,
+				DisableForeignKeyConstraintWhenMigrating: databaseConfig.DisableForeignKeyConstraintWhenMigrating,
 			},
 			Host:         databaseConfig.Host,
 			Port:         databaseConfig.Port,
@@ -46,7 +46,7 @@ var migrateCmd = &cobra.Command{
 			ExtraOptions: databaseConfig.ExtraOptions,
 		}, migrateScope)
 		db, err := gorm.Open(postgres.Open(postgresConfigProvider.GetDSN()), &gorm.Config{
-			Logger:                                   gormLogger.Default.LogMode(gormLogger.Info),
+			Logger:                                   gormLogger.Default.LogMode(postgresConfigProvider.GetDBConfig().LogLevel),
 			DisableForeignKeyConstraintWhenMigrating: postgresConfigProvider.GetDBConfig().DisableForeignKeyConstraintWhenMigrating,
 		})
 		if err != nil {
@@ -85,8 +85,8 @@ var rollbackCmd = &cobra.Command{
 		databaseConfig := configuration.ApplicationConfiguration().GetDbConfig()
 		postgresConfigProvider := config.NewPostgresConfigProvider(config.DbConfig{
 			BaseConfig: config.BaseConfig{
-				LogLevel:                                 3,
-				DisableForeignKeyConstraintWhenMigrating: true,
+				LogLevel:                                 databaseConfig.LogLevel,
+				DisableForeignKeyConstraintWhenMigrating: databaseConfig.DisableForeignKeyConstraintWhenMigrating,
 			},
 			Host:         databaseConfig.Host,
 			Port:         databaseConfig.Port,
@@ -97,7 +97,7 @@ var rollbackCmd = &cobra.Command{
 		}, rollbackScope)
 
 		db, err := gorm.Open(postgres.Open(postgresConfigProvider.GetDSN()), &gorm.Config{
-			Logger: gormLogger.Default.LogMode(gormLogger.Info),
+			Logger: gormLogger.Default.LogMode(postgresConfigProvider.GetDBConfig().LogLevel),
 		})
 		if err != nil {
 			logger.Fatal(ctx, err)
@@ -135,8 +135,8 @@ var seedProjectsCmd = &cobra.Command{
 		databaseConfig := configuration.ApplicationConfiguration().GetDbConfig()
 		postgresConfigProvider := config.NewPostgresConfigProvider(config.DbConfig{
 			BaseConfig: config.BaseConfig{
-				LogLevel:                                 3,
-				DisableForeignKeyConstraintWhenMigrating: true,
+				LogLevel:                                 databaseConfig.LogLevel,
+				DisableForeignKeyConstraintWhenMigrating: databaseConfig.DisableForeignKeyConstraintWhenMigrating,
 			},
 			Host:         databaseConfig.Host,
 			Port:         databaseConfig.Port,
@@ -146,7 +146,7 @@ var seedProjectsCmd = &cobra.Command{
 			ExtraOptions: databaseConfig.ExtraOptions,
 		}, migrateScope)
 		db, err := gorm.Open(postgres.Open(postgresConfigProvider.GetDSN()), &gorm.Config{
-			Logger: gormLogger.Default.LogMode(gormLogger.Info),
+			Logger: gormLogger.Default.LogMode(postgresConfigProvider.GetDBConfig().LogLevel),
 		})
 		if err != nil {
 			logger.Fatal(ctx, err)
