@@ -55,7 +55,7 @@ func (r *TaskExecutionRepo) Get(ctx context.Context, input interfaces.GetTaskExe
 	}).Preload("ChildNodeExecution").Take(&taskExecution)
 	timer.Stop()
 
-	if  tx.Error != nil && errors.Is(tx.Error, gorm.ErrRecordNotFound) {
+	if tx.Error != nil && errors.Is(tx.Error, gorm.ErrRecordNotFound) {
 		return models.TaskExecution{},
 			flyteAdminDbErrors.GetMissingEntityError("task execution", &core.TaskExecutionIdentifier{
 				TaskId: &core.Identifier{

@@ -85,7 +85,7 @@ func TestUpdateNamedEntity_WithExisting(t *testing.T) {
 	GlobalMock := mocket.Catcher.Reset()
 	GlobalMock.Logging = true
 	GlobalMock.NewMock().WithQuery(
-		`SELECT * FROM "named_entity_metadata" WHERE "named_entity_metadata"."resource_type" = $1 AND "named_entity_metadata"."project" = $2 AND "named_entity_metadata"."domain" = $3 AND "named_entity_metadata"."name" = $4 ORDER BY "named_entity_metadata"."id" LIMIT 1`).WithReply(results)
+		`SELECT "named_entity_metadata"."created_at","named_entity_metadata"."updated_at","named_entity_metadata"."deleted_at","named_entity_metadata"."resource_type","named_entity_metadata"."project","named_entity_metadata"."domain","named_entity_metadata"."name","named_entity_metadata"."description","named_entity_metadata"."state" FROM "named_entity_metadata" WHERE "named_entity_metadata"."resource_type" = $1 AND "named_entity_metadata"."project" = $2 AND "named_entity_metadata"."domain" = $3 AND "named_entity_metadata"."name" = $4 ORDER BY "named_entity_metadata"."id" LIMIT 1`).WithReply(results)
 
 	mockQuery := GlobalMock.NewMock()
 	mockQuery.WithQuery(
@@ -116,7 +116,7 @@ func TestUpdateNamedEntity_CreateNew(t *testing.T) {
 
 	mockQuery := GlobalMock.NewMock()
 	mockQuery.WithQuery(
-		`INSERT INTO "named_entity_metadata" ("id","created_at","updated_at","deleted_at","resource_type","project","domain","name","description","state") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`)
+		`INSERT INTO "named_entity_metadata" ("created_at","updated_at","deleted_at","resource_type","project","domain","name","description","state") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`)
 
 	err := metadataRepo.Update(context.Background(), models.NamedEntity{
 		NamedEntityKey: models.NamedEntityKey{

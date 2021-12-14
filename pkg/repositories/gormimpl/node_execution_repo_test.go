@@ -30,13 +30,10 @@ func TestCreateNodeExecution(t *testing.T) {
 	GlobalMock := mocket.Catcher.Reset()
 
 	nodeExecutionQuery := GlobalMock.NewMock()
-	nodeExecutionQuery.WithQuery(`INSERT INTO "node_executions" ("id","created_at","updated_at","deleted_at","execution_project","execution_domain","execution_name","node_id","phase","input_uri","closure","started_at","node_execution_created_at","node_execution_updated_at","duration","node_execution_metadata","parent_id","parent_task_execution_id","error_kind","error_code","cache_status","dynamic_workflow_remote_closure_reference") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)`)
+	nodeExecutionQuery.WithQuery(`INSERT INTO "node_executions" ("created_at","updated_at","deleted_at","execution_project","execution_domain","execution_name","node_id","phase","input_uri","closure","started_at","node_execution_created_at","node_execution_updated_at","duration","node_execution_metadata","parent_id","parent_task_execution_id","error_kind","error_code","cache_status","dynamic_workflow_remote_closure_reference") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`)
 
 	parentID := uint(10)
 	nodeExecution := models.NodeExecution{
-		BaseModel: models.BaseModel{
-			ID: 2,
-		},
 		NodeExecutionKey: models.NodeExecutionKey{
 			NodeID: "1",
 			ExecutionKey: models.ExecutionKey{

@@ -22,7 +22,7 @@ func getDbConfig() database_config.DbConfig {
 	return database_config.DbConfig{
 		Host:   "postgres",
 		Port:   5432,
-		DbName: "flyteadmin",
+		DbName: "postgres",
 		User:   "postgres",
 	}
 }
