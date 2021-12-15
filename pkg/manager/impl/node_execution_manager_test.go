@@ -228,6 +228,10 @@ func TestCreateNodeEvent_MissingExecution(t *testing.T) {
 		func(ctx context.Context, input interfaces.NodeExecutionResource) (models.NodeExecution, error) {
 			return models.NodeExecution{}, flyteAdminErrors.NewFlyteAdminError(codes.NotFound, "foo")
 		})
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).ExistsFunction =
+		func(ctx context.Context, input interfaces.Identifier) (bool, error) {
+			return false, expectedErr
+		}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(func(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
 		return models.Execution{}, expectedErr
 	})
