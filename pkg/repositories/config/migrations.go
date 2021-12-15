@@ -124,7 +124,7 @@ var Migrations = []*gormigrate.Migration{
 	{
 		ID: "2019-10-09-project-description",
 		Migrate: func(tx *gorm.DB) error {
-			return tx.Migrator().DropTable(&models.Project{})
+			return tx.AutoMigrate(&models.Project{})
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return tx.Exec("ALTER TABLE projects DROP COLUMN IF EXISTS description").Error

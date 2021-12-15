@@ -39,7 +39,8 @@ var migrateCmd = &cobra.Command{
 		}
 		postgresConfigProvider := config.NewPostgresConfigProvider(config.DbConfig{
 			BaseConfig: config.BaseConfig{
-				LogLevel: dbLogLevel,
+				LogLevel:                                 dbLogLevel,
+				DisableForeignKeyConstraintWhenMigrating: true,
 			},
 			Host:         databaseConfig.Host,
 			Port:         databaseConfig.Port,
