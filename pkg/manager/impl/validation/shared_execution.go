@@ -13,6 +13,9 @@ import (
 )
 
 func ValidateCluster(ctx context.Context, db repositories.RepositoryInterface, executionID *core.WorkflowExecutionIdentifier, cluster string) error {
+	if len(cluster) == 0 || cluster == common.DefaultProducerID {
+		return nil
+	}
 	workflowExecution, err := db.ExecutionRepo().Get(ctx, repoInterfaces.Identifier{
 		Project: executionID.Project,
 		Domain:  executionID.Domain,
@@ -22,7 +25,7 @@ func ValidateCluster(ctx context.Context, db repositories.RepositoryInterface, e
 		logger.Debugf(ctx, "Failed to find existing execution with id [%+v] with err: %v", executionID, err)
 		return err
 	}
-	if !(workflowExecution.Cluster == cluster || cluster == common.DefaultProducerID) {
+	if workflowExecution.Cluster != cluster {
 		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Cluster/producer from event [%s] does not match existing workflow execution cluster: [%s]",
 			workflowExecution.Cluster, cluster)
 	}

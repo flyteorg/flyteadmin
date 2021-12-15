@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flyteorg/flyteadmin/pkg/common"
+
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"google.golang.org/grpc/codes"
 
@@ -585,7 +587,7 @@ func TestFromExecutionModels(t *testing.T) {
 	}, executions[0]))
 }
 
-func TestUpdateModelState_SetCluster(t *testing.T) {
+func TestUpdateModelState_WithClusterInformation(t *testing.T) {
 	createdAt := time.Date(2018, 10, 29, 16, 0, 0, 0, time.UTC)
 	createdAtProto, _ := ptypes.TimestampProto(createdAt)
 	existingClosure := admin.ExecutionClosure{
@@ -602,32 +604,54 @@ func TestUpdateModelState_SetCluster(t *testing.T) {
 	existingClosureBytes, _ := proto.Marshal(&existingClosure)
 	startedAt := time.Now()
 	executionModel := getRunningExecutionModel(specBytes, existingClosureBytes, startedAt)
-	t.Run("valid", func(t *testing.T) {
-		occurredAt := time.Date(2018, 10, 29, 16, 10, 0, 0, time.UTC)
-		occurredAtProto, _ := ptypes.TimestampProto(occurredAt)
+	testCluster := "C1"
+	altCluster := "C2"
+	executionModel.Cluster = testCluster
+	occurredAt := time.Date(2018, 10, 29, 16, 10, 0, 0, time.UTC)
+	occurredAtProto, _ := ptypes.TimestampProto(occurredAt)
+	t.Run("update", func(t *testing.T) {
+		executionModel.Cluster = altCluster
 		err := UpdateExecutionModelState(context.TODO(), &executionModel, admin.WorkflowExecutionEventRequest{
 			Event: &event.WorkflowExecutionEvent{
 				Phase:      core.WorkflowExecution_QUEUED,
 				OccurredAt: occurredAtProto,
-				ProducerId: "C2",
+				ProducerId: testCluster,
 			},
 		}, interfaces.InlineEventDataPolicyStoreInline, commonMocks.GetMockStorageClient())
 		assert.NoError(t, err)
-		assert.Equal(t, "C2", executionModel.Cluster)
+		assert.Equal(t, testCluster, executionModel.Cluster)
+		executionModel.Cluster = testCluster
 	})
-	t.Run("invalid", func(t *testing.T) {
-
-		executionModel.Cluster = "C1"
-		occurredAt := time.Date(2018, 10, 29, 16, 10, 0, 0, time.UTC)
-		occurredAtProto, _ := ptypes.TimestampProto(occurredAt)
+	t.Run("do not update", func(t *testing.T) {
 		err := UpdateExecutionModelState(context.TODO(), &executionModel, admin.WorkflowExecutionEventRequest{
 			Event: &event.WorkflowExecutionEvent{
 				Phase:      core.WorkflowExecution_RUNNING,
 				OccurredAt: occurredAtProto,
-				ProducerId: "C2",
+				ProducerId: altCluster,
 			},
 		}, interfaces.InlineEventDataPolicyStoreInline, commonMocks.GetMockStorageClient())
 		assert.Equal(t, err.(errors.FlyteAdminError).Code(), codes.InvalidArgument)
 	})
-
+	t.Run("matches recorded", func(t *testing.T) {
+		executionModel.Cluster = testCluster
+		err := UpdateExecutionModelState(context.TODO(), &executionModel, admin.WorkflowExecutionEventRequest{
+			Event: &event.WorkflowExecutionEvent{
+				Phase:      core.WorkflowExecution_RUNNING,
+				OccurredAt: occurredAtProto,
+				ProducerId: testCluster,
+			},
+		}, interfaces.InlineEventDataPolicyStoreInline, commonMocks.GetMockStorageClient())
+		assert.NoError(t, err)
+	})
+	t.Run("default cluster value", func(t *testing.T) {
+		executionModel.Cluster = testCluster
+		err := UpdateExecutionModelState(context.TODO(), &executionModel, admin.WorkflowExecutionEventRequest{
+			Event: &event.WorkflowExecutionEvent{
+				Phase:      core.WorkflowExecution_RUNNING,
+				OccurredAt: occurredAtProto,
+				ProducerId: common.DefaultProducerID,
+			},
+		}, interfaces.InlineEventDataPolicyStoreInline, commonMocks.GetMockStorageClient())
+		assert.NoError(t, err)
+	})
 }

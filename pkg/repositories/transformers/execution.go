@@ -21,6 +21,8 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 )
 
+var clusterReassignablePhases = sets.NewString(core.WorkflowExecution_UNDEFINED.String(), core.WorkflowExecution_QUEUED.String())
+
 // Request parameters for calls to CreateExecutionModel.
 type CreateExecutionModelInput struct {
 	WorkflowExecutionID   core.WorkflowExecutionIdentifier
@@ -106,8 +108,6 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 	return executionModel, nil
 }
 
-var clusterReassignablePhases = sets.NewString(core.WorkflowExecution_UNDEFINED.String(), core.WorkflowExecution_QUEUED.String())
-
 // Updates an existing model given a WorkflowExecution event.
 func UpdateExecutionModelState(
 	ctx context.Context,
@@ -142,11 +142,17 @@ func UpdateExecutionModelState(
 		}
 	}
 
-	if clusterReassignablePhases.Has(execution.Phase) {
-		execution.Cluster = request.Event.ProducerId
-	} else if request.Event.ProducerId != common.DefaultProducerID && execution.Cluster != request.Event.ProducerId {
-		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Cannot update cluster for running/terminated execution [%v] from [%s] to [%s]",
-			request.Event.ExecutionId, execution.Cluster, request.Event.ProducerId)
+	// Default or empty cluster values do not require updating the execution model.
+	ignoreClusterFromEvent := len(request.Event.ProducerId) == 0 || request.Event.ProducerId == common.DefaultProducerID
+	if !ignoreClusterFromEvent {
+		if clusterReassignablePhases.Has(execution.Phase) {
+			logger.Debugf(ctx, "Updating cluster for execution [%v] with existing recorded cluster [%s] and setting to cluster [%s]",
+				request.Event.ExecutionId, execution.Cluster, request.Event.ProducerId)
+			execution.Cluster = request.Event.ProducerId
+		} else if execution.Cluster != request.Event.ProducerId {
+			return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Cannot update cluster for running/terminated execution [%v] from [%s] to [%s]",
+				request.Event.ExecutionId, execution.Cluster, request.Event.ProducerId)
+		}
 	}
 
 	if request.Event.GetOutputUri() != "" {
