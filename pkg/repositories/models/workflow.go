@@ -2,8 +2,8 @@ package models
 
 // Workflow primary key
 type WorkflowKey struct {
-	Project string `gorm:"primary_key;index:workflow_project_domain_name_idx,workflow_project_domain_idx"  valid:"length(0|255)"`
-	Domain  string `gorm:"primary_key;index:workflow_project_domain_name_idx,workflow_project_domain_idx"  valid:"length(0|255)"`
+	Project string `gorm:"primary_key;index:workflow_project_domain_name_idx;index:workflow_project_domain_idx"  valid:"length(0|255)"`
+	Domain  string `gorm:"primary_key;index:workflow_project_domain_name_idx;index:workflow_project_domain_idx"  valid:"length(0|255)"`
 	Name    string `gorm:"primary_key;index:workflow_project_domain_name_idx"  valid:"length(0|255)"`
 	Version string `gorm:"primary_key"`
 }
