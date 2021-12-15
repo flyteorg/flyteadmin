@@ -7,6 +7,7 @@
 package errors
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -67,7 +68,7 @@ func (p *postgresErrorTransformer) ToFlyteAdminError(err error) flyteAdminErrors
 
 	pqError, ok := err.(*pgconn.PgError)
 	if !ok {
-		logger.InfofNoCtx("Unable to cast to pgconn.PgError. Error type: [%v]",
+		logger.Debugf(context.Background(), "Unable to cast to pgconn.PgError. Error type: [%v]",
 			reflect.TypeOf(err))
 		return p.fromGormError(err)
 	}
