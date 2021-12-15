@@ -239,6 +239,16 @@ func TestCreateNodeEvent_MissingExecution(t *testing.T) {
 	resp, err := nodeExecManager.CreateNodeEvent(context.Background(), request)
 	assert.EqualError(t, err, expectedErr.Error())
 	assert.Nil(t, resp)
+
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).ExistsFunction =
+		func(ctx context.Context, input interfaces.Identifier) (bool, error) {
+			return false, nil
+		}
+	nodeExecManager = NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(), make([]string, 0), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL, &mockPublisher, &eventWriterMocks.NodeExecutionEventWriter{})
+	resp, err = nodeExecManager.CreateNodeEvent(context.Background(), request)
+	assert.EqualError(t, err, "failed to get existing execution id: [project:\"project\""+
+		" domain:\"domain\" name:\"name\" ]")
+	assert.Nil(t, resp)
 }
 
 func TestCreateNodeEvent_CreateDatabaseError(t *testing.T) {
