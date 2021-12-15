@@ -2,8 +2,6 @@ package interfaces
 
 import (
 	"github.com/flyteorg/flytestdlib/config"
-	"gorm.io/gorm/logger"
-
 	"golang.org/x/time/rate"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
@@ -30,17 +28,10 @@ type DbConfigSection struct {
 	Debug bool `json:"debug"`
 }
 
-// This is config used for varying the DB log level and foreignkeyconstraints during migration.
-type BaseConfig struct {
-	LogLevel                                 logger.LogLevel `json:"log_level"`
-	DisableForeignKeyConstraintWhenMigrating bool
-}
-
 // This represents a configuration used for initiating database connections much like DbConfigSection, however the
 // password is *resolved* in this struct and therefore it is used as the value the runtime provider returns to callers
 // requesting the database config.
 type DbConfig struct {
-	BaseConfig
 	Host         string `json:"host"`
 	Port         int    `json:"port"`
 	DbName       string `json:"dbname"`

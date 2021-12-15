@@ -33,10 +33,13 @@ var migrateCmd = &cobra.Command{
 		ctx := context.Background()
 		configuration := runtime.NewConfigurationProvider()
 		databaseConfig := configuration.ApplicationConfiguration().GetDbConfig()
+		dbLogLevel := gormLogger.Silent
+		if databaseConfig.Debug {
+			dbLogLevel = gormLogger.Info
+		}
 		postgresConfigProvider := config.NewPostgresConfigProvider(config.DbConfig{
 			BaseConfig: config.BaseConfig{
-				LogLevel:                                 databaseConfig.LogLevel,
-				DisableForeignKeyConstraintWhenMigrating: databaseConfig.DisableForeignKeyConstraintWhenMigrating,
+				LogLevel: dbLogLevel,
 			},
 			Host:         databaseConfig.Host,
 			Port:         databaseConfig.Port,
@@ -83,10 +86,13 @@ var rollbackCmd = &cobra.Command{
 		ctx := context.Background()
 		configuration := runtime.NewConfigurationProvider()
 		databaseConfig := configuration.ApplicationConfiguration().GetDbConfig()
+		dbLogLevel := gormLogger.Silent
+		if databaseConfig.Debug {
+			dbLogLevel = gormLogger.Info
+		}
 		postgresConfigProvider := config.NewPostgresConfigProvider(config.DbConfig{
 			BaseConfig: config.BaseConfig{
-				LogLevel:                                 databaseConfig.LogLevel,
-				DisableForeignKeyConstraintWhenMigrating: databaseConfig.DisableForeignKeyConstraintWhenMigrating,
+				LogLevel: dbLogLevel,
 			},
 			Host:         databaseConfig.Host,
 			Port:         databaseConfig.Port,
@@ -133,10 +139,13 @@ var seedProjectsCmd = &cobra.Command{
 		ctx := context.Background()
 		configuration := runtime.NewConfigurationProvider()
 		databaseConfig := configuration.ApplicationConfiguration().GetDbConfig()
+		dbLogLevel := gormLogger.Silent
+		if databaseConfig.Debug {
+			dbLogLevel = gormLogger.Info
+		}
 		postgresConfigProvider := config.NewPostgresConfigProvider(config.DbConfig{
 			BaseConfig: config.BaseConfig{
-				LogLevel:                                 databaseConfig.LogLevel,
-				DisableForeignKeyConstraintWhenMigrating: databaseConfig.DisableForeignKeyConstraintWhenMigrating,
+				LogLevel: dbLogLevel,
 			},
 			Host:         databaseConfig.Host,
 			Port:         databaseConfig.Port,

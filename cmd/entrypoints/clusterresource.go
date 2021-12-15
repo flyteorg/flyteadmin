@@ -5,9 +5,7 @@ import (
 
 	"github.com/flyteorg/flyteadmin/pkg/clusterresource"
 	executioncluster "github.com/flyteorg/flyteadmin/pkg/executioncluster/impl"
-
 	"github.com/flyteorg/flyteadmin/pkg/runtime"
-
 	"github.com/flyteorg/flytestdlib/logger"
 
 	"github.com/flyteorg/flyteadmin/pkg/config"
@@ -16,6 +14,7 @@ import (
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/spf13/cobra"
 	_ "gorm.io/driver/postgres" // Required to import database driver.
+	gormLogger "gorm.io/gorm/logger"
 )
 
 var parentClusterResourceCmd = &cobra.Command{
@@ -40,10 +39,13 @@ var controllerRunCmd = &cobra.Command{
 		configuration := runtime.NewConfigurationProvider()
 		scope := promutils.NewScope(configuration.ApplicationConfiguration().GetTopLevelConfig().MetricsScope).NewSubScope("clusterresource")
 		dbConfigValues := configuration.ApplicationConfiguration().GetDbConfig()
+		dbLogLevel := gormLogger.Silent
+		if dbConfigValues.Debug {
+			dbLogLevel = gormLogger.Info
+		}
 		dbConfig := repositoryConfig.DbConfig{
 			BaseConfig: repositoryConfig.BaseConfig{
-				LogLevel:                                 dbConfigValues.LogLevel,
-				DisableForeignKeyConstraintWhenMigrating: dbConfigValues.DisableForeignKeyConstraintWhenMigrating,
+				LogLevel: dbLogLevel,
 			},
 			Host:         dbConfigValues.Host,
 			Port:         dbConfigValues.Port,
@@ -77,10 +79,13 @@ var controllerSyncCmd = &cobra.Command{
 		configuration := runtime.NewConfigurationProvider()
 		scope := promutils.NewScope(configuration.ApplicationConfiguration().GetTopLevelConfig().MetricsScope).NewSubScope("clusterresource")
 		dbConfigValues := configuration.ApplicationConfiguration().GetDbConfig()
+		dbLogLevel := gormLogger.Silent
+		if dbConfigValues.Debug {
+			dbLogLevel = gormLogger.Info
+		}
 		dbConfig := repositoryConfig.DbConfig{
 			BaseConfig: repositoryConfig.BaseConfig{
-				LogLevel:                                 dbConfigValues.LogLevel,
-				DisableForeignKeyConstraintWhenMigrating: dbConfigValues.DisableForeignKeyConstraintWhenMigrating,
+				LogLevel: dbLogLevel,
 			},
 			Host:         dbConfigValues.Host,
 			Port:         dbConfigValues.Port,
