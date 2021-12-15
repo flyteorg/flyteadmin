@@ -6,6 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flyteorg/flyteadmin/pkg/errors"
+	"google.golang.org/grpc/codes"
+
 	commonMocks "github.com/flyteorg/flyteadmin/pkg/common/mocks"
 	"github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flytestdlib/storage"
@@ -580,4 +583,51 @@ func TestFromExecutionModels(t *testing.T) {
 		Spec:    spec,
 		Closure: &closure,
 	}, executions[0]))
+}
+
+func TestUpdateModelState_SetCluster(t *testing.T) {
+	createdAt := time.Date(2018, 10, 29, 16, 0, 0, 0, time.UTC)
+	createdAtProto, _ := ptypes.TimestampProto(createdAt)
+	existingClosure := admin.ExecutionClosure{
+		ComputedInputs: &core.LiteralMap{
+			Literals: map[string]*core.Literal{
+				"foo": {},
+			},
+		},
+		Phase:     core.WorkflowExecution_UNDEFINED,
+		CreatedAt: createdAtProto,
+	}
+	spec := testutils.GetExecutionRequest().Spec
+	specBytes, _ := proto.Marshal(spec)
+	existingClosureBytes, _ := proto.Marshal(&existingClosure)
+	startedAt := time.Now()
+	executionModel := getRunningExecutionModel(specBytes, existingClosureBytes, startedAt)
+	t.Run("valid", func(t *testing.T) {
+		occurredAt := time.Date(2018, 10, 29, 16, 10, 0, 0, time.UTC)
+		occurredAtProto, _ := ptypes.TimestampProto(occurredAt)
+		err := UpdateExecutionModelState(context.TODO(), &executionModel, admin.WorkflowExecutionEventRequest{
+			Event: &event.WorkflowExecutionEvent{
+				Phase:      core.WorkflowExecution_QUEUED,
+				OccurredAt: occurredAtProto,
+				ProducerId: "C2",
+			},
+		}, interfaces.InlineEventDataPolicyStoreInline, commonMocks.GetMockStorageClient())
+		assert.NoError(t, err)
+		assert.Equal(t, "C2", executionModel.Cluster)
+	})
+	t.Run("invalid", func(t *testing.T) {
+
+		executionModel.Cluster = "C1"
+		occurredAt := time.Date(2018, 10, 29, 16, 10, 0, 0, time.UTC)
+		occurredAtProto, _ := ptypes.TimestampProto(occurredAt)
+		err := UpdateExecutionModelState(context.TODO(), &executionModel, admin.WorkflowExecutionEventRequest{
+			Event: &event.WorkflowExecutionEvent{
+				Phase:      core.WorkflowExecution_RUNNING,
+				OccurredAt: occurredAtProto,
+				ProducerId: "C2",
+			},
+		}, interfaces.InlineEventDataPolicyStoreInline, commonMocks.GetMockStorageClient())
+		assert.Equal(t, err.(errors.FlyteAdminError).Code(), codes.InvalidArgument)
+	})
+
 }

@@ -1340,6 +1340,7 @@ func TestCreateWorkflowEvent(t *testing.T) {
 			OutputResult: &event.WorkflowExecutionEvent_Error{
 				Error: &executionError,
 			},
+			ProducerId: testCluster,
 		},
 	}
 	mockDbEventWriter := &eventWriterMocks.WorkflowExecutionEventWriter{}
@@ -1427,6 +1428,7 @@ func TestCreateWorkflowEvent_StartedRunning(t *testing.T) {
 			ExecutionId: &executionIdentifier,
 			OccurredAt:  occurredAtTimestamp,
 			Phase:       core.WorkflowExecution_RUNNING,
+			ProducerId:  testCluster,
 		},
 	}
 	mockDbEventWriter := &eventWriterMocks.WorkflowExecutionEventWriter{}
@@ -1641,6 +1643,7 @@ func TestCreateWorkflowEvent_DatabaseUpdateError(t *testing.T) {
 			OutputResult: &event.WorkflowExecutionEvent_Error{
 				Error: &executionError,
 			},
+			ProducerId: testCluster,
 		},
 	})
 	assert.Nil(t, resp)

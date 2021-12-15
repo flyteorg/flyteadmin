@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	"github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
@@ -104,6 +106,8 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 	return executionModel, nil
 }
 
+var clusterReassignablePhases = sets.NewString(core.WorkflowExecution_UNDEFINED.String(), core.WorkflowExecution_QUEUED.String())
+
 // Updates an existing model given a WorkflowExecution event.
 func UpdateExecutionModelState(
 	ctx context.Context,
@@ -136,6 +140,13 @@ func UpdateExecutionModelState(
 			logger.Infof(context.Background(),
 				"Cannot compute duration because startedAt was never set, requestId: %v", request.RequestId)
 		}
+	}
+
+	if clusterReassignablePhases.Has(execution.Phase) {
+		execution.Cluster = request.Event.ProducerId
+	} else if request.Event.ProducerId != common.DefaultProducerID && execution.Cluster != request.Event.ProducerId {
+		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Cannot update cluster for running/terminated execution [%v] from [%s] to [%s]",
+			request.Event.ExecutionId, execution.Cluster, request.Event.ProducerId)
 	}
 
 	if request.Event.GetOutputUri() != "" {
