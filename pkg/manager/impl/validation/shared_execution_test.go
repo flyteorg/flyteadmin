@@ -41,7 +41,7 @@ func TestValidateCluster_Nonmatching(t *testing.T) {
 		}, nil
 	})
 	err := ValidateCluster(context.TODO(), repository, testExecID, testCluster)
-	assert.Equal(t, codes.InvalidArgument, err.(errors.FlyteAdminError).Code())
+	assert.Equal(t, codes.FailedPrecondition, err.(errors.FlyteAdminError).Code())
 }
 
 func TestValidateCluster_NoExecution(t *testing.T) {

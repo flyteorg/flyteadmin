@@ -2,6 +2,7 @@ package validation
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/errors"
@@ -9,7 +10,6 @@ import (
 	repoInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/logger"
-	"google.golang.org/grpc/codes"
 )
 
 func ValidateCluster(ctx context.Context, db repositories.RepositoryInterface, executionID *core.WorkflowExecutionIdentifier, cluster string) error {
@@ -26,8 +26,9 @@ func ValidateCluster(ctx context.Context, db repositories.RepositoryInterface, e
 		return err
 	}
 	if workflowExecution.Cluster != cluster {
-		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Cluster/producer from event [%s] does not match existing workflow execution cluster: [%s]",
+		errorMsg := fmt.Sprintf("Cluster/producer from event [%s] does not match existing workflow execution cluster: [%s]",
 			workflowExecution.Cluster, cluster)
+		return errors.NewIncompatibleClusterError(ctx, errorMsg, workflowExecution.Cluster)
 	}
 	return nil
 }
