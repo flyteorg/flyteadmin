@@ -11,7 +11,7 @@ require (
 	github.com/benbjohnson/clock v1.1.0
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/evanphx/json-patch v4.9.0+incompatible
-	github.com/flyteorg/flyteidl v0.21.14-0.20211216004431-c2617cc4b1a8
+	github.com/flyteorg/flyteidl v0.21.14-0.20211216005934-ab304d64bb4b
 	github.com/flyteorg/flyteplugins v0.7.0
 	github.com/flyteorg/flytepropeller v0.14.11
 	github.com/flyteorg/flytestdlib v0.4.7

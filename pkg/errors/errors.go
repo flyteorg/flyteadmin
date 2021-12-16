@@ -95,7 +95,7 @@ func NewAlreadyInTerminalStateError(ctx context.Context, errorMsg string, curPha
 func NewIncompatibleClusterError(ctx context.Context, errorMsg, curCluster string) FlyteAdminError {
 	statusErr, transformationErr := NewFlyteAdminError(codes.FailedPrecondition, errorMsg).WithDetails(&admin.EventFailureReason{
 		Reason: &admin.EventFailureReason_IncompatibleCluster{
-			IncompatibleCluster: &admin.EventIncompatibleCluster{
+			IncompatibleCluster: &admin.EventErrorIncompatibleCluster{
 				Cluster: curCluster,
 			},
 		},
