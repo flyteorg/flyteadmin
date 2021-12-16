@@ -630,7 +630,7 @@ func TestUpdateModelState_WithClusterInformation(t *testing.T) {
 				ProducerId: altCluster,
 			},
 		}, interfaces.InlineEventDataPolicyStoreInline, commonMocks.GetMockStorageClient())
-		assert.Equal(t, err.(errors.FlyteAdminError).Code(), codes.InvalidArgument)
+		assert.Equal(t, err.(errors.FlyteAdminError).Code(), codes.FailedPrecondition)
 	})
 	t.Run("matches recorded", func(t *testing.T) {
 		executionModel.Cluster = testCluster

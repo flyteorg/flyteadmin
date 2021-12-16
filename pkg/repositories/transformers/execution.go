@@ -2,6 +2,7 @@ package transformers
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -150,8 +151,9 @@ func UpdateExecutionModelState(
 				request.Event.ExecutionId, execution.Cluster, request.Event.ProducerId)
 			execution.Cluster = request.Event.ProducerId
 		} else if execution.Cluster != request.Event.ProducerId {
-			return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Cannot update cluster for running/terminated execution [%v] from [%s] to [%s]",
+			errorMsg := fmt.Sprintf("Cannot update cluster for running/terminated execution [%v] from [%s] to [%s]",
 				request.Event.ExecutionId, execution.Cluster, request.Event.ProducerId)
+			return errors.NewIncompatibleClusterError(ctx, errorMsg, execution.Cluster)
 		}
 	}
 
