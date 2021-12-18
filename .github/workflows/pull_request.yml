@@ -102,7 +102,7 @@ jobs:
         run: |
           flytectl sandbox exec -- docker load -i /root/snapshot.tar
       - name: Upgrade Helm charts
-        run:  flytectl sandbox exec -- helm upgrade flyte -n flyte --kubeconfig=/etc/rancher/k3s/k3s.yaml flyteorg/flyte -f /flyteorg/share/flyte/values-sandbox.yaml -f /root/script/integration/k8s/values.yaml --set flyteadmin.image.repository=flyteorg/flyteadmin,flyteadmin.image.tag=builder
+        run:  flytectl sandbox exec -- helm upgrade flyte -n flyte --kubeconfig=/etc/rancher/k3s/k3s.yaml flyteorg/flyte -f /flyteorg/share/flyte/values.yaml -f /root/script/integration/k8s/values.yaml --set flyteadmin.image.repository=flyteorg/flyteadmin,flyteadmin.image.tag=builder
       - name: Integration
         run: |
           # attempt to clean up some unneeded data: https://github.com/actions/virtual-environments/issues/2840#issuecomment-790492173
