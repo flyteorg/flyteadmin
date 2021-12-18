@@ -9,13 +9,6 @@ set -e
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 
-# TODO: load all images
-docker tag ${IMAGE} "flyteadmin:test"
-kind load docker-image flyteadmin:test
-
-# start flyteadmin and dependencies
-kubectl apply -f "${DIR}/k8s/integration.yaml"
-
 # This is a separate function so that we can potentially reuse in the future when we have more than one test
 function wait_for_flyte_deploys() {
     SECONDS=0

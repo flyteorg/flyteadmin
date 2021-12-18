@@ -1,0 +1,15 @@
+flyte:
+  flyteadmin:
+    image:
+      repository: flyteorg/flyteadmin # FLYTEADMIN_IMAGE
+      tag: builder # FLYTEADMIN_TAG
+    initialProjects:
+      - flytesnacks
+      - flytetester
+      - flyteexamples
+      - flytekit
+      - project
+    additionalVolumeMounts: 
+      - name: scratch
+        mountPath: /.cache
+    deployRedoc: false
