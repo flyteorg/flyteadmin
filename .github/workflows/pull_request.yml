@@ -104,6 +104,8 @@ jobs:
       - name: Upgrade Helm charts
         run:  flytectl sandbox exec -- helm upgrade flyte -n flyte --kubeconfig=/etc/rancher/k3s/k3s.yaml flyteorg/flyte -f /flyteorg/share/flyte/values.yaml -f /root/script/integration/k8s/values.yaml --set flyteadmin.image.repository=flyteorg/flyteadmin,flyteadmin.image.tag=builder
       - name: Integration
+        env:
+          KUBECONFIG: /home/runner/.flyte/k3s/k3s.yaml
         run: |
           # attempt to clean up some unneeded data: https://github.com/actions/virtual-environments/issues/2840#issuecomment-790492173
           sudo rm -rf /usr/share/dotnet
