@@ -334,3 +334,20 @@ func TestValidateOutputData(t *testing.T) {
 		assert.Equal(t, codes.ResourceExhausted, err.(errors.FlyteAdminError).Code())
 	})
 }
+
+func TestValidateDatetime(t *testing.T) {
+	t.Run("no datetime", func(t *testing.T) {
+		assert.NoError(t, ValidateDatetime(""))
+	})
+	t.Run("datetime with valid format", func(t *testing.T) {
+		assert.NoError(t, ValidateDatetime("2021-12-25T15:04:05Z")) // TODO check if this is really the expected format
+	})
+	t.Run("datetime with invalid format", func(t *testing.T) {
+		err := ValidateDatetime("2021-12-25")
+		assert.Equal(t, codes.InvalidArgument, err.(errors.FlyteAdminError).Code())
+	})
+	t.Run("datetime with invalid value", func(t *testing.T) {
+		err := ValidateDatetime("1000-00-00T15:04:05.1000000000000Z")
+		assert.Equal(t, codes.InvalidArgument, err.(errors.FlyteAdminError).Code())
+	})
+}

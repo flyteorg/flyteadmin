@@ -31,7 +31,7 @@ func ValidateEmptyStringField(field, fieldName string) error {
 	return nil
 }
 
-// Validates that a string field does not exceed a certain character count
+// ValidateMaxLengthStringField Validates that a string field does not exceed a certain character count
 func ValidateMaxLengthStringField(field string, fieldName string, limit int) error {
 	if len(field) > limit {
 		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "%s cannot exceed %d characters", fieldName, limit)
@@ -39,7 +39,7 @@ func ValidateMaxLengthStringField(field string, fieldName string, limit int) err
 	return nil
 }
 
-// Validates that a map field does not exceed a certain amount of entries
+// ValidateMaxMapLengthField Validates that a map field does not exceed a certain amount of entries
 func ValidateMaxMapLengthField(m map[string]string, fieldName string, limit int) error {
 	if len(m) > limit {
 		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "%s map cannot exceed %d entries", fieldName, limit)
@@ -93,7 +93,7 @@ func ValidateIdentifierFieldsSet(id *core.Identifier) error {
 	return nil
 }
 
-// Validates that all required fields for an identifier are present.
+// ValidateIdentifier Validates that all required fields for an identifier are present.
 func ValidateIdentifier(id *core.Identifier, expectedType common.Entity) error {
 	if id == nil {
 		return shared.GetMissingArgumentError(shared.ID)
@@ -106,7 +106,7 @@ func ValidateIdentifier(id *core.Identifier, expectedType common.Entity) error {
 	return ValidateIdentifierFieldsSet(id)
 }
 
-// Validates that all required fields for an identifier are present.
+// ValidateNamedEntityIdentifier Validates that all required fields for an identifier are present.
 func ValidateNamedEntityIdentifier(id *admin.NamedEntityIdentifier) error {
 	if id == nil {
 		return shared.GetMissingArgumentError(shared.ID)
@@ -236,7 +236,7 @@ func validateParameterMap(inputMap *core.ParameterMap, fieldName string) error {
 	return nil
 }
 
-// Offsets are encoded as string tokens to enable future api pagination changes. In addition to validating that an
+// ValidateToken Offsets are encoded as string tokens to enable future api pagination changes. In addition to validating that an
 // offset is a valid integer, we assert that it is non-negative.
 func ValidateToken(token string) (int, error) {
 	if token == "" {
@@ -272,17 +272,17 @@ func ValidateOutputData(outputData *core.LiteralMap, maxSizeInBytes int64) error
 }
 
 func ValidateDatetime(datetime string) error {
-	if datetime == "" {
+	if datetime == "" { // TODO should it return error if empty?
 		return nil
 	}
 	result, err := time.Parse(time.RFC3339, datetime) // TODO fix format/layout
 	if err != nil {
-		return err
+		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, err.Error())
 	}
 	timestamp := timestamppb.Timestamp{Seconds: int64(result.Second()), Nanos: int32(result.Nanosecond())}
-	err = timestamp.CheckValid() // TODO do we need this?
+	err = timestamp.CheckValid() // TODO do we need this? Probably not, since all seem to be cover by time.Parse
 	if err != nil {
-		return err
+		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, err.Error())
 	}
 	return nil
 }
