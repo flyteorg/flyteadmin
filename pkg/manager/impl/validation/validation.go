@@ -1,13 +1,10 @@
 package validation
 
 import (
-	"google.golang.org/protobuf/types/known/timestamppb"
-	"strconv"
-	"strings"
-	"time"
-
 	"github.com/golang/protobuf/proto"
 	"k8s.io/apimachinery/pkg/util/validation"
+	"strconv"
+	"strings"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/errors"
@@ -232,7 +229,7 @@ func validateParameterMap(inputMap *core.ParameterMap, fieldName string) error {
 				}
 				if defaultInput.GetVar().GetType().GetSimple() == core.SimpleType_DATETIME {
 					// Make datetime specific validations
-					return ValidateDatetime(defaultValue.String()) // TODO check if we should use defaultValue (?)
+					return ValidateDatetime(defaultValue) // TODO check if we should use defaultValue (?)
 				}
 			}
 		}
@@ -275,18 +272,27 @@ func ValidateOutputData(outputData *core.LiteralMap, maxSizeInBytes int64) error
 	return errors.NewFlyteAdminErrorf(codes.ResourceExhausted, "Output data size exceeds platform configured threshold (%+v > %v)", outputSizeInBytes, maxSizeInBytes)
 }
 
-func ValidateDatetime(datetime string) error {
-	if datetime == "" { // TODO should it return error if empty?
+func ValidateDatetime(datetime *core.Literal) error {
+	if datetime == nil { // TODO should it return error if nil?
 		return nil
 	}
-	result, err := time.Parse(time.RFC3339, datetime) // TODO fix format/layout
+	//dataType := reflect.ValueOf(datetime).String()
+	//if dataType != "SimpleType_DATETIME" {
+	//	return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Found invalid type %v instead of expected datetime", dataType)
+	//}
+	// TODO split this into several casts and check in every step
+	timestamp := datetime.Value.(*core.Literal_Scalar).Scalar.Value.(*core.Scalar_Primitive).Primitive.GetValue().(*core.Primitive_Datetime).Datetime
+	//result, err := time.Parse(time.RFC3339, datetime) // TODO fix format/layout
+	//if err != nil {
+	//	return errors.NewFlyteAdminErrorf(codes.InvalidArgument, err.Error())
+	//}
+	//timestamp := timestamppb.Timestamp{Seconds: int64(result.Second()), Nanos: int32(result.Nanosecond())}
+	err := timestamp.CheckValid() // TODO do we need this? Probably not, since all seem to be cover by time.Parse
 	if err != nil {
 		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, err.Error())
 	}
-	timestamp := timestamppb.Timestamp{Seconds: int64(result.Second()), Nanos: int32(result.Nanosecond())}
-	err = timestamp.CheckValid() // TODO do we need this? Probably not, since all seem to be cover by time.Parse
-	if err != nil {
-		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, err.Error())
-	}
+	// TODO cast to SimpleType_DATETIME and try to parse the date and check if valid
+
 	return nil
+
 }

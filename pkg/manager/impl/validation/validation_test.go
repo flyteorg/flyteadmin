@@ -1,7 +1,9 @@
 package validation
 
 import (
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"testing"
+	"time"
 
 	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 
@@ -153,63 +155,84 @@ func TestValidateListTaskRequest_MissingLimit(t *testing.T) {
 }
 
 func TestValidateParameterMap(t *testing.T) {
-	exampleMap := core.ParameterMap{
-		Parameters: map[string]*core.Parameter{
-			"foo": {
-				Var: &core.Variable{
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
-				},
-				Behavior: &core.Parameter_Default{
-					Default: coreutils.MustMakeLiteral("foo-value"),
-				},
-			},
-		},
-	}
-	err := validateParameterMap(&exampleMap, "foo")
-	assert.NoError(t, err)
-
-	exampleMap = core.ParameterMap{
-		Parameters: map[string]*core.Parameter{
-			"foo": {
-				Var: &core.Variable{
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
-				},
-				Behavior: nil, // neither required or defaults
-			},
-		},
-	}
-	err = validateParameterMap(&exampleMap, "some text")
-	assert.Error(t, err)
-
-	exampleMap = core.ParameterMap{
-		Parameters: map[string]*core.Parameter{
-			"foo": {
-				Var: &core.Variable{
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
-				},
-				Behavior: &core.Parameter_Required{
-					Required: true,
+	t.Run("valid field", func(t *testing.T) {
+		exampleMap := core.ParameterMap{
+			Parameters: map[string]*core.Parameter{
+				"foo": {
+					Var: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
+					Behavior: &core.Parameter_Default{
+						Default: coreutils.MustMakeLiteral("foo-value"),
+					},
 				},
 			},
-		},
-	}
-	err = validateParameterMap(&exampleMap, "some text")
-	assert.NoError(t, err)
-
-	exampleMap = core.ParameterMap{
-		Parameters: map[string]*core.Parameter{
-			"foo": {
-				Var: &core.Variable{
-					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
-				},
-				Behavior: &core.Parameter_Required{
-					Required: false,
+		}
+		err := validateParameterMap(&exampleMap, "foo")
+		assert.NoError(t, err)
+	})
+	t.Run("invalid because missing required and defaults", func(t *testing.T) {
+		exampleMap := core.ParameterMap{
+			Parameters: map[string]*core.Parameter{
+				"foo": {
+					Var: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
+					Behavior: nil, // neither required or defaults
 				},
 			},
-		},
-	}
-	err = validateParameterMap(&exampleMap, "some text")
-	assert.Error(t, err)
+		}
+		err := validateParameterMap(&exampleMap, "some text")
+		assert.Error(t, err)
+	})
+	t.Run("valid with required true", func(t *testing.T) {
+		exampleMap := core.ParameterMap{
+			Parameters: map[string]*core.Parameter{
+				"foo": {
+					Var: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
+					Behavior: &core.Parameter_Required{
+						Required: true,
+					},
+				},
+			},
+		}
+		err := validateParameterMap(&exampleMap, "some text")
+		assert.NoError(t, err)
+	})
+	t.Run("invalid because not required and no default provided", func(t *testing.T) {
+		exampleMap := core.ParameterMap{
+			Parameters: map[string]*core.Parameter{
+				"foo": {
+					Var: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
+					},
+					Behavior: &core.Parameter_Required{
+						Required: false,
+					},
+				},
+			},
+		}
+		err := validateParameterMap(&exampleMap, "some text")
+		assert.Error(t, err)
+	})
+	t.Run("valid datetime field", func(t *testing.T) {
+		exampleMap := core.ParameterMap{
+			Parameters: map[string]*core.Parameter{
+				"foo": {
+					Var: &core.Variable{
+						Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_DATETIME}},
+					},
+					Behavior: &core.Parameter_Default{
+						Default: coreutils.MustMakeLiteral(time.Now()),
+					},
+				},
+			},
+		}
+		err := validateParameterMap(&exampleMap, "some text")
+		assert.NoError(t, err)
+	})
 }
 
 func TestValidateToken(t *testing.T) {
@@ -337,17 +360,28 @@ func TestValidateOutputData(t *testing.T) {
 
 func TestValidateDatetime(t *testing.T) {
 	t.Run("no datetime", func(t *testing.T) {
-		assert.NoError(t, ValidateDatetime(""))
+		assert.NoError(t, ValidateDatetime(nil))
 	})
 	t.Run("datetime with valid format", func(t *testing.T) {
-		assert.NoError(t, ValidateDatetime("2021-12-25T15:04:05Z")) // TODO check if this is really the expected format
+		assert.NoError(t, ValidateDatetime(&core.Literal{
+			Value: &core.Literal_Scalar{
+				Scalar: &core.Scalar{
+					Value: &core.Scalar_Primitive{
+						Primitive: &core.Primitive{
+							Value: &core.Primitive_Datetime{Datetime: timestamppb.Now()},
+						},
+					},
+				},
+			},
+		})) // TODO check if this is really the expected format
 	})
-	t.Run("datetime with invalid format", func(t *testing.T) {
-		err := ValidateDatetime("2021-12-25")
-		assert.Equal(t, codes.InvalidArgument, err.(errors.FlyteAdminError).Code())
-	})
-	t.Run("datetime with invalid value", func(t *testing.T) {
-		err := ValidateDatetime("1000-00-00T15:04:05.1000000000000Z")
-		assert.Equal(t, codes.InvalidArgument, err.(errors.FlyteAdminError).Code())
-	})
+	// TODO how to check this? (even possible in a test?)
+	//t.Run("datetime with invalid format", func(t *testing.T) {
+	//	err := ValidateDatetime("2021-12-25")
+	//	assert.Equal(t, codes.InvalidArgument, err.(errors.FlyteAdminError).Code())
+	//})
+	//t.Run("datetime with invalid value", func(t *testing.T) {
+	//	err := ValidateDatetime("1000-00-00T15:04:05.1000000000000Z")
+	//	assert.Equal(t, codes.InvalidArgument, err.(errors.FlyteAdminError).Code())
+	//})
 }
