@@ -230,7 +230,7 @@ func validateParameterMap(inputMap *core.ParameterMap, fieldName string) error {
 				}
 				if defaultInput.GetVar().GetType().GetSimple() == core.SimpleType_DATETIME {
 					// Make datetime specific validations
-					return ValidateDatetime(defaultValue) // TODO check if we should use defaultValue (?)
+					return ValidateDatetime(defaultValue)
 				}
 			}
 		}
@@ -277,22 +277,23 @@ func ValidateDatetime(literal *core.Literal) error {
 	if literal == nil {
 		return nil
 	}
+	errorMessage := "Invalid datetime field. It does not contain a Literal_Scalar. It is a %v instead"
 	literalValue := literal.Value
 
 	if reflect.ValueOf(literalValue).String() != "<*core.Literal_Scalar Value>" {
-		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Invalid datetime field. It does not contain a Literal_Scalar. It is a %v instead", reflect.ValueOf(literalValue).String())
+		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, errorMessage, reflect.ValueOf(literalValue).String())
 	}
 	asScalar := literalValue.(*core.Literal_Scalar)
 	scalarValue := asScalar.Scalar.Value
 
 	if reflect.ValueOf(scalarValue).String() != "<*core.Scalar_Primitive Value>" {
-		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Invalid datetime field. It does not contain a Scalar_Primitive. It is a %v instead", reflect.ValueOf(scalarValue).String())
+		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, errorMessage, reflect.ValueOf(scalarValue).String())
 	}
 	asPrimitive := scalarValue.(*core.Scalar_Primitive)
 	primitiveValue := asPrimitive.Primitive.GetValue()
 
 	if reflect.ValueOf(primitiveValue).String() != "<*core.Primitive_Datetime Value>" {
-		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Invalid datetime field. It does not contain a Primitive_Datetime. It is a %v instead", reflect.ValueOf(primitiveValue).String())
+		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, errorMessage, reflect.ValueOf(primitiveValue).String())
 	}
 	asDateTime := primitiveValue.(*core.Primitive_Datetime)
 	timestamp := asDateTime.Datetime

@@ -390,5 +390,6 @@ func TestValidateDatetime(t *testing.T) {
 			},
 		}))
 	})
-	// TODO how to simulate an invalid date? (even possible in a test?)
+	// cannot generate invalid timestamp with wrong format or e.g. too big month or year.
+	// time.Parse(layout str) wouldn't allow to generate this test data.
 }
