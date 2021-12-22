@@ -362,7 +362,7 @@ func TestValidateDatetime(t *testing.T) {
 	t.Run("no datetime", func(t *testing.T) {
 		assert.NoError(t, ValidateDatetime(nil))
 	})
-	t.Run("datetime with valid format", func(t *testing.T) {
+	t.Run("datetime with valid format and value", func(t *testing.T) {
 		assert.NoError(t, ValidateDatetime(&core.Literal{
 			Value: &core.Literal_Scalar{
 				Scalar: &core.Scalar{
@@ -373,15 +373,22 @@ func TestValidateDatetime(t *testing.T) {
 					},
 				},
 			},
-		})) // TODO check if this is really the expected format
+		}))
 	})
-	// TODO how to check this? (even possible in a test?)
-	//t.Run("datetime with invalid format", func(t *testing.T) {
-	//	err := ValidateDatetime("2021-12-25")
-	//	assert.Equal(t, codes.InvalidArgument, err.(errors.FlyteAdminError).Code())
-	//})
-	//t.Run("datetime with invalid value", func(t *testing.T) {
-	//	err := ValidateDatetime("1000-00-00T15:04:05.1000000000000Z")
-	//	assert.Equal(t, codes.InvalidArgument, err.(errors.FlyteAdminError).Code())
-	//})
+	t.Run("datetime with invalid type", func(t *testing.T) {
+		assert.Error(t, ValidateDatetime(&core.Literal{
+			Value: &core.Literal_Scalar{
+				Scalar: &core.Scalar{
+					Value: &core.Scalar_Primitive{
+						Primitive: &core.Primitive{
+							Value: &core.Primitive_Integer{
+								Integer: 4,
+							},
+						},
+					},
+				},
+			},
+		}))
+	})
+	// TODO how to simulate an invalid date? (even possible in a test?)
 }

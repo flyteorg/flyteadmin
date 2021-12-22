@@ -3,6 +3,7 @@ package validation
 import (
 	"github.com/golang/protobuf/proto"
 	"k8s.io/apimachinery/pkg/util/validation"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -272,27 +273,33 @@ func ValidateOutputData(outputData *core.LiteralMap, maxSizeInBytes int64) error
 	return errors.NewFlyteAdminErrorf(codes.ResourceExhausted, "Output data size exceeds platform configured threshold (%+v > %v)", outputSizeInBytes, maxSizeInBytes)
 }
 
-func ValidateDatetime(datetime *core.Literal) error {
-	if datetime == nil { // TODO should it return error if nil?
+func ValidateDatetime(literal *core.Literal) error {
+	if literal == nil {
 		return nil
 	}
-	//dataType := reflect.ValueOf(datetime).String()
-	//if dataType != "SimpleType_DATETIME" {
-	//	return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Found invalid type %v instead of expected datetime", dataType)
-	//}
-	// TODO split this into several casts and check in every step
-	timestamp := datetime.Value.(*core.Literal_Scalar).Scalar.Value.(*core.Scalar_Primitive).Primitive.GetValue().(*core.Primitive_Datetime).Datetime
-	//result, err := time.Parse(time.RFC3339, datetime) // TODO fix format/layout
-	//if err != nil {
-	//	return errors.NewFlyteAdminErrorf(codes.InvalidArgument, err.Error())
-	//}
-	//timestamp := timestamppb.Timestamp{Seconds: int64(result.Second()), Nanos: int32(result.Nanosecond())}
-	err := timestamp.CheckValid() // TODO do we need this? Probably not, since all seem to be cover by time.Parse
+	literalValue := literal.Value
+
+	if reflect.ValueOf(literalValue).String() != "<*core.Literal_Scalar Value>" {
+		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Invalid datetime field. It does not contain a Literal_Scalar. It is a %v instead", reflect.ValueOf(literalValue).String())
+	}
+	asScalar := literalValue.(*core.Literal_Scalar)
+	scalarValue := asScalar.Scalar.Value
+
+	if reflect.ValueOf(scalarValue).String() != "<*core.Scalar_Primitive Value>" {
+		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Invalid datetime field. It does not contain a Scalar_Primitive. It is a %v instead", reflect.ValueOf(scalarValue).String())
+	}
+	asPrimitive := scalarValue.(*core.Scalar_Primitive)
+	primitiveValue := asPrimitive.Primitive.GetValue()
+
+	if reflect.ValueOf(primitiveValue).String() != "<*core.Primitive_Datetime Value>" {
+		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Invalid datetime field. It does not contain a Primitive_Datetime. It is a %v instead", reflect.ValueOf(primitiveValue).String())
+	}
+	asDateTime := primitiveValue.(*core.Primitive_Datetime)
+	timestamp := asDateTime.Datetime
+
+	err := timestamp.CheckValid()
 	if err != nil {
 		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, err.Error())
 	}
-	// TODO cast to SimpleType_DATETIME and try to parse the date and check if valid
-
 	return nil
-
 }
