@@ -230,6 +230,10 @@ func validateParameterMap(inputMap *core.ParameterMap, fieldName string) error {
 						"Type mismatch for Parameter %s in %s has type %s, expected %s", name, fieldName,
 						defaultInput.GetVar().GetType().String(), inputType.String())
 				}
+				if defaultInput.GetVar().GetType().GetSimple() == core.SimpleType_DATETIME {
+					// Make datetime specific validations
+					return ValidateDatetime(defaultValue.String()) // TODO check if we should use defaultValue (?)
+				}
 			}
 		}
 	}
