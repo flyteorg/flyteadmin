@@ -12,8 +12,8 @@ require (
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/evanphx/json-patch v4.9.0+incompatible
 	github.com/flyteorg/flyteidl v0.21.13
-	github.com/flyteorg/flyteplugins v0.7.0
-	github.com/flyteorg/flytepropeller v0.14.11
+	github.com/flyteorg/flyteplugins v0.7.1
+	github.com/flyteorg/flytepropeller v0.15.13
 	github.com/flyteorg/flytestdlib v0.4.7
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-gormigrate/gormigrate/v2 v2.0.0
@@ -37,7 +37,7 @@ require (
 	github.com/ory/fosite v0.39.0
 	github.com/ory/x v0.0.162
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.9.0
+	github.com/prometheus/client_golang v1.10.0
 	github.com/prometheus/client_model v0.2.0
 	github.com/robfig/cron/v3 v3.0.0
 	github.com/sendgrid/sendgrid-go v3.10.0+incompatible
@@ -87,7 +87,6 @@ require (
 	github.com/goccy/go-json v0.4.8 // indirect
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
-	github.com/google/go-cmp v0.5.5 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/googleapis/gnostic v0.5.4 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
