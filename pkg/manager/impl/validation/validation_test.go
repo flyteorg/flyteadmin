@@ -1,9 +1,10 @@
 package validation
 
 import (
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"testing"
 	"time"
+
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 
@@ -369,21 +370,6 @@ func TestValidateDatetime(t *testing.T) {
 					Value: &core.Scalar_Primitive{
 						Primitive: &core.Primitive{
 							Value: &core.Primitive_Datetime{Datetime: timestamppb.Now()},
-						},
-					},
-				},
-			},
-		}))
-	})
-	t.Run("datetime with invalid type", func(t *testing.T) {
-		assert.Error(t, ValidateDatetime(&core.Literal{
-			Value: &core.Literal_Scalar{
-				Scalar: &core.Scalar{
-					Value: &core.Scalar_Primitive{
-						Primitive: &core.Primitive{
-							Value: &core.Primitive_Integer{
-								Integer: 4,
-							},
 						},
 					},
 				},

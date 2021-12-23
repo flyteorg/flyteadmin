@@ -24,13 +24,15 @@ Flyte Admin has a few useful make targets for linting and testing. Please use th
 minor bugs and linting errors.
 
 ```
-  $ make compile
+  # Please make sure you have goimports installed, i.e.
+  $ go install golang.org/x/tools/cmd/goimports@latest
+  $ make goimports
 ```
 
 ```
-  $ make integration
+  $ make test_unit
 ```
 
 ```
-  $ make all
+  $ make lint
 ```

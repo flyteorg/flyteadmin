@@ -1,11 +1,11 @@
 package validation
 
 import (
-	"github.com/golang/protobuf/proto"
-	"k8s.io/apimachinery/pkg/util/validation"
-	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/golang/protobuf/proto"
+	"k8s.io/apimachinery/pkg/util/validation"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/errors"
@@ -277,26 +277,8 @@ func ValidateDatetime(literal *core.Literal) error {
 	if literal == nil {
 		return nil
 	}
-	errorMessage := "Invalid datetime field. It does not contain a Literal_Scalar. It is a %v instead"
-	literalValue := literal.Value
 
-	if reflect.ValueOf(literalValue).String() != "<*core.Literal_Scalar Value>" {
-		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, errorMessage, reflect.ValueOf(literalValue).String())
-	}
-	asScalar := literalValue.(*core.Literal_Scalar)
-	scalarValue := asScalar.Scalar.Value
-
-	if reflect.ValueOf(scalarValue).String() != "<*core.Scalar_Primitive Value>" {
-		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, errorMessage, reflect.ValueOf(scalarValue).String())
-	}
-	asPrimitive := scalarValue.(*core.Scalar_Primitive)
-	primitiveValue := asPrimitive.Primitive.GetValue()
-
-	if reflect.ValueOf(primitiveValue).String() != "<*core.Primitive_Datetime Value>" {
-		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, errorMessage, reflect.ValueOf(primitiveValue).String())
-	}
-	asDateTime := primitiveValue.(*core.Primitive_Datetime)
-	timestamp := asDateTime.Datetime
+	timestamp := literal.Value.(*core.Literal_Scalar).Scalar.Value.(*core.Scalar_Primitive).Primitive.GetValue().(*core.Primitive_Datetime).Datetime
 
 	err := timestamp.CheckValid()
 	if err != nil {
