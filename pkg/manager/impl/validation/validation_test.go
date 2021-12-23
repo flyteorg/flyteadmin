@@ -376,6 +376,24 @@ func TestValidateDatetime(t *testing.T) {
 			},
 		}))
 	})
+	t.Run("datetime with valid format and value", func(t *testing.T) {
+		timestamp, err := time.Parse(time.RFC3339, "-1000000000-01-01T00:00Z") // its value is actually 0001-01-01 00:00:00 +0000
+		if err != nil {
+			//panic(err)
+		}
+
+		assert.NoError(t, ValidateDatetime(&core.Literal{
+			Value: &core.Literal_Scalar{
+				Scalar: &core.Scalar{
+					Value: &core.Scalar_Primitive{
+						Primitive: &core.Primitive{
+							Value: &core.Primitive_Datetime{Datetime: timestamppb.New(timestamp)},
+						},
+					},
+				},
+			},
+		}))
+	})
 	// cannot generate invalid timestamp with wrong format or e.g. too big month or year.
 	// time.Parse(layout str) wouldn't allow to generate this test data.
 }
