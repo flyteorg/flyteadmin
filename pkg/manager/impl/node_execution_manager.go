@@ -83,13 +83,13 @@ func getNodeExecutionContext(ctx context.Context, identifier *core.NodeExecution
 
 func (m *NodeExecutionManager) createNodeExecutionWithEvent(
 	ctx context.Context, request *admin.NodeExecutionEventRequest, dynamicWorkflowRemoteClosureReference string) error {
-	var parentTaskExecutionID uint
+	var parentTaskExecutionID *uint
 	if request.Event.ParentTaskMetadata != nil {
 		taskExecutionModel, err := util.GetTaskExecutionModel(ctx, m.db, request.Event.ParentTaskMetadata.Id)
 		if err != nil {
 			return err
 		}
-		parentTaskExecutionID = taskExecutionModel.ID
+		parentTaskExecutionID = &taskExecutionModel.ID
 	}
 	var parentID *uint
 	if request.Event.ParentNodeMetadata != nil {
