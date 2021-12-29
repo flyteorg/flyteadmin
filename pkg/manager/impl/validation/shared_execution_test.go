@@ -22,15 +22,15 @@ var testExecID = &core.WorkflowExecutionIdentifier{
 	Name:    "n",
 }
 
-func TestValidateCluster(t *testing.T) {
+func TestValidateClusterForExecutionID(t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(func(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
 		return models.Execution{
 			Cluster: testCluster,
 		}, nil
 	})
-	assert.NoError(t, ValidateCluster(context.TODO(), repository, testExecID, testCluster))
-	assert.NoError(t, ValidateCluster(context.TODO(), repository, testExecID, common.DefaultProducerID))
+	assert.NoError(t, ValidateClusterForExecutionID(context.TODO(), repository, testExecID, testCluster))
+	assert.NoError(t, ValidateClusterForExecutionID(context.TODO(), repository, testExecID, common.DefaultProducerID))
 }
 
 func TestValidateCluster_Nonmatching(t *testing.T) {
@@ -40,7 +40,7 @@ func TestValidateCluster_Nonmatching(t *testing.T) {
 			Cluster: "C2",
 		}, nil
 	})
-	err := ValidateCluster(context.TODO(), repository, testExecID, testCluster)
+	err := ValidateClusterForExecutionID(context.TODO(), repository, testExecID, testCluster)
 	assert.Equal(t, codes.FailedPrecondition, err.(errors.FlyteAdminError).Code())
 }
 
@@ -50,6 +50,6 @@ func TestValidateCluster_NoExecution(t *testing.T) {
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(func(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
 		return models.Execution{}, expectedErr
 	})
-	err := ValidateCluster(context.TODO(), repository, testExecID, testCluster)
+	err := ValidateClusterForExecutionID(context.TODO(), repository, testExecID, testCluster)
 	assert.Equal(t, expectedErr, err)
 }

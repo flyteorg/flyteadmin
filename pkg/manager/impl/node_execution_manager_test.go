@@ -228,25 +228,18 @@ func TestCreateNodeEvent_MissingExecution(t *testing.T) {
 		func(ctx context.Context, input interfaces.NodeExecutionResource) (models.NodeExecution, error) {
 			return models.NodeExecution{}, expectedErr
 		})
-	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).ExistsFunction =
-		func(ctx context.Context, input interfaces.Identifier) (bool, error) {
-			return false, expectedErr
-		}
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(
+		func(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
+			return models.Execution{}, expectedErr
+		})
+
+	// remove db Exists
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(func(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
 		return models.Execution{}, expectedErr
 	})
 	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(), make([]string, 0), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL, &mockPublisher, &eventWriterMocks.NodeExecutionEventWriter{})
 	resp, err := nodeExecManager.CreateNodeEvent(context.Background(), request)
-	assert.EqualError(t, err, expectedErr.Error())
-	assert.Nil(t, resp)
-
-	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).ExistsFunction =
-		func(ctx context.Context, input interfaces.Identifier) (bool, error) {
-			return false, nil
-		}
-	nodeExecManager = NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(), make([]string, 0), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL, &mockPublisher, &eventWriterMocks.NodeExecutionEventWriter{})
-	resp, err = nodeExecManager.CreateNodeEvent(context.Background(), request)
-	assert.EqualError(t, err, expectedErr.Error())
+	assert.EqualError(t, err, "Failed to get existing execution id: [project:\"project\" domain:\"domain\" name:\"name\" ] with err: expected error")
 	assert.Nil(t, resp)
 }
 
