@@ -150,6 +150,24 @@ func UpdateExecutionModelState(
 			logger.Debugf(ctx, "Updating cluster for execution [%v] with existing recorded cluster [%s] and setting to cluster [%s]",
 				request.Event.ExecutionId, execution.Cluster, request.Event.ProducerId)
 			execution.Cluster = request.Event.ProducerId
+			var executionSpec admin.ExecutionSpec
+			err := proto.Unmarshal(execution.Spec, &executionSpec)
+			if err != nil {
+				return errors.NewFlyteAdminErrorf(codes.Internal, "Failed to unmarshal execution spec: %v", err)
+			}
+			if executionSpec.Metadata == nil {
+				executionSpec.Metadata = &admin.ExecutionMetadata{}
+			}
+			if executionSpec.Metadata.SystemMetadata == nil {
+				executionSpec.Metadata.SystemMetadata = &admin.SystemMetadata{}
+			}
+			executionSpec.Metadata.SystemMetadata.ExecutionCluster = request.Event.ProducerId
+			marshaledSpec, err := proto.Marshal(&executionSpec)
+			if err != nil {
+				return errors.NewFlyteAdminErrorf(codes.Internal, "Failed to marshal execution spec: %v", err)
+			}
+			execution.Spec = marshaledSpec
+
 		} else if execution.Cluster != request.Event.ProducerId {
 			errorMsg := fmt.Sprintf("Cannot update cluster for running/terminated execution [%v] from [%s] to [%s]",
 				request.Event.ExecutionId, execution.Cluster, request.Event.ProducerId)
