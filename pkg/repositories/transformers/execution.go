@@ -24,7 +24,7 @@ import (
 
 var clusterReassignablePhases = sets.NewString(core.WorkflowExecution_UNDEFINED.String(), core.WorkflowExecution_QUEUED.String())
 
-// Request parameters for calls to CreateExecutionModel.
+// CreateExecutionModelInput encapsulates request parameters for calls to CreateExecutionModel.
 type CreateExecutionModelInput struct {
 	WorkflowExecutionID   core.WorkflowExecutionIdentifier
 	RequestSpec           *admin.ExecutionSpec
@@ -42,7 +42,7 @@ type CreateExecutionModelInput struct {
 	UserInputsURI         storage.DataReference
 }
 
-// Transforms a ExecutionCreateRequest to a Execution model
+// CreateExecutionModel transforms a ExecutionCreateRequest to a Execution model
 func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, error) {
 	requestSpec := input.RequestSpec
 	if requestSpec.Metadata == nil {
@@ -145,6 +145,7 @@ func UpdateExecutionModelState(
 
 	// Default or empty cluster values do not require updating the execution model.
 	ignoreClusterFromEvent := len(request.Event.ProducerId) == 0 || request.Event.ProducerId == common.DefaultProducerID
+	logger.Debugf(ctx, "Producer Id [%v]. IgnoreClusterFromEvent [%v]", request.Event.ProducerId, ignoreClusterFromEvent)
 	if !ignoreClusterFromEvent {
 		if clusterReassignablePhases.Has(execution.Phase) {
 			logger.Debugf(ctx, "Updating cluster for execution [%v] with existing recorded cluster [%s] and setting to cluster [%s]",
