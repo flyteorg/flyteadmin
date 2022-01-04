@@ -1392,6 +1392,40 @@ func TestCreateWorkflowEvent_TerminalState(t *testing.T) {
 	assert.True(t, ok)
 }
 
+func TestCreateWorkflowEvent_NoRunningToQueued(t *testing.T) {
+	repository := repositoryMocks.NewMockRepository()
+	executionGetFunc := func(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
+		return models.Execution{
+			ExecutionKey: models.ExecutionKey{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			},
+			Spec:  specBytes,
+			Phase: core.WorkflowExecution_RUNNING.String(),
+		}, nil
+	}
+
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
+	updateExecutionFunc := func(context context.Context, execution models.Execution) error {
+		return nil
+	}
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateCallback(updateExecutionFunc)
+	execManager := NewExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
+
+	resp, err := execManager.CreateWorkflowEvent(context.Background(), admin.WorkflowExecutionEventRequest{
+		RequestId: "1",
+		Event: &event.WorkflowExecutionEvent{
+			ExecutionId: &executionIdentifier,
+			Phase:       core.WorkflowExecution_QUEUED,
+		},
+	})
+	assert.Nil(t, resp)
+	assert.NotNil(t, err)
+	adminError := err.(flyteAdminErrors.FlyteAdminError)
+	assert.Equal(t, adminError.Code(), codes.FailedPrecondition)
+}
+
 func TestCreateWorkflowEvent_StartedRunning(t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
 	occurredAt := time.Now().UTC()

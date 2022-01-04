@@ -1189,6 +1189,11 @@ func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admi
 		curPhase := wfExecPhase.String()
 		errorMsg := fmt.Sprintf("Invalid phase change from %s to %s for workflow execution %v", curPhase, request.Event.Phase.String(), request.Event.ExecutionId)
 		return nil, errors.NewAlreadyInTerminalStateError(ctx, errorMsg, curPhase)
+	} else if wfExecPhase == core.WorkflowExecution_RUNNING && request.Event.Phase == core.WorkflowExecution_QUEUED {
+		// Cannot go back in time from RUNNING -> QUEUED
+		return nil, errors.NewFlyteAdminErrorf(codes.FailedPrecondition,
+			"Cannot go from %s to %s for workflow execution %v",
+			wfExecPhase.String(), request.Event.Phase.String(), request.Event.ExecutionId)
 	}
 
 	err = transformers.UpdateExecutionModelState(ctx, executionModel, request, m.config.ApplicationConfiguration().GetRemoteDataConfig().InlineEventDataPolicy, m.storageClient)

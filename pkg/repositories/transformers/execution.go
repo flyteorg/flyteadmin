@@ -109,6 +109,30 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 	return executionModel, nil
 }
 
+func reassignCluster(ctx context.Context, cluster string, executionID *core.WorkflowExecutionIdentifier, execution *models.Execution) error {
+	logger.Debugf(ctx, "Updating cluster for execution [%v] with existing recorded cluster [%s] and setting to cluster [%s]",
+		executionID, execution.Cluster, cluster)
+	execution.Cluster = cluster
+	var executionSpec admin.ExecutionSpec
+	err := proto.Unmarshal(execution.Spec, &executionSpec)
+	if err != nil {
+		return errors.NewFlyteAdminErrorf(codes.Internal, "Failed to unmarshal execution spec: %v", err)
+	}
+	if executionSpec.Metadata == nil {
+		executionSpec.Metadata = &admin.ExecutionMetadata{}
+	}
+	if executionSpec.Metadata.SystemMetadata == nil {
+		executionSpec.Metadata.SystemMetadata = &admin.SystemMetadata{}
+	}
+	executionSpec.Metadata.SystemMetadata.ExecutionCluster = cluster
+	marshaledSpec, err := proto.Marshal(&executionSpec)
+	if err != nil {
+		return errors.NewFlyteAdminErrorf(codes.Internal, "Failed to marshal execution spec: %v", err)
+	}
+	execution.Spec = marshaledSpec
+	return nil
+}
+
 // Updates an existing model given a WorkflowExecution event.
 func UpdateExecutionModelState(
 	ctx context.Context,
@@ -148,30 +172,13 @@ func UpdateExecutionModelState(
 	logger.Debugf(ctx, "Producer Id [%v]. IgnoreClusterFromEvent [%v]", request.Event.ProducerId, ignoreClusterFromEvent)
 	if !ignoreClusterFromEvent {
 		if clusterReassignablePhases.Has(execution.Phase) {
-			logger.Debugf(ctx, "Updating cluster for execution [%v] with existing recorded cluster [%s] and setting to cluster [%s]",
-				request.Event.ExecutionId, execution.Cluster, request.Event.ProducerId)
-			execution.Cluster = request.Event.ProducerId
-			var executionSpec admin.ExecutionSpec
-			err := proto.Unmarshal(execution.Spec, &executionSpec)
-			if err != nil {
-				return errors.NewFlyteAdminErrorf(codes.Internal, "Failed to unmarshal execution spec: %v", err)
+			if err := reassignCluster(ctx, request.Event.ProducerId, request.Event.ExecutionId, execution); err != nil {
+				return err
 			}
-			if executionSpec.Metadata == nil {
-				executionSpec.Metadata = &admin.ExecutionMetadata{}
-			}
-			if executionSpec.Metadata.SystemMetadata == nil {
-				executionSpec.Metadata.SystemMetadata = &admin.SystemMetadata{}
-			}
-			executionSpec.Metadata.SystemMetadata.ExecutionCluster = request.Event.ProducerId
-			marshaledSpec, err := proto.Marshal(&executionSpec)
-			if err != nil {
-				return errors.NewFlyteAdminErrorf(codes.Internal, "Failed to marshal execution spec: %v", err)
-			}
-			execution.Spec = marshaledSpec
-
 		} else if execution.Cluster != request.Event.ProducerId {
-			errorMsg := fmt.Sprintf("Cannot update cluster for running/terminated execution [%v] from [%s] to [%s]",
-				request.Event.ExecutionId, execution.Cluster, request.Event.ProducerId)
+			errorMsg := fmt.Sprintf("Cannot accept events for running/terminated execution [%v] from cluster [%s],"+
+				"expected events to originate from [%s]",
+				request.Event.ExecutionId, request.Event.ProducerId, execution.Cluster)
 			return errors.NewIncompatibleClusterError(ctx, errorMsg, execution.Cluster)
 		}
 	}

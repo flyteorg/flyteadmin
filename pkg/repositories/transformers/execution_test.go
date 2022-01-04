@@ -655,3 +655,59 @@ func TestUpdateModelState_WithClusterInformation(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+func TestReassignCluster(t *testing.T) {
+	oldCluster := "old_cluster"
+	newCluster := "new_cluster"
+
+	workflowExecutionID := core.WorkflowExecutionIdentifier{
+		Project: "project",
+		Domain:  "domain",
+		Name:    "name",
+	}
+
+	t.Run("happy case", func(t *testing.T) {
+		spec := testutils.GetExecutionRequest().Spec
+		spec.Metadata = &admin.ExecutionMetadata{
+			SystemMetadata: &admin.SystemMetadata{
+				ExecutionCluster: oldCluster,
+			},
+		}
+		specBytes, _ := proto.Marshal(spec)
+		executionModel := models.Execution{
+			Spec:    specBytes,
+			Cluster: oldCluster,
+		}
+		err := reassignCluster(context.TODO(), newCluster, &workflowExecutionID, &executionModel)
+		assert.NoError(t, err)
+		assert.Equal(t, newCluster, executionModel.Cluster)
+
+		var updatedSpec admin.ExecutionSpec
+		err = proto.Unmarshal(executionModel.Spec, &updatedSpec)
+		assert.NoError(t, err)
+		assert.Equal(t, newCluster, updatedSpec.Metadata.SystemMetadata.ExecutionCluster)
+	})
+	t.Run("happy case - initialize cluster", func(t *testing.T) {
+		spec := testutils.GetExecutionRequest().Spec
+		specBytes, _ := proto.Marshal(spec)
+		executionModel := models.Execution{
+			Spec: specBytes,
+		}
+		err := reassignCluster(context.TODO(), newCluster, &workflowExecutionID, &executionModel)
+		assert.NoError(t, err)
+		assert.Equal(t, newCluster, executionModel.Cluster)
+
+		var updatedSpec admin.ExecutionSpec
+		err = proto.Unmarshal(executionModel.Spec, &updatedSpec)
+		assert.NoError(t, err)
+		assert.Equal(t, newCluster, updatedSpec.Metadata.SystemMetadata.ExecutionCluster)
+	})
+	t.Run("invalid existing spec", func(t *testing.T) {
+		executionModel := models.Execution{
+			Spec:    []byte("I'm invalid"),
+			Cluster: oldCluster,
+		}
+		err := reassignCluster(context.TODO(), newCluster, &workflowExecutionID, &executionModel)
+		assert.Equal(t, err.(errors.FlyteAdminError).Code(), codes.Internal)
+	})
+}

@@ -233,7 +233,6 @@ func TestCreateNodeEvent_MissingExecution(t *testing.T) {
 			return models.Execution{}, expectedErr
 		})
 
-	// remove db Exists
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(func(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
 		return models.Execution{}, expectedErr
 	})
