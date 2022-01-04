@@ -1177,7 +1177,8 @@ func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admi
 	}
 
 	wfExecPhase := core.WorkflowExecution_Phase(core.WorkflowExecution_Phase_value[executionModel.Phase])
-	if wfExecPhase == request.Event.Phase {
+	// Subsequent queued events announcing a cluster reassignment are permitted.
+	if wfExecPhase == request.Event.Phase && request.Event.Phase != core.WorkflowExecution_QUEUED {
 		logger.Debugf(ctx, "This phase %s was already recorded for workflow execution %v",
 			wfExecPhase.String(), request.Event.ExecutionId)
 		return nil, errors.NewFlyteAdminErrorf(codes.AlreadyExists,
