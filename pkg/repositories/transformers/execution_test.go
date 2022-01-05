@@ -454,8 +454,9 @@ func TestSetExecutionAborted(t *testing.T) {
 			}},
 		// The execution abort metadata is recorded but the phase is not actually updated *until* the abort event is
 		// propagated by flytepropeller.
-		Phase: core.WorkflowExecution_RUNNING,
+		Phase: core.WorkflowExecution_ABORTING,
 	}, &actualClosure))
+	assert.Equal(t, existingModel.AbortCause, cause)
 }
 
 func TestGetExecutionIdentifier(t *testing.T) {
