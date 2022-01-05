@@ -2249,9 +2249,7 @@ func TestTerminateExecution(t *testing.T) {
 		assert.Equal(t, "name", execution.Name)
 		assert.Equal(t, uint(1), execution.LaunchPlanID)
 		assert.Equal(t, uint(2), execution.WorkflowID)
-		assert.Equal(t, core.WorkflowExecution_QUEUED.String(), execution.Phase,
-			"an abort call should not update the execution status until a corresponding execution event "+
-				"is received")
+		assert.Equal(t, core.WorkflowExecution_ABORTING.String(), execution.Phase)
 		assert.Equal(t, execution.ExecutionCreatedAt, execution.ExecutionUpdatedAt,
 			"an abort call should not change ExecutionUpdatedAt until a corresponding execution event is received")
 		assert.Equal(t, abortCause, execution.AbortCause)
