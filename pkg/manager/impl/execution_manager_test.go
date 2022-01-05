@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"github.com/flyteorg/flyteadmin/pkg/workflowengine"
 
 	"github.com/benbjohnson/clock"
@@ -1340,6 +1342,7 @@ func TestCreateWorkflowEvent(t *testing.T) {
 			OutputResult: &event.WorkflowExecutionEvent_Error{
 				Error: &executionError,
 			},
+			ProducerId: testCluster,
 		},
 	}
 	mockDbEventWriter := &eventWriterMocks.WorkflowExecutionEventWriter{}
@@ -1391,6 +1394,93 @@ func TestCreateWorkflowEvent_TerminalState(t *testing.T) {
 	assert.True(t, ok)
 }
 
+func TestCreateWorkflowEvent_NoRunningToQueued(t *testing.T) {
+	repository := repositoryMocks.NewMockRepository()
+	executionGetFunc := func(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
+		return models.Execution{
+			ExecutionKey: models.ExecutionKey{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			},
+			Spec:  specBytes,
+			Phase: core.WorkflowExecution_RUNNING.String(),
+		}, nil
+	}
+
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
+	updateExecutionFunc := func(context context.Context, execution models.Execution) error {
+		return nil
+	}
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateCallback(updateExecutionFunc)
+	execManager := NewExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
+
+	resp, err := execManager.CreateWorkflowEvent(context.Background(), admin.WorkflowExecutionEventRequest{
+		RequestId: "1",
+		Event: &event.WorkflowExecutionEvent{
+			ExecutionId: &executionIdentifier,
+			Phase:       core.WorkflowExecution_QUEUED,
+		},
+	})
+	assert.Nil(t, resp)
+	assert.NotNil(t, err)
+	adminError := err.(flyteAdminErrors.FlyteAdminError)
+	assert.Equal(t, adminError.Code(), codes.FailedPrecondition)
+}
+
+func TestCreateWorkflowEvent_CurrentlyAborting(t *testing.T) {
+	repository := repositoryMocks.NewMockRepository()
+	executionGetFunc := func(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
+		return models.Execution{
+			ExecutionKey: models.ExecutionKey{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			},
+			Spec:  specBytes,
+			Phase: core.WorkflowExecution_ABORTING.String(),
+		}, nil
+	}
+
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
+	updateExecutionFunc := func(context context.Context, execution models.Execution) error {
+		return nil
+	}
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateCallback(updateExecutionFunc)
+
+	req := admin.WorkflowExecutionEventRequest{
+		RequestId: "1",
+		Event: &event.WorkflowExecutionEvent{
+			ExecutionId: &executionIdentifier,
+			Phase:       core.WorkflowExecution_ABORTED,
+			OccurredAt:  timestamppb.New(time.Now()),
+		},
+	}
+
+	mockDbEventWriter := &eventWriterMocks.WorkflowExecutionEventWriter{}
+	mockDbEventWriter.On("Write", req)
+	execManager := NewExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, &mockPublisher, mockDbEventWriter)
+
+	resp, err := execManager.CreateWorkflowEvent(context.Background(), req)
+	assert.NotNil(t, resp)
+	assert.NoError(t, err)
+
+	req.Event.Phase = core.WorkflowExecution_QUEUED
+	resp, err = execManager.CreateWorkflowEvent(context.Background(), req)
+	assert.Nil(t, resp)
+	assert.NotNil(t, err)
+	adminError := err.(flyteAdminErrors.FlyteAdminError)
+	assert.Equal(t, adminError.Code(), codes.FailedPrecondition)
+
+	req.Event.Phase = core.WorkflowExecution_RUNNING
+	resp, err = execManager.CreateWorkflowEvent(context.Background(), req)
+	assert.Nil(t, resp)
+	assert.NotNil(t, err)
+	adminError = err.(flyteAdminErrors.FlyteAdminError)
+	assert.Equal(t, adminError.Code(), codes.FailedPrecondition)
+
+}
+
 func TestCreateWorkflowEvent_StartedRunning(t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
 	occurredAt := time.Now().UTC()
@@ -1427,6 +1517,7 @@ func TestCreateWorkflowEvent_StartedRunning(t *testing.T) {
 			ExecutionId: &executionIdentifier,
 			OccurredAt:  occurredAtTimestamp,
 			Phase:       core.WorkflowExecution_RUNNING,
+			ProducerId:  testCluster,
 		},
 	}
 	mockDbEventWriter := &eventWriterMocks.WorkflowExecutionEventWriter{}
@@ -1641,6 +1732,7 @@ func TestCreateWorkflowEvent_DatabaseUpdateError(t *testing.T) {
 			OutputResult: &event.WorkflowExecutionEvent_Error{
 				Error: &executionError,
 			},
+			ProducerId: testCluster,
 		},
 	})
 	assert.Nil(t, resp)
