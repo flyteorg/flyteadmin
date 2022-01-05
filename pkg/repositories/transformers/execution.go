@@ -197,6 +197,7 @@ func SetExecutionAborted(execution *models.Execution, cause, principal string) e
 			Principal: principal,
 		},
 	}
+	closure.Phase = core.WorkflowExecution_ABORTING
 	marshaledClosure, err := proto.Marshal(&closure)
 	if err != nil {
 		return errors.NewFlyteAdminErrorf(codes.Internal, "Failed to marshal execution closure: %v", err)

@@ -1188,6 +1188,9 @@ func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admi
 		curPhase := wfExecPhase.String()
 		errorMsg := fmt.Sprintf("Invalid phase change from %s to %s for workflow execution %v", curPhase, request.Event.Phase.String(), request.Event.ExecutionId)
 		return nil, errors.NewAlreadyInTerminalStateError(ctx, errorMsg, curPhase)
+	} else if wfExecPhase == core.WorkflowExecution_ABORTING && !common.IsExecutionTerminal(request.Event.Phase) {
+		errorMsg := fmt.Sprintf("Invalid phase change from aborting to %s for workflow execution %v", request.Event.Phase.String(), request.Event.ExecutionId)
+		return nil, errors.NewAlreadyInTerminalStateError(ctx, errorMsg, wfExecPhase.String())
 	}
 
 	err = transformers.UpdateExecutionModelState(ctx, executionModel, request, m.config.ApplicationConfiguration().GetRemoteDataConfig().InlineEventDataPolicy, m.storageClient)
