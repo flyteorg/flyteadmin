@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -199,6 +200,10 @@ func validateLiteralMap(inputMap *core.LiteralMap, fieldName string) error {
 			if fixedInput == nil || fixedInput.GetValue() == nil {
 				return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "missing valid literal in %s %s", fieldName, name)
 			}
+			if isDateTime(fixedInput) {
+				// Make datetime specific validations
+				return ValidateDatetime(fixedInput)
+			}
 		}
 	}
 	return nil
@@ -285,4 +290,25 @@ func ValidateDatetime(literal *core.Literal) error {
 		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, err.Error())
 	}
 	return nil
+}
+
+func isDateTime(input *core.Literal) bool {
+	literalValue := input.Value
+	if reflect.ValueOf(literalValue).String() != "<*core.Literal_Scalar Value>" {
+		return false
+	}
+	asScalar := literalValue.(*core.Literal_Scalar)
+	scalarValue := asScalar.Scalar.Value
+
+	if reflect.ValueOf(scalarValue).String() != "<*core.Scalar_Primitive Value>" {
+		return false
+	}
+
+	asPrimitive := scalarValue.(*core.Scalar_Primitive)
+	primitiveValue := asPrimitive.Primitive.GetValue()
+
+	if reflect.ValueOf(primitiveValue).String() != "<*core.Primitive_Datetime Value>" {
+		return false
+	}
+	return true
 }
