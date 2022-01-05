@@ -457,6 +457,7 @@ func TestSetExecutionAborted(t *testing.T) {
 		Phase: core.WorkflowExecution_ABORTING,
 	}, &actualClosure))
 	assert.Equal(t, existingModel.AbortCause, cause)
+	assert.Equal(t, existingModel.Phase, core.WorkflowExecution_ABORTING.String())
 }
 
 func TestGetExecutionIdentifier(t *testing.T) {

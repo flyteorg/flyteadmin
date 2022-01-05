@@ -1195,8 +1195,8 @@ func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admi
 			"Cannot go from %s to %s for workflow execution %v",
 			wfExecPhase.String(), request.Event.Phase.String(), request.Event.ExecutionId)
 	} else if wfExecPhase == core.WorkflowExecution_ABORTING && !common.IsExecutionTerminal(request.Event.Phase) {
-		errorMsg := fmt.Sprintf("Invalid phase change from aborting to %s for workflow execution %v", request.Event.Phase.String(), request.Event.ExecutionId)
-		return nil, errors.NewAlreadyInTerminalStateError(ctx, errorMsg, wfExecPhase.String())
+		return nil, errors.NewFlyteAdminErrorf(codes.FailedPrecondition,
+			"Invalid phase change from aborting to %s for workflow execution %v", request.Event.Phase.String(), request.Event.ExecutionId)
 	}
 
 	err = transformers.UpdateExecutionModelState(ctx, executionModel, request, m.config.ApplicationConfiguration().GetRemoteDataConfig().InlineEventDataPolicy, m.storageClient)

@@ -1478,7 +1478,6 @@ func TestCreateWorkflowEvent_CurrentlyAborting(t *testing.T) {
 	assert.NotNil(t, err)
 	adminError = err.(flyteAdminErrors.FlyteAdminError)
 	assert.Equal(t, adminError.Code(), codes.FailedPrecondition)
-
 }
 
 func TestCreateWorkflowEvent_StartedRunning(t *testing.T) {

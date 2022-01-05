@@ -249,6 +249,7 @@ func SetExecutionAborted(execution *models.Execution, cause, principal string) e
 	}
 	execution.Closure = marshaledClosure
 	execution.AbortCause = cause
+	execution.Phase = core.WorkflowExecution_ABORTING.String()
 	return nil
 }
 
