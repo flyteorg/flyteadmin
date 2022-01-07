@@ -1,7 +1,6 @@
 package validation
 
 import (
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -293,22 +292,5 @@ func ValidateDatetime(literal *core.Literal) error {
 }
 
 func isDateTime(input *core.Literal) bool {
-	literalValue := input.Value
-	if reflect.ValueOf(literalValue).String() != "<*core.Literal_Scalar Value>" {
-		return false
-	}
-	asScalar := literalValue.(*core.Literal_Scalar)
-	scalarValue := asScalar.Scalar.Value
-
-	if reflect.ValueOf(scalarValue).String() != "<*core.Scalar_Primitive Value>" {
-		return false
-	}
-
-	asPrimitive := scalarValue.(*core.Scalar_Primitive)
-	primitiveValue := asPrimitive.Primitive.GetValue()
-
-	if reflect.ValueOf(primitiveValue).String() != "<*core.Primitive_Datetime Value>" {
-		return false
-	}
-	return true
+	return input.GetScalar() != nil && input.GetScalar().GetPrimitive() != nil && input.GetScalar().GetPrimitive().GetDatetime() != nil
 }
