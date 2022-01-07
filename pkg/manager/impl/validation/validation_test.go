@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -376,24 +377,69 @@ func TestValidateDatetime(t *testing.T) {
 			},
 		}))
 	})
-	t.Run("datetime with valid format and value", func(t *testing.T) {
-		timestamp, err := time.Parse(time.RFC3339, "-1000000000-01-01T00:00Z") // its value is actually 0001-01-01 00:00:00 +0000
-		if err != nil {
-			//panic(err)
-		}
+	t.Run("datetime with value below min", func(t *testing.T) {
+		timestamp := timestamppb.Timestamp{Seconds: -62135596801, Nanos: 999999999} // = 0000-12-31T23:59:59.999999999Z
+		expectedErrStr := "proto: timestamp (seconds:-62135596801 nanos:999999999) before 0001-01-01"
+		expectedErr := errors.NewFlyteAdminErrorf(codes.InvalidArgument, "TestValidateDatetime/datetime_with_value_below_min")
+
+		assert.EqualError(t, ValidateDatetime(&core.Literal{
+			Value: &core.Literal_Scalar{
+				Scalar: &core.Scalar{
+					Value: &core.Scalar_Primitive{
+						Primitive: &core.Primitive{
+							Value: &core.Primitive_Datetime{Datetime: &timestamp},
+						},
+					},
+				},
+			},
+		}), expectedErrStr, expectedErr)
+	})
+	t.Run("datetime with min valid value", func(t *testing.T) {
+		timestamp := timestamppb.Timestamp{Seconds: -62135596800, Nanos: 0} // = 0001-01-01T00:00:00Z
 
 		assert.NoError(t, ValidateDatetime(&core.Literal{
 			Value: &core.Literal_Scalar{
 				Scalar: &core.Scalar{
 					Value: &core.Scalar_Primitive{
 						Primitive: &core.Primitive{
-							Value: &core.Primitive_Datetime{Datetime: timestamppb.New(timestamp)},
+							Value: &core.Primitive_Datetime{Datetime: &timestamp},
 						},
 					},
 				},
 			},
 		}))
 	})
-	// cannot generate invalid timestamp with wrong format or e.g. too big month or year.
-	// time.Parse(layout str) wouldn't allow to generate this test data.
+	t.Run("datetime with max valid value", func(t *testing.T) {
+		timestamp := timestamppb.Timestamp{Seconds: 253402300799, Nanos: 999999999} // = 9999-12-31T23:59:59.999999999Z
+
+		assert.NoError(t, ValidateDatetime(&core.Literal{
+			Value: &core.Literal_Scalar{
+				Scalar: &core.Scalar{
+					Value: &core.Scalar_Primitive{
+						Primitive: &core.Primitive{
+							Value: &core.Primitive_Datetime{Datetime: &timestamp},
+						},
+					},
+				},
+			},
+		}))
+	})
+	t.Run("datetime with value above max", func(t *testing.T) {
+		timestamp := timestamppb.Timestamp{Seconds: 253402300800, Nanos: 0} // = 0000-12-31T23:59:59.999999999Z
+		expectedErrStr := "proto: timestamp (seconds:253402300800) after 9999-12-31"
+		expectedErrStrWithValidFormat := strings.Replace(expectedErrStr, " ", "\\u00a0", 0)
+		expectedErr := errors.NewFlyteAdminErrorf(codes.InvalidArgument, "TestValidateDatetime/datetime_with_value_above_max")
+
+		assert.EqualError(t, ValidateDatetime(&core.Literal{
+			Value: &core.Literal_Scalar{
+				Scalar: &core.Scalar{
+					Value: &core.Scalar_Primitive{
+						Primitive: &core.Primitive{
+							Value: &core.Primitive_Datetime{Datetime: &timestamp},
+						},
+					},
+				},
+			},
+		}), expectedErrStrWithValidFormat, expectedErr)
+	})
 }
