@@ -380,6 +380,7 @@ func TestValidateDatetime(t *testing.T) {
 	t.Run("datetime with value below min", func(t *testing.T) {
 		timestamp := timestamppb.Timestamp{Seconds: -62135596801, Nanos: 999999999} // = 0000-12-31T23:59:59.999999999Z
 		expectedErrStr := "proto: timestamp (seconds:-62135596801 nanos:999999999) before 0001-01-01"
+		expectedErrStrWithValidFormat := strings.Replace(expectedErrStr, " ", "\\u00a0", 0)
 		expectedErr := errors.NewFlyteAdminErrorf(codes.InvalidArgument, "TestValidateDatetime/datetime_with_value_below_min")
 
 		assert.EqualError(t, ValidateDatetime(&core.Literal{
@@ -392,7 +393,7 @@ func TestValidateDatetime(t *testing.T) {
 					},
 				},
 			},
-		}), expectedErrStr, expectedErr)
+		}), expectedErrStrWithValidFormat, expectedErr)
 	})
 	t.Run("datetime with min valid value", func(t *testing.T) {
 		timestamp := timestamppb.Timestamp{Seconds: -62135596800, Nanos: 0} // = 0001-01-01T00:00:00Z

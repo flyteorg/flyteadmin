@@ -282,7 +282,7 @@ func ValidateDatetime(literal *core.Literal) error {
 		return nil
 	}
 
-	timestamp := literal.Value.(*core.Literal_Scalar).Scalar.Value.(*core.Scalar_Primitive).Primitive.GetValue().(*core.Primitive_Datetime).Datetime
+	timestamp := literal.GetScalar().GetPrimitive().GetDatetime()
 
 	err := timestamp.CheckValid()
 	if err != nil {
