@@ -279,7 +279,7 @@ func ValidateOutputData(outputData *core.LiteralMap, maxSizeInBytes int64) error
 
 func ValidateDatetime(literal *core.Literal) error {
 	if literal == nil {
-		return nil
+		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Found invalid nil datetime")
 	}
 
 	timestamp := literal.GetScalar().GetPrimitive().GetDatetime()

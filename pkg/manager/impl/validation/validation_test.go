@@ -362,7 +362,7 @@ func TestValidateOutputData(t *testing.T) {
 
 func TestValidateDatetime(t *testing.T) {
 	t.Run("no datetime", func(t *testing.T) {
-		assert.NoError(t, ValidateDatetime(nil))
+		assert.EqualError(t, ValidateDatetime(nil), "Found invalid nil datetime")
 	})
 	t.Run("datetime with valid format and value", func(t *testing.T) {
 		assert.NoError(t, ValidateDatetime(&core.Literal{
