@@ -379,7 +379,7 @@ func TestValidateDatetime(t *testing.T) {
 	t.Run("datetime with value below min", func(t *testing.T) {
 		// given
 		timestamp := timestamppb.Timestamp{Seconds: -62135596801, Nanos: 999999999} // = 0000-12-31T23:59:59.999999999Z
-		expectedErrStr := "timestamp (seconds:-62135596801  nanos:999999999) before 0001-01-01"
+		expectedErrStr := "before 0001-01-01"
 
 		// when
 		result := ValidateDatetime(&core.Literal{
