@@ -1,7 +1,6 @@
 package validation
 
 import (
-	"strings"
 	"testing"
 	"time"
 
@@ -378,12 +377,12 @@ func TestValidateDatetime(t *testing.T) {
 		}))
 	})
 	t.Run("datetime with value below min", func(t *testing.T) {
+		// given
 		timestamp := timestamppb.Timestamp{Seconds: -62135596801, Nanos: 999999999} // = 0000-12-31T23:59:59.999999999Z
-		expectedErrStr := "proto: timestamp (seconds:-62135596801  nanos:999999999) before 0001-01-01"
-		expectedErrStrWithValidFormat := strings.Replace(expectedErrStr, " ", "\u00a0", 1)
-		expectedErr := errors.NewFlyteAdminErrorf(codes.InvalidArgument, "TestValidateDatetime/datetime_with_value_below_min")
+		expectedErrStr := "timestamp (seconds:-62135596801  nanos:999999999) before 0001-01-01"
 
-		assert.EqualError(t, ValidateDatetime(&core.Literal{
+		// when
+		result := ValidateDatetime(&core.Literal{
 			Value: &core.Literal_Scalar{
 				Scalar: &core.Scalar{
 					Value: &core.Scalar_Primitive{
@@ -393,15 +392,19 @@ func TestValidateDatetime(t *testing.T) {
 					},
 				},
 			},
-		}), expectedErrStrWithValidFormat, expectedErr)
+		})
+
+		// then
+		assert.NotNil(t, result)
+		assert.Containsf(t, result.Error(), expectedErrStr, "Found unexpected error message")
 	})
 	t.Run("datetime with value equals Instant.MIN", func(t *testing.T) {
+		// given
 		timestamp := timestamppb.Timestamp{Seconds: -31557014167219200, Nanos: 0} // = -1000000000-01-01T00:00Z
-		expectedErrStr := "proto: timestamp (seconds:-31557014167219200) before 0001-01-01"
-		expectedErrStrWithValidFormat := strings.Replace(expectedErrStr, " ", "\u00a0", 1)
-		expectedErr := errors.NewFlyteAdminErrorf(codes.InvalidArgument, "TestValidateDatetime/datetime_with_value_equals_Instant.MIN")
+		expectedErrStr := "timestamp (seconds:-31557014167219200) before 0001-01-01"
 
-		assert.EqualError(t, ValidateDatetime(&core.Literal{
+		// when
+		result := ValidateDatetime(&core.Literal{
 			Value: &core.Literal_Scalar{
 				Scalar: &core.Scalar{
 					Value: &core.Scalar_Primitive{
@@ -411,7 +414,11 @@ func TestValidateDatetime(t *testing.T) {
 					},
 				},
 			},
-		}), expectedErrStrWithValidFormat, expectedErr)
+		})
+
+		// then
+		assert.NotNil(t, result)
+		assert.Containsf(t, result.Error(), expectedErrStr, "Found unexpected error message")
 	})
 	t.Run("datetime with min valid value", func(t *testing.T) {
 		timestamp := timestamppb.Timestamp{Seconds: -62135596800, Nanos: 0} // = 0001-01-01T00:00:00Z
@@ -444,12 +451,12 @@ func TestValidateDatetime(t *testing.T) {
 		}))
 	})
 	t.Run("datetime with value above max", func(t *testing.T) {
+		// given
 		timestamp := timestamppb.Timestamp{Seconds: 253402300800, Nanos: 0} // = 0000-12-31T23:59:59.999999999Z
-		expectedErrStr := "proto: timestamp (seconds:253402300800) after 9999-12-31"
-		expectedErrStrWithValidFormat := strings.Replace(expectedErrStr, " ", "\u00a0", 1)
-		expectedErr := errors.NewFlyteAdminErrorf(codes.InvalidArgument, "TestValidateDatetime/datetime_with_value_above_max")
+		expectedErrStr := "timestamp (seconds:253402300800) after 9999-12-31"
 
-		assert.EqualError(t, ValidateDatetime(&core.Literal{
+		// when
+		result := ValidateDatetime(&core.Literal{
 			Value: &core.Literal_Scalar{
 				Scalar: &core.Scalar{
 					Value: &core.Scalar_Primitive{
@@ -459,6 +466,10 @@ func TestValidateDatetime(t *testing.T) {
 					},
 				},
 			},
-		}), expectedErrStrWithValidFormat, expectedErr)
+		})
+
+		// then
+		assert.NotNil(t, result)
+		assert.Containsf(t, result.Error(), expectedErrStr, "Found unexpected error message")
 	})
 }
