@@ -190,6 +190,12 @@ func GetExecutionModel(
 	return &executionModel, nil
 }
 
+func UpdateExecutionModel(
+	ctx context.Context, repo repositories.RepositoryInterface, execution models.Execution) error {
+
+	return repo.ExecutionRepo().Update(ctx, execution)
+}
+
 func GetNodeExecutionModel(ctx context.Context, repo repositories.RepositoryInterface, nodeExecutionIdentifier *core.NodeExecutionIdentifier) (
 	*models.NodeExecution, error) {
 	nodeExecutionModel, err := repo.NodeExecutionRepo().Get(ctx, repoInterfaces.NodeExecutionResource{

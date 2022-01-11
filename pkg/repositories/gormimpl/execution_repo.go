@@ -9,6 +9,7 @@ import (
 	adminErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/promutils"
 
@@ -68,8 +69,9 @@ func (r *ExecutionRepo) Update(ctx context.Context, execution models.Execution) 
 
 func (r *ExecutionRepo) List(ctx context.Context, input interfaces.ListResourceInput) (
 	interfaces.ExecutionCollectionOutput, error) {
+	var err error
 	// First validate input.
-	if err := ValidateListInput(input); err != nil {
+	if err = ValidateListInput(input); err != nil {
 		return interfaces.ExecutionCollectionOutput{}, err
 	}
 	var executions []models.Execution
@@ -88,10 +90,21 @@ func (r *ExecutionRepo) List(ctx context.Context, input interfaces.ListResourceI
 			taskTableName, executionTableName, taskTableName))
 	}
 
-	// Apply filters
-	tx, err := applyScopedFilters(tx, input.InlineFilters, input.MapFilters)
-	if err != nil {
-		return interfaces.ExecutionCollectionOutput{}, err
+	var stateFilterExists bool
+	for _, inlineFilter := range input.InlineFilters {
+		if inlineFilter.GetField() == State {
+			stateFilterExists = true
+		}
+	}
+
+	if !stateFilterExists {
+		tx = tx.Where("state != ?", int32(admin.ExecutionStatus_EXECUTION_ARCHIVED))
+	} else {
+		// Apply filters
+		tx, err = applyScopedFilters(tx, input.InlineFilters, input.MapFilters)
+		if err != nil {
+			return interfaces.ExecutionCollectionOutput{}, err
+		}
 	}
 
 	// Apply sort ordering.
