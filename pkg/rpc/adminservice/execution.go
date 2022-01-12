@@ -151,13 +151,13 @@ func (m *AdminService) UpdateExecution(
 	}
 	var response *admin.ExecutionUpdateResponse
 	var err error
-	m.Metrics.executionEndpointMetrics.get.Time(func() {
+	m.Metrics.executionEndpointMetrics.update.Time(func() {
 		response, err = m.ExecutionManager.UpdateExecution(ctx, *request)
 	})
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"UpdateExecution",
 		audit.ParametersFromExecutionIdentifier(request.Id),
-		audit.ReadOnly,
+		audit.ReadWrite,
 		requestedAt,
 	).WithResponse(time.Now(), err).Log(ctx)
 	if err != nil {
