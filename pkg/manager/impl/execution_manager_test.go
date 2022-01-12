@@ -1820,6 +1820,41 @@ func TestGetExecution_TransformerError(t *testing.T) {
 	assert.Equal(t, codes.Internal, err.(flyteAdminErrors.FlyteAdminError).Code())
 }
 
+func TestUpdateExecution(t *testing.T) {
+	t.Run("empty status passed", func(t *testing.T) {
+		repository := repositoryMocks.NewMockRepository()
+		updateExecFunc := func(ctx context.Context, execModel models.Execution) error {
+			stateInt := int32(admin.ExecutionStatus_EXECUTION_ACTIVE)
+			assert.Equal(t, stateInt, *execModel.State)
+			return nil
+		}
+		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateExecutionCallback(updateExecFunc)
+		execManager := NewExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
+		updateResponse, err := execManager.UpdateExecution(context.Background(), admin.ExecutionUpdateRequest{
+			Id: &executionIdentifier,
+		})
+		assert.NoError(t, err)
+		assert.NotNil(t, updateResponse)
+	})
+
+	t.Run("archive status passed", func(t *testing.T) {
+		repository := repositoryMocks.NewMockRepository()
+		updateExecFunc := func(ctx context.Context, execModel models.Execution) error {
+			stateInt := int32(admin.ExecutionStatus_EXECUTION_ARCHIVED)
+			assert.Equal(t, stateInt, *execModel.State)
+			return nil
+		}
+		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateExecutionCallback(updateExecFunc)
+		execManager := NewExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
+		updateResponse, err := execManager.UpdateExecution(context.Background(), admin.ExecutionUpdateRequest{
+			Id:     &executionIdentifier,
+			Status: &admin.ExecutionStatus{State: admin.ExecutionStatus_EXECUTION_ARCHIVED},
+		})
+		assert.NoError(t, err)
+		assert.NotNil(t, updateResponse)
+	})
+}
+
 func TestListExecutions(t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
 	executionListFunc := func(

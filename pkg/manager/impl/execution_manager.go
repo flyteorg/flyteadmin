@@ -1279,7 +1279,11 @@ func (m *ExecutionManager) UpdateExecution(
 		logger.Debugf(ctx, "Failed to get execution model for request [%+v] with err: %v", request, err)
 		return nil, err
 	}
-	stateInt := int32(request.Status.State)
+
+	stateInt := int32(admin.ExecutionStatus_EXECUTION_ACTIVE)
+	if request.Status != nil {
+		stateInt = int32(request.Status.State)
+	}
 	executionModel.State = &stateInt
 
 	if err := m.db.ExecutionRepo().Update(ctx, *executionModel); err != nil {
