@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/flyteorg/flyteadmin/pkg/executioncluster/mocks"
+
 	"github.com/flyteorg/flyteadmin/pkg/executioncluster"
 
 	"github.com/stretchr/testify/assert"
@@ -29,13 +31,18 @@ func TestInClusterGetRemoteTarget(t *testing.T) {
 }
 
 func TestInClusterGetAllValidTargets(t *testing.T) {
+	target := executioncluster.ExecutionTarget{
+		ID: "t1",
+	}
+	listTargetsProvider := mocks.ListTargetsInterface{}
+	listTargetsProvider.OnGetAllValidTargets().Return(map[string]executioncluster.ExecutionTarget{
+		"t1": target,
+	})
 	cluster := InCluster{
-		target: executioncluster.ExecutionTarget{
-			ID: "t1",
-		},
+		ListTargetsInterface: &listTargetsProvider,
+		target:               target,
 	}
 	targets := cluster.GetAllValidTargets()
 	assert.Equal(t, 1, len(targets))
-	assert.Equal(t, "t1", targets[0].ID)
-
+	assert.Equal(t, "t1", targets["t1"].ID)
 }
