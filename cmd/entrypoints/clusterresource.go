@@ -37,33 +37,37 @@ func GetLocalDbConfig() repositoryConfig.DbConfig {
 	}
 }
 
+func getClusterResourceController(ctx context.Context) clusterresource.Controller {
+	configuration := runtime.NewConfigurationProvider()
+	scope := promutils.NewScope(configuration.ApplicationConfiguration().GetTopLevelConfig().MetricsScope).NewSubScope("clusterresource")
+	initializationErrorCounter := scope.MustNewCounter(
+		"flyteclient_initialization_error",
+		"count of errors encountered initializing a flyte client from kube config")
+	listTargetsProvider, err := executioncluster.NewListTargets(initializationErrorCounter, executioncluster.NewExecutionTargetProvider(), configuration.ClusterConfiguration())
+	if err != nil {
+		panic(err)
+	}
+
+	clientSet, err := admin.ClientSetBuilder().WithConfig(admin.GetConfig(ctx)).
+		WithTokenCache(util.TokenCacheKeyringProvider{
+			ServiceUser: util.KeyRingServiceUser,
+			ServiceName: util.KeyRingServiceName,
+		}).Build(ctx)
+	if err != nil {
+		panic(err)
+	}
+
+	return clusterresource.NewClusterResourceController(clientSet.AdminClient(), listTargetsProvider, scope)
+}
+
 var controllerRunCmd = &cobra.Command{
 	Use:   "run",
 	Short: "This command will start a cluster resource controller to periodically sync cluster resources",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := context.Background()
-		configuration := runtime.NewConfigurationProvider()
-		scope := promutils.NewScope(configuration.ApplicationConfiguration().GetTopLevelConfig().MetricsScope).NewSubScope("clusterresource")
-		initializationErrorCounter := scope.MustNewCounter(
-			"flyteclient_initialization_error",
-			"count of errors encountered initializing a flyte client from kube config")
-		listTargetsProvider, err := executioncluster.NewListTargets(initializationErrorCounter, executioncluster.NewExecutionTargetProvider(), configuration.ClusterConfiguration())
-		if err != nil {
-			panic(err)
-		}
-
-		clientSet, err := admin.ClientSetBuilder().WithConfig(admin.GetConfig(ctx)).
-			WithTokenCache(util.TokenCacheKeyringProvider{
-				ServiceUser: util.KeyRingServiceUser,
-				ServiceName: util.KeyRingServiceName,
-			}).Build(ctx)
-		if err != nil {
-			panic(err)
-		}
-
-		clusterResourceController := clusterresource.NewClusterResourceController(clientSet.AdminClient(), listTargetsProvider, scope)
+		clusterResourceController := getClusterResourceController(ctx)
 		clusterResourceController.Run()
-		logger.Infof(ctx, "ClusterResourceController started successfully")
+		logger.Infof(ctx, "ClusterResourceController started running successfully")
 	},
 }
 
@@ -72,31 +76,12 @@ var controllerSyncCmd = &cobra.Command{
 	Short: "This command will sync cluster resources",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := context.Background()
-		configuration := runtime.NewConfigurationProvider()
-		scope := promutils.NewScope(configuration.ApplicationConfiguration().GetTopLevelConfig().MetricsScope).NewSubScope("clusterresource")
-		initializationErrorCounter := scope.MustNewCounter(
-			"flyteclient_initialization_error",
-			"count of errors encountered initializing a flyte client from kube config")
-		listTargetsProvider, err := executioncluster.NewListTargets(initializationErrorCounter, executioncluster.NewExecutionTargetProvider(), configuration.ClusterConfiguration())
-		if err != nil {
-			panic(err)
-		}
-
-		clientSet, err := admin.ClientSetBuilder().WithConfig(admin.GetConfig(ctx)).
-			WithTokenCache(util.TokenCacheKeyringProvider{
-				ServiceUser: util.KeyRingServiceUser,
-				ServiceName: util.KeyRingServiceName,
-			}).Build(ctx)
-		if err != nil {
-			panic(err)
-		}
-
-		clusterResourceController := clusterresource.NewClusterResourceController(clientSet.AdminClient(), listTargetsProvider, scope)
-		err = clusterResourceController.Sync(ctx)
+		clusterResourceController := getClusterResourceController(ctx)
+		err := clusterResourceController.Sync(ctx)
 		if err != nil {
 			logger.Fatalf(ctx, "Failed to sync cluster resources [%+v]", err)
 		}
-		logger.Infof(ctx, "ClusterResourceController started successfully")
+		logger.Infof(ctx, "ClusterResourceController synced successfully")
 	},
 }
 
