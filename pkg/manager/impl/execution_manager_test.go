@@ -3749,3 +3749,39 @@ func TestFromAdminProtoTaskResourceSpec(t *testing.T) {
 		GPU:              resource.MustParse("2"),
 	}, taskResourceSet)
 }
+
+func TestAddStateFilter(t *testing.T) {
+	t.Run("empty filters", func(t *testing.T) {
+		var filters []common.InlineFilter
+		updatedFilters, err := addStateFilter(filters)
+		assert.Nil(t, err)
+		assert.NotNil(t, updatedFilters)
+		assert.Equal(t, 1, len(updatedFilters))
+
+		assert.Equal(t, shared.State, updatedFilters[0].GetField())
+		assert.Equal(t, common.Execution, updatedFilters[0].GetEntity())
+
+		expression, err := updatedFilters[0].GetGormQueryExpr()
+		assert.NoError(t, err)
+		assert.Equal(t, "state = ?", expression.Query)
+	})
+
+	t.Run("passed state filter", func(t *testing.T) {
+		filter, err := common.NewSingleValueFilter(common.Execution, common.NotEqual, "state", "0")
+		assert.NoError(t, err)
+		filters := []common.InlineFilter{filter}
+
+		updatedFilters, err := addStateFilter(filters)
+		assert.Nil(t, err)
+		assert.NotNil(t, updatedFilters)
+		assert.Equal(t, 1, len(updatedFilters))
+
+		assert.Equal(t, shared.State, updatedFilters[0].GetField())
+		assert.Equal(t, common.Execution, updatedFilters[0].GetEntity())
+
+		expression, err := updatedFilters[0].GetGormQueryExpr()
+		assert.NoError(t, err)
+		assert.Equal(t, "state <> ?", expression.Query)
+	})
+
+}
