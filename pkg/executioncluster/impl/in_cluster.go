@@ -15,6 +15,7 @@ import (
 )
 
 type InCluster struct {
+	interfaces.ListTargetsInterface
 	target executioncluster.ExecutionTarget
 }
 
@@ -25,13 +26,7 @@ func (i InCluster) GetTarget(ctx context.Context, spec *executioncluster.Executi
 	return &i.target, nil
 }
 
-func (i InCluster) GetAllValidTargets() []executioncluster.ExecutionTarget {
-	return []executioncluster.ExecutionTarget{
-		i.target,
-	}
-}
-
-func NewInCluster(initializationErrorCounter prometheus.Counter, kubeConfig, master string) (interfaces.ClusterInterface, error) {
+func NewInCluster(listTargets interfaces.ListTargetsInterface, initializationErrorCounter prometheus.Counter, kubeConfig, master string) (interfaces.ClusterInterface, error) {
 	clientConfig, err := flytek8s.GetRestClientConfig(kubeConfig, master, nil)
 	if err != nil {
 		return nil, err
@@ -49,6 +44,7 @@ func NewInCluster(initializationErrorCounter prometheus.Counter, kubeConfig, mas
 		return nil, err
 	}
 	return &InCluster{
+		ListTargetsInterface: listTargets,
 		target: executioncluster.ExecutionTarget{
 			Client:        kubeClient,
 			FlyteClient:   flyteClient,

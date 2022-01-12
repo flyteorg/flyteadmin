@@ -3,19 +3,25 @@ package entrypoints
 import (
 	"context"
 
+	util "github.com/flyteorg/flyteadmin/cmd/entrypoints/util"
+	"github.com/flyteorg/flyteidl/clients/go/admin"
+
 	"github.com/flyteorg/flyteadmin/pkg/clusterresource"
 	executioncluster "github.com/flyteorg/flyteadmin/pkg/executioncluster/impl"
 	"github.com/flyteorg/flyteadmin/pkg/runtime"
 	"github.com/flyteorg/flytestdlib/logger"
 
-	"github.com/flyteorg/flyteadmin/pkg/config"
-	"github.com/flyteorg/flyteadmin/pkg/repositories"
 	repositoryConfig "github.com/flyteorg/flyteadmin/pkg/repositories/config"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/spf13/cobra"
 	_ "gorm.io/driver/postgres" // Required to import database driver.
-	gormLogger "gorm.io/gorm/logger"
 )
+
+// TokenCacheKeyringProvider wraps the logic to save and retrieve tokens from the OS's keyring implementation.
+type TokenCacheKeyringProvider struct {
+	ServiceName string
+	ServiceUser string
+}
 
 var parentClusterResourceCmd = &cobra.Command{
 	Use:   "clusterresource",
@@ -38,34 +44,24 @@ var controllerRunCmd = &cobra.Command{
 		ctx := context.Background()
 		configuration := runtime.NewConfigurationProvider()
 		scope := promutils.NewScope(configuration.ApplicationConfiguration().GetTopLevelConfig().MetricsScope).NewSubScope("clusterresource")
-		dbConfigValues := configuration.ApplicationConfiguration().GetDbConfig()
-		dbLogLevel := gormLogger.Silent
-		if dbConfigValues.Debug {
-			dbLogLevel = gormLogger.Info
+		initializationErrorCounter := scope.MustNewCounter(
+			"flyteclient_initialization_error",
+			"count of errors encountered initializing a flyte client from kube config")
+		listTargetsProvider, err := executioncluster.NewListTargets(initializationErrorCounter, executioncluster.NewExecutionTargetProvider(), configuration.ClusterConfiguration())
+		if err != nil {
+			panic(err)
 		}
-		dbConfig := repositoryConfig.DbConfig{
-			BaseConfig: repositoryConfig.BaseConfig{
-				LogLevel: dbLogLevel,
-			},
-			Host:         dbConfigValues.Host,
-			Port:         dbConfigValues.Port,
-			DbName:       dbConfigValues.DbName,
-			User:         dbConfigValues.User,
-			Password:     dbConfigValues.Password,
-			ExtraOptions: dbConfigValues.ExtraOptions,
+
+		clientSet, err := admin.ClientSetBuilder().WithConfig(admin.GetConfig(ctx)).
+			WithTokenCache(util.TokenCacheKeyringProvider{
+				ServiceUser: util.KeyRingServiceUser,
+				ServiceName: util.KeyRingServiceName,
+			}).Build(ctx)
+		if err != nil {
+			panic(err)
 		}
-		db := repositories.GetRepository(
-			repositories.POSTGRES, dbConfig, scope.NewSubScope("database"))
 
-		cfg := config.GetConfig()
-		executionCluster := executioncluster.GetExecutionCluster(
-			scope.NewSubScope("cluster"),
-			cfg.KubeConfig,
-			cfg.Master,
-			configuration,
-			db)
-
-		clusterResourceController := clusterresource.NewClusterResourceController(db, executionCluster, scope)
+		clusterResourceController := clusterresource.NewClusterResourceController(clientSet.AdminClient(), listTargetsProvider, scope)
 		clusterResourceController.Run()
 		logger.Infof(ctx, "ClusterResourceController started successfully")
 	},
@@ -78,35 +74,25 @@ var controllerSyncCmd = &cobra.Command{
 		ctx := context.Background()
 		configuration := runtime.NewConfigurationProvider()
 		scope := promutils.NewScope(configuration.ApplicationConfiguration().GetTopLevelConfig().MetricsScope).NewSubScope("clusterresource")
-		dbConfigValues := configuration.ApplicationConfiguration().GetDbConfig()
-		dbLogLevel := gormLogger.Silent
-		if dbConfigValues.Debug {
-			dbLogLevel = gormLogger.Info
+		initializationErrorCounter := scope.MustNewCounter(
+			"flyteclient_initialization_error",
+			"count of errors encountered initializing a flyte client from kube config")
+		listTargetsProvider, err := executioncluster.NewListTargets(initializationErrorCounter, executioncluster.NewExecutionTargetProvider(), configuration.ClusterConfiguration())
+		if err != nil {
+			panic(err)
 		}
-		dbConfig := repositoryConfig.DbConfig{
-			BaseConfig: repositoryConfig.BaseConfig{
-				LogLevel: dbLogLevel,
-			},
-			Host:         dbConfigValues.Host,
-			Port:         dbConfigValues.Port,
-			DbName:       dbConfigValues.DbName,
-			User:         dbConfigValues.User,
-			Password:     dbConfigValues.Password,
-			ExtraOptions: dbConfigValues.ExtraOptions,
+
+		clientSet, err := admin.ClientSetBuilder().WithConfig(admin.GetConfig(ctx)).
+			WithTokenCache(util.TokenCacheKeyringProvider{
+				ServiceUser: util.KeyRingServiceUser,
+				ServiceName: util.KeyRingServiceName,
+			}).Build(ctx)
+		if err != nil {
+			panic(err)
 		}
-		db := repositories.GetRepository(
-			repositories.POSTGRES, dbConfig, scope.NewSubScope("database"))
 
-		cfg := config.GetConfig()
-		executionCluster := executioncluster.GetExecutionCluster(
-			scope.NewSubScope("cluster"),
-			cfg.KubeConfig,
-			cfg.Master,
-			configuration,
-			db)
-
-		clusterResourceController := clusterresource.NewClusterResourceController(db, executionCluster, scope)
-		err := clusterResourceController.Sync(ctx)
+		clusterResourceController := clusterresource.NewClusterResourceController(clientSet.AdminClient(), listTargetsProvider, scope)
+		err = clusterResourceController.Sync(ctx)
 		if err != nil {
 			logger.Fatalf(ctx, "Failed to sync cluster resources [%+v]", err)
 		}
