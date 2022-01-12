@@ -1821,6 +1821,18 @@ func TestGetExecution_TransformerError(t *testing.T) {
 }
 
 func TestUpdateExecution(t *testing.T) {
+	t.Run("invalid execution identifier", func(t *testing.T) {
+		repository := repositoryMocks.NewMockRepository()
+		execManager := NewExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
+		_, err := execManager.UpdateExecution(context.Background(), admin.ExecutionUpdateRequest{
+			Id: &core.WorkflowExecutionIdentifier{
+				Project: "project",
+				Domain:  "domain",
+			},
+		})
+		assert.Error(t, err)
+	})
+
 	t.Run("empty status passed", func(t *testing.T) {
 		repository := repositoryMocks.NewMockRepository()
 		updateExecFunc := func(ctx context.Context, execModel models.Execution) error {
@@ -1852,6 +1864,34 @@ func TestUpdateExecution(t *testing.T) {
 		})
 		assert.NoError(t, err)
 		assert.NotNil(t, updateResponse)
+	})
+
+	t.Run("update error", func(t *testing.T) {
+		repository := repositoryMocks.NewMockRepository()
+		updateExecFunc := func(ctx context.Context, execModel models.Execution) error {
+			return fmt.Errorf("some db error")
+		}
+		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateExecutionCallback(updateExecFunc)
+		execManager := NewExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
+		_, err := execManager.UpdateExecution(context.Background(), admin.ExecutionUpdateRequest{
+			Id:     &executionIdentifier,
+			Status: &admin.ExecutionStatus{State: admin.ExecutionStatus_EXECUTION_ARCHIVED},
+		})
+		assert.Error(t, err)
+	})
+
+	t.Run("get execution error", func(t *testing.T) {
+		repository := repositoryMocks.NewMockRepository()
+		getExecFunc := func(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
+			return models.Execution{}, fmt.Errorf("some db error")
+		}
+		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(getExecFunc)
+		execManager := NewExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
+		_, err := execManager.UpdateExecution(context.Background(), admin.ExecutionUpdateRequest{
+			Id:     &executionIdentifier,
+			Status: &admin.ExecutionStatus{State: admin.ExecutionStatus_EXECUTION_ARCHIVED},
+		})
+		assert.Error(t, err)
 	})
 }
 
