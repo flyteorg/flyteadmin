@@ -207,7 +207,6 @@ func (c *controller) getCustomTemplateValues(
 	if err != nil {
 		s, ok := status.FromError(err)
 		if !ok || s.Code() != codes.NotFound {
-			logger.Warningf(ctx, "Failed to get custom template values for %s-%s with err: %v", project, domain, err)
 			collectedErrs = append(collectedErrs, err)
 		}
 	}
@@ -610,11 +609,8 @@ func (c *controller) Sync(ctx context.Context) error {
 			customTemplateValues, err := c.getCustomTemplateValues(
 				ctx, project.Id, domain.ID, domainTemplateValues[domain.ID])
 			if err != nil {
-				s, ok := status.FromError(err)
-				if !(ok && s.Code() == codes.NotFound) {
-					logger.Warningf(ctx, "Failed to get custom template values for %s with err: %v", namespace, err)
-					errs = append(errs, err)
-				}
+				logger.Warningf(ctx, "Failed to get custom template values for %s with err: %v", namespace, err)
+				errs = append(errs, err)
 			}
 			err = c.syncNamespace(ctx, project, domain, namespace, templateValues, customTemplateValues)
 			if err != nil {
