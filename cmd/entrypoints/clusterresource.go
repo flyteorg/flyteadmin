@@ -7,7 +7,6 @@ import (
 
 	"github.com/flyteorg/flytestdlib/promutils"
 
-	util "github.com/flyteorg/flyteadmin/cmd/entrypoints/util"
 	"github.com/flyteorg/flyteidl/clients/go/admin"
 
 	"github.com/flyteorg/flyteadmin/pkg/clusterresource"
@@ -43,11 +42,7 @@ func getClusterResourceController(ctx context.Context) clusterresource.Controlle
 		panic(err)
 	}
 
-	clientSet, err := admin.ClientSetBuilder().WithConfig(admin.GetConfig(ctx)).
-		WithTokenCache(util.TokenCacheKeyringProvider{
-			ServiceUser: util.KeyRingServiceUser,
-			ServiceName: util.KeyRingServiceName,
-		}).Build(ctx)
+	clientSet, err := admin.ClientSetBuilder().WithConfig(admin.GetConfig(ctx)).Build(ctx)
 	if err != nil {
 		panic(err)
 	}
