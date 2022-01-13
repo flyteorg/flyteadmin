@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"google.golang.org/grpc/status"
 	"io/ioutil"
 	"os"
 	"path"
@@ -12,6 +11,8 @@ import (
 	"runtime/debug"
 	"strings"
 	"time"
+
+	"google.golang.org/grpc/status"
 
 	"github.com/flyteorg/flyteadmin/pkg/executioncluster/interfaces"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
@@ -208,8 +209,6 @@ func (c *controller) getCustomTemplateValues(
 		if !ok || s.Code() != codes.NotFound {
 			logger.Warningf(ctx, "Failed to get custom template values for %s-%s with err: %v", project, domain, err)
 			collectedErrs = append(collectedErrs, err)
-		} else if ok {
-			logger.Warningf(ctx, "*** error on getting attributes [%v] with code [%v]", err, s.Code())
 		}
 	}
 	if resource != nil && resource.Attributes != nil && resource.Attributes.MatchingAttributes != nil &&
@@ -246,7 +245,6 @@ type dynamicResource struct {
 // to dynamically discover the GroupVersionResource for the templatized k8s object from the cluster resource config files
 // which a dynamic client can use to create or mutate the resource.
 func prepareDynamicCreate(target executioncluster.ExecutionTarget, config string) (dynamicResource, error) {
-	logger.Warnf(context.TODO(), "**Creating %s on [%v]", config, target)
 	dc, err := discovery.NewDiscoveryClientForConfig(&target.Config)
 	if err != nil {
 		return dynamicResource{}, err
@@ -310,14 +308,11 @@ func (c *controller) syncNamespace(ctx context.Context, project *admin.Project, 
 		}
 
 		// 1) create resource from template:
-		logger.Warnf(ctx, "** creating resource from template [%+v] [%+v] [%+v] [%+v] [%+v] [%+v] [%+v]",
-			templateDir, templateFileName, project, domain, namespace, templateValues, customTemplateValues)
 		k8sManifest, err := c.createResourceFromTemplate(ctx, templateDir, templateFileName, project, domain, namespace, templateValues, customTemplateValues)
 		if err != nil {
 			collectedErrs = append(collectedErrs, err)
 			continue
 		}
-		logger.Warnf(ctx, "** created k8sManifest [%+v]", k8sManifest)
 
 		// 2) create the resource on the kubernetes cluster and cache successful outcomes
 		if _, ok := c.appliedTemplates[namespace]; !ok {

@@ -13,6 +13,7 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/config"
 	executioncluster "github.com/flyteorg/flyteadmin/pkg/executioncluster/impl"
 	"github.com/flyteorg/flyteadmin/pkg/runtime"
+	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flytestdlib/logger"
 
 	"github.com/spf13/cobra"
@@ -24,9 +25,7 @@ var parentClusterResourceCmd = &cobra.Command{
 	Short: "This command administers the ClusterResourceController. Please choose a subcommand.",
 }
 
-func getClusterResourceController(ctx context.Context) clusterresource.Controller {
-	configuration := runtime.NewConfigurationProvider()
-	scope := promutils.NewScope(configuration.ApplicationConfiguration().GetTopLevelConfig().MetricsScope).NewSubScope("clusterresource")
+func getClusterResourceController(ctx context.Context, scope promutils.Scope, configuration runtimeInterfaces.Configuration) clusterresource.Controller {
 	initializationErrorCounter := scope.MustNewCounter(
 		"flyteclient_initialization_error",
 		"count of errors encountered initializing a flyte client from kube config")
@@ -55,7 +54,9 @@ var controllerRunCmd = &cobra.Command{
 	Short: "This command will start a cluster resource controller to periodically sync cluster resources",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := context.Background()
-		clusterResourceController := getClusterResourceController(ctx)
+		configuration := runtime.NewConfigurationProvider()
+		scope := promutils.NewScope(configuration.ApplicationConfiguration().GetTopLevelConfig().MetricsScope).NewSubScope("clusterresource")
+		clusterResourceController := getClusterResourceController(ctx, scope, configuration)
 		clusterResourceController.Run()
 		logger.Infof(ctx, "ClusterResourceController started running successfully")
 	},
@@ -66,7 +67,9 @@ var controllerSyncCmd = &cobra.Command{
 	Short: "This command will sync cluster resources",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := context.Background()
-		clusterResourceController := getClusterResourceController(ctx)
+		configuration := runtime.NewConfigurationProvider()
+		scope := promutils.NewScope(configuration.ApplicationConfiguration().GetTopLevelConfig().MetricsScope).NewSubScope("clusterresource")
+		clusterResourceController := getClusterResourceController(ctx, scope, configuration)
 		err := clusterResourceController.Sync(ctx)
 		if err != nil {
 			logger.Fatalf(ctx, "Failed to sync cluster resources [%+v]", err)
