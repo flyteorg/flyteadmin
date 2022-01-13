@@ -11,9 +11,9 @@ type GetTargetInterface interface {
 }
 
 type ListTargetsInterface interface {
-	GetAllTargets() map[string]executioncluster.ExecutionTarget
+	GetAllTargets() map[string]*executioncluster.ExecutionTarget
 	// Returns all enabled targets.
-	GetAllValidTargets() map[string]executioncluster.ExecutionTarget
+	GetValidTargets() map[string]*executioncluster.ExecutionTarget
 }
 
 // Interface for the Execution Cluster

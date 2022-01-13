@@ -11,18 +11,18 @@ func GetExecutionCluster(scope promutils.Scope, kubeConfig, master string, confi
 	initializationErrorCounter := scope.MustNewCounter(
 		"flyteclient_initialization_error",
 		"count of errors encountered initializing a flyte client from kube config")
-	listTargetsProvider, err := NewListTargets(initializationErrorCounter, NewExecutionTargetProvider(), config.ClusterConfiguration())
-	if err != nil {
-		panic(err)
-	}
 	switch len(config.ClusterConfiguration().GetClusterConfigs()) {
 	case 0:
-		cluster, err := NewInCluster(listTargetsProvider, initializationErrorCounter, kubeConfig, master)
+		cluster, err := NewInCluster(initializationErrorCounter, kubeConfig, master)
 		if err != nil {
 			panic(err)
 		}
 		return cluster
 	default:
+		listTargetsProvider, err := NewListTargets(initializationErrorCounter, NewExecutionTargetProvider(), config.ClusterConfiguration())
+		if err != nil {
+			panic(err)
+		}
 		cluster, err := NewRandomClusterSelector(listTargetsProvider, config, db)
 		if err != nil {
 			panic(err)

@@ -14,9 +14,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const defaultInClusterTargetID = "id"
+
 type InCluster struct {
-	interfaces.ListTargetsInterface
-	target executioncluster.ExecutionTarget
+	target    executioncluster.ExecutionTarget
+	asTargets map[string]*executioncluster.ExecutionTarget
 }
 
 func (i InCluster) GetTarget(ctx context.Context, spec *executioncluster.ExecutionTargetSpec) (*executioncluster.ExecutionTarget, error) {
@@ -26,7 +28,15 @@ func (i InCluster) GetTarget(ctx context.Context, spec *executioncluster.Executi
 	return &i.target, nil
 }
 
-func NewInCluster(listTargets interfaces.ListTargetsInterface, initializationErrorCounter prometheus.Counter, kubeConfig, master string) (interfaces.ClusterInterface, error) {
+func (i InCluster) GetAllTargets() map[string]*executioncluster.ExecutionTarget {
+	return i.asTargets
+}
+
+func (i InCluster) GetValidTargets() map[string]*executioncluster.ExecutionTarget {
+	return i.asTargets
+}
+
+func NewInCluster(initializationErrorCounter prometheus.Counter, kubeConfig, master string) (interfaces.ClusterInterface, error) {
 	clientConfig, err := flytek8s.GetRestClientConfig(kubeConfig, master, nil)
 	if err != nil {
 		return nil, err
@@ -43,13 +53,17 @@ func NewInCluster(listTargets interfaces.ListTargetsInterface, initializationErr
 	if err != nil {
 		return nil, err
 	}
+	target := executioncluster.ExecutionTarget{
+		ID:            defaultInClusterTargetID,
+		Client:        kubeClient,
+		FlyteClient:   flyteClient,
+		DynamicClient: dynamicClient,
+		Config:        *clientConfig,
+	}
 	return &InCluster{
-		ListTargetsInterface: listTargets,
-		target: executioncluster.ExecutionTarget{
-			Client:        kubeClient,
-			FlyteClient:   flyteClient,
-			DynamicClient: dynamicClient,
-			Config:        *clientConfig,
+		target: target,
+		asTargets: map[string]*executioncluster.ExecutionTarget{
+			target.ID: &target,
 		},
 	}, nil
 }

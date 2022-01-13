@@ -314,8 +314,8 @@ func (c *controller) syncNamespace(ctx context.Context, project *admin.Project, 
 		if _, ok := c.appliedTemplates[namespace]; !ok {
 			c.appliedTemplates[namespace] = make(LastModTimeCache)
 		}
-		for _, target := range c.listTargets.GetAllValidTargets() {
-			dynamicObj, err := prepareDynamicCreate(target, k8sManifest)
+		for _, target := range c.listTargets.GetValidTargets() {
+			dynamicObj, err := prepareDynamicCreate(*target, k8sManifest)
 			if err != nil {
 				logger.Warningf(ctx, "Failed to transform kubernetes manifest for namespace [%s] "+
 					"into a dynamic unstructured mapping with err: %v, manifest: %v", namespace, err, k8sManifest)

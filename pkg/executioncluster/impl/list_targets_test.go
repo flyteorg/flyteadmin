@@ -46,7 +46,7 @@ func TestNewListTargets(t *testing.T) {
 		nil,
 		&execTargetProvider, &conf)
 	assert.NoError(t, err)
-	validTargets := listTargetsProvider.GetAllValidTargets()
+	validTargets := listTargetsProvider.GetValidTargets()
 	assert.Len(t, validTargets, 1)
 	assert.Contains(t, validTargets, enabledCluster)
 

@@ -104,7 +104,7 @@ func persistSecrets(ctx context.Context, _ *pflag.FlagSet) error {
 		return err
 	}
 
-	targets := listTargetsProvider.GetAllValidTargets()
+	targets := listTargetsProvider.GetValidTargets()
 	// Since we are targeting the cluster Admin is running in, this list should contain exactly one item
 	if len(targets) != 1 {
 		return fmt.Errorf("expected exactly 1 valid target cluster. Found [%v]", len(targets))

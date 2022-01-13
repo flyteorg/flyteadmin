@@ -3,6 +3,8 @@ package entrypoints
 import (
 	"context"
 
+	"github.com/flyteorg/flytestdlib/promutils"
+
 	util "github.com/flyteorg/flyteadmin/cmd/entrypoints/util"
 	"github.com/flyteorg/flyteidl/clients/go/admin"
 
@@ -12,16 +14,9 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 
 	repositoryConfig "github.com/flyteorg/flyteadmin/pkg/repositories/config"
-	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/spf13/cobra"
 	_ "gorm.io/driver/postgres" // Required to import database driver.
 )
-
-// TokenCacheKeyringProvider wraps the logic to save and retrieve tokens from the OS's keyring implementation.
-type TokenCacheKeyringProvider struct {
-	ServiceName string
-	ServiceUser string
-}
 
 var parentClusterResourceCmd = &cobra.Command{
 	Use:   "clusterresource",

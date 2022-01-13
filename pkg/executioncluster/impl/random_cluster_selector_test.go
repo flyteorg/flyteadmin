@@ -89,7 +89,7 @@ func getRandomClusterSelectorForTest(t *testing.T) interfaces2.ClusterInterface 
 	}
 	configProvider := runtime.NewConfigurationProvider()
 	listTargetsProvider := mocks.ListTargetsInterface{}
-	validTargets := map[string]executioncluster.ExecutionTarget{
+	validTargets := map[string]*executioncluster.ExecutionTarget{
 		testCluster2: {
 			ID:      testCluster2,
 			Enabled: true,
@@ -99,7 +99,7 @@ func getRandomClusterSelectorForTest(t *testing.T) interfaces2.ClusterInterface 
 			Enabled: true,
 		},
 	}
-	targets := map[string]executioncluster.ExecutionTarget{
+	targets := map[string]*executioncluster.ExecutionTarget{
 		testCluster1: {
 			ID: testCluster1,
 		},
@@ -112,7 +112,7 @@ func getRandomClusterSelectorForTest(t *testing.T) interfaces2.ClusterInterface 
 			Enabled: true,
 		},
 	}
-	listTargetsProvider.OnGetAllValidTargets().Return(validTargets)
+	listTargetsProvider.OnGetValidTargets().Return(validTargets)
 	listTargetsProvider.OnGetAllTargets().Return(targets)
 	randomCluster, err := NewRandomClusterSelector(&listTargetsProvider, configProvider, db)
 	assert.NoError(t, err)
@@ -195,6 +195,6 @@ func TestRandomClusterSelectorGetRemoteTarget(t *testing.T) {
 
 func TestRandomClusterSelectorGetAllValidTargets(t *testing.T) {
 	cluster := getRandomClusterSelectorForTest(t)
-	targets := cluster.GetAllValidTargets()
+	targets := cluster.GetValidTargets()
 	assert.Equal(t, 2, len(targets))
 }

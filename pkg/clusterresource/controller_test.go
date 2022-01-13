@@ -179,8 +179,7 @@ func TestGetCustomTemplateValues(t *testing.T) {
 		"{{ var1 }}": "i'm getting overwritten",
 		"{{ var3 }}": "persist",
 	}
-	customTemplateValues, err := testController.getCustomTemplateValues(context.Background(), proj,
-		"domain-bar", domainTemplateValues)
+	customTemplateValues, err := testController.getCustomTemplateValues(context.Background(), proj, domain, domainTemplateValues)
 	assert.Nil(t, err)
 	assert.EqualValues(t, templateValuesType{
 		"{{ var1 }}": "val1",

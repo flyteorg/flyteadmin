@@ -3,29 +3,30 @@ package impl
 import (
 	"fmt"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/flyteorg/flyteadmin/pkg/executioncluster"
 	"github.com/flyteorg/flyteadmin/pkg/executioncluster/interfaces"
 	runtime "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 type listTargets struct {
-	allTargets   map[string]executioncluster.ExecutionTarget
-	validTargets map[string]executioncluster.ExecutionTarget
+	allTargets   map[string]*executioncluster.ExecutionTarget
+	validTargets map[string]*executioncluster.ExecutionTarget
 }
 
-func (l *listTargets) GetAllTargets() map[string]executioncluster.ExecutionTarget {
+func (l *listTargets) GetAllTargets() map[string]*executioncluster.ExecutionTarget {
 	return l.allTargets
 }
 
-func (l *listTargets) GetAllValidTargets() map[string]executioncluster.ExecutionTarget {
+func (l *listTargets) GetValidTargets() map[string]*executioncluster.ExecutionTarget {
 	return l.validTargets
 }
 
 func NewListTargets(initializationErrorCounter prometheus.Counter, executionTargetProvider interfaces.ExecutionTargetProvider,
 	clusterConfig runtime.ClusterConfiguration) (interfaces.ListTargetsInterface, error) {
-	allTargets := make(map[string]executioncluster.ExecutionTarget)
-	validTargets := make(map[string]executioncluster.ExecutionTarget)
+	allTargets := make(map[string]*executioncluster.ExecutionTarget)
+	validTargets := make(map[string]*executioncluster.ExecutionTarget)
 
 	for _, cluster := range clusterConfig.GetClusterConfigs() {
 		if _, ok := allTargets[cluster.Name]; ok {
@@ -35,9 +36,9 @@ func NewListTargets(initializationErrorCounter prometheus.Counter, executionTarg
 		if err != nil {
 			return nil, err
 		}
-		allTargets[cluster.Name] = *executionTarget
+		allTargets[cluster.Name] = executionTarget
 		if executionTarget.Enabled {
-			validTargets[cluster.Name] = *executionTarget
+			validTargets[cluster.Name] = executionTarget
 		}
 	}
 	return &listTargets{

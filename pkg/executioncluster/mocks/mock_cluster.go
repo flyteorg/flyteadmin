@@ -7,7 +7,7 @@ import (
 )
 
 type GetTargetFunc func(context.Context, *executioncluster.ExecutionTargetSpec) (*executioncluster.ExecutionTarget, error)
-type GetAllValidTargetsFunc func() map[string]executioncluster.ExecutionTarget
+type GetAllValidTargetsFunc func() map[string]*executioncluster.ExecutionTarget
 
 type MockCluster struct {
 	getTargetFunc          GetTargetFunc
@@ -34,14 +34,14 @@ func (m *MockCluster) GetTarget(ctx context.Context, execCluster *executionclust
 	return nil, nil
 }
 
-func (m *MockCluster) GetAllValidTargets() map[string]executioncluster.ExecutionTarget {
+func (m *MockCluster) GetValidTargets() map[string]*executioncluster.ExecutionTarget {
 	if m.getAllValidTargetsFunc != nil {
 		return m.getAllValidTargetsFunc()
 	}
 	return nil
 }
 
-func (m *MockCluster) GetAllTargets() map[string]executioncluster.ExecutionTarget {
+func (m *MockCluster) GetAllTargets() map[string]*executioncluster.ExecutionTarget {
 	if m.getAllTargetsFunc != nil {
 		return m.getAllTargetsFunc()
 	}

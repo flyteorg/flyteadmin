@@ -43,12 +43,12 @@ func getRandSource(seed string) (rand.Source, error) {
 	return rand.NewSource(hashedSeed), nil
 }
 
-func convertToRandomWeightedList(ctx context.Context, targets map[string]executioncluster.ExecutionTarget) (random.WeightedRandomList, error) {
+func convertToRandomWeightedList(ctx context.Context, targets map[string]*executioncluster.ExecutionTarget) (random.WeightedRandomList, error) {
 	entries := make([]random.Entry, 0)
 	for _, executionTarget := range targets {
 		if executionTarget.Enabled {
 			targetEntry := random.Entry{
-				Item: executionTarget,
+				Item: *executionTarget,
 			}
 			entries = append(entries, targetEntry)
 		}
@@ -61,18 +61,18 @@ func convertToRandomWeightedList(ctx context.Context, targets map[string]executi
 }
 
 func getLabeledWeightedRandomForCluster(ctx context.Context,
-	clusterConfig runtime.ClusterConfiguration, executionTargetMap map[string]executioncluster.ExecutionTarget) (map[string]random.WeightedRandomList, error) {
+	clusterConfig runtime.ClusterConfiguration, executionTargetMap map[string]*executioncluster.ExecutionTarget) (map[string]random.WeightedRandomList, error) {
 	labeledWeightedRandomMap := make(map[string]random.WeightedRandomList)
 	for label, clusterEntities := range clusterConfig.GetLabelClusterMap() {
 		entries := make([]random.Entry, 0)
 		for _, clusterEntity := range clusterEntities {
-			cluster := executionTargetMap[clusterEntity.ID]
-			// If cluster is not enabled, it is not eligible for selection
-			if !cluster.Enabled {
+			cluster, found := executionTargetMap[clusterEntity.ID]
+			// If cluster is not found, it was never enabled. Non-enabled clusters are not eligible for selection
+			if !(found && cluster.Enabled) {
 				continue
 			}
 			targetEntry := random.Entry{
-				Item:   cluster,
+				Item:   *cluster,
 				Weight: clusterEntity.Weight,
 			}
 			entries = append(entries, targetEntry)
@@ -94,7 +94,7 @@ func (s RandomClusterSelector) GetTarget(ctx context.Context, spec *executionclu
 	}
 	if spec.TargetID != "" {
 		if val, ok := s.GetAllTargets()[spec.TargetID]; ok {
-			return &val, nil
+			return val, nil
 		}
 		return nil, fmt.Errorf("invalid cluster target %s", spec.TargetID)
 	}
@@ -147,11 +147,11 @@ func (s RandomClusterSelector) GetTarget(ctx context.Context, spec *executionclu
 
 func NewRandomClusterSelector(listTargets interfaces.ListTargetsInterface, config runtime.Configuration,
 	db repositories.RepositoryInterface) (interfaces.ClusterInterface, error) {
-	equalWeightedAllClusters, err := convertToRandomWeightedList(context.Background(), listTargets.GetAllValidTargets())
+	equalWeightedAllClusters, err := convertToRandomWeightedList(context.Background(), listTargets.GetValidTargets())
 	if err != nil {
 		return nil, err
 	}
-	labelWeightedRandomMap, err := getLabeledWeightedRandomForCluster(context.Background(), config.ClusterConfiguration(), listTargets.GetAllValidTargets())
+	labelWeightedRandomMap, err := getLabeledWeightedRandomForCluster(context.Background(), config.ClusterConfiguration(), listTargets.GetValidTargets())
 	if err != nil {
 		return nil, err
 	}
