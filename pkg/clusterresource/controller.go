@@ -204,8 +204,12 @@ func (c *controller) getCustomTemplateValues(
 		ResourceType: admin.MatchableResource_CLUSTER_RESOURCE,
 	})
 	if err != nil {
-		if _, ok := err.(errors.FlyteAdminError); !ok || err.(errors.FlyteAdminError).Code() != codes.NotFound {
+		s, ok := status.FromError(err)
+		if !ok || s.Code() != codes.NotFound {
+			logger.Warningf(ctx, "Failed to get custom template values for %s-%s with err: %v", project, domain, err)
 			collectedErrs = append(collectedErrs, err)
+		} else if ok {
+			logger.Warningf(ctx, "*** error on getting attributes [%v] with code [%v]", err, s.Code())
 		}
 	}
 	if resource != nil && resource.Attributes != nil && resource.Attributes.MatchingAttributes != nil &&
