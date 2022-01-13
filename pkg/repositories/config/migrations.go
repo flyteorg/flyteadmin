@@ -330,10 +330,18 @@ var Migrations = []*gormigrate.Migration{
 		},
 	},
 
-	// Add state to execution model
+	// Add state to execution model. For any new table migrations please user the following pattern due to following bug
+	// in the postgres gorm layer https://github.com/go-gorm/postgres/issues/65
 	{
 		ID: "2022-01-11-execution-state",
 		Migrate: func(tx *gorm.DB) error {
+			db, err := tx.DB()
+			if err != nil {
+				return err
+			}
+			if _, err = db.Exec(`ALTER TABLE IF EXISTS executions ALTER COLUMN "id" TYPE bigint`); err != nil {
+				return err
+			}
 			return tx.AutoMigrate(&models.Execution{})
 		},
 		Rollback: func(tx *gorm.DB) error {
