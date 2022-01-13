@@ -241,6 +241,7 @@ type dynamicResource struct {
 // to dynamically discover the GroupVersionResource for the templatized k8s object from the cluster resource config files
 // which a dynamic client can use to create or mutate the resource.
 func prepareDynamicCreate(target executioncluster.ExecutionTarget, config string) (dynamicResource, error) {
+	logger.Warnf(context.TODO(), "**Creating %s on [%v]", config, target)
 	dc, err := discovery.NewDiscoveryClientForConfig(&target.Config)
 	if err != nil {
 		return dynamicResource{}, err
@@ -304,11 +305,14 @@ func (c *controller) syncNamespace(ctx context.Context, project *admin.Project, 
 		}
 
 		// 1) create resource from template:
+		logger.Warnf(ctx, "** creating resource from template [%+v] [%+v] [%+v] [%+v] [%+v] [%+v] [%+v]",
+			templateDir, templateFileName, project, domain, namespace, templateValues, customTemplateValues)
 		k8sManifest, err := c.createResourceFromTemplate(ctx, templateDir, templateFileName, project, domain, namespace, templateValues, customTemplateValues)
 		if err != nil {
 			collectedErrs = append(collectedErrs, err)
 			continue
 		}
+		logger.Warnf(ctx, "** created k8sManifest [%+v]", k8sManifest)
 
 		// 2) create the resource on the kubernetes cluster and cache successful outcomes
 		if _, ok := c.appliedTemplates[namespace]; !ok {
