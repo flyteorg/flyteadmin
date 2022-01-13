@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"google.golang.org/grpc/status"
 	"io/ioutil"
 	"os"
 	"path"
@@ -610,8 +611,11 @@ func (c *controller) Sync(ctx context.Context) error {
 			customTemplateValues, err := c.getCustomTemplateValues(
 				ctx, project.Id, domain.ID, domainTemplateValues[domain.ID])
 			if err != nil {
-				logger.Warningf(ctx, "Failed to get custom template values for %s with err: %v", namespace, err)
-				errs = append(errs, err)
+				s, ok := status.FromError(err)
+				if !(ok && s.Code() == codes.NotFound) {
+					logger.Warningf(ctx, "Failed to get custom template values for %s with err: %v", namespace, err)
+					errs = append(errs, err)
+				}
 			}
 			err = c.syncNamespace(ctx, project, domain, namespace, templateValues, customTemplateValues)
 			if err != nil {
