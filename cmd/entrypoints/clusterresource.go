@@ -3,17 +3,19 @@ package entrypoints
 import (
 	"context"
 
+	"github.com/flyteorg/flyteadmin/pkg/executioncluster/interfaces"
+
 	"github.com/flyteorg/flytestdlib/promutils"
 
 	util "github.com/flyteorg/flyteadmin/cmd/entrypoints/util"
 	"github.com/flyteorg/flyteidl/clients/go/admin"
 
 	"github.com/flyteorg/flyteadmin/pkg/clusterresource"
+	"github.com/flyteorg/flyteadmin/pkg/config"
 	executioncluster "github.com/flyteorg/flyteadmin/pkg/executioncluster/impl"
 	"github.com/flyteorg/flyteadmin/pkg/runtime"
 	"github.com/flyteorg/flytestdlib/logger"
 
-	repositoryConfig "github.com/flyteorg/flyteadmin/pkg/repositories/config"
 	"github.com/spf13/cobra"
 	_ "gorm.io/driver/postgres" // Required to import database driver.
 )
@@ -23,22 +25,20 @@ var parentClusterResourceCmd = &cobra.Command{
 	Short: "This command administers the ClusterResourceController. Please choose a subcommand.",
 }
 
-func GetLocalDbConfig() repositoryConfig.DbConfig {
-	return repositoryConfig.DbConfig{
-		Host:   "localhost",
-		Port:   5432,
-		DbName: "postgres",
-		User:   "postgres",
-	}
-}
-
 func getClusterResourceController(ctx context.Context) clusterresource.Controller {
 	configuration := runtime.NewConfigurationProvider()
 	scope := promutils.NewScope(configuration.ApplicationConfiguration().GetTopLevelConfig().MetricsScope).NewSubScope("clusterresource")
 	initializationErrorCounter := scope.MustNewCounter(
 		"flyteclient_initialization_error",
 		"count of errors encountered initializing a flyte client from kube config")
-	listTargetsProvider, err := executioncluster.NewListTargets(initializationErrorCounter, executioncluster.NewExecutionTargetProvider(), configuration.ClusterConfiguration())
+	var listTargetsProvider interfaces.ListTargetsInterface
+	var err error
+	if len(configuration.ClusterConfiguration().GetClusterConfigs()) == 0 {
+		serverConfig := config.GetConfig()
+		listTargetsProvider, err = executioncluster.NewInCluster(initializationErrorCounter, serverConfig.KubeConfig, serverConfig.Master)
+	} else {
+		listTargetsProvider, err = executioncluster.NewListTargets(initializationErrorCounter, executioncluster.NewExecutionTargetProvider(), configuration.ClusterConfiguration())
+	}
 	if err != nil {
 		panic(err)
 	}
