@@ -1177,7 +1177,8 @@ func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admi
 	}
 
 	wfExecPhase := core.WorkflowExecution_Phase(core.WorkflowExecution_Phase_value[executionModel.Phase])
-	if wfExecPhase == request.Event.Phase {
+	// Subsequent queued events announcing a cluster reassignment are permitted.
+	if wfExecPhase == request.Event.Phase && request.Event.Phase != core.WorkflowExecution_QUEUED {
 		logger.Debugf(ctx, "This phase %s was already recorded for workflow execution %v",
 			wfExecPhase.String(), request.Event.ExecutionId)
 		return nil, errors.NewFlyteAdminErrorf(codes.AlreadyExists,
@@ -1188,6 +1189,14 @@ func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admi
 		curPhase := wfExecPhase.String()
 		errorMsg := fmt.Sprintf("Invalid phase change from %s to %s for workflow execution %v", curPhase, request.Event.Phase.String(), request.Event.ExecutionId)
 		return nil, errors.NewAlreadyInTerminalStateError(ctx, errorMsg, curPhase)
+	} else if wfExecPhase == core.WorkflowExecution_RUNNING && request.Event.Phase == core.WorkflowExecution_QUEUED {
+		// Cannot go back in time from RUNNING -> QUEUED
+		return nil, errors.NewFlyteAdminErrorf(codes.FailedPrecondition,
+			"Cannot go from %s to %s for workflow execution %v",
+			wfExecPhase.String(), request.Event.Phase.String(), request.Event.ExecutionId)
+	} else if wfExecPhase == core.WorkflowExecution_ABORTING && !common.IsExecutionTerminal(request.Event.Phase) {
+		return nil, errors.NewFlyteAdminErrorf(codes.FailedPrecondition,
+			"Invalid phase change from aborting to %s for workflow execution %v", request.Event.Phase.String(), request.Event.ExecutionId)
 	}
 
 	err = transformers.UpdateExecutionModelState(ctx, executionModel, request, m.config.ApplicationConfiguration().GetRemoteDataConfig().InlineEventDataPolicy, m.storageClient)
@@ -1256,6 +1265,32 @@ func (m *ExecutionManager) GetExecution(
 	}
 
 	return execution, nil
+}
+
+func (m *ExecutionManager) UpdateExecution(
+	ctx context.Context, request admin.ExecutionUpdateRequest) (*admin.ExecutionUpdateResponse, error) {
+	if err := validation.ValidateWorkflowExecutionIdentifier(request.Id); err != nil {
+		logger.Debugf(ctx, "UpdateExecution request [%+v] failed validation with err: %v", request, err)
+		return nil, err
+	}
+	ctx = getExecutionContext(ctx, request.Id)
+	executionModel, err := util.GetExecutionModel(ctx, m.db, *request.Id)
+	if err != nil {
+		logger.Debugf(ctx, "Failed to get execution model for request [%+v] with err: %v", request, err)
+		return nil, err
+	}
+
+	stateInt := int32(admin.ExecutionStatus_EXECUTION_ACTIVE)
+	if request.Status != nil {
+		stateInt = int32(request.Status.State)
+	}
+	executionModel.State = &stateInt
+
+	if err := m.db.ExecutionRepo().Update(ctx, *executionModel); err != nil {
+		return nil, err
+	}
+
+	return &admin.ExecutionUpdateResponse{}, nil
 }
 
 func (m *ExecutionManager) GetExecutionData(
@@ -1348,6 +1383,12 @@ func (m *ExecutionManager) ListExecutions(
 	for _, filter := range filters {
 		joinTableEntities[filter.GetEntity()] = true
 	}
+
+	// Check if state filter exists and if not then add filter to fetch only ACTIVE executions
+	if filters, err = addStateFilter(filters); err != nil {
+		return nil, err
+	}
+
 	listExecutionsInput := repositoryInterfaces.ListResourceInput{
 		Limit:             int(request.Limit),
 		Offset:            offset,
@@ -1576,4 +1617,23 @@ func (m *ExecutionManager) addProjectLabels(ctx context.Context, projectName str
 		}
 	}
 	return initialLabels, nil
+}
+
+func addStateFilter(filters []common.InlineFilter) ([]common.InlineFilter, error) {
+	var stateFilterExists bool
+	for _, inlineFilter := range filters {
+		if inlineFilter.GetField() == shared.State {
+			stateFilterExists = true
+		}
+	}
+
+	if !stateFilterExists {
+		stateFilter, err := common.NewSingleValueFilter(common.Execution, common.Equal, shared.State,
+			admin.ExecutionStatus_EXECUTION_ACTIVE)
+		if err != nil {
+			return filters, err
+		}
+		filters = append(filters, stateFilter)
+	}
+	return filters, nil
 }
