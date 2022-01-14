@@ -330,18 +330,62 @@ var Migrations = []*gormigrate.Migration{
 		},
 	},
 
-	// Add state to execution model. For any new table migrations please user the following pattern due to following bug
+	// For any new table, Please use the following pattern due to a bug
 	// in the postgres gorm layer https://github.com/go-gorm/postgres/issues/65
 	{
-		ID: "2022-01-11-execution-state",
+		ID: "2022-01-11-id-to-bigint",
 		Migrate: func(tx *gorm.DB) error {
 			db, err := tx.DB()
 			if err != nil {
 				return err
 			}
+			if _, err = db.Exec(`ALTER TABLE IF EXISTS execution_events ALTER COLUMN "id" TYPE bigint`); err != nil {
+				return err
+			}
 			if _, err = db.Exec(`ALTER TABLE IF EXISTS executions ALTER COLUMN "id" TYPE bigint`); err != nil {
 				return err
 			}
+			if _, err = db.Exec(`ALTER TABLE IF EXISTS launch_plans ALTER COLUMN "id" TYPE bigint`); err != nil {
+				return err
+			}
+			if _, err = db.Exec(`ALTER TABLE IF EXISTS named_entity_metadata ALTER COLUMN "id" TYPE bigint`); err != nil {
+				return err
+			}
+			if _, err = db.Exec(`ALTER TABLE IF EXISTS node_execution_events ALTER COLUMN "id" TYPE bigint`); err != nil {
+				return err
+			}
+			if _, err = db.Exec(`ALTER TABLE IF EXISTS node_executions ALTER COLUMN "id" TYPE bigint`); err != nil {
+				return err
+			}
+			if _, err = db.Exec(`ALTER TABLE IF EXISTS projects ALTER COLUMN "id" TYPE bigint`); err != nil {
+				return err
+			}
+			if _, err = db.Exec(`ALTER TABLE IF EXISTS resources ALTER COLUMN "id" TYPE bigint`); err != nil {
+				return err
+			}
+			if _, err = db.Exec(`ALTER TABLE IF EXISTS schedulable_entities ALTER COLUMN "id" TYPE bigint`); err != nil {
+				return err
+			}
+			if _, err = db.Exec(`ALTER TABLE IF EXISTS schedule_entities_snapshots ALTER COLUMN "id" TYPE bigint`); err != nil {
+				return err
+			}
+			if _, err = db.Exec(`ALTER TABLE IF EXISTS task_executions ALTER COLUMN "id" TYPE bigint`); err != nil {
+				return err
+			}
+			if _, err = db.Exec(`ALTER TABLE IF EXISTS tasks ALTER COLUMN "id" TYPE bigint`); err != nil {
+				return err
+			}
+			if _, err = db.Exec(`ALTER TABLE IF EXISTS workflows ALTER COLUMN "id" TYPE bigint`); err != nil {
+				return err
+			}
+			return nil
+		},
+	},
+
+	// Add state to execution model.
+	{
+		ID: "2022-01-11-execution-state",
+		Migrate: func(tx *gorm.DB) error {
 			return tx.AutoMigrate(&models.Execution{})
 		},
 		Rollback: func(tx *gorm.DB) error {
