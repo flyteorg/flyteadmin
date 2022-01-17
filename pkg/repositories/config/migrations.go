@@ -372,3 +372,18 @@ func alterTableColumnType(db *sql.DB, columnName, columnType string) error {
 	}
 	return nil
 }
+
+func alterTableColumnType(db *sql.DB, columnName, columnType string) error {
+	// TODO: add a way to get these list of tables directly from the gorm loaded models
+	tables := []string{"execution_events", "executions", "launch_plans", "named_entity_metadata",
+		"node_execution_events", "node_executions", "projects", "resources", "schedulable_entities",
+		"schedule_entities_snapshots", "task_executions", "tasks", "workflows"}
+	var err error
+	for _, table := range tables {
+		if _, err = db.Exec(fmt.Sprintf(`ALTER TABLE IF EXISTS %s ALTER COLUMN "%s" TYPE %s`, table, columnName,
+			columnType)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
