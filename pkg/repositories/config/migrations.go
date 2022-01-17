@@ -1,9 +1,12 @@
 package config
 
 import (
+	"database/sql"
+	"fmt"
+
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	schedulerModels "github.com/flyteorg/flyteadmin/scheduler/repositories/models"
-	gormigrate "github.com/go-gormigrate/gormigrate/v2"
+	"github.com/go-gormigrate/gormigrate/v2"
 	"gorm.io/gorm"
 )
 
@@ -339,46 +342,14 @@ var Migrations = []*gormigrate.Migration{
 			if err != nil {
 				return err
 			}
-			if _, err = db.Exec(`ALTER TABLE IF EXISTS execution_events ALTER COLUMN "id" TYPE bigint`); err != nil {
+			return alterTableColumnType(db, "id", "bigint")
+		},
+		Rollback: func(tx *gorm.DB) error {
+			db, err := tx.DB()
+			if err != nil {
 				return err
 			}
-			if _, err = db.Exec(`ALTER TABLE IF EXISTS executions ALTER COLUMN "id" TYPE bigint`); err != nil {
-				return err
-			}
-			if _, err = db.Exec(`ALTER TABLE IF EXISTS launch_plans ALTER COLUMN "id" TYPE bigint`); err != nil {
-				return err
-			}
-			if _, err = db.Exec(`ALTER TABLE IF EXISTS named_entity_metadata ALTER COLUMN "id" TYPE bigint`); err != nil {
-				return err
-			}
-			if _, err = db.Exec(`ALTER TABLE IF EXISTS node_execution_events ALTER COLUMN "id" TYPE bigint`); err != nil {
-				return err
-			}
-			if _, err = db.Exec(`ALTER TABLE IF EXISTS node_executions ALTER COLUMN "id" TYPE bigint`); err != nil {
-				return err
-			}
-			if _, err = db.Exec(`ALTER TABLE IF EXISTS projects ALTER COLUMN "id" TYPE bigint`); err != nil {
-				return err
-			}
-			if _, err = db.Exec(`ALTER TABLE IF EXISTS resources ALTER COLUMN "id" TYPE bigint`); err != nil {
-				return err
-			}
-			if _, err = db.Exec(`ALTER TABLE IF EXISTS schedulable_entities ALTER COLUMN "id" TYPE bigint`); err != nil {
-				return err
-			}
-			if _, err = db.Exec(`ALTER TABLE IF EXISTS schedule_entities_snapshots ALTER COLUMN "id" TYPE bigint`); err != nil {
-				return err
-			}
-			if _, err = db.Exec(`ALTER TABLE IF EXISTS task_executions ALTER COLUMN "id" TYPE bigint`); err != nil {
-				return err
-			}
-			if _, err = db.Exec(`ALTER TABLE IF EXISTS tasks ALTER COLUMN "id" TYPE bigint`); err != nil {
-				return err
-			}
-			if _, err = db.Exec(`ALTER TABLE IF EXISTS workflows ALTER COLUMN "id" TYPE bigint`); err != nil {
-				return err
-			}
-			return nil
+			return alterTableColumnType(db, "id", "int")
 		},
 	},
 
@@ -392,4 +363,19 @@ var Migrations = []*gormigrate.Migration{
 			return tx.Table("execution").Migrator().DropColumn(&models.Execution{}, "state")
 		},
 	},
+}
+
+func alterTableColumnType(db *sql.DB, columnName, columnType string) error {
+	// TODO: add a way to get these list of tables directly from the gorm loaded models
+	tables := []string{"execution_events", "executions", "launch_plans", "named_entity_metadata",
+		"node_execution_events", "node_executions", "projects", "resources", "schedulable_entities",
+		"schedule_entities_snapshots", "task_executions", "tasks", "workflows"}
+	var err error
+	for _, table := range tables {
+		if _, err = db.Exec(fmt.Sprintf(`ALTER TABLE IF EXISTS %s ALTER COLUMN "%s" TYPE %s`, table, columnName,
+			columnType)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
