@@ -6,14 +6,14 @@ import (
 
 	mocket "github.com/Selvatico/go-mocket"
 	"github.com/stretchr/testify/assert"
-	
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 func TestAlterTableColumnType(t *testing.T) {
 	gormDb := GetDbForTest(t)
-	db , err := gormDb.DB()
+	db, err := gormDb.DB()
 	GlobalMock := mocket.Catcher.Reset()
 	GlobalMock.Logging = true
 	query := GlobalMock.NewMock()
@@ -33,4 +33,3 @@ func GetDbForTest(t *testing.T) *gorm.DB {
 	}
 	return db
 }
-
