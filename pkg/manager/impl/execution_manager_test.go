@@ -67,6 +67,10 @@ var specBytes, _ = proto.Marshal(spec)
 var phase = core.WorkflowExecution_RUNNING.String()
 var closure = admin.ExecutionClosure{
 	Phase: core.WorkflowExecution_RUNNING,
+	Status: &admin.ExecutionStatus{
+		State:      admin.ExecutionStatus_EXECUTION_ACTIVE,
+		OccurredAt: testutils.MockCreatedAtProto,
+	},
 }
 var closureBytes, _ = proto.Marshal(&closure)
 
@@ -106,6 +110,10 @@ func getLegacyClosure() *admin.ExecutionClosure {
 	return &admin.ExecutionClosure{
 		Phase:          core.WorkflowExecution_RUNNING,
 		ComputedInputs: getLegacySpec().Inputs,
+		Status: &admin.ExecutionStatus{
+			State:      admin.ExecutionStatus_EXECUTION_ACTIVE,
+			OccurredAt: testutils.MockCreatedAtProto,
+		},
 	}
 }
 
@@ -1491,6 +1499,10 @@ func TestCreateWorkflowEvent_StartedRunning(t *testing.T) {
 		Phase:     core.WorkflowExecution_RUNNING,
 		StartedAt: occurredAtProto,
 		UpdatedAt: occurredAtProto,
+		Status: &admin.ExecutionStatus{
+			State:      admin.ExecutionStatus_EXECUTION_ACTIVE,
+			OccurredAt: testutils.MockCreatedAtProto,
+		},
 	}
 	closureBytes, _ := proto.Marshal(&closure)
 	updateExecutionFunc := func(
@@ -1746,6 +1758,9 @@ func TestGetExecution(t *testing.T) {
 		assert.Equal(t, "domain", input.Domain)
 		assert.Equal(t, "name", input.Name)
 		return models.Execution{
+			BaseModel: models.BaseModel{
+				CreatedAt: testutils.MockCreatedAtValue,
+			},
 			ExecutionKey: models.ExecutionKey{
 				Project: "project",
 				Domain:  "domain",
@@ -1850,6 +1865,9 @@ func TestListExecutions(t *testing.T) {
 		return interfaces.ExecutionCollectionOutput{
 			Executions: []models.Execution{
 				{
+					BaseModel: models.BaseModel{
+						CreatedAt: testutils.MockCreatedAtValue,
+					},
 					ExecutionKey: models.ExecutionKey{
 						Project: projectValue,
 						Domain:  domainValue,
@@ -1859,6 +1877,9 @@ func TestListExecutions(t *testing.T) {
 					Closure: closureBytes,
 				},
 				{
+					BaseModel: models.BaseModel{
+						CreatedAt: testutils.MockCreatedAtValue,
+					},
 					ExecutionKey: models.ExecutionKey{
 						Project: projectValue,
 						Domain:  domainValue,
@@ -2538,6 +2559,9 @@ func TestGetExecution_Legacy(t *testing.T) {
 		assert.Equal(t, "domain", input.Domain)
 		assert.Equal(t, "name", input.Name)
 		return models.Execution{
+			BaseModel: models.BaseModel{
+				CreatedAt: testutils.MockCreatedAtValue,
+			},
 			ExecutionKey: models.ExecutionKey{
 				Project: "project",
 				Domain:  "domain",
@@ -2577,6 +2601,9 @@ func TestGetExecutionData_LegacyModel(t *testing.T) {
 
 	executionGetFunc := func(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
 		return models.Execution{
+			BaseModel: models.BaseModel{
+				CreatedAt: testutils.MockCreatedAtValue,
+			},
 			ExecutionKey: models.ExecutionKey{
 				Project: "project",
 				Domain:  "domain",
@@ -2770,6 +2797,9 @@ func TestListExecutions_LegacyModel(t *testing.T) {
 		return interfaces.ExecutionCollectionOutput{
 			Executions: []models.Execution{
 				{
+					BaseModel: models.BaseModel{
+						CreatedAt: testutils.MockCreatedAtValue,
+					},
 					ExecutionKey: models.ExecutionKey{
 						Project: projectValue,
 						Domain:  domainValue,
@@ -2779,6 +2809,9 @@ func TestListExecutions_LegacyModel(t *testing.T) {
 					Closure: getLegacyClosureBytes(),
 				},
 				{
+					BaseModel: models.BaseModel{
+						CreatedAt: testutils.MockCreatedAtValue,
+					},
 					ExecutionKey: models.ExecutionKey{
 						Project: projectValue,
 						Domain:  domainValue,

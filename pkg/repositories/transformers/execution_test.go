@@ -3,6 +3,7 @@ package transformers
 import (
 	"context"
 	"fmt"
+	"math"
 	"testing"
 	"time"
 
@@ -481,15 +482,24 @@ func TestFromExecutionModel(t *testing.T) {
 	specBytes, _ := proto.Marshal(spec)
 	phase := core.WorkflowExecution_RUNNING.String()
 	startedAt := time.Date(2018, 8, 30, 0, 0, 0, 0, time.UTC)
+	createdAt := time.Date(2022, 01, 18, 0, 0, 0, 0, time.UTC)
 	startedAtProto, _ := ptypes.TimestampProto(startedAt)
+	createdAtProto, _ := ptypes.TimestampProto(createdAt)
 	closure := admin.ExecutionClosure{
 		ComputedInputs: spec.Inputs,
 		Phase:          core.WorkflowExecution_RUNNING,
 		StartedAt:      startedAtProto,
+		Status: &admin.ExecutionStatus{
+			State:      admin.ExecutionStatus_EXECUTION_ACTIVE,
+			OccurredAt: createdAtProto,
+		},
 	}
 	closureBytes, _ := proto.Marshal(&closure)
 
 	executionModel := models.Execution{
+		BaseModel: models.BaseModel{
+			CreatedAt: createdAt,
+		},
 		ExecutionKey: models.ExecutionKey{
 			Project: "project",
 			Domain:  "domain",
@@ -548,7 +558,9 @@ func TestFromExecutionModels(t *testing.T) {
 	specBytes, _ := proto.Marshal(spec)
 	phase := core.WorkflowExecution_SUCCEEDED.String()
 	startedAt := time.Date(2018, 8, 30, 0, 0, 0, 0, time.UTC)
+	createdAt := time.Date(2022, 01, 18, 0, 0, 0, 0, time.UTC)
 	startedAtProto, _ := ptypes.TimestampProto(startedAt)
+	createdAtProto, _ := ptypes.TimestampProto(createdAt)
 	duration := 2 * time.Minute
 	durationProto := ptypes.DurationProto(duration)
 	closure := admin.ExecutionClosure{
@@ -556,11 +568,18 @@ func TestFromExecutionModels(t *testing.T) {
 		Phase:          core.WorkflowExecution_RUNNING,
 		StartedAt:      startedAtProto,
 		Duration:       durationProto,
+		Status: &admin.ExecutionStatus{
+			State:      admin.ExecutionStatus_EXECUTION_ACTIVE,
+			OccurredAt: createdAtProto,
+		},
 	}
 	closureBytes, _ := proto.Marshal(&closure)
 
 	executionModels := []models.Execution{
 		{
+			BaseModel: models.BaseModel{
+				CreatedAt: createdAt,
+			},
 			ExecutionKey: models.ExecutionKey{
 				Project: "project",
 				Domain:  "domain",
@@ -711,5 +730,66 @@ func TestReassignCluster(t *testing.T) {
 		}
 		err := reassignCluster(context.TODO(), newCluster, &workflowExecutionID, &executionModel)
 		assert.Equal(t, err.(errors.FlyteAdminError).Code(), codes.Internal)
+	})
+}
+
+func TestGetExecutionStateFromModel(t *testing.T) {
+	createdAt := time.Date(2022, 01, 90, 16, 0, 0, 0, time.UTC)
+	occurredAt := time.Date(2022, 01, 18, 16, 0, 0, 0, time.UTC)
+	occurredAtProto, _ := ptypes.TimestampProto(occurredAt)
+	createdAtProto, _ := ptypes.TimestampProto(createdAt)
+	t.Run("state from model", func(t *testing.T) {
+		stateInt := int32(admin.ExecutionStatus_EXECUTION_ACTIVE)
+		executionModel := models.Execution{
+			BaseModel: models.BaseModel{
+				CreatedAt: createdAt,
+			},
+			State:          &stateInt,
+			StateUpdatedAt: &occurredAt,
+		}
+		executionStatus, err := GetExecutionStateFromModel(executionModel)
+		assert.Nil(t, err)
+		assert.NotNil(t, executionStatus)
+		assert.Equal(t, admin.ExecutionStatus_EXECUTION_ACTIVE, executionStatus.State)
+		assert.NotNil(t, executionStatus.OccurredAt)
+		assert.Equal(t, occurredAtProto, executionStatus.OccurredAt)
+	})
+	t.Run("supporting older executions", func(t *testing.T) {
+		executionModel := models.Execution{
+			BaseModel: models.BaseModel{
+				CreatedAt: createdAt,
+			},
+		}
+		executionStatus, err := GetExecutionStateFromModel(executionModel)
+		assert.Nil(t, err)
+		assert.NotNil(t, executionStatus)
+		assert.Equal(t, admin.ExecutionStatus_EXECUTION_ACTIVE, executionStatus.State)
+		assert.NotNil(t, executionStatus.OccurredAt)
+		assert.Equal(t, createdAtProto, executionStatus.OccurredAt)
+	})
+	t.Run("incorrect created at", func(t *testing.T) {
+		createdAt := time.Unix(math.MinInt64, math.MinInt32).UTC()
+		executionModel := models.Execution{
+			BaseModel: models.BaseModel{
+				CreatedAt: createdAt,
+			},
+		}
+		executionStatus, err := GetExecutionStateFromModel(executionModel)
+		assert.NotNil(t, err)
+		assert.Nil(t, executionStatus)
+	})
+	t.Run("incorrect created at", func(t *testing.T) {
+		occurredAt := time.Unix(math.MinInt64, math.MinInt32).UTC()
+		stateInt := int32(admin.ExecutionStatus_EXECUTION_ACTIVE)
+		executionModel := models.Execution{
+			BaseModel: models.BaseModel{
+				CreatedAt: createdAt,
+			},
+			State:          &stateInt,
+			StateUpdatedAt: &occurredAt,
+		}
+		executionStatus, err := GetExecutionStateFromModel(executionModel)
+		assert.NotNil(t, err)
+		assert.Nil(t, executionStatus)
 	})
 }

@@ -5,21 +5,20 @@ import (
 	"fmt"
 	"time"
 
-	"k8s.io/apimachinery/pkg/util/sets"
-
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteadmin/pkg/errors"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/storage"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	"google.golang.org/grpc/codes"
 
-	"github.com/flyteorg/flyteadmin/pkg/common"
-	"github.com/flyteorg/flyteadmin/pkg/errors"
-	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/timestamppb"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 var clusterReassignablePhases = sets.NewString(core.WorkflowExecution_UNDEFINED.String(), core.WorkflowExecution_QUEUED.String())
@@ -263,15 +262,20 @@ func GetExecutionIdentifier(executionModel *models.Execution) core.WorkflowExecu
 
 func FromExecutionModel(executionModel models.Execution) (*admin.Execution, error) {
 	var spec admin.ExecutionSpec
-	err := proto.Unmarshal(executionModel.Spec, &spec)
-	if err != nil {
+	var err error
+	if err = proto.Unmarshal(executionModel.Spec, &spec); err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal spec")
 	}
 	var closure admin.ExecutionClosure
-	err = proto.Unmarshal(executionModel.Closure, &closure)
-	if err != nil {
+	if err = proto.Unmarshal(executionModel.Closure, &closure); err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal closure")
 	}
+
+	// Update execution state from the model
+	if closure.Status, err = GetExecutionStateFromModel(executionModel); err != nil {
+		return nil, err
+	}
+
 	id := GetExecutionIdentifier(&executionModel)
 	if executionModel.Phase == core.WorkflowExecution_ABORTED.String() && closure.GetAbortMetadata() == nil {
 		// In the case of data predating the AbortMetadata field we manually set it in the closure only
@@ -290,6 +294,34 @@ func FromExecutionModel(executionModel models.Execution) (*admin.Execution, erro
 		Id:      &id,
 		Spec:    &spec,
 		Closure: &closure,
+	}, nil
+}
+
+func GetExecutionStateFromModel(executionModel models.Execution) (*admin.ExecutionStatus, error) {
+	var err error
+	var occurredAt *timestamppb.Timestamp
+
+	// Default use the createdAt timestamp as the state change occurredAt time
+	if occurredAt, err = ptypes.TimestampProto(executionModel.CreatedAt); err != nil {
+		return nil, err
+	}
+
+	// Supporting older executions
+	if executionModel.State == nil {
+		return &admin.ExecutionStatus{
+			State:      admin.ExecutionStatus_EXECUTION_ACTIVE,
+			OccurredAt: occurredAt}, nil
+	}
+	// Supporting non updated executions
+	if executionModel.StateUpdatedAt != nil {
+		if occurredAt, err = ptypes.TimestampProto(*executionModel.StateUpdatedAt); err != nil {
+			return nil, err
+		}
+	}
+
+	return &admin.ExecutionStatus{
+		State:      admin.ExecutionStatus_ExecutionState(*executionModel.State),
+		OccurredAt: occurredAt,
 	}, nil
 }
 
