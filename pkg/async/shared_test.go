@@ -31,3 +31,27 @@ func TestRetry_RetriesExhausted(t *testing.T) {
 	})
 	assert.EqualError(t, err, "foo")
 }
+
+func TestRetryDoNotRetryOnNonRetryableExceptions(t *testing.T) {
+	attemptsRecorded := 0
+	err := RetryOnSpecificErrors(3, time.Millisecond, func() error {
+		attemptsRecorded++
+		return errors.New("foo")
+	}, func(err error) bool {
+		return false
+	})
+	assert.EqualValues(t, attemptsRecorded, 1)
+	assert.EqualError(t, err, "foo")
+}
+
+func TestRetryOnRetryableExceptions(t *testing.T) {
+	attemptsRecorded := 0
+	err := RetryOnSpecificErrors(3, time.Millisecond, func() error {
+		attemptsRecorded++
+		return errors.New("foo")
+	}, func(err error) bool {
+		return true
+	})
+	assert.EqualValues(t, attemptsRecorded, 4)
+	assert.EqualError(t, err, "foo")
+}
