@@ -60,4 +60,6 @@ type Execution struct {
 	State *int32 `gorm:"default:0"`
 	// State updated at to indicate the archival/activation time
 	StateUpdatedAt *time.Time
+	// The user responsible for activating/archiving this execution.
+	StateUpdatedBy string `gorm:"index" valid:"length(0|255)"`
 }

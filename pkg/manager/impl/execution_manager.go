@@ -1280,19 +1280,8 @@ func (m *ExecutionManager) UpdateExecution(
 		return nil, err
 	}
 
-	stateInt := int32(admin.ExecutionStatus_EXECUTION_ACTIVE)
-	if request.Status != nil {
-		stateInt = int32(request.Status.State)
-		occurredAt := time.Now()
-		if request.Status.OccurredAt != nil {
-			occurredAt, err = ptypes.Timestamp(request.Status.OccurredAt)
-			if err != nil {
-				return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to parse status occurred at timestamp")
-			}
-		}
-		executionModel.ExecutionUpdatedAt = &occurredAt
-	}
-	executionModel.State = &stateInt
+	transformers.UpdateExecutionModelStateChangeDetails(executionModel, request.State, getUser(ctx))
+
 	if err := m.db.ExecutionRepo().Update(ctx, *executionModel); err != nil {
 		return nil, err
 	}
@@ -1620,3 +1609,23 @@ func (m *ExecutionManager) addProjectLabels(ctx context.Context, projectName str
 	}
 	return initialLabels, nil
 }
+
+func addStateFilter(filters []common.InlineFilter) ([]common.InlineFilter, error) {
+	var stateFilterExists bool
+	for _, inlineFilter := range filters {
+		if inlineFilter.GetField() == shared.State {
+			stateFilterExists = true
+		}
+	}
+
+	if !stateFilterExists {
+		stateFilter, err := common.NewSingleValueFilter(common.Execution, common.Equal, shared.State,
+			admin.ExecutionState_EXECUTION_ACTIVE)
+		if err != nil {
+			return filters, err
+		}
+		filters = append(filters, stateFilter)
+	}
+	return filters, nil
+}
+

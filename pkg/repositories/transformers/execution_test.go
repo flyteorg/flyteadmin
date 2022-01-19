@@ -102,6 +102,7 @@ func TestCreateExecutionModel(t *testing.T) {
 	expectedSpecBytes, _ := proto.Marshal(expectedSpec)
 	assert.Equal(t, expectedSpecBytes, execution.Spec)
 	assert.Equal(t, execution.User, principal)
+	assert.Equal(t, execution.StateUpdatedBy, principal)
 
 	expectedCreatedAt, _ := ptypes.TimestampProto(createdAt)
 	expectedClosure, _ := proto.Marshal(&admin.ExecutionClosure{
@@ -489,8 +490,8 @@ func TestFromExecutionModel(t *testing.T) {
 		ComputedInputs: spec.Inputs,
 		Phase:          core.WorkflowExecution_RUNNING,
 		StartedAt:      startedAtProto,
-		Status: &admin.ExecutionStatus{
-			State:      admin.ExecutionStatus_EXECUTION_ACTIVE,
+		StateChangeDetails: &admin.ExecutionStateChangeDetails{
+			State:      admin.ExecutionState_EXECUTION_ACTIVE,
 			OccurredAt: createdAtProto,
 		},
 	}
@@ -568,8 +569,8 @@ func TestFromExecutionModels(t *testing.T) {
 		Phase:          core.WorkflowExecution_RUNNING,
 		StartedAt:      startedAtProto,
 		Duration:       durationProto,
-		Status: &admin.ExecutionStatus{
-			State:      admin.ExecutionStatus_EXECUTION_ACTIVE,
+		StateChangeDetails: &admin.ExecutionStateChangeDetails{
+			State:      admin.ExecutionState_EXECUTION_ACTIVE,
 			OccurredAt: createdAtProto,
 		},
 	}
@@ -739,7 +740,7 @@ func TestGetExecutionStateFromModel(t *testing.T) {
 	occurredAtProto, _ := ptypes.TimestampProto(occurredAt)
 	createdAtProto, _ := ptypes.TimestampProto(createdAt)
 	t.Run("state from model", func(t *testing.T) {
-		stateInt := int32(admin.ExecutionStatus_EXECUTION_ACTIVE)
+		stateInt := int32(admin.ExecutionState_EXECUTION_ACTIVE)
 		executionModel := models.Execution{
 			BaseModel: models.BaseModel{
 				CreatedAt: createdAt,
@@ -750,7 +751,7 @@ func TestGetExecutionStateFromModel(t *testing.T) {
 		executionStatus, err := GetExecutionStateFromModel(executionModel)
 		assert.Nil(t, err)
 		assert.NotNil(t, executionStatus)
-		assert.Equal(t, admin.ExecutionStatus_EXECUTION_ACTIVE, executionStatus.State)
+		assert.Equal(t, admin.ExecutionState_EXECUTION_ACTIVE, executionStatus.State)
 		assert.NotNil(t, executionStatus.OccurredAt)
 		assert.Equal(t, occurredAtProto, executionStatus.OccurredAt)
 	})
@@ -763,7 +764,7 @@ func TestGetExecutionStateFromModel(t *testing.T) {
 		executionStatus, err := GetExecutionStateFromModel(executionModel)
 		assert.Nil(t, err)
 		assert.NotNil(t, executionStatus)
-		assert.Equal(t, admin.ExecutionStatus_EXECUTION_ACTIVE, executionStatus.State)
+		assert.Equal(t, admin.ExecutionState_EXECUTION_ACTIVE, executionStatus.State)
 		assert.NotNil(t, executionStatus.OccurredAt)
 		assert.Equal(t, createdAtProto, executionStatus.OccurredAt)
 	})
@@ -780,7 +781,7 @@ func TestGetExecutionStateFromModel(t *testing.T) {
 	})
 	t.Run("incorrect created at", func(t *testing.T) {
 		occurredAt := time.Unix(math.MinInt64, math.MinInt32).UTC()
-		stateInt := int32(admin.ExecutionStatus_EXECUTION_ACTIVE)
+		stateInt := int32(admin.ExecutionState_EXECUTION_ACTIVE)
 		executionModel := models.Execution{
 			BaseModel: models.BaseModel{
 				CreatedAt: createdAt,

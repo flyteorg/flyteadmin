@@ -93,6 +93,7 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 		InputsURI:             input.InputsURI,
 		UserInputsURI:         input.UserInputsURI,
 		User:                  requestSpec.Metadata.Principal,
+		StateUpdatedBy:        requestSpec.Metadata.Principal,
 	}
 	// A reference launch entity can be one of either or a task OR launch plan. Traditionally, workflows are executed
 	// with a reference launch plan which is why this behavior is the default below.
@@ -227,6 +228,16 @@ func UpdateExecutionModelState(
 	return nil
 }
 
+// UpdateExecutionModelStateChangeDetails Updates an existing model with state and stateUpdateBy details from the request
+func UpdateExecutionModelStateChangeDetails(executionModel *models.Execution, state admin.ExecutionState,
+	stateUpdatedBy string) {
+	stateInt := int32(state)
+	executionModel.State = &stateInt
+	occurredAt := time.Now()
+	executionModel.ExecutionUpdatedAt = &occurredAt
+	executionModel.StateUpdatedBy = stateUpdatedBy
+}
+
 // The execution abort metadata is recorded but the phase is not actually updated *until* the abort event is propagated
 // by flytepropeller. The metadata is preemptively saved at the time of the abort.
 func SetExecutionAborted(execution *models.Execution, cause, principal string) error {
@@ -272,7 +283,7 @@ func FromExecutionModel(executionModel models.Execution) (*admin.Execution, erro
 	}
 
 	// Update execution state from the model
-	if closure.Status, err = GetExecutionStateFromModel(executionModel); err != nil {
+	if closure.StateChangeDetails, err = GetExecutionStateFromModel(executionModel); err != nil {
 		return nil, err
 	}
 
@@ -297,7 +308,7 @@ func FromExecutionModel(executionModel models.Execution) (*admin.Execution, erro
 	}, nil
 }
 
-func GetExecutionStateFromModel(executionModel models.Execution) (*admin.ExecutionStatus, error) {
+func GetExecutionStateFromModel(executionModel models.Execution) (*admin.ExecutionStateChangeDetails, error) {
 	var err error
 	var occurredAt *timestamppb.Timestamp
 
@@ -308,8 +319,8 @@ func GetExecutionStateFromModel(executionModel models.Execution) (*admin.Executi
 
 	// Supporting older executions
 	if executionModel.State == nil {
-		return &admin.ExecutionStatus{
-			State:      admin.ExecutionStatus_EXECUTION_ACTIVE,
+		return &admin.ExecutionStateChangeDetails{
+			State:      admin.ExecutionState_EXECUTION_ACTIVE,
 			OccurredAt: occurredAt}, nil
 	}
 	// Supporting non updated executions
@@ -319,8 +330,8 @@ func GetExecutionStateFromModel(executionModel models.Execution) (*admin.Executi
 		}
 	}
 
-	return &admin.ExecutionStatus{
-		State:      admin.ExecutionStatus_ExecutionState(*executionModel.State),
+	return &admin.ExecutionStateChangeDetails{
+		State:      admin.ExecutionState(*executionModel.State),
 		OccurredAt: occurredAt,
 	}, nil
 }
