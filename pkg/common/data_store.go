@@ -26,14 +26,6 @@ func OffloadLiteralMap(ctx context.Context, storageClient *storage.DataStore, li
 		return "", errors.NewFlyteAdminErrorf(codes.Internal, "Failed to construct data reference for [%+v] with err: %v", nestedKeys, err)
 	}
 
-	/*
-	TODO: retry only on
-	{"json":{…}, "level":"error",
-	"msg":"Failed to write to the raw store [gs://flyte-production-storage/metadata/payment-risk-datasets/production/cz7vntanluzg2fck4yim/inputs]
-	Error: Failed to write data [172b] to path [metadata/payment-risk-datasets/production/cz7vntanluzg2fck4yim/inputs].: googleapi:
-	Error 409: The metadata for object "metadata/payment-risk-datasets/production/cz7vntanluzg2fck4yim/inputs" was edited during the operation.
-	Please try again., conflict", "ts":"2021-12-27T05:33:19Z"}
-	*/
 	err = Retry(5, async.RetryDelay, func() error {
 		err = storageClient.WriteProtobuf(ctx, uri, storage.Options{}, literalMap)
 		return err
