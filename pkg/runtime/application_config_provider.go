@@ -83,8 +83,7 @@ var domainsConfig = config.MustRegisterSection(domains, &interfaces.DomainsConfi
 	},
 })
 var externalEventsConfig = config.MustRegisterSection(externalEvents, &interfaces.ExternalEventsConfig{
-	Type: common.
-		Local,
+	Type: common.Local,
 })
 
 // Implementation of an interfaces.ApplicationConfiguration
