@@ -2,11 +2,12 @@ package common
 
 import (
 	"context"
-	"google.golang.org/api/googleapi"
 	"testing"
 	"time"
 
 	"github.com/flyteorg/flyteadmin/pkg/errors"
+	errs "github.com/pkg/errors"
+	"google.golang.org/api/googleapi"
 	"google.golang.org/grpc/codes"
 
 	commonMocks "github.com/flyteorg/flyteadmin/pkg/common/mocks"
@@ -14,8 +15,6 @@ import (
 	"github.com/flyteorg/flytestdlib/storage"
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
-
-	errs "github.com/pkg/errors"
 )
 
 var literalMap = &core.LiteralMap{

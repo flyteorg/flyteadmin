@@ -2,16 +2,16 @@ package common
 
 import (
 	"context"
+	"time"
+
 	"github.com/flyteorg/flyteadmin/pkg/async"
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/storage"
-	"google.golang.org/api/googleapi"
-
 	errrs "github.com/pkg/errors"
+	"google.golang.org/api/googleapi"
 	"google.golang.org/grpc/codes"
-	"time"
 )
 
 func OffloadLiteralMap(ctx context.Context, storageClient *storage.DataStore, literalMap *core.LiteralMap, nestedKeys ...string) (storage.DataReference, error) {

@@ -36,15 +36,12 @@ func TestRetryOnlyOnRetryableExceptions(t *testing.T) {
 	attemptsRecorded := 0
 	err := RetryOnSpecificErrors(3, time.Millisecond, func() error {
 		attemptsRecorded++
-		if (attemptsRecorded <= 1) {
+		if attemptsRecorded <= 1 {
 			return errors.New("foo")
 		}
 		return errors.New("not-foo")
 	}, func(err error) bool {
-		if err.Error() == "foo" {
-			return true
-		}
-		return false
+		return err.Error() == "foo"
 	})
 	assert.EqualValues(t, attemptsRecorded, 2)
 	assert.EqualError(t, err, "not-foo")
