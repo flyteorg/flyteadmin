@@ -38,6 +38,7 @@ func TestRetryDoNotRetryOnNonRetryableExceptions(t *testing.T) {
 		attemptsRecorded++
 		return errors.New("foo")
 	}, func(err error) bool {
+		// Function will cause retry on no errors
 		return false
 	})
 	assert.EqualValues(t, attemptsRecorded, 1)
@@ -50,6 +51,7 @@ func TestRetryOnRetryableExceptions(t *testing.T) {
 		attemptsRecorded++
 		return errors.New("foo")
 	}, func(err error) bool {
+		// Function will cause retry on all errors
 		return true
 	})
 	assert.EqualValues(t, attemptsRecorded, 4)

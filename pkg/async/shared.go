@@ -27,10 +27,10 @@ func RetryOnSpecificErrors(attempts int, delay time.Duration, f func() error, Is
 	return err
 }
 
-func retryOnAllError(err error) bool {
+func retryOnAllErrors(err error) bool {
 	return true
 }
 
 func Retry(attempts int, delay time.Duration, f func() error) error {
-	return RetryOnSpecificErrors(attempts, delay, f, retryOnAllError)
+	return RetryOnSpecificErrors(attempts, delay, f, retryOnAllErrors)
 }
