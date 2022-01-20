@@ -5,12 +5,10 @@ import (
 
 	"github.com/flyteorg/flyteadmin/pkg/clusterresource/impl"
 	"github.com/flyteorg/flyteadmin/pkg/clusterresource/interfaces"
+	execClusterIfaces "github.com/flyteorg/flyteadmin/pkg/executioncluster/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/resources"
 	"github.com/flyteorg/flyteadmin/pkg/repositories"
 	repositoryConfig "github.com/flyteorg/flyteadmin/pkg/repositories/config"
-	gormLogger "gorm.io/gorm/logger"
-
-	execClusterIfaces "github.com/flyteorg/flyteadmin/pkg/executioncluster/interfaces"
 
 	"github.com/flyteorg/flytestdlib/promutils"
 
@@ -56,22 +54,7 @@ func getClusterResourceController(ctx context.Context, scope promutils.Scope, co
 		}
 		adminDataProvider = impl.NewAdminServiceDataProvider(clientSet.AdminClient())
 	} else {
-		dbConfigValues := configuration.ApplicationConfiguration().GetDbConfig()
-		dbLogLevel := gormLogger.Silent
-		if dbConfigValues.Debug {
-			dbLogLevel = gormLogger.Info
-		}
-		dbConfig := repositoryConfig.DbConfig{
-			BaseConfig: repositoryConfig.BaseConfig{
-				LogLevel: dbLogLevel,
-			},
-			Host:         dbConfigValues.Host,
-			Port:         dbConfigValues.Port,
-			DbName:       dbConfigValues.DbName,
-			User:         dbConfigValues.User,
-			Password:     dbConfigValues.Password,
-			ExtraOptions: dbConfigValues.ExtraOptions,
-		}
+		dbConfig := repositoryConfig.NewDbConfig(configuration.ApplicationConfiguration().GetDbConfig())
 		db := repositories.GetRepository(
 			repositories.POSTGRES, dbConfig, scope.NewSubScope("database"))
 
