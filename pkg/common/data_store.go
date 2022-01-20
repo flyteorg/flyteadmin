@@ -8,10 +8,17 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/storage"
 	"google.golang.org/api/googleapi"
+
+	errrs "github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
+	"time"
 )
 
 func OffloadLiteralMap(ctx context.Context, storageClient *storage.DataStore, literalMap *core.LiteralMap, nestedKeys ...string) (storage.DataReference, error) {
+	return OffloadLiteralMapWithRetryDelayAndAttempts(ctx, storageClient, literalMap, async.RetryDelay, 5, nestedKeys...)
+}
+
+func OffloadLiteralMapWithRetryDelayAndAttempts(ctx context.Context, storageClient *storage.DataStore, literalMap *core.LiteralMap, retryDelay time.Duration, attempts int, nestedKeys ...string) (storage.DataReference, error) {
 	if literalMap == nil {
 		literalMap = &core.LiteralMap{}
 	}
@@ -24,7 +31,7 @@ func OffloadLiteralMap(ctx context.Context, storageClient *storage.DataStore, li
 		return "", errors.NewFlyteAdminErrorf(codes.Internal, "Failed to construct data reference for [%+v] with err: %v", nestedKeys, err)
 	}
 
-	err = async.RetryOnSpecificErrors(5, async.RetryDelay, func() error {
+	err = async.RetryOnSpecificErrors(attempts, retryDelay, func() error {
 		err = storageClient.WriteProtobuf(ctx, uri, storage.Options{}, literalMap)
 		return err
 	}, isRetryableError)
@@ -37,7 +44,7 @@ func OffloadLiteralMap(ctx context.Context, storageClient *storage.DataStore, li
 }
 
 func isRetryableError(err error) bool {
-	if e, ok := err.(*googleapi.Error); ok && e.Code == 409 {
+	if e, ok := errrs.Cause(err).(*googleapi.Error); ok && e.Code == 409 {
 		return true
 	}
 	return false
