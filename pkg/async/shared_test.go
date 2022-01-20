@@ -32,28 +32,20 @@ func TestRetry_RetriesExhausted(t *testing.T) {
 	assert.EqualError(t, err, "foo")
 }
 
-func TestRetryDoNotRetryOnNonRetryableExceptions(t *testing.T) {
+func TestRetryOnlyOnRetryableExceptions(t *testing.T) {
 	attemptsRecorded := 0
 	err := RetryOnSpecificErrors(3, time.Millisecond, func() error {
 		attemptsRecorded++
-		return errors.New("foo")
+		if (attemptsRecorded <= 1) {
+			return errors.New("foo")
+		}
+		return errors.New("not-foo")
 	}, func(err error) bool {
-		// Function will cause retry on no errors
+		if err.Error() == "foo" {
+			return true
+		}
 		return false
 	})
-	assert.EqualValues(t, attemptsRecorded, 1)
-	assert.EqualError(t, err, "foo")
-}
-
-func TestRetryOnRetryableExceptions(t *testing.T) {
-	attemptsRecorded := 0
-	err := RetryOnSpecificErrors(3, time.Millisecond, func() error {
-		attemptsRecorded++
-		return errors.New("foo")
-	}, func(err error) bool {
-		// Function will cause retry on all errors
-		return true
-	})
-	assert.EqualValues(t, attemptsRecorded, 4)
-	assert.EqualError(t, err, "foo")
+	assert.EqualValues(t, attemptsRecorded, 2)
+	assert.EqualError(t, err, "not-foo")
 }

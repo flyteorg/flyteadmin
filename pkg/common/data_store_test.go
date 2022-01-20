@@ -77,7 +77,7 @@ func TestOffloadLiteralMap_RetryOn409(t *testing.T) {
 		return errs.Wrapf(&googleapi.Error{Code: 409}, "Failed to write data [%vb] to path [%v].", 10, "size")
 	}
 	expectedRetries := 2
-	_, err := OffloadLiteralMapWithRetryDelayAndAttempts(context.TODO(), mockStorage, literalMap, 1 * time.Second, expectedRetries, "nested", "key")
+	_, err := OffloadLiteralMapWithRetryDelayAndAttempts(context.TODO(), mockStorage, literalMap, time.Millisecond, expectedRetries, "nested", "key")
 	assert.EqualValues(t, retries, expectedRetries+1)
 	assert.Equal(t,err.(errors.FlyteAdminError).Code(), codes.Internal)
 }
