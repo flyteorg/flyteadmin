@@ -74,7 +74,6 @@ func TestOffloadLiteralMap_RetryOn409(t *testing.T) {
 	mockStorage.ComposedProtobufStore.(*commonMocks.TestDataStore).WriteProtobufCb = func(ctx context.Context, reference storage.DataReference, opts storage.Options, msg proto.Message) error {
 		retries++
 		assert.Equal(t, reference.String(), "s3://bucket/metadata/nested/key")
-		//return &googleapi.Error{Code: 409}
 		return errs.Wrapf(&googleapi.Error{Code: 409}, "Failed to write data [%vb] to path [%v].", 10, "size")
 	}
 	expectedRetries := 2
