@@ -768,3 +768,24 @@ func TestGetExecutionStateFromModel(t *testing.T) {
 		assert.Nil(t, executionStatus)
 	})
 }
+
+func TestUpdateExecutionModelStateChangeDetails(t *testing.T) {
+	t.Run("empty closure", func(t *testing.T) {
+		execModel := &models.Execution{}
+		err := UpdateExecutionModelStateChangeDetails(execModel, admin.ExecutionState_EXECUTION_ARCHIVED,
+			"dummyUser")
+		assert.Nil(t, err)
+		stateInt := int32(admin.ExecutionState_EXECUTION_ARCHIVED)
+		assert.Equal(t, execModel.State, &stateInt)
+		assert.Equal(t, execModel.StateUpdatedBy, "dummyUser")
+	})
+	t.Run("bad closure", func(t *testing.T) {
+		execModel := &models.Execution{
+			Closure: []byte{1, 2, 3},
+		}
+		err := UpdateExecutionModelStateChangeDetails(execModel, admin.ExecutionState_EXECUTION_ARCHIVED,
+			"dummyUser")
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "Failed to unmarshal execution closure")
+	})
+}
