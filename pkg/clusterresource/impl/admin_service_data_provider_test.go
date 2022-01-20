@@ -47,13 +47,13 @@ func TestServiceGetClusterResourceAttributes(t *testing.T) {
 		mockAdmin := mocks.AdminServiceClient{}
 		mockAdmin.OnGetProjectDomainAttributesMatch(ctx, mock.MatchedBy(func(req *admin.ProjectDomainAttributesGetRequest) bool {
 			return req.Project == project && req.Domain == domain && req.ResourceType == admin.MatchableResource_CLUSTER_RESOURCE
-		})).Return(&admin.ProjectDomainAttributesGetResponse{}, expectedErr)
+		})).Return(&admin.ProjectDomainAttributesGetResponse{}, errFoo)
 
 		provider := serviceAdminProvider{
 			adminClient: &mockAdmin,
 		}
 		_, err := provider.GetClusterResourceAttributes(context.TODO(), project, domain)
-		assert.EqualError(t, err, expectedErr.Error())
+		assert.EqualError(t, err, errFoo.Error())
 	})
 	t.Run("wonky admin service response", func(t *testing.T) {
 		mockAdmin := mocks.AdminServiceClient{}
@@ -109,11 +109,11 @@ func TestServiceGetProjects(t *testing.T) {
 		mockAdmin := mocks.AdminServiceClient{}
 		mockAdmin.OnListProjectsMatch(ctx, mock.MatchedBy(func(req *admin.ProjectListRequest) bool {
 			return req.Limit == 100 && req.Filters == "ne(state,1)" && req.SortBy.Key == "created_at"
-		})).Return(nil, expectedErr)
+		})).Return(nil, errFoo)
 		provider := serviceAdminProvider{
 			adminClient: &mockAdmin,
 		}
 		_, err := provider.GetProjects(ctx)
-		assert.EqualError(t, err, expectedErr.Error())
+		assert.EqualError(t, err, errFoo.Error())
 	})
 }

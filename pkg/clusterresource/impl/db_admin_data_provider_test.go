@@ -18,7 +18,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var expectedErr = errors.New("foo")
+var errFoo = errors.New("foo")
 
 func TestGetClusterResourceAttributes(t *testing.T) {
 	project := "flytesnacks"
@@ -52,13 +52,13 @@ func TestGetClusterResourceAttributes(t *testing.T) {
 	})
 	t.Run("error", func(t *testing.T) {
 		resourceManager.GetResourceFunc = func(ctx context.Context, request interfaces.ResourceRequest) (*interfaces.ResourceResponse, error) {
-			return nil, expectedErr
+			return nil, errFoo
 		}
 		provider := dbAdminProvider{
 			resourceManager: &resourceManager,
 		}
 		_, err := provider.GetClusterResourceAttributes(context.TODO(), project, domain)
-		assert.EqualError(t, err, expectedErr.Error())
+		assert.EqualError(t, err, errFoo.Error())
 	})
 	t.Run("weird db response", func(t *testing.T) {
 		resourceManager.GetResourceFunc = func(ctx context.Context, request interfaces.ResourceRequest) (*interfaces.ResourceResponse, error) {
@@ -130,7 +130,7 @@ func TestGetProjects(t *testing.T) {
 		mockRepo := repoMocks.NewMockRepository()
 		mockRepo.(*repoMocks.MockRepository).ProjectRepoIface = &repoMocks.MockProjectRepo{
 			ListProjectsFunction: func(ctx context.Context, input repoInterfaces.ListResourceInput) ([]models.Project, error) {
-				return nil, expectedErr
+				return nil, errFoo
 			},
 		}
 		provider := dbAdminProvider{
@@ -138,6 +138,6 @@ func TestGetProjects(t *testing.T) {
 			config: mockConfig,
 		}
 		_, err := provider.GetProjects(context.TODO())
-		assert.EqualError(t, err, expectedErr.Error())
+		assert.EqualError(t, err, errFoo.Error())
 	})
 }

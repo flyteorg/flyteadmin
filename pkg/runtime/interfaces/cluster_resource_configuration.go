@@ -43,7 +43,7 @@ type ClusterResourceConfig struct {
 		      value: "baz"
 	*/
 	CustomData           map[DomainName]TemplateData `json:"customData"`
-	StandaloneDeployment bool                        `json:"standaloneDeployment" pflag", Whether the cluster resource sync is running in a standalone deployment and should call flyteadmin service endpoints"`
+	StandaloneDeployment bool                        `json:"standaloneDeployment" pflag:", Whether the cluster resource sync is running in a standalone deployment and should call flyteadmin service endpoints"`
 }
 
 type ClusterResourceConfiguration interface {
