@@ -79,5 +79,5 @@ func TestOffloadLiteralMap_RetryOn409(t *testing.T) {
 	expectedRetries := 2
 	_, err := OffloadLiteralMapWithRetryDelayAndAttempts(context.TODO(), mockStorage, literalMap, time.Millisecond, expectedRetries, "nested", "key")
 	assert.EqualValues(t, retries, expectedRetries+1)
-	assert.Equal(t,err.(errors.FlyteAdminError).Code(), codes.Internal)
+	assert.Equal(t, err.(errors.FlyteAdminError).Code(), codes.Internal)
 }
