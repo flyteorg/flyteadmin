@@ -3,7 +3,14 @@ package entrypoints
 import (
 	"context"
 
-	"github.com/flyteorg/flyteadmin/pkg/executioncluster/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/clusterresource/impl"
+	"github.com/flyteorg/flyteadmin/pkg/clusterresource/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/resources"
+	"github.com/flyteorg/flyteadmin/pkg/repositories"
+	repositoryConfig "github.com/flyteorg/flyteadmin/pkg/repositories/config"
+	gormLogger "gorm.io/gorm/logger"
+
+	execClusterIfaces "github.com/flyteorg/flyteadmin/pkg/executioncluster/interfaces"
 
 	"github.com/flyteorg/flytestdlib/promutils"
 
@@ -29,7 +36,7 @@ func getClusterResourceController(ctx context.Context, scope promutils.Scope, co
 	initializationErrorCounter := scope.MustNewCounter(
 		"flyteclient_initialization_error",
 		"count of errors encountered initializing a flyte client from kube config")
-	var listTargetsProvider interfaces.ListTargetsInterface
+	var listTargetsProvider execClusterIfaces.ListTargetsInterface
 	var err error
 	if len(configuration.ClusterConfiguration().GetClusterConfigs()) == 0 {
 		serverConfig := config.GetConfig()
@@ -41,12 +48,37 @@ func getClusterResourceController(ctx context.Context, scope promutils.Scope, co
 		panic(err)
 	}
 
-	clientSet, err := admin.ClientSetBuilder().WithConfig(admin.GetConfig(ctx)).Build(ctx)
-	if err != nil {
-		panic(err)
+	var adminDataProvider interfaces.FlyteAdminDataProvider
+	if configuration.ClusterResourceConfiguration().IsStandaloneDeployment() {
+		clientSet, err := admin.ClientSetBuilder().WithConfig(admin.GetConfig(ctx)).Build(ctx)
+		if err != nil {
+			panic(err)
+		}
+		adminDataProvider = impl.NewAdminServiceDataProvider(clientSet.AdminClient())
+	} else {
+		dbConfigValues := configuration.ApplicationConfiguration().GetDbConfig()
+		dbLogLevel := gormLogger.Silent
+		if dbConfigValues.Debug {
+			dbLogLevel = gormLogger.Info
+		}
+		dbConfig := repositoryConfig.DbConfig{
+			BaseConfig: repositoryConfig.BaseConfig{
+				LogLevel: dbLogLevel,
+			},
+			Host:         dbConfigValues.Host,
+			Port:         dbConfigValues.Port,
+			DbName:       dbConfigValues.DbName,
+			User:         dbConfigValues.User,
+			Password:     dbConfigValues.Password,
+			ExtraOptions: dbConfigValues.ExtraOptions,
+		}
+		db := repositories.GetRepository(
+			repositories.POSTGRES, dbConfig, scope.NewSubScope("database"))
+
+		adminDataProvider = impl.NewDatabaseAdminDataProvider(db, configuration, resources.NewResourceManager(db, configuration.ApplicationConfiguration()))
 	}
 
-	return clusterresource.NewClusterResourceController(clientSet.AdminClient(), listTargetsProvider, scope)
+	return clusterresource.NewClusterResourceController(adminDataProvider, listTargetsProvider, scope)
 }
 
 var controllerRunCmd = &cobra.Command{
