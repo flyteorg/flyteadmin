@@ -1635,4 +1635,3 @@ func addStateFilter(filters []common.InlineFilter) ([]common.InlineFilter, error
 	}
 	return filters, nil
 }
-
