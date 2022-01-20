@@ -18,6 +18,7 @@ type RecoverExecutionFunc func(ctx context.Context, request admin.ExecutionRecov
 type CreateExecutionEventFunc func(ctx context.Context, request admin.WorkflowExecutionEventRequest) (
 	*admin.WorkflowExecutionEventResponse, error)
 type GetExecutionFunc func(ctx context.Context, request admin.WorkflowExecutionGetRequest) (*admin.Execution, error)
+type UpdateExecutionFunc func(ctx context.Context, request admin.ExecutionUpdateRequest) (*admin.ExecutionUpdateResponse, error)
 type GetExecutionDataFunc func(ctx context.Context, request admin.WorkflowExecutionGetDataRequest) (
 	*admin.WorkflowExecutionGetDataResponse, error)
 type ListExecutionFunc func(ctx context.Context, request admin.ResourceListRequest) (*admin.ExecutionList, error)
@@ -30,6 +31,7 @@ type MockExecutionManager struct {
 	RecoverExecutionFunc     RecoverExecutionFunc
 	createExecutionEventFunc CreateExecutionEventFunc
 	getExecutionFunc         GetExecutionFunc
+	updateExecutionFunc      UpdateExecutionFunc
 	getExecutionDataFunc     GetExecutionDataFunc
 	listExecutionFunc        ListExecutionFunc
 	terminateExecutionFunc   TerminateExecutionFunc
@@ -78,6 +80,18 @@ func (m *MockExecutionManager) CreateWorkflowEvent(
 	request admin.WorkflowExecutionEventRequest) (*admin.WorkflowExecutionEventResponse, error) {
 	if m.createExecutionEventFunc != nil {
 		return m.createExecutionEventFunc(ctx, request)
+	}
+	return nil, nil
+}
+
+func (m *MockExecutionManager) SetUpdateExecutionCallback(updateExecutionFunc UpdateExecutionFunc) {
+	m.updateExecutionFunc = updateExecutionFunc
+}
+
+func (m *MockExecutionManager) UpdateExecution(
+	ctx context.Context, request admin.ExecutionUpdateRequest) (*admin.ExecutionUpdateResponse, error) {
+	if m.updateExecutionFunc != nil {
+		return m.updateExecutionFunc(ctx, request)
 	}
 	return nil, nil
 }

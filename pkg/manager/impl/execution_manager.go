@@ -1382,6 +1382,11 @@ func (m *ExecutionManager) ListExecutions(
 		joinTableEntities[filter.GetEntity()] = true
 	}
 
+	// Check if state filter exists and if not then add filter to fetch only ACTIVE executions
+	if filters, err = addStateFilter(filters); err != nil {
+		return nil, err
+	}
+
 	listExecutionsInput := repositoryInterfaces.ListResourceInput{
 		Limit:             int(request.Limit),
 		Offset:            offset,
