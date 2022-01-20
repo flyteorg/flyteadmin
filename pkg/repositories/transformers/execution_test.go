@@ -111,6 +111,11 @@ func TestCreateExecutionModel(t *testing.T) {
 		StartedAt:  expectedCreatedAt,
 		UpdatedAt:  expectedCreatedAt,
 		WorkflowId: workflowIdentifier,
+		StateChangeDetails: &admin.ExecutionStateChangeDetails{
+			State:      admin.ExecutionState_EXECUTION_ACTIVE,
+			OccurredAt: expectedCreatedAt,
+			Principal:  principal,
+		},
 	})
 	assert.Equal(t, expectedClosure, execution.Closure)
 }
@@ -736,32 +741,15 @@ func TestReassignCluster(t *testing.T) {
 
 func TestGetExecutionStateFromModel(t *testing.T) {
 	createdAt := time.Date(2022, 01, 90, 16, 0, 0, 0, time.UTC)
-	occurredAt := time.Date(2022, 01, 18, 16, 0, 0, 0, time.UTC)
-	occurredAtProto, _ := ptypes.TimestampProto(occurredAt)
 	createdAtProto, _ := ptypes.TimestampProto(createdAt)
-	t.Run("state from model", func(t *testing.T) {
-		stateInt := int32(admin.ExecutionState_EXECUTION_ACTIVE)
-		executionModel := models.Execution{
-			BaseModel: models.BaseModel{
-				CreatedAt: createdAt,
-			},
-			State:          &stateInt,
-			StateUpdatedAt: &occurredAt,
-		}
-		executionStatus, err := GetExecutionStateFromModel(executionModel)
-		assert.Nil(t, err)
-		assert.NotNil(t, executionStatus)
-		assert.Equal(t, admin.ExecutionState_EXECUTION_ACTIVE, executionStatus.State)
-		assert.NotNil(t, executionStatus.OccurredAt)
-		assert.Equal(t, occurredAtProto, executionStatus.OccurredAt)
-	})
+
 	t.Run("supporting older executions", func(t *testing.T) {
 		executionModel := models.Execution{
 			BaseModel: models.BaseModel{
 				CreatedAt: createdAt,
 			},
 		}
-		executionStatus, err := GetExecutionStateFromModel(executionModel)
+		executionStatus, err := GetStateFromModelOldExecs(executionModel)
 		assert.Nil(t, err)
 		assert.NotNil(t, executionStatus)
 		assert.Equal(t, admin.ExecutionState_EXECUTION_ACTIVE, executionStatus.State)
@@ -775,21 +763,7 @@ func TestGetExecutionStateFromModel(t *testing.T) {
 				CreatedAt: createdAt,
 			},
 		}
-		executionStatus, err := GetExecutionStateFromModel(executionModel)
-		assert.NotNil(t, err)
-		assert.Nil(t, executionStatus)
-	})
-	t.Run("incorrect created at", func(t *testing.T) {
-		occurredAt := time.Unix(math.MinInt64, math.MinInt32).UTC()
-		stateInt := int32(admin.ExecutionState_EXECUTION_ACTIVE)
-		executionModel := models.Execution{
-			BaseModel: models.BaseModel{
-				CreatedAt: createdAt,
-			},
-			State:          &stateInt,
-			StateUpdatedAt: &occurredAt,
-		}
-		executionStatus, err := GetExecutionStateFromModel(executionModel)
+		executionStatus, err := GetStateFromModelOldExecs(executionModel)
 		assert.NotNil(t, err)
 		assert.Nil(t, executionStatus)
 	})

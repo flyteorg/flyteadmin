@@ -1280,7 +1280,9 @@ func (m *ExecutionManager) UpdateExecution(
 		return nil, err
 	}
 
-	transformers.UpdateExecutionModelStateChangeDetails(executionModel, request.State, getUser(ctx))
+	if err = transformers.UpdateExecutionModelStateChangeDetails(executionModel, request.State, getUser(ctx)); err != nil {
+		return nil, err
+	}
 
 	if err := m.db.ExecutionRepo().Update(ctx, *executionModel); err != nil {
 		return nil, err

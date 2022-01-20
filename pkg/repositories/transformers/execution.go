@@ -64,6 +64,11 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 		UpdatedAt:     createdAt,
 		Notifications: input.Notifications,
 		WorkflowId:    input.WorkflowIdentifier,
+		StateChangeDetails: &admin.ExecutionStateChangeDetails{
+			State:      admin.ExecutionState_EXECUTION_ACTIVE,
+			Principal:  requestSpec.Metadata.Principal,
+			OccurredAt: createdAt,
+		},
 	}
 	if input.Phase == core.WorkflowExecution_RUNNING {
 		closure.StartedAt = createdAt
@@ -75,6 +80,7 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 		return nil, errors.NewFlyteAdminError(codes.Internal, "Failed to serialize launch plan status")
 	}
 
+	activeExecution := int32(admin.ExecutionState_EXECUTION_ACTIVE)
 	executionModel := &models.Execution{
 		ExecutionKey: models.ExecutionKey{
 			Project: input.WorkflowExecutionID.Project,
@@ -93,7 +99,9 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 		InputsURI:             input.InputsURI,
 		UserInputsURI:         input.UserInputsURI,
 		User:                  requestSpec.Metadata.Principal,
+		State:                 &activeExecution,
 		StateUpdatedBy:        requestSpec.Metadata.Principal,
+		StateUpdatedAt:        &input.CreatedAt,
 	}
 	// A reference launch entity can be one of either or a task OR launch plan. Traditionally, workflows are executed
 	// with a reference launch plan which is why this behavior is the default below.
@@ -230,12 +238,37 @@ func UpdateExecutionModelState(
 
 // UpdateExecutionModelStateChangeDetails Updates an existing model with state and stateUpdateBy details from the request
 func UpdateExecutionModelStateChangeDetails(executionModel *models.Execution, state admin.ExecutionState,
-	stateUpdatedBy string) {
+	stateUpdatedBy string) error {
+
+	var closure admin.ExecutionClosure
+	err := proto.Unmarshal(executionModel.Closure, &closure)
+	if err != nil {
+		return errors.NewFlyteAdminErrorf(codes.Internal, "Failed to unmarshal execution closure: %v", err)
+	}
+	// Update the indexed columns
 	stateInt := int32(state)
 	executionModel.State = &stateInt
 	occurredAt := time.Now()
-	executionModel.ExecutionUpdatedAt = &occurredAt
+	executionModel.StateUpdatedAt = &occurredAt
 	executionModel.StateUpdatedBy = stateUpdatedBy
+
+	// Update the closure with the same
+	var occurredAtProto *timestamppb.Timestamp
+	// Default use the createdAt timestamp as the state change occurredAt time
+	if occurredAtProto, err = ptypes.TimestampProto(occurredAt); err != nil {
+		return err
+	}
+	closure.StateChangeDetails = &admin.ExecutionStateChangeDetails{
+		State:      state,
+		Principal:  stateUpdatedBy,
+		OccurredAt: occurredAtProto,
+	}
+	marshaledClosure, err := proto.Marshal(&closure)
+	if err != nil {
+		return errors.NewFlyteAdminErrorf(codes.Internal, "Failed to marshal execution closure: %v", err)
+	}
+	executionModel.Closure = marshaledClosure
+	return nil
 }
 
 // The execution abort metadata is recorded but the phase is not actually updated *until* the abort event is propagated
@@ -282,9 +315,11 @@ func FromExecutionModel(executionModel models.Execution) (*admin.Execution, erro
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal closure")
 	}
 
-	// Update execution state from the model
-	if closure.StateChangeDetails, err = GetExecutionStateFromModel(executionModel); err != nil {
-		return nil, err
+	if closure.StateChangeDetails == nil {
+		// Update execution state details from model for older executions
+		if closure.StateChangeDetails, err = GetStateFromModelOldExecs(executionModel); err != nil {
+			return nil, err
+		}
 	}
 
 	id := GetExecutionIdentifier(&executionModel)
@@ -308,7 +343,7 @@ func FromExecutionModel(executionModel models.Execution) (*admin.Execution, erro
 	}, nil
 }
 
-func GetExecutionStateFromModel(executionModel models.Execution) (*admin.ExecutionStateChangeDetails, error) {
+func GetStateFromModelOldExecs(executionModel models.Execution) (*admin.ExecutionStateChangeDetails, error) {
 	var err error
 	var occurredAt *timestamppb.Timestamp
 
@@ -317,22 +352,10 @@ func GetExecutionStateFromModel(executionModel models.Execution) (*admin.Executi
 		return nil, err
 	}
 
-	// Supporting older executions
-	if executionModel.State == nil {
-		return &admin.ExecutionStateChangeDetails{
-			State:      admin.ExecutionState_EXECUTION_ACTIVE,
-			OccurredAt: occurredAt}, nil
-	}
-	// Supporting non updated executions
-	if executionModel.StateUpdatedAt != nil {
-		if occurredAt, err = ptypes.TimestampProto(*executionModel.StateUpdatedAt); err != nil {
-			return nil, err
-		}
-	}
-
 	return &admin.ExecutionStateChangeDetails{
-		State:      admin.ExecutionState(*executionModel.State),
+		State:      admin.ExecutionState_EXECUTION_ACTIVE,
 		OccurredAt: occurredAt,
+		Principal:  executionModel.User,
 	}, nil
 }
 
