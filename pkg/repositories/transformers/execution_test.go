@@ -502,7 +502,7 @@ func TestFromExecutionModel(t *testing.T) {
 		},
 	}
 	closureBytes, _ := proto.Marshal(&closure)
-
+	stateInt := int32(admin.ExecutionState_EXECUTION_ACTIVE)
 	executionModel := models.Execution{
 		BaseModel: models.BaseModel{
 			CreatedAt: createdAt,
@@ -512,12 +512,15 @@ func TestFromExecutionModel(t *testing.T) {
 			Domain:  "domain",
 			Name:    "name",
 		},
-		Spec:         specBytes,
-		Phase:        phase,
-		Closure:      closureBytes,
-		LaunchPlanID: uint(1),
-		WorkflowID:   uint(2),
-		StartedAt:    &startedAt,
+		User:           "",
+		Spec:           specBytes,
+		Phase:          phase,
+		Closure:        closureBytes,
+		LaunchPlanID:   uint(1),
+		WorkflowID:     uint(2),
+		StartedAt:      &startedAt,
+		State:          &stateInt,
+		StateUpdatedBy: "",
 	}
 	execution, err := FromExecutionModel(executionModel)
 	assert.Nil(t, err)
@@ -581,7 +584,7 @@ func TestFromExecutionModels(t *testing.T) {
 		},
 	}
 	closureBytes, _ := proto.Marshal(&closure)
-
+	stateInt := int32(admin.ExecutionState_EXECUTION_ACTIVE)
 	executionModels := []models.Execution{
 		{
 			BaseModel: models.BaseModel{
@@ -592,13 +595,15 @@ func TestFromExecutionModels(t *testing.T) {
 				Domain:  "domain",
 				Name:    "name",
 			},
-			Spec:         specBytes,
-			Phase:        phase,
-			Closure:      closureBytes,
-			LaunchPlanID: uint(1),
-			WorkflowID:   uint(2),
-			StartedAt:    &startedAt,
-			Duration:     duration,
+			Spec:           specBytes,
+			Phase:          phase,
+			Closure:        closureBytes,
+			LaunchPlanID:   uint(1),
+			WorkflowID:     uint(2),
+			StartedAt:      &startedAt,
+			Duration:       duration,
+			State:          &stateInt,
+			StateUpdatedBy: "",
 		},
 	}
 	executions, err := FromExecutionModels(executionModels)
