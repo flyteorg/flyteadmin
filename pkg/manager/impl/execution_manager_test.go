@@ -1844,31 +1844,36 @@ func TestUpdateExecution(t *testing.T) {
 				Project: "project",
 				Domain:  "domain",
 			},
-		})
+		}, time.Now())
 		assert.Error(t, err)
 	})
 
 	t.Run("empty status passed", func(t *testing.T) {
 		repository := repositoryMocks.NewMockRepository()
+		updateExecFuncCalled := false
 		updateExecFunc := func(ctx context.Context, execModel models.Execution) error {
 			stateInt := int32(admin.ExecutionState_EXECUTION_ACTIVE)
 			assert.Equal(t, stateInt, *execModel.State)
+			updateExecFuncCalled = true
 			return nil
 		}
 		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateExecutionCallback(updateExecFunc)
 		execManager := NewExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
 		updateResponse, err := execManager.UpdateExecution(context.Background(), admin.ExecutionUpdateRequest{
 			Id: &executionIdentifier,
-		})
+		}, time.Now())
 		assert.NoError(t, err)
 		assert.NotNil(t, updateResponse)
+		assert.True(t, updateExecFuncCalled)
 	})
 
 	t.Run("archive status passed", func(t *testing.T) {
 		repository := repositoryMocks.NewMockRepository()
+		updateExecFuncCalled := false
 		updateExecFunc := func(ctx context.Context, execModel models.Execution) error {
 			stateInt := int32(admin.ExecutionState_EXECUTION_ARCHIVED)
 			assert.Equal(t, stateInt, *execModel.State)
+			updateExecFuncCalled = true
 			return nil
 		}
 		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateExecutionCallback(updateExecFunc)
@@ -1876,9 +1881,10 @@ func TestUpdateExecution(t *testing.T) {
 		updateResponse, err := execManager.UpdateExecution(context.Background(), admin.ExecutionUpdateRequest{
 			Id:    &executionIdentifier,
 			State: admin.ExecutionState_EXECUTION_ARCHIVED,
-		})
+		}, time.Now())
 		assert.NoError(t, err)
 		assert.NotNil(t, updateResponse)
+		assert.True(t, updateExecFuncCalled)
 	})
 
 	t.Run("update error", func(t *testing.T) {
@@ -1891,8 +1897,9 @@ func TestUpdateExecution(t *testing.T) {
 		_, err := execManager.UpdateExecution(context.Background(), admin.ExecutionUpdateRequest{
 			Id:    &executionIdentifier,
 			State: admin.ExecutionState_EXECUTION_ARCHIVED,
-		})
+		}, time.Now())
 		assert.Error(t, err)
+		assert.Equal(t, "some db error", err.Error())
 	})
 
 	t.Run("get execution error", func(t *testing.T) {
@@ -1905,8 +1912,9 @@ func TestUpdateExecution(t *testing.T) {
 		_, err := execManager.UpdateExecution(context.Background(), admin.ExecutionUpdateRequest{
 			Id:    &executionIdentifier,
 			State: admin.ExecutionState_EXECUTION_ARCHIVED,
-		})
+		}, time.Now())
 		assert.Error(t, err)
+		assert.Equal(t, "some db error", err.Error())
 	})
 }
 

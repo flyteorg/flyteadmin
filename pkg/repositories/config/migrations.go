@@ -370,17 +370,6 @@ var Migrations = []*gormigrate.Migration{
 			return tx.Table("execution").Migrator().DropColumn(&models.Execution{}, "state")
 		},
 	},
-
-	// Add stateUpdatedAt to execution model
-	{
-		ID: "2022-01-17-execution-state-updated-at",
-		Migrate: func(tx *gorm.DB) error {
-			return tx.AutoMigrate(&models.Execution{})
-		},
-		Rollback: func(tx *gorm.DB) error {
-			return tx.Table("execution").Migrator().DropColumn(&models.Execution{}, "stateUpdatedAt")
-		},
-	},
 }
 
 func alterTableColumnType(db *sql.DB, columnName, columnType string) error {

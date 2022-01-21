@@ -1267,8 +1267,8 @@ func (m *ExecutionManager) GetExecution(
 	return execution, nil
 }
 
-func (m *ExecutionManager) UpdateExecution(
-	ctx context.Context, request admin.ExecutionUpdateRequest) (*admin.ExecutionUpdateResponse, error) {
+func (m *ExecutionManager) UpdateExecution(ctx context.Context, request admin.ExecutionUpdateRequest,
+	requestedAt time.Time) (*admin.ExecutionUpdateResponse, error) {
 	if err := validation.ValidateWorkflowExecutionIdentifier(request.Id); err != nil {
 		logger.Debugf(ctx, "UpdateExecution request [%+v] failed validation with err: %v", request, err)
 		return nil, err
@@ -1280,7 +1280,8 @@ func (m *ExecutionManager) UpdateExecution(
 		return nil, err
 	}
 
-	if err = transformers.UpdateExecutionModelStateChangeDetails(executionModel, request.State, getUser(ctx)); err != nil {
+	if err = transformers.UpdateExecutionModelStateChangeDetails(executionModel, request.State, requestedAt,
+		getUser(ctx)); err != nil {
 		return nil, err
 	}
 

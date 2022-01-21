@@ -296,7 +296,7 @@ func TestUpdateExecution(t *testing.T) {
 	mockExecutionManager := mocks.MockExecutionManager{}
 	mockExecutionManager.SetUpdateExecutionCallback(
 		func(ctx context.Context,
-			request admin.ExecutionUpdateRequest) (*admin.ExecutionUpdateResponse, error) {
+			request admin.ExecutionUpdateRequest, requestedAt time.Time) (*admin.ExecutionUpdateResponse, error) {
 			assert.True(t, proto.Equal(&workflowExecutionIdentifier, request.Id))
 			return response, nil
 		},
@@ -316,7 +316,7 @@ func TestUpdateExecutionError(t *testing.T) {
 	mockExecutionManager := mocks.MockExecutionManager{}
 	mockExecutionManager.SetUpdateExecutionCallback(
 		func(ctx context.Context,
-			request admin.ExecutionUpdateRequest) (*admin.ExecutionUpdateResponse, error) {
+			request admin.ExecutionUpdateRequest, requestedAt time.Time) (*admin.ExecutionUpdateResponse, error) {
 			return nil, errors.New("expected error")
 		},
 	)

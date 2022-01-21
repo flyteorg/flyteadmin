@@ -101,7 +101,6 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 		User:                  requestSpec.Metadata.Principal,
 		State:                 &activeExecution,
 		StateUpdatedBy:        requestSpec.Metadata.Principal,
-		StateUpdatedAt:        &input.CreatedAt,
 	}
 	// A reference launch entity can be one of either or a task OR launch plan. Traditionally, workflows are executed
 	// with a reference launch plan which is why this behavior is the default below.
@@ -236,9 +235,10 @@ func UpdateExecutionModelState(
 	return nil
 }
 
-// UpdateExecutionModelStateChangeDetails Updates an existing model with state and stateUpdateBy details from the request
-func UpdateExecutionModelStateChangeDetails(executionModel *models.Execution, state admin.ExecutionState,
-	stateUpdatedBy string) error {
+// UpdateExecutionModelStateChangeDetails Updates an existing model with stateUpdateTo, stateUpdateBy and
+// statedUpdatedAt details from the request
+func UpdateExecutionModelStateChangeDetails(executionModel *models.Execution, stateUpdatedTo admin.ExecutionState,
+	stateUpdatedAt time.Time, stateUpdatedBy string) error {
 
 	var closure admin.ExecutionClosure
 	err := proto.Unmarshal(executionModel.Closure, &closure)
@@ -246,22 +246,20 @@ func UpdateExecutionModelStateChangeDetails(executionModel *models.Execution, st
 		return errors.NewFlyteAdminErrorf(codes.Internal, "Failed to unmarshal execution closure: %v", err)
 	}
 	// Update the indexed columns
-	stateInt := int32(state)
+	stateInt := int32(stateUpdatedTo)
 	executionModel.State = &stateInt
-	occurredAt := time.Now()
-	executionModel.StateUpdatedAt = &occurredAt
 	executionModel.StateUpdatedBy = stateUpdatedBy
 
 	// Update the closure with the same
-	var occurredAtProto *timestamppb.Timestamp
+	var stateUpdatedAtProto *timestamppb.Timestamp
 	// Default use the createdAt timestamp as the state change occurredAt time
-	if occurredAtProto, err = ptypes.TimestampProto(occurredAt); err != nil {
+	if stateUpdatedAtProto, err = ptypes.TimestampProto(stateUpdatedAt); err != nil {
 		return err
 	}
 	closure.StateChangeDetails = &admin.ExecutionStateChangeDetails{
-		State:      state,
+		State:      stateUpdatedTo,
 		Principal:  stateUpdatedBy,
-		OccurredAt: occurredAtProto,
+		OccurredAt: stateUpdatedAtProto,
 	}
 	marshaledClosure, err := proto.Marshal(&closure)
 	if err != nil {
@@ -317,7 +315,7 @@ func FromExecutionModel(executionModel models.Execution) (*admin.Execution, erro
 
 	if closure.StateChangeDetails == nil {
 		// Update execution state details from model for older executions
-		if closure.StateChangeDetails, err = GetStateFromModelOldExecs(executionModel); err != nil {
+		if closure.StateChangeDetails, err = PopulateDefaultStateChangeDetails(executionModel); err != nil {
 			return nil, err
 		}
 	}
@@ -343,7 +341,9 @@ func FromExecutionModel(executionModel models.Execution) (*admin.Execution, erro
 	}, nil
 }
 
-func GetStateFromModelOldExecs(executionModel models.Execution) (*admin.ExecutionStateChangeDetails, error) {
+// PopulateDefaultStateChangeDetails used to populate execution state change details for older executions which donot
+// have these details captured. Hence we construct a default state change details from existing data model.
+func PopulateDefaultStateChangeDetails(executionModel models.Execution) (*admin.ExecutionStateChangeDetails, error) {
 	var err error
 	var occurredAt *timestamppb.Timestamp
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strings"
 	"testing"
 	"time"
 
@@ -749,7 +750,7 @@ func TestGetExecutionStateFromModel(t *testing.T) {
 				CreatedAt: createdAt,
 			},
 		}
-		executionStatus, err := GetStateFromModelOldExecs(executionModel)
+		executionStatus, err := PopulateDefaultStateChangeDetails(executionModel)
 		assert.Nil(t, err)
 		assert.NotNil(t, executionStatus)
 		assert.Equal(t, admin.ExecutionState_EXECUTION_ACTIVE, executionStatus.State)
@@ -763,7 +764,7 @@ func TestGetExecutionStateFromModel(t *testing.T) {
 				CreatedAt: createdAt,
 			},
 		}
-		executionStatus, err := GetStateFromModelOldExecs(executionModel)
+		executionStatus, err := PopulateDefaultStateChangeDetails(executionModel)
 		assert.NotNil(t, err)
 		assert.Nil(t, executionStatus)
 	})
@@ -772,20 +773,40 @@ func TestGetExecutionStateFromModel(t *testing.T) {
 func TestUpdateExecutionModelStateChangeDetails(t *testing.T) {
 	t.Run("empty closure", func(t *testing.T) {
 		execModel := &models.Execution{}
-		err := UpdateExecutionModelStateChangeDetails(execModel, admin.ExecutionState_EXECUTION_ARCHIVED,
-			"dummyUser")
+		stateUpdatedAt := time.Now()
+		statetUpdateAtProto, err := ptypes.TimestampProto(stateUpdatedAt)
+		assert.Nil(t, err)
+		err = UpdateExecutionModelStateChangeDetails(execModel, admin.ExecutionState_EXECUTION_ARCHIVED,
+			stateUpdatedAt, "dummyUser")
 		assert.Nil(t, err)
 		stateInt := int32(admin.ExecutionState_EXECUTION_ARCHIVED)
 		assert.Equal(t, execModel.State, &stateInt)
 		assert.Equal(t, execModel.StateUpdatedBy, "dummyUser")
+		var closure admin.ExecutionClosure
+		err = proto.Unmarshal(execModel.Closure, &closure)
+		assert.Nil(t, err)
+		assert.NotNil(t, closure)
+		assert.NotNil(t, closure.StateChangeDetails)
+		assert.Equal(t, admin.ExecutionState_EXECUTION_ARCHIVED, closure.StateChangeDetails.State)
+		assert.Equal(t, "dummyUser", closure.StateChangeDetails.Principal)
+		assert.Equal(t, statetUpdateAtProto, closure.StateChangeDetails.OccurredAt)
+
 	})
 	t.Run("bad closure", func(t *testing.T) {
 		execModel := &models.Execution{
 			Closure: []byte{1, 2, 3},
 		}
 		err := UpdateExecutionModelStateChangeDetails(execModel, admin.ExecutionState_EXECUTION_ARCHIVED,
-			"dummyUser")
+			time.Now(), "dummyUser")
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "Failed to unmarshal execution closure")
+	})
+	t.Run("bad stateUpdatedAt time", func(t *testing.T) {
+		execModel := &models.Execution{}
+		badTimeData := time.Unix(math.MinInt64, math.MinInt32).UTC()
+		err := UpdateExecutionModelStateChangeDetails(execModel, admin.ExecutionState_EXECUTION_ARCHIVED,
+			badTimeData, "dummyUser")
+		assert.NotNil(t, err)
+		assert.False(t, strings.Contains(err.Error(), "Failed to unmarshal execution closure"))
 	})
 }

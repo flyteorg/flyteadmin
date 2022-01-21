@@ -152,7 +152,7 @@ func (m *AdminService) UpdateExecution(
 	var response *admin.ExecutionUpdateResponse
 	var err error
 	m.Metrics.executionEndpointMetrics.update.Time(func() {
-		response, err = m.ExecutionManager.UpdateExecution(ctx, *request)
+		response, err = m.ExecutionManager.UpdateExecution(ctx, *request, requestedAt)
 	})
 	audit.NewLogBuilder().WithAuthenticatedCtx(ctx).WithRequest(
 		"UpdateExecution",
