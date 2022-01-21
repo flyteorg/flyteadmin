@@ -100,7 +100,6 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 		UserInputsURI:         input.UserInputsURI,
 		User:                  requestSpec.Metadata.Principal,
 		State:                 &activeExecution,
-		StateUpdatedBy:        requestSpec.Metadata.Principal,
 	}
 	// A reference launch entity can be one of either or a task OR launch plan. Traditionally, workflows are executed
 	// with a reference launch plan which is why this behavior is the default below.
@@ -248,7 +247,6 @@ func UpdateExecutionModelStateChangeDetails(executionModel *models.Execution, st
 	// Update the indexed columns
 	stateInt := int32(stateUpdatedTo)
 	executionModel.State = &stateInt
-	executionModel.StateUpdatedBy = stateUpdatedBy
 
 	// Update the closure with the same
 	var stateUpdatedAtProto *timestamppb.Timestamp

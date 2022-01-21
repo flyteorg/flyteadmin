@@ -103,7 +103,6 @@ func TestCreateExecutionModel(t *testing.T) {
 	expectedSpecBytes, _ := proto.Marshal(expectedSpec)
 	assert.Equal(t, expectedSpecBytes, execution.Spec)
 	assert.Equal(t, execution.User, principal)
-	assert.Equal(t, execution.StateUpdatedBy, principal)
 
 	expectedCreatedAt, _ := ptypes.TimestampProto(createdAt)
 	expectedClosure, _ := proto.Marshal(&admin.ExecutionClosure{
@@ -512,15 +511,14 @@ func TestFromExecutionModel(t *testing.T) {
 			Domain:  "domain",
 			Name:    "name",
 		},
-		User:           "",
-		Spec:           specBytes,
-		Phase:          phase,
-		Closure:        closureBytes,
-		LaunchPlanID:   uint(1),
-		WorkflowID:     uint(2),
-		StartedAt:      &startedAt,
-		State:          &stateInt,
-		StateUpdatedBy: "",
+		User:         "",
+		Spec:         specBytes,
+		Phase:        phase,
+		Closure:      closureBytes,
+		LaunchPlanID: uint(1),
+		WorkflowID:   uint(2),
+		StartedAt:    &startedAt,
+		State:        &stateInt,
 	}
 	execution, err := FromExecutionModel(executionModel)
 	assert.Nil(t, err)
@@ -595,15 +593,14 @@ func TestFromExecutionModels(t *testing.T) {
 				Domain:  "domain",
 				Name:    "name",
 			},
-			Spec:           specBytes,
-			Phase:          phase,
-			Closure:        closureBytes,
-			LaunchPlanID:   uint(1),
-			WorkflowID:     uint(2),
-			StartedAt:      &startedAt,
-			Duration:       duration,
-			State:          &stateInt,
-			StateUpdatedBy: "",
+			Spec:         specBytes,
+			Phase:        phase,
+			Closure:      closureBytes,
+			LaunchPlanID: uint(1),
+			WorkflowID:   uint(2),
+			StartedAt:    &startedAt,
+			Duration:     duration,
+			State:        &stateInt,
 		},
 	}
 	executions, err := FromExecutionModels(executionModels)
@@ -786,7 +783,6 @@ func TestUpdateExecutionModelStateChangeDetails(t *testing.T) {
 		assert.Nil(t, err)
 		stateInt := int32(admin.ExecutionState_EXECUTION_ARCHIVED)
 		assert.Equal(t, execModel.State, &stateInt)
-		assert.Equal(t, execModel.StateUpdatedBy, "dummyUser")
 		var closure admin.ExecutionClosure
 		err = proto.Unmarshal(execModel.Closure, &closure)
 		assert.Nil(t, err)
