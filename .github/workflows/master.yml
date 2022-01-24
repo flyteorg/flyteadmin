@@ -103,6 +103,7 @@ jobs:
           kubectl get pods -n kube-system
           echo "current-context:" $(kubectl config current-context)
           echo "environment-kubeconfig:" ${KUBECONFIG}
+          kubectl -n flyte delete -f boilerplate/flyte/end2end/tmp/end2end/tests/endtoend.yaml
           make end2end_execute
 
   bump-version:
