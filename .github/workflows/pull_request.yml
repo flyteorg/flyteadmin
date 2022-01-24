@@ -105,7 +105,7 @@ jobs:
         run:  |
           flytectl sandbox exec -- helm repo add flyteorg https://flyteorg.github.io/flyte
           flytectl sandbox exec -- helm repo update
-          flytectl sandbox exec -- helm upgrade flyte -n flyte --kubeconfig=/etc/rancher/k3s/k3s.yaml flyteorg/flyte -f /flyteorg/share/flyte/values.yaml -f /root/script/integration/k8s/values.yaml --set flyteadmin.image.repository=flyteorg/flyteadmin,flyteadmin.image.tag=builder
+          flytectl sandbox exec -- helm upgrade flyte -n flyte --kubeconfig=/etc/rancher/k3s/k3s.yaml flyteorg/flyte -f /flyteorg/share/flyte/values.yaml -f /root/script/integration/k8s/values.yaml --set flyteadmin.image.repository=flyteorg/flyteadmin,flyteadmin.image.tag=builder --timeout 600 --wait
       - name: Integration
         env:
           KUBECONFIG: /home/runner/.flyte/k3s/k3s.yaml
