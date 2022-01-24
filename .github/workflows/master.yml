@@ -78,15 +78,6 @@ jobs:
           cp /tmp/tmp/docker-images/snapshot.tar snapshot.tar
           flytectl config init
           flytectl sandbox start --source=$(pwd)
-      - name: End2End Pre Upgrade
-        env:
-          KUBECONFIG: /home/runner/.flyte/k3s/k3s.yaml
-        run: |
-          kubectl cluster-info
-          kubectl get pods -n kube-system
-          echo "current-context:" $(kubectl config current-context)
-          echo "environment-kubeconfig:" ${KUBECONFIG}
-          make end2end_execute
       - name: Prime docker cache
         run: |
           flytectl sandbox exec -- docker load -i /root/snapshot.tar
@@ -95,7 +86,7 @@ jobs:
           flytectl sandbox exec -- helm repo add flyteorg https://flyteorg.github.io/flyte
           flytectl sandbox exec -- helm repo update
           flytectl sandbox exec -- helm upgrade flyte -n flyte --kubeconfig=/etc/rancher/k3s/k3s.yaml flyteorg/flyte -f /flyteorg/share/flyte/values.yaml --set flyteadmin.image.repository=flyteorg/flyteadmin,flyteadmin.image.tag=latest
-      - name: End2End Post Upgrade
+      - name: End2End
         env:
           KUBECONFIG: /home/runner/.flyte/k3s/k3s.yaml
         run: |
@@ -103,7 +94,6 @@ jobs:
           kubectl get pods -n kube-system
           echo "current-context:" $(kubectl config current-context)
           echo "environment-kubeconfig:" ${KUBECONFIG}
-          kubectl -n flyte delete -f boilerplate/flyte/end2end/tmp/end2end/tests/endtoend.yaml
           make end2end_execute
 
   bump-version:
