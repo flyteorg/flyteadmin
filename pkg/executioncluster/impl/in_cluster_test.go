@@ -20,13 +20,28 @@ func TestInClusterGetTarget(t *testing.T) {
 	assert.Equal(t, "t1", target.ID)
 }
 
-func TestInClusterGetTarget_NoID(t *testing.T) {
+func TestInClusterGetTarget_AllowableSpecIDs(t *testing.T) {
 	cluster := InCluster{
 		target: executioncluster.ExecutionTarget{},
 	}
 	target, err := cluster.GetTarget(context.Background(), nil)
 	assert.Nil(t, err)
 	assert.Empty(t, target.ID)
+
+	target, err = cluster.GetTarget(context.Background(), &executioncluster.ExecutionTargetSpec{})
+	assert.Nil(t, err)
+	assert.Empty(t, target.ID)
+
+	target, err = cluster.GetTarget(context.Background(), &executioncluster.ExecutionTargetSpec{
+		TargetID: defaultInClusterTargetID,
+	})
+	assert.Nil(t, err)
+	assert.Empty(t, target.ID)
+
+	_, err = cluster.GetTarget(context.Background(), &executioncluster.ExecutionTargetSpec{
+		TargetID: "t1",
+	})
+	assert.Error(t, err)
 }
 
 func TestInClusterGetRemoteTarget(t *testing.T) {

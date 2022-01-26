@@ -14,13 +14,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// DO NOT USE: only for backwards compatiblity
+const defaultInClusterTargetID = "id"
+
 type InCluster struct {
 	target    executioncluster.ExecutionTarget
 	asTargets map[string]*executioncluster.ExecutionTarget
 }
 
 func (i InCluster) GetTarget(ctx context.Context, spec *executioncluster.ExecutionTargetSpec) (*executioncluster.ExecutionTarget, error) {
-	if spec != nil && spec.TargetID != "" {
+	if spec != nil && !(spec.TargetID == "" || spec.TargetID == defaultInClusterTargetID){
 		return nil, errors.New(fmt.Sprintf("remote target %s is not supported", spec.TargetID))
 	}
 	return &i.target, nil
