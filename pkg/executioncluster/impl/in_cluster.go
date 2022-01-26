@@ -14,8 +14,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const defaultInClusterTargetID = "id"
-
 type InCluster struct {
 	target    executioncluster.ExecutionTarget
 	asTargets map[string]*executioncluster.ExecutionTarget
@@ -54,7 +52,6 @@ func NewInCluster(initializationErrorCounter prometheus.Counter, kubeConfig, mas
 		return nil, err
 	}
 	target := executioncluster.ExecutionTarget{
-		ID:            defaultInClusterTargetID,
 		Client:        kubeClient,
 		FlyteClient:   flyteClient,
 		DynamicClient: dynamicClient,

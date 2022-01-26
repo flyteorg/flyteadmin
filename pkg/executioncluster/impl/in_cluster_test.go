@@ -29,20 +29,18 @@ func TestInClusterGetRemoteTarget(t *testing.T) {
 }
 
 func TestInClusterGetAllValidTargets(t *testing.T) {
-	target := executioncluster.ExecutionTarget{
-		ID: defaultInClusterTargetID,
-	}
+	target := executioncluster.ExecutionTarget{}
 	cluster := InCluster{
 		target: target,
 		asTargets: map[string]*executioncluster.ExecutionTarget{
-			defaultInClusterTargetID: &target,
+			target.ID: &target,
 		},
 	}
 	targets := cluster.GetValidTargets()
 	assert.Equal(t, 1, len(targets))
-	assert.Equal(t, defaultInClusterTargetID, targets[defaultInClusterTargetID].ID)
+	assert.Empty(t, targets[target.ID].ID)
 
 	targets = cluster.GetAllTargets()
 	assert.Equal(t, 1, len(targets))
-	assert.Equal(t, defaultInClusterTargetID, targets[defaultInClusterTargetID].ID)
+	assert.Empty(t, targets[target.ID].ID)
 }
