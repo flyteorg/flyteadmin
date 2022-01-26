@@ -20,6 +20,15 @@ func TestInClusterGetTarget(t *testing.T) {
 	assert.Equal(t, "t1", target.ID)
 }
 
+func TestInClusterGetTarget_NoID(t *testing.T) {
+	cluster := InCluster{
+		target: executioncluster.ExecutionTarget{},
+	}
+	target, err := cluster.GetTarget(context.Background(), nil)
+	assert.Nil(t, err)
+	assert.Empty(t, target.ID)
+}
+
 func TestInClusterGetRemoteTarget(t *testing.T) {
 	cluster := InCluster{
 		target: executioncluster.ExecutionTarget{},
