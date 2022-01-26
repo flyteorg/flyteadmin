@@ -26,17 +26,17 @@ func TestInClusterGetTarget_AllowableSpecIDs(t *testing.T) {
 	}
 	target, err := cluster.GetTarget(context.Background(), nil)
 	assert.Nil(t, err)
-	assert.Empty(t, target.ID)
+	assert.Equal(t, *target, cluster.target)
 
 	target, err = cluster.GetTarget(context.Background(), &executioncluster.ExecutionTargetSpec{})
 	assert.Nil(t, err)
-	assert.Empty(t, target.ID)
+	assert.Equal(t, *target, cluster.target)
 
 	target, err = cluster.GetTarget(context.Background(), &executioncluster.ExecutionTargetSpec{
 		TargetID: defaultInClusterTargetID,
 	})
 	assert.Nil(t, err)
-	assert.Empty(t, target.ID)
+	assert.Equal(t, *target, cluster.target)
 
 	_, err = cluster.GetTarget(context.Background(), &executioncluster.ExecutionTargetSpec{
 		TargetID: "t1",
