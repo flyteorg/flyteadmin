@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// DO NOT USE: only for backwards compatiblity
+// DO NOT USE: only for backwards compatibility
 const defaultInClusterTargetID = "id"
 
 type InCluster struct {
