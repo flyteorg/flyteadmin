@@ -217,6 +217,9 @@ func GetCatchUpTimes(s models.SchedulableEntity, from time.Time, to time.Time) (
 		if err != nil {
 			return nil, err
 		}
+		if scheduledTime.After(to) {
+			break
+		}
 		scheduledTimes = append(scheduledTimes, scheduledTime)
 		currFrom = scheduledTime
 	}
