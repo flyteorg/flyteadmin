@@ -269,12 +269,10 @@ func TestGetFixedRateDurationFromSchedule(t *testing.T) {
 	})
 }
 
-func TestCatchUpSingleSchedule(t *testing.T) {
+func TestCatchUpAllSchedule(t *testing.T) {
 	ctx := context.Background()
-	g := setup(t, "catch_up_single_schedule")
-	//fromTime := time.Date(2022, time.January, 27, 19, 0, 0, 0, time.UTC)
+	g := setup(t, "catch_up_all_schedules")
 	toTime := time.Date(2022, time.January, 29, 0, 0, 0, 0, time.UTC)
 	catchupSuccess := g.CatchupAll(ctx, toTime)
 	assert.True(t, catchupSuccess)
-
 }
