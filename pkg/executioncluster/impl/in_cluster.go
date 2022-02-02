@@ -14,21 +14,27 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// DO NOT USE: only for backwards compatibility
+const defaultInClusterTargetID = "id"
+
 type InCluster struct {
-	target executioncluster.ExecutionTarget
+	target    executioncluster.ExecutionTarget
+	asTargets map[string]*executioncluster.ExecutionTarget
 }
 
 func (i InCluster) GetTarget(ctx context.Context, spec *executioncluster.ExecutionTargetSpec) (*executioncluster.ExecutionTarget, error) {
-	if spec != nil && spec.TargetID != "" {
+	if spec != nil && !(spec.TargetID == "" || spec.TargetID == defaultInClusterTargetID) {
 		return nil, errors.New(fmt.Sprintf("remote target %s is not supported", spec.TargetID))
 	}
 	return &i.target, nil
 }
 
-func (i InCluster) GetAllValidTargets() []executioncluster.ExecutionTarget {
-	return []executioncluster.ExecutionTarget{
-		i.target,
-	}
+func (i InCluster) GetAllTargets() map[string]*executioncluster.ExecutionTarget {
+	return i.asTargets
+}
+
+func (i InCluster) GetValidTargets() map[string]*executioncluster.ExecutionTarget {
+	return i.asTargets
 }
 
 func NewInCluster(initializationErrorCounter prometheus.Counter, kubeConfig, master string) (interfaces.ClusterInterface, error) {
@@ -48,12 +54,16 @@ func NewInCluster(initializationErrorCounter prometheus.Counter, kubeConfig, mas
 	if err != nil {
 		return nil, err
 	}
+	target := executioncluster.ExecutionTarget{
+		Client:        kubeClient,
+		FlyteClient:   flyteClient,
+		DynamicClient: dynamicClient,
+		Config:        *clientConfig,
+	}
 	return &InCluster{
-		target: executioncluster.ExecutionTarget{
-			Client:        kubeClient,
-			FlyteClient:   flyteClient,
-			DynamicClient: dynamicClient,
-			Config:        *clientConfig,
+		target: target,
+		asTargets: map[string]*executioncluster.ExecutionTarget{
+			target.ID: &target,
 		},
 	}, nil
 }

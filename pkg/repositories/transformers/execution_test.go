@@ -3,8 +3,15 @@ package transformers
 import (
 	"context"
 	"fmt"
+	"math"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/flyteorg/flyteadmin/pkg/common"
+
+	"github.com/flyteorg/flyteadmin/pkg/errors"
+	"google.golang.org/grpc/codes"
 
 	commonMocks "github.com/flyteorg/flyteadmin/pkg/common/mocks"
 	"github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
@@ -104,6 +111,11 @@ func TestCreateExecutionModel(t *testing.T) {
 		StartedAt:  expectedCreatedAt,
 		UpdatedAt:  expectedCreatedAt,
 		WorkflowId: workflowIdentifier,
+		StateChangeDetails: &admin.ExecutionStateChangeDetails{
+			State:      admin.ExecutionState_EXECUTION_ACTIVE,
+			OccurredAt: expectedCreatedAt,
+			Principal:  principal,
+		},
 	})
 	assert.Equal(t, expectedClosure, execution.Closure)
 }
@@ -449,8 +461,10 @@ func TestSetExecutionAborted(t *testing.T) {
 			}},
 		// The execution abort metadata is recorded but the phase is not actually updated *until* the abort event is
 		// propagated by flytepropeller.
-		Phase: core.WorkflowExecution_RUNNING,
+		Phase: core.WorkflowExecution_ABORTING,
 	}, &actualClosure))
+	assert.Equal(t, existingModel.AbortCause, cause)
+	assert.Equal(t, existingModel.Phase, core.WorkflowExecution_ABORTING.String())
 }
 
 func TestGetExecutionIdentifier(t *testing.T) {
@@ -474,26 +488,37 @@ func TestFromExecutionModel(t *testing.T) {
 	specBytes, _ := proto.Marshal(spec)
 	phase := core.WorkflowExecution_RUNNING.String()
 	startedAt := time.Date(2018, 8, 30, 0, 0, 0, 0, time.UTC)
+	createdAt := time.Date(2022, 01, 18, 0, 0, 0, 0, time.UTC)
 	startedAtProto, _ := ptypes.TimestampProto(startedAt)
+	createdAtProto, _ := ptypes.TimestampProto(createdAt)
 	closure := admin.ExecutionClosure{
 		ComputedInputs: spec.Inputs,
 		Phase:          core.WorkflowExecution_RUNNING,
 		StartedAt:      startedAtProto,
+		StateChangeDetails: &admin.ExecutionStateChangeDetails{
+			State:      admin.ExecutionState_EXECUTION_ACTIVE,
+			OccurredAt: createdAtProto,
+		},
 	}
 	closureBytes, _ := proto.Marshal(&closure)
-
+	stateInt := int32(admin.ExecutionState_EXECUTION_ACTIVE)
 	executionModel := models.Execution{
+		BaseModel: models.BaseModel{
+			CreatedAt: createdAt,
+		},
 		ExecutionKey: models.ExecutionKey{
 			Project: "project",
 			Domain:  "domain",
 			Name:    "name",
 		},
+		User:         "",
 		Spec:         specBytes,
 		Phase:        phase,
 		Closure:      closureBytes,
 		LaunchPlanID: uint(1),
 		WorkflowID:   uint(2),
 		StartedAt:    &startedAt,
+		State:        &stateInt,
 	}
 	execution, err := FromExecutionModel(executionModel)
 	assert.Nil(t, err)
@@ -541,7 +566,9 @@ func TestFromExecutionModels(t *testing.T) {
 	specBytes, _ := proto.Marshal(spec)
 	phase := core.WorkflowExecution_SUCCEEDED.String()
 	startedAt := time.Date(2018, 8, 30, 0, 0, 0, 0, time.UTC)
+	createdAt := time.Date(2022, 01, 18, 0, 0, 0, 0, time.UTC)
 	startedAtProto, _ := ptypes.TimestampProto(startedAt)
+	createdAtProto, _ := ptypes.TimestampProto(createdAt)
 	duration := 2 * time.Minute
 	durationProto := ptypes.DurationProto(duration)
 	closure := admin.ExecutionClosure{
@@ -549,11 +576,18 @@ func TestFromExecutionModels(t *testing.T) {
 		Phase:          core.WorkflowExecution_RUNNING,
 		StartedAt:      startedAtProto,
 		Duration:       durationProto,
+		StateChangeDetails: &admin.ExecutionStateChangeDetails{
+			State:      admin.ExecutionState_EXECUTION_ACTIVE,
+			OccurredAt: createdAtProto,
+		},
 	}
 	closureBytes, _ := proto.Marshal(&closure)
-
+	stateInt := int32(admin.ExecutionState_EXECUTION_ACTIVE)
 	executionModels := []models.Execution{
 		{
+			BaseModel: models.BaseModel{
+				CreatedAt: createdAt,
+			},
 			ExecutionKey: models.ExecutionKey{
 				Project: "project",
 				Domain:  "domain",
@@ -566,6 +600,7 @@ func TestFromExecutionModels(t *testing.T) {
 			WorkflowID:   uint(2),
 			StartedAt:    &startedAt,
 			Duration:     duration,
+			State:        &stateInt,
 		},
 	}
 	executions, err := FromExecutionModels(executionModels)
@@ -580,4 +615,199 @@ func TestFromExecutionModels(t *testing.T) {
 		Spec:    spec,
 		Closure: &closure,
 	}, executions[0]))
+}
+
+func TestUpdateModelState_WithClusterInformation(t *testing.T) {
+	createdAt := time.Date(2018, 10, 29, 16, 0, 0, 0, time.UTC)
+	createdAtProto, _ := ptypes.TimestampProto(createdAt)
+	existingClosure := admin.ExecutionClosure{
+		ComputedInputs: &core.LiteralMap{
+			Literals: map[string]*core.Literal{
+				"foo": {},
+			},
+		},
+		Phase:     core.WorkflowExecution_UNDEFINED,
+		CreatedAt: createdAtProto,
+	}
+	spec := testutils.GetExecutionRequest().Spec
+	specBytes, _ := proto.Marshal(spec)
+	existingClosureBytes, _ := proto.Marshal(&existingClosure)
+	startedAt := time.Now()
+	executionModel := getRunningExecutionModel(specBytes, existingClosureBytes, startedAt)
+	testCluster := "C1"
+	altCluster := "C2"
+	executionModel.Cluster = testCluster
+	occurredAt := time.Date(2018, 10, 29, 16, 10, 0, 0, time.UTC)
+	occurredAtProto, _ := ptypes.TimestampProto(occurredAt)
+	t.Run("update", func(t *testing.T) {
+		executionModel.Cluster = altCluster
+		err := UpdateExecutionModelState(context.TODO(), &executionModel, admin.WorkflowExecutionEventRequest{
+			Event: &event.WorkflowExecutionEvent{
+				Phase:      core.WorkflowExecution_QUEUED,
+				OccurredAt: occurredAtProto,
+				ProducerId: testCluster,
+			},
+		}, interfaces.InlineEventDataPolicyStoreInline, commonMocks.GetMockStorageClient())
+		assert.NoError(t, err)
+		assert.Equal(t, testCluster, executionModel.Cluster)
+		executionModel.Cluster = testCluster
+	})
+	t.Run("do not update", func(t *testing.T) {
+		err := UpdateExecutionModelState(context.TODO(), &executionModel, admin.WorkflowExecutionEventRequest{
+			Event: &event.WorkflowExecutionEvent{
+				Phase:      core.WorkflowExecution_RUNNING,
+				OccurredAt: occurredAtProto,
+				ProducerId: altCluster,
+			},
+		}, interfaces.InlineEventDataPolicyStoreInline, commonMocks.GetMockStorageClient())
+		assert.Equal(t, err.(errors.FlyteAdminError).Code(), codes.FailedPrecondition)
+	})
+	t.Run("matches recorded", func(t *testing.T) {
+		executionModel.Cluster = testCluster
+		err := UpdateExecutionModelState(context.TODO(), &executionModel, admin.WorkflowExecutionEventRequest{
+			Event: &event.WorkflowExecutionEvent{
+				Phase:      core.WorkflowExecution_RUNNING,
+				OccurredAt: occurredAtProto,
+				ProducerId: testCluster,
+			},
+		}, interfaces.InlineEventDataPolicyStoreInline, commonMocks.GetMockStorageClient())
+		assert.NoError(t, err)
+	})
+	t.Run("default cluster value", func(t *testing.T) {
+		executionModel.Cluster = testCluster
+		err := UpdateExecutionModelState(context.TODO(), &executionModel, admin.WorkflowExecutionEventRequest{
+			Event: &event.WorkflowExecutionEvent{
+				Phase:      core.WorkflowExecution_RUNNING,
+				OccurredAt: occurredAtProto,
+				ProducerId: common.DefaultProducerID,
+			},
+		}, interfaces.InlineEventDataPolicyStoreInline, commonMocks.GetMockStorageClient())
+		assert.NoError(t, err)
+	})
+}
+
+func TestReassignCluster(t *testing.T) {
+	oldCluster := "old_cluster"
+	newCluster := "new_cluster"
+
+	workflowExecutionID := core.WorkflowExecutionIdentifier{
+		Project: "project",
+		Domain:  "domain",
+		Name:    "name",
+	}
+
+	t.Run("happy case", func(t *testing.T) {
+		spec := testutils.GetExecutionRequest().Spec
+		spec.Metadata = &admin.ExecutionMetadata{
+			SystemMetadata: &admin.SystemMetadata{
+				ExecutionCluster: oldCluster,
+			},
+		}
+		specBytes, _ := proto.Marshal(spec)
+		executionModel := models.Execution{
+			Spec:    specBytes,
+			Cluster: oldCluster,
+		}
+		err := reassignCluster(context.TODO(), newCluster, &workflowExecutionID, &executionModel)
+		assert.NoError(t, err)
+		assert.Equal(t, newCluster, executionModel.Cluster)
+
+		var updatedSpec admin.ExecutionSpec
+		err = proto.Unmarshal(executionModel.Spec, &updatedSpec)
+		assert.NoError(t, err)
+		assert.Equal(t, newCluster, updatedSpec.Metadata.SystemMetadata.ExecutionCluster)
+	})
+	t.Run("happy case - initialize cluster", func(t *testing.T) {
+		spec := testutils.GetExecutionRequest().Spec
+		specBytes, _ := proto.Marshal(spec)
+		executionModel := models.Execution{
+			Spec: specBytes,
+		}
+		err := reassignCluster(context.TODO(), newCluster, &workflowExecutionID, &executionModel)
+		assert.NoError(t, err)
+		assert.Equal(t, newCluster, executionModel.Cluster)
+
+		var updatedSpec admin.ExecutionSpec
+		err = proto.Unmarshal(executionModel.Spec, &updatedSpec)
+		assert.NoError(t, err)
+		assert.Equal(t, newCluster, updatedSpec.Metadata.SystemMetadata.ExecutionCluster)
+	})
+	t.Run("invalid existing spec", func(t *testing.T) {
+		executionModel := models.Execution{
+			Spec:    []byte("I'm invalid"),
+			Cluster: oldCluster,
+		}
+		err := reassignCluster(context.TODO(), newCluster, &workflowExecutionID, &executionModel)
+		assert.Equal(t, err.(errors.FlyteAdminError).Code(), codes.Internal)
+	})
+}
+
+func TestGetExecutionStateFromModel(t *testing.T) {
+	createdAt := time.Date(2022, 01, 90, 16, 0, 0, 0, time.UTC)
+	createdAtProto, _ := ptypes.TimestampProto(createdAt)
+
+	t.Run("supporting older executions", func(t *testing.T) {
+		executionModel := models.Execution{
+			BaseModel: models.BaseModel{
+				CreatedAt: createdAt,
+			},
+		}
+		executionStatus, err := PopulateDefaultStateChangeDetails(executionModel)
+		assert.Nil(t, err)
+		assert.NotNil(t, executionStatus)
+		assert.Equal(t, admin.ExecutionState_EXECUTION_ACTIVE, executionStatus.State)
+		assert.NotNil(t, executionStatus.OccurredAt)
+		assert.Equal(t, createdAtProto, executionStatus.OccurredAt)
+	})
+	t.Run("incorrect created at", func(t *testing.T) {
+		createdAt := time.Unix(math.MinInt64, math.MinInt32).UTC()
+		executionModel := models.Execution{
+			BaseModel: models.BaseModel{
+				CreatedAt: createdAt,
+			},
+		}
+		executionStatus, err := PopulateDefaultStateChangeDetails(executionModel)
+		assert.NotNil(t, err)
+		assert.Nil(t, executionStatus)
+	})
+}
+
+func TestUpdateExecutionModelStateChangeDetails(t *testing.T) {
+	t.Run("empty closure", func(t *testing.T) {
+		execModel := &models.Execution{}
+		stateUpdatedAt := time.Now()
+		statetUpdateAtProto, err := ptypes.TimestampProto(stateUpdatedAt)
+		assert.Nil(t, err)
+		err = UpdateExecutionModelStateChangeDetails(execModel, admin.ExecutionState_EXECUTION_ARCHIVED,
+			stateUpdatedAt, "dummyUser")
+		assert.Nil(t, err)
+		stateInt := int32(admin.ExecutionState_EXECUTION_ARCHIVED)
+		assert.Equal(t, execModel.State, &stateInt)
+		var closure admin.ExecutionClosure
+		err = proto.Unmarshal(execModel.Closure, &closure)
+		assert.Nil(t, err)
+		assert.NotNil(t, closure)
+		assert.NotNil(t, closure.StateChangeDetails)
+		assert.Equal(t, admin.ExecutionState_EXECUTION_ARCHIVED, closure.StateChangeDetails.State)
+		assert.Equal(t, "dummyUser", closure.StateChangeDetails.Principal)
+		assert.Equal(t, statetUpdateAtProto, closure.StateChangeDetails.OccurredAt)
+
+	})
+	t.Run("bad closure", func(t *testing.T) {
+		execModel := &models.Execution{
+			Closure: []byte{1, 2, 3},
+		}
+		err := UpdateExecutionModelStateChangeDetails(execModel, admin.ExecutionState_EXECUTION_ARCHIVED,
+			time.Now(), "dummyUser")
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "Failed to unmarshal execution closure")
+	})
+	t.Run("bad stateUpdatedAt time", func(t *testing.T) {
+		execModel := &models.Execution{}
+		badTimeData := time.Unix(math.MinInt64, math.MinInt32).UTC()
+		err := UpdateExecutionModelStateChangeDetails(execModel, admin.ExecutionState_EXECUTION_ARCHIVED,
+			badTimeData, "dummyUser")
+		assert.NotNil(t, err)
+		assert.False(t, strings.Contains(err.Error(), "Failed to unmarshal execution closure"))
+	})
 }

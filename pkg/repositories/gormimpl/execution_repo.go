@@ -68,8 +68,9 @@ func (r *ExecutionRepo) Update(ctx context.Context, execution models.Execution) 
 
 func (r *ExecutionRepo) List(ctx context.Context, input interfaces.ListResourceInput) (
 	interfaces.ExecutionCollectionOutput, error) {
+	var err error
 	// First validate input.
-	if err := ValidateListInput(input); err != nil {
+	if err = ValidateListInput(input); err != nil {
 		return interfaces.ExecutionCollectionOutput{}, err
 	}
 	var executions []models.Execution
@@ -89,11 +90,10 @@ func (r *ExecutionRepo) List(ctx context.Context, input interfaces.ListResourceI
 	}
 
 	// Apply filters
-	tx, err := applyScopedFilters(tx, input.InlineFilters, input.MapFilters)
+	tx, err = applyScopedFilters(tx, input.InlineFilters, input.MapFilters)
 	if err != nil {
 		return interfaces.ExecutionCollectionOutput{}, err
 	}
-
 	// Apply sort ordering.
 	if input.SortParameter != nil {
 		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
@@ -108,24 +108,6 @@ func (r *ExecutionRepo) List(ctx context.Context, input interfaces.ListResourceI
 	return interfaces.ExecutionCollectionOutput{
 		Executions: executions,
 	}, nil
-}
-
-func (r *ExecutionRepo) Exists(ctx context.Context, input interfaces.Identifier) (bool, error) {
-	var execution models.Execution
-	timer := r.metrics.ExistsDuration.Start()
-	// Only select the id field (uint) to check for existence.
-	tx := r.db.Select(ID).Where(&models.Execution{
-		ExecutionKey: models.ExecutionKey{
-			Project: input.Project,
-			Domain:  input.Domain,
-			Name:    input.Name,
-		},
-	}).Take(&execution)
-	timer.Stop()
-	if tx.Error != nil {
-		return false, r.errorTransformer.ToFlyteAdminError(tx.Error)
-	}
-	return true, nil
 }
 
 // Returns an instance of ExecutionRepoInterface

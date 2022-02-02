@@ -2,24 +2,28 @@ package transformers
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteadmin/pkg/errors"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/storage"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	"google.golang.org/grpc/codes"
 
-	"github.com/flyteorg/flyteadmin/pkg/common"
-	"github.com/flyteorg/flyteadmin/pkg/errors"
-	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/timestamppb"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-// Request parameters for calls to CreateExecutionModel.
+var clusterReassignablePhases = sets.NewString(core.WorkflowExecution_UNDEFINED.String(), core.WorkflowExecution_QUEUED.String())
+
+// CreateExecutionModelInput encapsulates request parameters for calls to CreateExecutionModel.
 type CreateExecutionModelInput struct {
 	WorkflowExecutionID   core.WorkflowExecutionIdentifier
 	RequestSpec           *admin.ExecutionSpec
@@ -37,7 +41,7 @@ type CreateExecutionModelInput struct {
 	UserInputsURI         storage.DataReference
 }
 
-// Transforms a ExecutionCreateRequest to a Execution model
+// CreateExecutionModel transforms a ExecutionCreateRequest to a Execution model
 func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, error) {
 	requestSpec := input.RequestSpec
 	if requestSpec.Metadata == nil {
@@ -60,6 +64,11 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 		UpdatedAt:     createdAt,
 		Notifications: input.Notifications,
 		WorkflowId:    input.WorkflowIdentifier,
+		StateChangeDetails: &admin.ExecutionStateChangeDetails{
+			State:      admin.ExecutionState_EXECUTION_ACTIVE,
+			Principal:  requestSpec.Metadata.Principal,
+			OccurredAt: createdAt,
+		},
 	}
 	if input.Phase == core.WorkflowExecution_RUNNING {
 		closure.StartedAt = createdAt
@@ -71,6 +80,7 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 		return nil, errors.NewFlyteAdminError(codes.Internal, "Failed to serialize launch plan status")
 	}
 
+	activeExecution := int32(admin.ExecutionState_EXECUTION_ACTIVE)
 	executionModel := &models.Execution{
 		ExecutionKey: models.ExecutionKey{
 			Project: input.WorkflowExecutionID.Project,
@@ -89,6 +99,7 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 		InputsURI:             input.InputsURI,
 		UserInputsURI:         input.UserInputsURI,
 		User:                  requestSpec.Metadata.Principal,
+		State:                 &activeExecution,
 	}
 	// A reference launch entity can be one of either or a task OR launch plan. Traditionally, workflows are executed
 	// with a reference launch plan which is why this behavior is the default below.
@@ -102,6 +113,30 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 	}
 
 	return executionModel, nil
+}
+
+func reassignCluster(ctx context.Context, cluster string, executionID *core.WorkflowExecutionIdentifier, execution *models.Execution) error {
+	logger.Debugf(ctx, "Updating cluster for execution [%v] with existing recorded cluster [%s] and setting to cluster [%s]",
+		executionID, execution.Cluster, cluster)
+	execution.Cluster = cluster
+	var executionSpec admin.ExecutionSpec
+	err := proto.Unmarshal(execution.Spec, &executionSpec)
+	if err != nil {
+		return errors.NewFlyteAdminErrorf(codes.Internal, "Failed to unmarshal execution spec: %v", err)
+	}
+	if executionSpec.Metadata == nil {
+		executionSpec.Metadata = &admin.ExecutionMetadata{}
+	}
+	if executionSpec.Metadata.SystemMetadata == nil {
+		executionSpec.Metadata.SystemMetadata = &admin.SystemMetadata{}
+	}
+	executionSpec.Metadata.SystemMetadata.ExecutionCluster = cluster
+	marshaledSpec, err := proto.Marshal(&executionSpec)
+	if err != nil {
+		return errors.NewFlyteAdminErrorf(codes.Internal, "Failed to marshal execution spec: %v", err)
+	}
+	execution.Spec = marshaledSpec
+	return nil
 }
 
 // Updates an existing model given a WorkflowExecution event.
@@ -135,6 +170,22 @@ func UpdateExecutionModelState(
 		} else {
 			logger.Infof(context.Background(),
 				"Cannot compute duration because startedAt was never set, requestId: %v", request.RequestId)
+		}
+	}
+
+	// Default or empty cluster values do not require updating the execution model.
+	ignoreClusterFromEvent := len(request.Event.ProducerId) == 0 || request.Event.ProducerId == common.DefaultProducerID
+	logger.Debugf(ctx, "Producer Id [%v]. IgnoreClusterFromEvent [%v]", request.Event.ProducerId, ignoreClusterFromEvent)
+	if !ignoreClusterFromEvent {
+		if clusterReassignablePhases.Has(execution.Phase) {
+			if err := reassignCluster(ctx, request.Event.ProducerId, request.Event.ExecutionId, execution); err != nil {
+				return err
+			}
+		} else if execution.Cluster != request.Event.ProducerId {
+			errorMsg := fmt.Sprintf("Cannot accept events for running/terminated execution [%v] from cluster [%s],"+
+				"expected events to originate from [%s]",
+				request.Event.ExecutionId, request.Event.ProducerId, execution.Cluster)
+			return errors.NewIncompatibleClusterError(ctx, errorMsg, execution.Cluster)
 		}
 	}
 
@@ -183,6 +234,39 @@ func UpdateExecutionModelState(
 	return nil
 }
 
+// UpdateExecutionModelStateChangeDetails Updates an existing model with stateUpdateTo, stateUpdateBy and
+// statedUpdatedAt details from the request
+func UpdateExecutionModelStateChangeDetails(executionModel *models.Execution, stateUpdatedTo admin.ExecutionState,
+	stateUpdatedAt time.Time, stateUpdatedBy string) error {
+
+	var closure admin.ExecutionClosure
+	err := proto.Unmarshal(executionModel.Closure, &closure)
+	if err != nil {
+		return errors.NewFlyteAdminErrorf(codes.Internal, "Failed to unmarshal execution closure: %v", err)
+	}
+	// Update the indexed columns
+	stateInt := int32(stateUpdatedTo)
+	executionModel.State = &stateInt
+
+	// Update the closure with the same
+	var stateUpdatedAtProto *timestamppb.Timestamp
+	// Default use the createdAt timestamp as the state change occurredAt time
+	if stateUpdatedAtProto, err = ptypes.TimestampProto(stateUpdatedAt); err != nil {
+		return err
+	}
+	closure.StateChangeDetails = &admin.ExecutionStateChangeDetails{
+		State:      stateUpdatedTo,
+		Principal:  stateUpdatedBy,
+		OccurredAt: stateUpdatedAtProto,
+	}
+	marshaledClosure, err := proto.Marshal(&closure)
+	if err != nil {
+		return errors.NewFlyteAdminErrorf(codes.Internal, "Failed to marshal execution closure: %v", err)
+	}
+	executionModel.Closure = marshaledClosure
+	return nil
+}
+
 // The execution abort metadata is recorded but the phase is not actually updated *until* the abort event is propagated
 // by flytepropeller. The metadata is preemptively saved at the time of the abort.
 func SetExecutionAborted(execution *models.Execution, cause, principal string) error {
@@ -197,12 +281,14 @@ func SetExecutionAborted(execution *models.Execution, cause, principal string) e
 			Principal: principal,
 		},
 	}
+	closure.Phase = core.WorkflowExecution_ABORTING
 	marshaledClosure, err := proto.Marshal(&closure)
 	if err != nil {
 		return errors.NewFlyteAdminErrorf(codes.Internal, "Failed to marshal execution closure: %v", err)
 	}
 	execution.Closure = marshaledClosure
 	execution.AbortCause = cause
+	execution.Phase = core.WorkflowExecution_ABORTING.String()
 	return nil
 }
 
@@ -216,15 +302,22 @@ func GetExecutionIdentifier(executionModel *models.Execution) core.WorkflowExecu
 
 func FromExecutionModel(executionModel models.Execution) (*admin.Execution, error) {
 	var spec admin.ExecutionSpec
-	err := proto.Unmarshal(executionModel.Spec, &spec)
-	if err != nil {
+	var err error
+	if err = proto.Unmarshal(executionModel.Spec, &spec); err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal spec")
 	}
 	var closure admin.ExecutionClosure
-	err = proto.Unmarshal(executionModel.Closure, &closure)
-	if err != nil {
+	if err = proto.Unmarshal(executionModel.Closure, &closure); err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal closure")
 	}
+
+	if closure.StateChangeDetails == nil {
+		// Update execution state details from model for older executions
+		if closure.StateChangeDetails, err = PopulateDefaultStateChangeDetails(executionModel); err != nil {
+			return nil, err
+		}
+	}
+
 	id := GetExecutionIdentifier(&executionModel)
 	if executionModel.Phase == core.WorkflowExecution_ABORTED.String() && closure.GetAbortMetadata() == nil {
 		// In the case of data predating the AbortMetadata field we manually set it in the closure only
@@ -243,6 +336,24 @@ func FromExecutionModel(executionModel models.Execution) (*admin.Execution, erro
 		Id:      &id,
 		Spec:    &spec,
 		Closure: &closure,
+	}, nil
+}
+
+// PopulateDefaultStateChangeDetails used to populate execution state change details for older executions which donot
+// have these details captured. Hence we construct a default state change details from existing data model.
+func PopulateDefaultStateChangeDetails(executionModel models.Execution) (*admin.ExecutionStateChangeDetails, error) {
+	var err error
+	var occurredAt *timestamppb.Timestamp
+
+	// Default use the createdAt timestamp as the state change occurredAt time
+	if occurredAt, err = ptypes.TimestampProto(executionModel.CreatedAt); err != nil {
+		return nil, err
+	}
+
+	return &admin.ExecutionStateChangeDetails{
+		State:      admin.ExecutionState_EXECUTION_ACTIVE,
+		OccurredAt: occurredAt,
+		Principal:  executionModel.User,
 	}, nil
 }
 
