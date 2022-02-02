@@ -9,6 +9,7 @@ flyte:
       - flyteexamples
       - flytekit
       - project
+      - admintests
     additionalVolumeMounts: 
       - name: scratch
         mountPath: /.cache
