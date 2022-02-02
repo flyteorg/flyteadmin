@@ -12,7 +12,11 @@ import (
 	"strings"
 	"time"
 
+	"google.golang.org/grpc/status"
+
+	"github.com/flyteorg/flyteadmin/pkg/clusterresource/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/executioncluster"
+	executionclusterIfaces "github.com/flyteorg/flyteadmin/pkg/executioncluster/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/runtime"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -30,15 +34,9 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/restmapper"
 
-	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/flyteorg/flyteadmin/pkg/manager/impl/resources"
-	managerinterfaces "github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
-
-	"github.com/flyteorg/flyteadmin/pkg/executioncluster/interfaces"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
@@ -51,8 +49,6 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/flyteorg/flyteadmin/pkg/errors"
-	"github.com/flyteorg/flyteadmin/pkg/repositories"
-	repositoriesInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flytestdlib/promutils"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -94,21 +90,15 @@ type NamespaceCache = map[NamespaceName]LastModTimeCache
 type templateValuesType = map[string]string
 
 type controller struct {
-	db                     repositories.RepositoryInterface
 	config                 runtimeInterfaces.Configuration
-	executionCluster       interfaces.ClusterInterface
-	resourceManager        managerinterfaces.ResourceInterface
 	poller                 chan struct{}
 	metrics                controllerMetrics
 	lastAppliedTemplateDir string
 	// Map of [namespace -> [templateFileName -> last modified time]]
-	appliedTemplates NamespaceCache
+	appliedTemplates  NamespaceCache
+	adminDataProvider interfaces.FlyteAdminDataProvider
+	listTargets       executionclusterIfaces.ListTargetsInterface
 }
-
-var descCreatedAtSortParam, _ = common.NewSortParameter(admin.Sort{
-	Direction: admin.Sort_DESCENDING,
-	Key:       "created_at",
-})
 
 func (c *controller) templateAlreadyApplied(namespace NamespaceName, templateFile os.FileInfo) bool {
 	namespacedAppliedTemplates, ok := c.appliedTemplates[namespace]
@@ -203,21 +193,19 @@ func (c *controller) getCustomTemplateValues(
 	}
 	collectedErrs := make([]error, 0)
 	// All override values saved in the database take precedence over the domain-specific defaults.
-	resource, err := c.resourceManager.GetResource(ctx, managerinterfaces.ResourceRequest{
-		Project:      project,
-		Domain:       domain,
-		ResourceType: admin.MatchableResource_CLUSTER_RESOURCE,
-	})
+	attributes, err := c.adminDataProvider.GetClusterResourceAttributes(ctx, project, domain)
 	if err != nil {
-		if _, ok := err.(errors.FlyteAdminError); !ok || err.(errors.FlyteAdminError).Code() != codes.NotFound {
+		s, ok := status.FromError(err)
+		if !ok || s.Code() != codes.NotFound {
 			collectedErrs = append(collectedErrs, err)
 		}
 	}
-	if resource != nil && resource.Attributes != nil && resource.Attributes.GetClusterResourceAttributes() != nil {
-		for templateKey, templateValue := range resource.Attributes.GetClusterResourceAttributes().Attributes {
+	if attributes != nil && attributes.Attributes != nil {
+		for templateKey, templateValue := range attributes.Attributes {
 			customTemplateValues[fmt.Sprintf(templateVariableFormat, templateKey)] = templateValue
 		}
 	}
+
 	if len(collectedErrs) > 0 {
 		return nil, errors.NewCollectedFlyteAdminError(codes.InvalidArgument, collectedErrs)
 	}
@@ -277,7 +265,7 @@ func prepareDynamicCreate(target executioncluster.ExecutionTarget, config string
 //      a) read template file
 //      b) substitute templatized variables with their resolved values
 //   2) create the resource on the kubernetes cluster and cache successful outcomes
-func (c *controller) syncNamespace(ctx context.Context, project models.Project, domain runtimeInterfaces.Domain, namespace NamespaceName,
+func (c *controller) syncNamespace(ctx context.Context, project *admin.Project, domain *admin.Domain, namespace NamespaceName,
 	templateValues, customTemplateValues templateValuesType) error {
 	templateDir := c.config.ClusterResourceConfiguration().GetTemplatePath()
 	if c.lastAppliedTemplateDir != templateDir {
@@ -319,8 +307,8 @@ func (c *controller) syncNamespace(ctx context.Context, project models.Project, 
 		if _, ok := c.appliedTemplates[namespace]; !ok {
 			c.appliedTemplates[namespace] = make(LastModTimeCache)
 		}
-		for _, target := range c.executionCluster.GetAllValidTargets() {
-			dynamicObj, err := prepareDynamicCreate(target, k8sManifest)
+		for _, target := range c.listTargets.GetValidTargets() {
+			dynamicObj, err := prepareDynamicCreate(*target, k8sManifest)
 			if err != nil {
 				logger.Warningf(ctx, "Failed to transform kubernetes manifest for namespace [%s] "+
 					"into a dynamic unstructured mapping with err: %v, manifest: %v", namespace, err, k8sManifest)
@@ -453,7 +441,7 @@ func addResourceVersion(patch []byte, rv string) ([]byte, error) {
 //      2) substitute templatized variables with their resolved values
 // the method will return the kubernetes raw manifest
 func (c *controller) createResourceFromTemplate(ctx context.Context, templateDir string,
-	templateFileName string, project models.Project, domain runtimeInterfaces.Domain, namespace NamespaceName,
+	templateFileName string, project *admin.Project, domain *admin.Domain, namespace NamespaceName,
 	templateValues, customTemplateValues templateValuesType) (string, error) {
 	// 1) read the template file
 	template, err := ioutil.ReadFile(path.Join(templateDir, templateFileName))
@@ -473,8 +461,8 @@ func (c *controller) createResourceFromTemplate(ctx context.Context, templateDir
 	// First, add the special case namespace template which is always substituted by the system
 	// rather than fetched via a user-specified source.
 	templateValues[fmt.Sprintf(templateVariableFormat, namespaceVariable)] = namespace
-	templateValues[fmt.Sprintf(templateVariableFormat, projectVariable)] = project.Identifier
-	templateValues[fmt.Sprintf(templateVariableFormat, domainVariable)] = domain.ID
+	templateValues[fmt.Sprintf(templateVariableFormat, projectVariable)] = project.Id
+	templateValues[fmt.Sprintf(templateVariableFormat, domainVariable)] = domain.Id
 
 	var k8sManifest = string(template)
 	for templateKey, templateValue := range templateValues {
@@ -562,19 +550,10 @@ func (c *controller) Sync(ctx context.Context) error {
 	c.metrics.SyncStarted.Inc()
 	logger.Debugf(ctx, "Running an invocation of ClusterResource Sync")
 
-	// Prefer to sync projects most newly created to ensure their resources get created first when other resources exist.
-	filter, err := common.NewSingleValueFilter(common.Project, common.NotEqual, "state", int32(admin.Project_ARCHIVED))
+	projects, err := c.adminDataProvider.GetProjects(ctx)
 	if err != nil {
 		return err
 	}
-	projects, err := c.db.ProjectRepo().List(ctx, repositoriesInterfaces.ListResourceInput{
-		SortParameter: descCreatedAtSortParam,
-		InlineFilters: []common.InlineFilter{filter},
-	})
-	if err != nil {
-		return err
-	}
-	domains := c.config.ApplicationConfiguration().GetDomainsConfig()
 	var errs = make([]error, 0)
 	templateValues, err := populateTemplateValues(c.config.ClusterResourceConfiguration().GetTemplateData())
 	if err != nil {
@@ -587,11 +566,11 @@ func (c *controller) Sync(ctx context.Context) error {
 		errs = append(errs, err)
 	}
 
-	for _, project := range projects {
-		for _, domain := range *domains {
-			namespace := common.GetNamespaceName(c.config.NamespaceMappingConfiguration().GetNamespaceTemplate(), project.Identifier, domain.Name)
+	for _, project := range projects.Projects {
+		for _, domain := range project.Domains {
+			namespace := common.GetNamespaceName(c.config.NamespaceMappingConfiguration().GetNamespaceTemplate(), project.Id, domain.Name)
 			customTemplateValues, err := c.getCustomTemplateValues(
-				ctx, project.Identifier, domain.ID, domainTemplateValues[domain.ID])
+				ctx, project.Id, domain.Id, domainTemplateValues[domain.Id])
 			if err != nil {
 				logger.Warningf(ctx, "Failed to get custom template values for %s with err: %v", namespace, err)
 				errs = append(errs, err)
@@ -653,16 +632,14 @@ func newMetrics(scope promutils.Scope) controllerMetrics {
 	}
 }
 
-func NewClusterResourceController(db repositories.RepositoryInterface, executionCluster interfaces.ClusterInterface, scope promutils.Scope) Controller {
+func NewClusterResourceController(adminDataProvider interfaces.FlyteAdminDataProvider, listTargets executionclusterIfaces.ListTargetsInterface, scope promutils.Scope) Controller {
 	config := runtime.NewConfigurationProvider()
-
 	return &controller{
-		db:               db,
-		config:           config,
-		executionCluster: executionCluster,
-		resourceManager:  resources.NewResourceManager(db, config.ApplicationConfiguration()),
-		poller:           make(chan struct{}),
-		metrics:          newMetrics(scope),
-		appliedTemplates: make(map[string]map[string]time.Time),
+		adminDataProvider: adminDataProvider,
+		config:            config,
+		listTargets:       listTargets,
+		poller:            make(chan struct{}),
+		metrics:           newMetrics(scope),
+		appliedTemplates:  make(map[string]map[string]time.Time),
 	}
 }

@@ -310,7 +310,7 @@ func TestListExecutionsForWorkflow(t *testing.T) {
 	GlobalMock.Logging = true
 
 	// Only match on queries that append expected filters
-	GlobalMock.NewMock().WithQuery(`SELECT "executions"."id","executions"."created_at","executions"."updated_at","executions"."deleted_at","executions"."execution_project","executions"."execution_domain","executions"."execution_name","executions"."launch_plan_id","executions"."workflow_id","executions"."task_id","executions"."phase","executions"."closure","executions"."spec","executions"."started_at","executions"."execution_created_at","executions"."execution_updated_at","executions"."duration","executions"."abort_cause","executions"."mode","executions"."source_execution_id","executions"."parent_node_execution_id","executions"."cluster","executions"."inputs_uri","executions"."user_inputs_uri","executions"."error_kind","executions"."error_code","executions"."user" FROM "executions" INNER JOIN workflows ON executions.workflow_id = workflows.id INNER JOIN tasks ON executions.task_id = tasks.id WHERE executions.execution_project = $1 AND executions.execution_domain = $2 AND executions.execution_name = $3 AND (workflows.name = $4) AND tasks.name = $5 LIMIT`).WithReply(executions)
+	GlobalMock.NewMock().WithQuery(`SELECT "executions"."id","executions"."created_at","executions"."updated_at","executions"."deleted_at","executions"."execution_project","executions"."execution_domain","executions"."execution_name","executions"."launch_plan_id","executions"."workflow_id","executions"."task_id","executions"."phase","executions"."closure","executions"."spec","executions"."started_at","executions"."execution_created_at","executions"."execution_updated_at","executions"."duration","executions"."abort_cause","executions"."mode","executions"."source_execution_id","executions"."parent_node_execution_id","executions"."cluster","executions"."inputs_uri","executions"."user_inputs_uri","executions"."error_kind","executions"."error_code","executions"."user","executions"."state" FROM "executions" INNER JOIN workflows ON executions.workflow_id = workflows.id INNER JOIN tasks ON executions.task_id = tasks.id WHERE executions.execution_project = $1 AND executions.execution_domain = $2 AND executions.execution_name = $3 AND (workflows.name = $4) AND tasks.name = $5 LIMIT 20`).WithReply(executions)
 
 	collection, err := executionRepo.List(context.Background(), interfaces.ListResourceInput{
 		InlineFilters: []common.InlineFilter{
@@ -342,41 +342,4 @@ func TestListExecutionsForWorkflow(t *testing.T) {
 		assert.Equal(t, executionStartedAt, *execution.StartedAt)
 		assert.Equal(t, time.Hour, execution.Duration)
 	}
-}
-
-func TestExecutionExists(t *testing.T) {
-	executionRepo := NewExecutionRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
-	expectedExecution := models.Execution{
-		BaseModel: models.BaseModel{
-			ID: uint(20),
-		},
-		ExecutionKey: models.ExecutionKey{
-			Project: "project",
-			Domain:  "domain",
-			Name:    "1",
-		},
-		LaunchPlanID: uint(2),
-		Phase:        core.WorkflowExecution_SUCCEEDED.String(),
-		Closure:      []byte{1, 2},
-		WorkflowID:   uint(3),
-		Spec:         []byte{3, 4},
-	}
-
-	executions := make([]map[string]interface{}, 0)
-	execution := getMockExecutionResponseFromDb(expectedExecution)
-	executions = append(executions, execution)
-
-	GlobalMock := mocket.Catcher.Reset()
-	GlobalMock.Logging = true
-
-	// Only match on queries that append expected filters
-	GlobalMock.NewMock().WithQuery(`SELECT "id" FROM "executions" WHERE "executions"."execution_project" = $1 AND "executions"."execution_domain" = $2 AND "executions"."execution_name" = $3 LIMIT 1`).WithReply(executions)
-
-	exists, err := executionRepo.Exists(context.Background(), interfaces.Identifier{
-		Project: "project",
-		Domain:  "domain",
-		Name:    "1",
-	})
-	assert.NoError(t, err)
-	assert.True(t, exists)
 }
