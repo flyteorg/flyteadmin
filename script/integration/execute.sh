@@ -12,6 +12,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 # This is a separate function so that we can potentially reuse in the future when we have more than one test
 function wait_for_flyte_deploys() {
     SECONDS=0
+    sleep 10
     echo ""
     echo "waiting for flyte deploy to complete..."
     echo ""
