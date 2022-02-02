@@ -13,9 +13,9 @@ jobs:
     name: Invoke Unit Tests
     uses: flyteorg/flytetools/.github/workflows/tests.yml@reuseable
 
-  trigger-generate:
-    name: Invoke Go Gennerate
-    uses: flyteorg/flytetools/.github/workflows/go_generate.yml@reuseable
+#  trigger-generate:
+#    name: Invoke Go Gennerate
+#    uses: flyteorg/flytetools/.github/workflows/go_generate.yml@reuseable
 
   trigger-docker-build:
     name: Invoke Docker Build Images
