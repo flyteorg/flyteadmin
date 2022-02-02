@@ -7,28 +7,28 @@ jobs:
 
   trigger-lint:
     name: Invoke Lint
-    uses: flyteorg/flytetools/workflows/lint.yml@reuseable
+    uses: flyteorg/flytetools/.github/workflows/lint.yml@reuseable
 
   trigger-tests:
     name: Invoke Unit Tests
-    uses: flyteorg/flytetools/workflows/tests.yml@reuseable
+    uses: flyteorg/flytetools/.github/workflows/tests.yml@reuseable
 
   trigger-generate:
     name: Invoke Unit Tests
-    uses: flyteorg/flytetools/workflows/go_generate.yml@reuseable
+    uses: flyteorg/flytetools/.github/workflows/go_generate.yml@reuseable
 
   trigger-docker-build:
     name: Invoke Docker Build Images
-    uses: flyteorg/flytetools/workflows/docker_build.yml@reuseable
+    uses: flyteorg/flytetools/.github/workflows/docker_build.yml@reuseable
 
   trigger-endtoend:
     name: Invoke End2End
     needs: [trigger-docker-build]
-    uses: flyteorg/flytetools/workflows/endtoend.yml@reuseable
+    uses: flyteorg/flytetools/.github/workflows/endtoend.yml@reuseable
 
   trigger-integration:
     name: Invoke End2End
     needs: [trigger-docker-build]
-    uses: flyteorg/flytetools/workflows/integration.yml@reuseable
+    uses: flyteorg/flytetools/.github/workflows/integration.yml@reuseable
 
 
