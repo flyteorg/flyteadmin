@@ -236,4 +236,35 @@ func Test_verifyClaims(t *testing.T) {
 		assert.Equal(t, "my-client", identityCtx.AppID())
 		assert.Equal(t, "123", identityCtx.UserID())
 	})
+
+	t.Run("Multiple audience", func(t *testing.T) {
+		_, err := verifyClaims(sets.NewString("https://myserver", "https://myserver2"),
+			map[string]interface{}{
+				"aud": []string{"https://myserver"},
+				"user_info": map[string]interface{}{
+					"preferred_name": "John Doe",
+				},
+				"sub":       "123",
+				"client_id": "my-client",
+				"scp":       []interface{}{"all", "offline"},
+			})
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("No matching audience", func(t *testing.T) {
+		_, err := verifyClaims(sets.NewString("https://myserver", "https://myserver2"),
+			map[string]interface{}{
+				"aud": []string{"https://myserver3"},
+				"user_info": map[string]interface{}{
+					"preferred_name": "John Doe",
+				},
+				"sub":       "123",
+				"client_id": "my-client",
+				"scp":       []interface{}{"all", "offline"},
+			})
+
+		assert.Error(t, err)
+	})
+
 }

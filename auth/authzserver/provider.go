@@ -142,7 +142,7 @@ func verifyClaims(expectedAudience sets.String, claimsRaw map[string]interface{}
 	}
 
 	if !foundAud {
-		return nil, fmt.Errorf("invalid audience [%v]", claims.Audience[0])
+		return nil, fmt.Errorf("invalid audience [%v]", claims)
 	}
 
 	userInfo := &service.UserInfoResponse{}
