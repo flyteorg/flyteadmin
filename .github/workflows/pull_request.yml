@@ -9,9 +9,9 @@ jobs:
     name: Invoke Lint
     uses: flyteorg/flytetools/.github/workflows/lint.yml@reuseable
 
-  trigger-tests:
-    name: Invoke Unit Tests
-    uses: flyteorg/flytetools/.github/workflows/tests.yml@reuseable
+#   trigger-tests:
+#     name: Invoke Unit Tests
+#     uses: flyteorg/flytetools/.github/workflows/tests.yml@reuseable
 
 #  trigger-generate:
 #    name: Invoke Go Gennerate
