@@ -21,7 +21,6 @@ jobs:
     name: Invoke Docker Build Images
     uses: flyteorg/flytetools/.github/workflows/docker_build.yml@reuseable
 
-
   trigger-endtoend:
     name: Invoke End2End
     needs: [trigger-docker-build]
