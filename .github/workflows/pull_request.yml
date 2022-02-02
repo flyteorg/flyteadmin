@@ -24,7 +24,7 @@ jobs:
   trigger-endtoend:
     name: Invoke End2End
     needs: [trigger-docker-build]
-    uses: flyteorg/flytetools/.github/workflows/endtoend.yml@reuseable
+    uses: flyteorg/flytetools/.github/workflows/end2end.yml@reuseable
 
   trigger-integration:
     name: Invoke Integration
