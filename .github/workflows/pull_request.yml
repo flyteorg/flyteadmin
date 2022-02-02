@@ -13,7 +13,7 @@ jobs:
     name: Invoke Unit Tests
     uses: flyteorg/flytetools/.github/workflows/tests.yml@reuseable
 
- trigger-generate:
+  trigger-generate:
    name: Invoke Go Gennerate
    uses: flyteorg/flytetools/.github/workflows/go_generate.yml@reuseable
 
