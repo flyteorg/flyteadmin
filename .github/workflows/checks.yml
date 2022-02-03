@@ -36,7 +36,7 @@ jobs:
     name: Check Go Gennerate
     uses: flyteorg/flytetools/.github/workflows/go_generate.yml@reuseable
 
-  bump-version:
+  bump_version:
     name: Bump Version
     if: ${{ github.event_name != 'pull_request' }}
     needs: [ endtoend,  integration, lint, tests ] # Only to ensure it can successfully build
@@ -47,18 +47,18 @@ jobs:
   goreleaser:
     name: Goreleaser
     if: ${{ github.event_name != 'pull_request' }}
-    needs: [ bump-version ] # Only to ensure it can successfully build
+    needs: [ bump_version ] # Only to ensure it can successfully build
     uses: flyteorg/flytetools/.github/workflows/goreleaser.yml@reuseable
     secrets:
       FLYTE_BOT_PAT: ${{ secrets.FLYTE_BOT_PAT }}
 
-  push-docker-image:
+  push_docker_image:
     name: Build & Push Flyteadmin Image
     if: ${{ github.event_name != 'pull_request' }}
-    needs: [ bump-version ]
+    needs: [ bump_version ]
     uses: flyteorg/flytetools/.github/workflows/publish.yml@reuseable
     with:
-      version: ${{ needs.bump-version.outputs.version }}
+      version: ${{ needs.bump_version.outputs.version }}
       dockerfile: Dockerfile
       push: true
     secrets:
@@ -68,10 +68,10 @@ jobs:
   push-docker-image-flytescheduler:
     name: Build & Push Flytescheduler Image
     if: ${{ github.event_name != 'pull_request' }}
-    needs: [ bump-version ]
+    needs: [ bump_version ]
     uses: flyteorg/flytetools/.github/workflows/publish.yml@reuseable
     with:
-      version: ${{ needs.bump-version.outputs.version }}
+      version: ${{ needs.bump_version.outputs.version }}
       push: true
       dockerfile: Dockerfile.scheduler
     secrets:
