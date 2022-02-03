@@ -235,10 +235,11 @@ func Test_verifyClaims(t *testing.T) {
 		assert.Equal(t, sets.NewString("all", "offline"), identityCtx.Scopes())
 		assert.Equal(t, "my-client", identityCtx.AppID())
 		assert.Equal(t, "123", identityCtx.UserID())
+		assert.Equal(t, "https://myserver", identityCtx.Audience())
 	})
 
 	t.Run("Multiple audience", func(t *testing.T) {
-		_, err := verifyClaims(sets.NewString("https://myserver", "https://myserver2"),
+		identityCtx, err := verifyClaims(sets.NewString("https://myserver", "https://myserver2"),
 			map[string]interface{}{
 				"aud": []string{"https://myserver"},
 				"user_info": map[string]interface{}{
@@ -250,12 +251,23 @@ func Test_verifyClaims(t *testing.T) {
 			})
 
 		assert.NoError(t, err)
+		assert.Equal(t, "https://myserver", identityCtx.Audience())
 	})
 
 	t.Run("No matching audience", func(t *testing.T) {
 		_, err := verifyClaims(sets.NewString("https://myserver", "https://myserver2"),
 			map[string]interface{}{
 				"aud": []string{"https://myserver3"},
+			})
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid audience")
+	})
+
+	t.Run("Use first matching audience", func(t *testing.T) {
+		identityCtx, err := verifyClaims(sets.NewString("https://myserver", "https://myserver2", "https://myserver3"),
+			map[string]interface{}{
+				"aud": []string{"https://myserver", "https://myserver2"},
 				"user_info": map[string]interface{}{
 					"preferred_name": "John Doe",
 				},
@@ -264,7 +276,8 @@ func Test_verifyClaims(t *testing.T) {
 				"scp":       []interface{}{"all", "offline"},
 			})
 
-		assert.Error(t, err)
+		assert.NoError(t, err)
+		assert.Equal(t, "https://myserver", identityCtx.Audience())
 	})
 
 }
