@@ -7,7 +7,7 @@ jobs:
   trigger-checks:
     name: Flyteadmin
     runs-on: ubuntu-latest
-    uses: flyteorg/flyteadmin/.github/workflows/checks.yml@reuseable
+    uses: flyteorg/flytetools/.github/workflows/checks.yml@reuseable
 
   #   trigger-generate:
   #    name: Invoke Go Gennerate
