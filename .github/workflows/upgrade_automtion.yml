@@ -1,29 +1,18 @@
 name: Upgrade Automation
 on:
   workflow_dispatch:
-    inputs:
-      component:
-        description: Component name like boilerplate, flyteidl, flytetools
-        required: true
-        type: choice
-        options:
-          - boilerplate
-          - flyteidl
-        default: boilerplate
 
 jobs:
   trigger-flyteidl-upgrade:
     name: ${{ github.event.inputs.component }} Upgrade
-    if: github.event.inputs.component != 'boilerplate'
     uses: flyteorg/flytetools/.github/workflows/flyte_automation.yml@reuseable
     with:
-      component: ${{ github.event.inputs.component }}
+      component: flyteidl
     secrets:
       FLYTE_BOT_PAT: ${{ secrets.FLYTE_BOT_PAT }}
 
   trigger-boilerplate-upgrade:
     name: ${{ github.event.inputs.component }} Upgrade
-    if: github.event.inputs.component == 'boilerplate'
     uses: flyteorg/flytetools/.github/workflows/boilerplate_upgrade.yml@reuseable
     secrets:
       FLYTE_BOT_PAT: ${{ secrets.FLYTE_BOT_PAT }}
