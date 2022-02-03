@@ -1,0 +1,27 @@
+name: Flyteadmin Checks
+
+on:
+  workflow_call:
+jobs:
+  trigger-lint:
+    name: Lint
+    uses: flyteorg/flytetools/.github/workflows/lint.yml@reuseable
+
+  trigger-tests:
+    name: Unit Tests
+    uses: flyteorg/flytetools/.github/workflows/tests.yml@reuseable
+
+  trigger-docker-build:
+    name: Docker Build Images
+    uses: flyteorg/flytetools/.github/workflows/docker_build.yml@reuseable
+
+  trigger-endtoend:
+    name: End2End Test
+    needs: [trigger-docker-build]
+    uses: flyteorg/flytetools/.github/workflows/endtoend.yml@reuseable
+
+  trigger-integration:
+    name: Integration Test
+    needs: [trigger-docker-build]
+    uses: flyteorg/flytetools/.github/workflows/integration.yml@reuseable
+

@@ -1,0 +1,14 @@
+
+
+name: Update Flyte component
+on:
+  workflow_dispatch:
+
+jobs:
+  trigger-flyteidl-upgrade:
+    name: Flyteidl Upgrade
+    uses: flyteorg/flytetools/.github/workflows/flyte_automation.yml@reuseable
+    with:
+      component: flyteidl
+    secrets:
+      FLYTE_BOT_PAT: ${{ secrets.FLYTE_BOT_PAT }}
