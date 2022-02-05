@@ -1,0 +1,47 @@
+# This is a sample configuration file.
+# Real configuration when running inside K8s (local or otherwise) lives in a ConfigMap
+# Look in the artifacts directory in the flyte repo for what's actually run
+# https://github.com/lyft/flyte/blob/b47565c9998cde32b0b5f995981e3f3c990fa7cd/artifacts/flyteadmin.yaml#L72
+propeller:
+  kube-config: "$HOME/.flyte/k3s/k3s.yaml"
+server:
+  httpPort: 8088
+  grpcPort: 8089
+  grpcServerReflection: true
+  kube-config: "$HOME/.flyte/k3s/k3s.yaml"
+  security:
+    secure: false
+    useAuth: false
+    allowCors: true
+    allowedOrigins:
+      # Accepting all domains for Sandbox installation
+      - "*"
+    allowedHeaders:
+      - "Content-Type"
+flyteadmin:
+  runScheduler: false
+database:
+  port: 5432
+  username: postgres
+  host: localhost
+  dbname: flyteadmin
+  options: "sslmode=disable"
+storage:
+  type: minio
+  connection:
+    access-key: minio
+    auth-type: accesskey
+    secret-key: miniostorage
+    disable-ssl: true
+    endpoint: "http://localhost:30084"
+    region: my-region
+  cache:
+    max_size_mbs: 10
+    target_gc_percent: 100
+  container: "my-s3-bucket"
+Logger:
+  show-source: true
+  level: 6
+admin:
+  endpoint: localhost:8089
+  insecure: true

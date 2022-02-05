@@ -23,7 +23,6 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/workflowengine"
 	workflowengineImpl "github.com/flyteorg/flyteadmin/pkg/workflowengine/impl"
 	"github.com/flyteorg/flytestdlib/logger"
-	"github.com/flyteorg/flytestdlib/profutils"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/storage"
 	"github.com/golang/protobuf/proto"
@@ -164,13 +163,13 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 	}()
 
 	// Serve profiling endpoints.
-	go func() {
-		err := profutils.StartProfilingServerWithDefaultHandlers(
-			context.Background(), applicationConfiguration.GetProfilerPort(), nil)
-		if err != nil {
-			logger.Panicf(context.Background(), "Failed to Start profiling and Metrics server. Error, %v", err)
-		}
-	}()
+	//go func() {
+	//	err := profutils.StartProfilingServerWithDefaultHandlers(
+	//		context.Background(), applicationConfiguration.GetProfilerPort(), nil)
+	//	if err != nil {
+	//		logger.Panicf(context.Background(), "Failed to Start profiling and Metrics server. Error, %v", err)
+	//	}
+	//}()
 
 	nodeExecutionEventWriter := eventWriter.NewNodeExecutionEventWriter(db, applicationConfiguration.GetAsyncEventsBufferSize())
 	go func() {

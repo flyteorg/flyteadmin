@@ -40,8 +40,6 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/rpc/adminservice"
 	"github.com/spf13/cobra"
 
-	"github.com/flyteorg/flytestdlib/contextutils"
-	"github.com/flyteorg/flytestdlib/promutils/labeled"
 	grpcPrometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -55,13 +53,7 @@ var serveCmd = &cobra.Command{
 	Short: "Launches the Flyte admin server",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
-		serverConfig := config.GetConfig()
-
-		if serverConfig.Security.Secure {
-			return serveGatewaySecure(ctx, serverConfig, authConfig.GetConfig())
-		}
-
-		return serveGatewayInsecure(ctx, serverConfig, authConfig.GetConfig())
+		return Serve(ctx)
 	},
 }
 
@@ -71,9 +63,19 @@ func init() {
 	RootCmd.AddCommand(secretsCmd)
 
 	// Set Keys
-	labeled.SetMetricKeys(contextutils.AppNameKey, contextutils.ProjectKey, contextutils.DomainKey,
-		contextutils.ExecIDKey, contextutils.WorkflowIDKey, contextutils.NodeIDKey, contextutils.TaskIDKey,
-		contextutils.TaskTypeKey, common.RuntimeTypeKey, common.RuntimeVersionKey)
+	//labeled.SetMetricKeys(contextutils.AppNameKey, contextutils.ProjectKey, contextutils.DomainKey,
+	//	contextutils.ExecIDKey, contextutils.WorkflowIDKey, contextutils.NodeIDKey, contextutils.TaskIDKey,
+	//	contextutils.TaskTypeKey, common.RuntimeTypeKey, common.RuntimeVersionKey)
+}
+
+func Serve(ctx context.Context) error {
+	serverConfig := config.GetConfig()
+
+	if serverConfig.Security.Secure {
+		return serveGatewaySecure(ctx, serverConfig, authConfig.GetConfig())
+	}
+
+	return serveGatewayInsecure(ctx, serverConfig, authConfig.GetConfig())
 }
 
 func blanketAuthorization(ctx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (

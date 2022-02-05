@@ -3,6 +3,7 @@ package flytek8s
 
 import (
 	"context"
+	"os"
 
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -54,7 +55,8 @@ func GetRestClientConfig(kubeConfig, master string,
 	var err error
 
 	if kubeConfig != "" {
-		kubeConfiguration, err = clientcmd.BuildConfigFromFlags(master, kubeConfig)
+		kubeConfigPath := os.ExpandEnv(kubeConfig)
+		kubeConfiguration, err = clientcmd.BuildConfigFromFlags(master, kubeConfigPath)
 		if err != nil {
 			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Error building kubeconfig: %v", err)
 		}
