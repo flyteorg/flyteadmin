@@ -48,13 +48,13 @@ type SslOptions struct {
 }
 
 var defaultServerConfig = &ServerConfig{
-	HTTPPort: 8088,
-	GrpcPort: 8089,
+	HTTPPort:             8088,
+	GrpcPort:             8089,
 	GrpcServerReflection: true,
-	KubeConfig: "$HOME/.kube/config",
+	KubeConfig:           "$HOME/.kube/config",
 	Security: ServerSecurityOptions{
-		AllowCors: true,
-		AllowedHeaders: []string{"Content-Type","flyte-authorization"},
+		AllowCors:      true,
+		AllowedHeaders: []string{"Content-Type", "flyte-authorization"},
 		AllowedOrigins: []string{"*"},
 	},
 }
