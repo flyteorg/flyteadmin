@@ -281,6 +281,20 @@ func TestServerConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_maxGrpcMessageSizeBytes", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("maxGrpcMessageSizeBytes", testValue)
+			if vInt, err := cmdFlags.GetInt("maxGrpcMessageSizeBytes"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vInt), &actual.MaxGrpcMessageSizeBytes)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 	t.Run("Test_thirdPartyConfig.flyteClient.clientId", func(t *testing.T) {
 
 		t.Run("Override", func(t *testing.T) {
