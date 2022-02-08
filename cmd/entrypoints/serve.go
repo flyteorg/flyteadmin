@@ -268,7 +268,8 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig, authCfg
 		grpc.WithMaxHeaderListSize(common.MaxResponseStatusBytes),
 	}
 	if cfg.MaxGrpcMessageSizeBytes > 0 {
-		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(cfg.MaxGrpcMessageSizeBytes))
+		grpcOptions = append(grpcOptions,
+			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(cfg.MaxGrpcMessageSizeBytes)))
 	}
 	httpServer, err := newHTTPServer(ctx, cfg, authCfg, authCtx, cfg.GetGrpcHostAddress(), grpcOptions...)
 	if err != nil {
