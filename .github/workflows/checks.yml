@@ -50,6 +50,9 @@ jobs:
     name: Goreleaser
     needs: [ bump_version ] # Only to ensure it can successfully build
     uses: flyteorg/flytetools/.github/workflows/goreleaser.yml@master
+    with:
+      version: ${{ needs.bump_version.outputs.version }}
+      dry_run: true
     secrets:
       FLYTE_BOT_PAT: ${{ secrets.FLYTE_BOT_PAT }}
 
