@@ -113,6 +113,7 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 	publisher := notifications.NewNotificationsPublisher(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope)
 	processor := notifications.NewNotificationsProcessor(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope)
 	eventPublisher := notifications.NewEventsPublisher(*configuration.ApplicationConfiguration().GetExternalEventsConfig(), adminScope)
+	cloudEventPublisher := notifications.NewEventsPublisher(*configuration.ApplicationConfiguration().GetCloudEventsConfig(), adminScope)
 	go func() {
 		logger.Info(context.Background(), "Started processing notifications.")
 		processor.StartProcessing()
@@ -153,7 +154,7 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 
 	executionManager := manager.NewExecutionManager(db, configuration, dataStorageClient,
 		adminScope.NewSubScope("execution_manager"), adminScope.NewSubScope("user_execution_metrics"),
-		publisher, urlData, workflowManager, namedEntityManager, eventPublisher, executionEventWriter)
+		publisher, urlData, workflowManager, namedEntityManager, eventPublisher, cloudEventPublisher, executionEventWriter)
 	versionManager := manager.NewVersionManager()
 
 	scheduledWorkflowExecutor := workflowScheduler.GetWorkflowExecutor(executionManager, launchPlanManager)
@@ -187,9 +188,9 @@ func NewAdminServer(kubeConfig, master string) *AdminService {
 		NamedEntityManager: namedEntityManager,
 		VersionManager:     versionManager,
 		NodeExecutionManager: manager.NewNodeExecutionManager(db, configuration, applicationConfiguration.GetMetadataStoragePrefix(), dataStorageClient,
-			adminScope.NewSubScope("node_execution_manager"), urlData, eventPublisher, nodeExecutionEventWriter),
+			adminScope.NewSubScope("node_execution_manager"), urlData, eventPublisher, cloudEventPublisher, nodeExecutionEventWriter),
 		TaskExecutionManager: manager.NewTaskExecutionManager(db, configuration, dataStorageClient,
-			adminScope.NewSubScope("task_execution_manager"), urlData, eventPublisher),
+			adminScope.NewSubScope("task_execution_manager"), urlData, eventPublisher, cloudEventPublisher),
 		ProjectManager:  manager.NewProjectManager(db, configuration),
 		ResourceManager: resources.NewResourceManager(db, configuration.ApplicationConfiguration()),
 		Metrics:         InitMetrics(adminScope),

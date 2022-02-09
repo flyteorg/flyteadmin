@@ -52,14 +52,15 @@ type nodeExecutionMetrics struct {
 }
 
 type NodeExecutionManager struct {
-	db             repositories.RepositoryInterface
-	config         runtimeInterfaces.Configuration
-	storagePrefix  []string
-	storageClient  *storage.DataStore
-	metrics        nodeExecutionMetrics
-	urlData        dataInterfaces.RemoteURLInterface
-	eventPublisher notificationInterfaces.Publisher
-	dbEventWriter  eventWriter.NodeExecutionEventWriter
+	db                  repositories.RepositoryInterface
+	config              runtimeInterfaces.Configuration
+	storagePrefix       []string
+	storageClient       *storage.DataStore
+	metrics             nodeExecutionMetrics
+	urlData             dataInterfaces.RemoteURLInterface
+	eventPublisher      notificationInterfaces.Publisher
+	cloudEventPublisher notificationInterfaces.Publisher
+	dbEventWriter       eventWriter.NodeExecutionEventWriter
 }
 
 type updateNodeExecutionStatus int
@@ -501,7 +502,8 @@ func (m *NodeExecutionManager) GetNodeExecutionData(
 
 func NewNodeExecutionManager(db repositories.RepositoryInterface, config runtimeInterfaces.Configuration,
 	storagePrefix []string, storageClient *storage.DataStore, scope promutils.Scope, urlData dataInterfaces.RemoteURLInterface,
-	eventPublisher notificationInterfaces.Publisher, eventWriter eventWriter.NodeExecutionEventWriter) interfaces.NodeExecutionInterface {
+	eventPublisher notificationInterfaces.Publisher, cloudEventPublisher notificationInterfaces.Publisher,
+	eventWriter eventWriter.NodeExecutionEventWriter) interfaces.NodeExecutionInterface {
 	metrics := nodeExecutionMetrics{
 		Scope: scope,
 		ActiveNodeExecutions: scope.MustNewGauge("active_node_executions",
@@ -524,14 +526,14 @@ func NewNodeExecutionManager(db repositories.RepositoryInterface, config runtime
 			"overall count of publish event errors when invoking publish()"),
 	}
 	return &NodeExecutionManager{
-		db:     db,
-		config: config,
-
-		storagePrefix:  storagePrefix,
-		storageClient:  storageClient,
-		metrics:        metrics,
-		urlData:        urlData,
-		eventPublisher: eventPublisher,
-		dbEventWriter:  eventWriter,
+		db:                  db,
+		config:              config,
+		storagePrefix:       storagePrefix,
+		storageClient:       storageClient,
+		metrics:             metrics,
+		urlData:             urlData,
+		eventPublisher:      eventPublisher,
+		cloudEventPublisher: eventPublisher,
+		dbEventWriter:       eventWriter,
 	}
 }

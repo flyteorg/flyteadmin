@@ -424,4 +424,5 @@ type ApplicationConfiguration interface {
 	GetNotificationsConfig() *NotificationsConfig
 	GetDomainsConfig() *DomainsConfig
 	GetExternalEventsConfig() *ExternalEventsConfig
+	GetCloudEventsConfig() *ExternalEventsConfig
 }

@@ -47,12 +47,13 @@ type taskExecutionMetrics struct {
 }
 
 type TaskExecutionManager struct {
-	db                 repositories.RepositoryInterface
-	config             runtimeInterfaces.Configuration
-	storageClient      *storage.DataStore
-	metrics            taskExecutionMetrics
-	urlData            dataInterfaces.RemoteURLInterface
-	notificationClient notificationInterfaces.Publisher
+	db                  repositories.RepositoryInterface
+	config              runtimeInterfaces.Configuration
+	storageClient       *storage.DataStore
+	metrics             taskExecutionMetrics
+	urlData             dataInterfaces.RemoteURLInterface
+	notificationClient  notificationInterfaces.Publisher
+	cloudEventPublisher notificationInterfaces.Publisher
 }
 
 func getTaskExecutionContext(ctx context.Context, identifier *core.TaskExecutionIdentifier) context.Context {
@@ -330,7 +331,9 @@ func (m *TaskExecutionManager) GetTaskExecutionData(
 	return response, nil
 }
 
-func NewTaskExecutionManager(db repositories.RepositoryInterface, config runtimeInterfaces.Configuration, storageClient *storage.DataStore, scope promutils.Scope, urlData dataInterfaces.RemoteURLInterface, publisher notificationInterfaces.Publisher) interfaces.TaskExecutionInterface {
+func NewTaskExecutionManager(db repositories.RepositoryInterface, config runtimeInterfaces.Configuration,
+	storageClient *storage.DataStore, scope promutils.Scope, urlData dataInterfaces.RemoteURLInterface,
+	publisher notificationInterfaces.Publisher, cloudEventPublisher notificationInterfaces.Publisher) interfaces.TaskExecutionInterface {
 	metrics := taskExecutionMetrics{
 		Scope: scope,
 		ActiveTaskExecutions: scope.MustNewGauge("active_executions",
@@ -355,11 +358,12 @@ func NewTaskExecutionManager(db repositories.RepositoryInterface, config runtime
 			"overall count of publish event errors when invoking publish()"),
 	}
 	return &TaskExecutionManager{
-		db:                 db,
-		config:             config,
-		storageClient:      storageClient,
-		metrics:            metrics,
-		urlData:            urlData,
-		notificationClient: publisher,
+		db:                  db,
+		config:              config,
+		storageClient:       storageClient,
+		metrics:             metrics,
+		urlData:             urlData,
+		notificationClient:  publisher,
+		cloudEventPublisher: cloudEventPublisher,
 	}
 }
