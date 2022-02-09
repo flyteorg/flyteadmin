@@ -14,10 +14,10 @@ on:
           - boilerplate
           - flyteidl
 jobs:
-  trigger-flyteidl-upgrade:
-    name: ${{ inputs.component }} Upgrade
+  trigger-upgrade:
+    name: ${{ github.event.inputs.component }} Upgrade
     uses: flyteorg/flytetools/.github/workflows/flyte_automation.yml@reuseable
     with:
-      component: ${{ inputs.component }}
+      component: ${{ github.event.inputs.component }}
     secrets:
       FLYTE_BOT_PAT: ${{ secrets.FLYTE_BOT_PAT }}
