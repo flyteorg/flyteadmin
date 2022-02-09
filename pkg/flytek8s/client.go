@@ -55,6 +55,7 @@ func GetRestClientConfig(kubeConfig, master string,
 	var err error
 
 	if kubeConfig != "" {
+		// ExpandEnv allows using $HOME in the path and it will automatically map to the right OS's user home
 		kubeConfigPath := os.ExpandEnv(kubeConfig)
 		kubeConfiguration, err = clientcmd.BuildConfigFromFlags(master, kubeConfigPath)
 		if err != nil {
