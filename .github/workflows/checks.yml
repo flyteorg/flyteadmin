@@ -64,6 +64,7 @@ jobs:
       version: ${{ needs.bump_version.outputs.version }}
       dockerfile: Dockerfile
       push: true
+      repository: ${{ github.repository }}
     secrets:
       FLYTE_BOT_PAT: ${{ secrets.FLYTE_BOT_PAT }}
       FLYTE_BOT_USERNAME: ${{ secrets.FLYTE_BOT_USERNAME }}
@@ -75,6 +76,7 @@ jobs:
     with:
       version: ${{ needs.bump_version.outputs.version }}
       push: true
+      repository: flyteorg/flytescheduler
       dockerfile: Dockerfile.scheduler
     secrets:
       FLYTE_BOT_PAT: ${{ secrets.FLYTE_BOT_PAT }}
