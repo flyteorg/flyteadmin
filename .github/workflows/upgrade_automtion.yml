@@ -1,8 +1,5 @@
 name: Upgrade Automation
 on:
-  push:
-    branches:
-      - reuseable
   workflow_dispatch:
     inputs:
       component:
