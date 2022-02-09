@@ -113,6 +113,9 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authCtx interf
 		grpc.StreamInterceptor(grpcPrometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(chainedUnaryInterceptors),
 	}
+	if cfg.MaxGrpcMessageSizeBytes > 0 {
+		serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(cfg.MaxGrpcMessageSizeBytes))
+	}
 	serverOpts = append(serverOpts, opts...)
 	grpcServer := grpc.NewServer(serverOpts...)
 	grpcPrometheus.Register(grpcServer)
@@ -358,7 +361,14 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig, authCfg *
 		ServerName: cfg.GetHostAddress(),
 		RootCAs:    certPool,
 	})
-	httpServer, err := newHTTPServer(ctx, cfg, authCfg, authCtx, cfg.GetHostAddress(), grpc.WithTransportCredentials(dialCreds))
+	serverOpts := []grpc.DialOption{
+		grpc.WithTransportCredentials(dialCreds),
+	}
+	if cfg.MaxGrpcMessageSizeBytes > 0 {
+		serverOpts = append(serverOpts,
+			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(cfg.MaxGrpcMessageSizeBytes)))
+	}
+	httpServer, err := newHTTPServer(ctx, cfg, authCfg, authCtx, cfg.GetHostAddress(), serverOpts...)
 	if err != nil {
 		return err
 	}
