@@ -11,14 +11,14 @@ COPY go.mod go.sum /go/src/github.com/flyteorg/flyteadmin/
 WORKDIR /go/src/github.com/flyteorg/flyteadmin
 
 # Pull dependencies
-RUN go mod download
+RUN go mod vendor && go mod download
 
 # COPY the rest of the source code
 COPY . /go/src/github.com/flyteorg/flyteadmin/
 
 # This 'linux_compile' target should compile binaries to the /artifacts directory
 # The main entrypoint should be compiled to /artifacts/flyteadmin
-RUN make linux_compile
+RUN go mod vendor && make linux_compile
 
 # update the PATH to include the /artifacts directory
 ENV PATH="/artifacts:${PATH}"

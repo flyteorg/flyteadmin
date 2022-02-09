@@ -19,6 +19,7 @@ const remoteData = "remoteData"
 const notifications = "notifications"
 const domains = "domains"
 const externalEvents = "externalEvents"
+const cloudEvents = "cloudEvents"
 const metricPort = 10254
 const postgres = "postgres"
 
@@ -86,6 +87,10 @@ var externalEventsConfig = config.MustRegisterSection(externalEvents, &interface
 	Type: common.Local,
 })
 
+var cloudEventsConfig = config.MustRegisterSection(cloudEvents, &interfaces.CloudEventsConfig{
+	Type: common.Local,
+})
+
 // Implementation of an interfaces.ApplicationConfiguration
 type ApplicationConfigurationProvider struct{}
 
@@ -139,6 +144,10 @@ func (p *ApplicationConfigurationProvider) GetDomainsConfig() *interfaces.Domain
 
 func (p *ApplicationConfigurationProvider) GetExternalEventsConfig() *interfaces.ExternalEventsConfig {
 	return externalEventsConfig.GetConfig().(*interfaces.ExternalEventsConfig)
+}
+
+func (p *ApplicationConfigurationProvider) GetCloudEventsConfig() *interfaces.CloudEventsConfig {
+	return cloudEventsConfig.GetConfig().(*interfaces.CloudEventsConfig)
 }
 
 func NewApplicationConfigurationProvider() interfaces.ApplicationConfiguration {

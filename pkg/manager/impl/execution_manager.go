@@ -6,10 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	pbcloudevents "github.com/cloudevents/sdk-go/binding/format/protobuf/v2"
-	cloudeventsModel "github.com/cloudevents/sdk-go/binding/format/protobuf/v2/internal/pb"
-	cloudevents "github.com/cloudevents/sdk-go/v2"
-
 	"github.com/flyteorg/flyteadmin/pkg/workflowengine"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
@@ -1245,37 +1241,12 @@ func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admi
 		m.systemMetrics.PublishEventError.Inc()
 		logger.Infof(ctx, "error publishing event [%+v] with err: [%v]", request.RequestId, err)
 	}
-	m.publishCloudEvent(ctx, request)
+	if err := m.cloudEventPublisher.Publish(ctx, proto.MessageName(&request), &request); err != nil {
+		m.systemMetrics.PublishEventError.Inc()
+		logger.Infof(ctx, "error publishing cloud event [%+v] with err: [%v]", request.RequestId, err)
+	}
 
 	return &admin.WorkflowExecutionEventResponse{}, nil
-}
-
-func (m *ExecutionManager) publishCloudEvent(ctx context.Context, request admin.WorkflowExecutionEventRequest) {
-	event := cloudevents.NewEvent()
-	event.SetType("com.flyte.workflow")
-	event.SetSource("github.com/flyteadmin/pkg/manager/impl/execution_manager.go")
-	if err := event.SetData(pbcloudevents.ContentTypeProtobuf, request); err != nil {
-		m.systemMetrics.UnexpectedDataError.Inc()
-		logger.Infof(ctx, "Failed to encode cloudEvent [%+v] with err: [%v]", request.RequestId, err)
-		return
-	}
-	eventProto := cloudeventsModel.CloudEvent{}
-	eventByte, err := pbcloudevents.Protobuf.Marshal(&event)
-	if err != nil {
-		m.systemMetrics.UnexpectedDataError.Inc()
-		logger.Infof(ctx, "Failed to marshal cloudEvent [%+v] with err: [%v]", request.RequestId, err)
-		return
-	}
-	if err := proto.Unmarshal(eventByte, &eventProto); err != nil {
-		m.systemMetrics.UnexpectedDataError.Inc()
-		logger.Infof(ctx, "Failed to unmarshal cloudEvent [%+v] with err: [%v]", request.RequestId, err)
-		return
-	}
-
-	if err := m.cloudEventPublisher.Publish(ctx, proto.MessageName(&eventProto), &eventProto); err != nil {
-		m.systemMetrics.PublishEventError.Inc()
-		logger.Infof(ctx, "error publishing cloudEvent [%+v] with err: [%v]", request.RequestId, err)
-	}
 }
 
 func (m *ExecutionManager) GetExecution(
