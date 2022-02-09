@@ -48,7 +48,6 @@ jobs:
 
   goreleaser:
     name: Goreleaser
-    if: ${{ github.event_name != 'pull_request' }}
     needs: [ bump_version ] # Only to ensure it can successfully build
     uses: flyteorg/flytetools/.github/workflows/goreleaser.yml@master
     secrets:
@@ -56,7 +55,6 @@ jobs:
 
   push_docker_image:
     name: Build & Push Flyteadmin Image
-    if: ${{ github.event_name != 'pull_request' }}
     needs: [ bump_version ]
     uses: flyteorg/flytetools/.github/workflows/publish.yml@master
     with:
@@ -69,7 +67,6 @@ jobs:
 
   push-docker-image-flytescheduler:
     name: Build & Push Flytescheduler Image
-    if: ${{ github.event_name != 'pull_request' }}
     needs: [ bump_version ]
     uses: flyteorg/flytetools/.github/workflows/publish.yml@master
     with:
