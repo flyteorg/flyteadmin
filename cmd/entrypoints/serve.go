@@ -113,8 +113,8 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authCtx interf
 		grpc.StreamInterceptor(grpcPrometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(chainedUnaryInterceptors),
 	}
-	if cfg.MaxGrpcMessageSizeBytes > 0 {
-		serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(cfg.MaxGrpcMessageSizeBytes))
+	if cfg.GrpcConfig.MaxGrpcMessageSizeBytes > 0 {
+		serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(cfg.GrpcConfig.MaxGrpcMessageSizeBytes))
 	}
 	serverOpts = append(serverOpts, opts...)
 	grpcServer := grpc.NewServer(serverOpts...)
@@ -128,7 +128,7 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authCtx interf
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus("flyteadmin", grpc_health_v1.HealthCheckResponse_SERVING)
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
-	if cfg.GrpcServerReflection {
+	if cfg.GrpcConfig.ServerReflection || cfg.GrpcServerReflection {
 		reflection.Register(grpcServer)
 	}
 	return grpcServer, nil
@@ -270,9 +270,9 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig, authCfg
 		grpc.WithInsecure(),
 		grpc.WithMaxHeaderListSize(common.MaxResponseStatusBytes),
 	}
-	if cfg.MaxGrpcMessageSizeBytes > 0 {
+	if cfg.GrpcConfig.MaxGrpcMessageSizeBytes > 0 {
 		grpcOptions = append(grpcOptions,
-			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(cfg.MaxGrpcMessageSizeBytes)))
+			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(cfg.GrpcConfig.MaxGrpcMessageSizeBytes)))
 	}
 	httpServer, err := newHTTPServer(ctx, cfg, authCfg, authCtx, cfg.GetGrpcHostAddress(), grpcOptions...)
 	if err != nil {
@@ -364,9 +364,9 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig, authCfg *
 	serverOpts := []grpc.DialOption{
 		grpc.WithTransportCredentials(dialCreds),
 	}
-	if cfg.MaxGrpcMessageSizeBytes > 0 {
+	if cfg.GrpcConfig.MaxGrpcMessageSizeBytes > 0 {
 		serverOpts = append(serverOpts,
-			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(cfg.MaxGrpcMessageSizeBytes)))
+			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(cfg.GrpcConfig.MaxGrpcMessageSizeBytes)))
 	}
 	httpServer, err := newHTTPServer(ctx, cfg, authCfg, authCtx, cfg.GetHostAddress(), serverOpts...)
 	if err != nil {
