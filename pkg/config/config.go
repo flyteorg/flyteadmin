@@ -15,7 +15,7 @@ type ServerConfig struct {
 	HTTPPort             int                   `json:"httpPort" pflag:",On which http port to serve admin"`
 	GrpcPort             int                   `json:"grpcPort" pflag:",deprecated"`
 	GrpcServerReflection bool                  `json:"grpcServerReflection" pflag:",deprecated"`
-	KubeConfig           string                `json:"kube-config" pflag:",Path to kubernetes client config file."`
+	KubeConfig           string                `json:"kube-config" pflag:",Path to kubernetes client config file, default is empty, useful for incluster config."`
 	Master               string                `json:"master" pflag:",The address of the Kubernetes API server."`
 	Security             ServerSecurityOptions `json:"security"`
 	GrpcConfig           GrpcConfig            `json:"grpcConfig"`
