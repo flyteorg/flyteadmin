@@ -261,11 +261,12 @@ data:
         - "metadata"
         - "admin"
     database:
-      port: 5432
-      username: postgres
-      host: postgres
-      dbname: postgres
-      options: "sslmode=disable"
+      postgresConfig:
+        port: 5432
+        username: postgres
+        host: postgres
+        dbname: postgres
+        options: "sslmode=disable"
     scheduler:
       eventScheduler:
         scheme: local
