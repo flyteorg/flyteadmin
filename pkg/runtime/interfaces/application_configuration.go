@@ -5,7 +5,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// DbConfigSection is used to for initiating the database connection with the store that holds registered
+// DbConfig is used to for initiating the database connection with the store that holds registered
 // entities (e.g. workflows, tasks, launch plans...)
 type DbConfig struct {
 	DeprecatedHost         string `json:"host" pflag:",deprecated"`
@@ -21,6 +21,7 @@ type DbConfig struct {
 	PostgresConfig                           PostgresConfig `json:"postgresConfig"`
 }
 
+// PostgresConfig includes specific config options for opening a connection to a postgres database.
 type PostgresConfig struct {
 	Host   string `json:"host" pflag:",The host name of the database server"`
 	Port   int    `json:"port" pflag:",The port name of the database server"`

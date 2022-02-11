@@ -86,7 +86,7 @@ var externalEventsConfig = config.MustRegisterSection(externalEvents, &interface
 type ApplicationConfigurationProvider struct{}
 
 func (p *ApplicationConfigurationProvider) GetDbConfig() *interfaces.DbConfig {
-	return flyteAdminConfig.GetConfig().(*interfaces.DbConfig)
+	return databaseConfig.GetConfig().(*interfaces.DbConfig)
 }
 
 func (p *ApplicationConfigurationProvider) GetTopLevelConfig() *interfaces.ApplicationConfig {
