@@ -14,19 +14,7 @@ tasks:
       - container: container
       - container_array: K8S-ARRAY
 server:
-  httpPort: 8088
-  grpcPort: 8089
-  grpcServerReflection: true
   kube-config: "$HOME/.flyte/k3s/k3s.yaml"
-  security:
-    secure: false
-    useAuth: false
-    allowCors: true
-    allowedOrigins:
-      # Accepting all domains for Sandbox installation
-      - "*"
-    allowedHeaders:
-      - "Content-Type"
 flyteadmin:
   runScheduler: false
 database:
@@ -50,7 +38,7 @@ storage:
   container: "my-s3-bucket"
 Logger:
   show-source: true
-  level: 6
+  level: 4
 admin:
   endpoint: localhost:8089
   insecure: true

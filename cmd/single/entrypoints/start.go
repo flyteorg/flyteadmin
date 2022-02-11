@@ -3,7 +3,8 @@ package entrypoints
 import (
 	"context"
 	adminEntrypoint "github.com/flyteorg/flyteadmin/cmd/entrypoints"
-	propellerEntrypoint "github.com/flyteorg/flytepropeller/cmd/controller/cmd"
+	propellerEntrypoint "github.com/flyteorg/flytepropeller/pkg/controller"
+	propellerConfig "github.com/flyteorg/flytepropeller/pkg/controller/config"
 
 	_ "github.com/golang/glog"
 	"github.com/spf13/cobra"
@@ -18,7 +19,7 @@ func startAdmin(ctx context.Context) error {
 }
 
 func startPropeller(ctx context.Context) error {
-	return propellerEntrypoint.Run(ctx)
+	return propellerEntrypoint.StartController(ctx, propellerConfig.GetConfig(), "")
 }
 
 var startCmd = &cobra.Command{

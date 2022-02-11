@@ -3,7 +3,6 @@ package entrypoints
 import (
 	"context"
 	"crypto/tls"
-
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -159,6 +158,11 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authCfg *authC
 	// Register the server that will serve HTTP/REST Traffic
 	mux := http.NewServeMux()
 
+	fs := http.FileServer(http.Dir("./dist"))
+	mux.HandleFunc("/console", func(writer http.ResponseWriter, request *http.Request) {
+		http.ServeFile(writer, request, "./dist/index.html")
+	})
+
 	// Register healthcheck
 	mux.HandleFunc("/healthcheck", healthCheckFunc)
 
@@ -203,7 +207,16 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authCfg *authC
 		return nil, errors.Wrap(err, "error registering identity service")
 	}
 
-	mux.Handle("/", gwmux)
+	mux.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
+		if strings.Contains(request.RequestURI, ".js") || strings.Contains(request.RequestURI, ".html") ||
+			strings.Contains(request.RequestURI, ".css") || strings.Contains(request.RequestURI, ".svg") ||
+			strings.Contains(request.RequestURI, ".json") || strings.Contains(request.RequestURI, ".png") ||
+			strings.Contains(request.RequestURI, ".ico") {
+			fs.ServeHTTP(writer, request)
+		} else {
+			gwmux.ServeHTTP(writer, request)
+		}
+	})
 
 	return mux, nil
 }
