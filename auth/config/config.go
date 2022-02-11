@@ -201,7 +201,7 @@ type UserAuthConfig struct {
 	RedirectURL config.URL `json:"redirectUrl"`
 
 	// OpenID defines settings for connecting and trusting an OpenIDConnect provider.
-	OpenID OpenIDOptions `json:"openId" pflag:",OpenID Configuration for User Auth"`
+	OpenID OpenIDOptions `json:"openId" pflag:",OpenID Configuration for DeprecatedUser Auth"`
 	// Possibly add basicAuth & SAML/p support.
 
 	// Secret names, defaults are set in DefaultConfig variable above but are possible to override through configs.
