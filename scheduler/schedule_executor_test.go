@@ -10,7 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/flyteorg/flyteadmin/pkg/repositories"
+	repositoryInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+
 	"github.com/flyteorg/flyteadmin/pkg/repositories/mocks"
 	adminModels "github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
@@ -26,7 +27,7 @@ import (
 )
 
 var schedules []models.SchedulableEntity
-var db repositories.RepositoryInterface
+var db repositoryInterfaces.Repository
 
 func setupScheduleExecutor(t *testing.T, s string) ScheduledExecutor {
 	db = mocks.NewMockRepository()
