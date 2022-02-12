@@ -18,7 +18,7 @@ type DbConfig struct {
 	DeprecatedDebug        bool   `json:"debug" pflag:",deprecated"`
 
 	DisableForeignKeyConstraintWhenMigrating bool           `json:"disableForeignKeyConstraintWhenMigrating" pflag:",Whether to disable gorm foreign keys when migrating the db"`
-	PostgresConfig                           PostgresConfig `json:"postgresConfig"`
+	PostgresConfig                           PostgresConfig `json:"postgres"`
 }
 
 // PostgresConfig includes specific config options for opening a connection to a postgres database.
