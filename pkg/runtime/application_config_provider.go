@@ -20,13 +20,11 @@ const KB = 1024
 const MB = KB * KB
 
 var databaseConfig = config.MustRegisterSection(database, &interfaces.DbConfig{
-	PostgresConfig: interfaces.PostgresConfig{
-		Port:         5432,
-		User:         postgres,
-		Host:         postgres,
-		DbName:       postgres,
-		ExtraOptions: "sslmode=disable",
-	},
+	DeprecatedPort:         5432,
+	DeprecatedUser:         postgres,
+	DeprecatedHost:         postgres,
+	DeprecatedDbName:       postgres,
+	DeprecatedExtraOptions: "sslmode=disable",
 })
 var flyteAdminConfig = config.MustRegisterSection(flyteAdmin, &interfaces.ApplicationConfig{
 	ProfilerPort:          metricPort,

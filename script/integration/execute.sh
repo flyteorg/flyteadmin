@@ -23,6 +23,9 @@ function wait_for_flyte_deploys() {
     echo "waiting for flyte deploy to complete..."
     echo ""
 
+    kubectl -n flyte get pod flyteadmin -o yaml
+    kubectl -n flyte describe pod flyteadmin
+
     # wait for flyteadmin deployment to complete
     kubectl -n flyte rollout status deployment flyteadmin
     echo ""
