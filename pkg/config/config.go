@@ -18,15 +18,15 @@ type ServerConfig struct {
 	KubeConfig           string                `json:"kube-config" pflag:",Path to kubernetes client config file, default is empty, useful for incluster config."`
 	Master               string                `json:"master" pflag:",The address of the Kubernetes API server."`
 	Security             ServerSecurityOptions `json:"security"`
-	GrpcConfig           GrpcConfig            `json:"grpcConfig"`
+	GrpcConfig           GrpcConfig            `json:"grpc"`
 	// Deprecated: please use auth.AppAuth.ThirdPartyConfig instead.
 	DeprecatedThirdPartyConfig authConfig.ThirdPartyConfigOptions `json:"thirdPartyConfig" pflag:",Deprecated please use auth.appAuth.thirdPartyConfig instead."`
 }
 
 type GrpcConfig struct {
-	Port                    int  `json:"grpcPort" pflag:",On which grpc port to serve admin"`
-	ServerReflection        bool `json:"grpcServerReflection" pflag:",Enable GRPC Server Reflection"`
-	MaxGrpcMessageSizeBytes int  `json:"maxGrpcMessageSizeBytes" pflag:",The max size in bytes for incoming gRPC messages"`
+	Port                    int  `json:"port" pflag:",On which grpc port to serve admin"`
+	ServerReflection        bool `json:"serverReflection" pflag:",Enable GRPC Server Reflection"`
+	MaxGrpcMessageSizeBytes int  `json:"maxMessageSizeBytes" pflag:",The max size in bytes for incoming gRPC messages"`
 }
 
 type ServerSecurityOptions struct {

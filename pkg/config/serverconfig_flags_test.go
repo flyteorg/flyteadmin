@@ -281,13 +281,13 @@ func TestServerConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
-	t.Run("Test_grpcConfig.grpcPort", func(t *testing.T) {
+	t.Run("Test_grpc.port", func(t *testing.T) {
 
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("grpcConfig.grpcPort", testValue)
-			if vInt, err := cmdFlags.GetInt("grpcConfig.grpcPort"); err == nil {
+			cmdFlags.Set("grpc.port", testValue)
+			if vInt, err := cmdFlags.GetInt("grpc.port"); err == nil {
 				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vInt), &actual.GrpcConfig.Port)
 
 			} else {
@@ -295,13 +295,13 @@ func TestServerConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
-	t.Run("Test_grpcConfig.grpcServerReflection", func(t *testing.T) {
+	t.Run("Test_grpc.serverReflection", func(t *testing.T) {
 
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("grpcConfig.grpcServerReflection", testValue)
-			if vBool, err := cmdFlags.GetBool("grpcConfig.grpcServerReflection"); err == nil {
+			cmdFlags.Set("grpc.serverReflection", testValue)
+			if vBool, err := cmdFlags.GetBool("grpc.serverReflection"); err == nil {
 				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vBool), &actual.GrpcConfig.ServerReflection)
 
 			} else {
@@ -309,13 +309,13 @@ func TestServerConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
-	t.Run("Test_grpcConfig.maxGrpcMessageSizeBytes", func(t *testing.T) {
+	t.Run("Test_grpc.maxMessageSizeBytes", func(t *testing.T) {
 
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("grpcConfig.maxGrpcMessageSizeBytes", testValue)
-			if vInt, err := cmdFlags.GetInt("grpcConfig.maxGrpcMessageSizeBytes"); err == nil {
+			cmdFlags.Set("grpc.maxMessageSizeBytes", testValue)
+			if vInt, err := cmdFlags.GetInt("grpc.maxMessageSizeBytes"); err == nil {
 				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vInt), &actual.GrpcConfig.MaxGrpcMessageSizeBytes)
 
 			} else {
