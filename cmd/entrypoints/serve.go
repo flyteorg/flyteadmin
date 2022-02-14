@@ -158,11 +158,6 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authCfg *authC
 	// Register the server that will serve HTTP/REST Traffic
 	mux := http.NewServeMux()
 
-	fs := http.FileServer(http.Dir("./dist"))
-	mux.HandleFunc("/console", func(writer http.ResponseWriter, request *http.Request) {
-		http.ServeFile(writer, request, "./dist/index.html")
-	})
-
 	// Register healthcheck
 	mux.HandleFunc("/healthcheck", healthCheckFunc)
 
@@ -207,16 +202,7 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authCfg *authC
 		return nil, errors.Wrap(err, "error registering identity service")
 	}
 
-	mux.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
-		if strings.Contains(request.RequestURI, ".js") || strings.Contains(request.RequestURI, ".html") ||
-			strings.Contains(request.RequestURI, ".css") || strings.Contains(request.RequestURI, ".svg") ||
-			strings.Contains(request.RequestURI, ".json") || strings.Contains(request.RequestURI, ".png") ||
-			strings.Contains(request.RequestURI, ".ico") {
-			fs.ServeHTTP(writer, request)
-		} else {
-			gwmux.ServeHTTP(writer, request)
-		}
-	})
+	mux.Handle("/", gwmux)
 
 	return mux, nil
 }
@@ -275,6 +261,18 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig, authCfg
 	go func() {
 		err := grpcServer.Serve(lis)
 		logger.Fatalf(ctx, "Failed to create GRPC Server, Err: ", err)
+	}()
+
+	go func() {
+		reactHandler := http.NewServeMux()
+		reactHandler.Handle("/", http.FileServer(http.Dir("./dist")))
+		reactHandler.HandleFunc("/console", func(writer http.ResponseWriter, request *http.Request) {
+			http.ServeFile(writer, request, "./dist/index.html")
+		})
+		err = http.ListenAndServe(":8080", reactHandler)
+		if err != nil {
+			logger.Fatalf(ctx, "Failed to start ricebox!")
+		}
 	}()
 
 	logger.Infof(ctx, "Starting HTTP/1 Gateway server on %s", cfg.GetHostAddress())

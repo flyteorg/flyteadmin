@@ -54,7 +54,7 @@ var defaultServerConfig = &ServerConfig{
 	Security: ServerSecurityOptions{
 		AllowCors:      true,
 		AllowedHeaders: []string{"Content-Type", "flyte-authorization"},
-		AllowedOrigins: []string{"*"},
+		AllowedOrigins: []string{"http://localhost:8080"},
 	},
 }
 var serverConfig = config.MustRegisterSection(SectionKey, defaultServerConfig)
