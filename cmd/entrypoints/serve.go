@@ -3,6 +3,7 @@ package entrypoints
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -158,6 +159,17 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authCfg *authC
 	// Register the server that will serve HTTP/REST Traffic
 	mux := http.NewServeMux()
 
+	// Serves console
+	fs := http.StripPrefix("/console/", http.FileServer(http.Dir("./dist")))
+	mux.HandleFunc("/console/", func(writer http.ResponseWriter, request *http.Request) {
+		fmt.Printf("all files under console returning, %s\n", request.URL.Path)
+		fs.ServeHTTP(writer, request)
+	})
+	mux.HandleFunc("/console", func(writer http.ResponseWriter, request *http.Request) {
+		fmt.Println("returning index.html")
+		http.ServeFile(writer, request, "./dist/index.html")
+	})
+
 	// Register healthcheck
 	mux.HandleFunc("/healthcheck", healthCheckFunc)
 
@@ -261,18 +273,6 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig, authCfg
 	go func() {
 		err := grpcServer.Serve(lis)
 		logger.Fatalf(ctx, "Failed to create GRPC Server, Err: ", err)
-	}()
-
-	go func() {
-		reactHandler := http.NewServeMux()
-		reactHandler.Handle("/", http.FileServer(http.Dir("./dist")))
-		reactHandler.HandleFunc("/console", func(writer http.ResponseWriter, request *http.Request) {
-			http.ServeFile(writer, request, "./dist/index.html")
-		})
-		err = http.ListenAndServe(":8080", reactHandler)
-		if err != nil {
-			logger.Fatalf(ctx, "Failed to start ricebox!")
-		}
 	}()
 
 	logger.Infof(ctx, "Starting HTTP/1 Gateway server on %s", cfg.GetHostAddress())

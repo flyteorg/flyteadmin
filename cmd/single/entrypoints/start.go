@@ -19,7 +19,7 @@ func startAdmin(ctx context.Context) error {
 }
 
 func startPropeller(ctx context.Context) error {
-	return propellerEntrypoint.StartController(ctx, propellerConfig.GetConfig(), "")
+	return propellerEntrypoint.StartController(ctx, propellerConfig.GetConfig(), "all")
 }
 
 var startCmd = &cobra.Command{

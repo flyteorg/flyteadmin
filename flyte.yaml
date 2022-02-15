@@ -3,7 +3,7 @@
 # Look in the artifacts directory in the flyte repo for what's actually run
 # https://github.com/lyft/flyte/blob/b47565c9998cde32b0b5f995981e3f3c990fa7cd/artifacts/flyteadmin.yaml#L72
 propeller:
-  kube-config: "$HOME/.flyte/k3s/k3s.yaml"
+  kube-config: "$HOME/.kube/config"
 tasks:
   task-plugins:
     enabled-plugins:
@@ -14,7 +14,7 @@ tasks:
       - container: container
       - container_array: K8S-ARRAY
 server:
-  kube-config: "$HOME/.flyte/k3s/k3s.yaml"
+  kube-config: "$HOME/.kube/config"
 flyteadmin:
   runScheduler: false
 database:
@@ -38,7 +38,7 @@ storage:
   container: "my-s3-bucket"
 Logger:
   show-source: true
-  level: 4
+  level: 5
 admin:
   endpoint: localhost:8089
   insecure: true
