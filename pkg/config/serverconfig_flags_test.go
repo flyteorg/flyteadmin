@@ -316,7 +316,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("grpc.maxMessageSizeBytes", testValue)
 			if vInt, err := cmdFlags.GetInt("grpc.maxMessageSizeBytes"); err == nil {
-				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vInt), &actual.GrpcConfig.MaxGrpcMessageSizeBytes)
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vInt), &actual.GrpcConfig.MaxMessageSizeBytes)
 
 			} else {
 				assert.FailNow(t, err.Error())
