@@ -101,6 +101,6 @@ func GetDB(ctx context.Context, dbConfig *runtimeInterfaces.DbConfig, logConfig 
 
 	return gorm.Open(dialector, &gorm.Config{
 		Logger:                                   gormLogger.Default.LogMode(logLevel),
-		DisableForeignKeyConstraintWhenMigrating: dbConfig.DisableForeignKeyConstraintWhenMigrating,
+		DisableForeignKeyConstraintWhenMigrating: !dbConfig.EnableForeignKeyConstraintWhenMigrating,
 	})
 }

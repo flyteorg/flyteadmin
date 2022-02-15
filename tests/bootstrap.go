@@ -37,7 +37,7 @@ func getLocalDbConfig() *runtimeInterfaces.DbConfig {
 		PostgresConfig: runtimeInterfaces.PostgresConfig{
 			Host:   "localhost",
 			Port:   5432,
-			DbName: "postgres",
+			DbName: "flyteadmin",
 			User:   "postgres",
 		},
 	}
