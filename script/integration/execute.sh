@@ -23,11 +23,6 @@ function wait_for_flyte_deploys() {
     echo "waiting for flyte deploy to complete..."
     echo ""
 
-    kubectl -n flyte get deployment flyteadmin -o yaml
-    kubectl -n flyte describe deploy flyteadmin
-    kubectl -n flyte describe service flyteadmin
-    kubectl -n flyte get configmap flyte-admin-config   -o yaml
-
     # wait for flyteadmin deployment to complete
     kubectl -n flyte rollout status deployment flyteadmin
     echo ""
