@@ -74,11 +74,11 @@ func SetConfig(s *ServerConfig) {
 }
 
 func (s ServerConfig) GetHostAddress() string {
-	return fmt.Sprintf("localhost:%d", s.HTTPPort)
+	return fmt.Sprintf("0.0.0.0:%d", s.HTTPPort)
 }
 
 func (s ServerConfig) GetGrpcHostAddress() string {
-	return fmt.Sprintf("localhost:%d", s.GrpcPort)
+	return fmt.Sprintf("0.0.0.0:%d", s.GrpcPort)
 }
 
 func init() {
