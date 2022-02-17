@@ -1206,7 +1206,11 @@ func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admi
 			request.Event.ExecutionId, err)
 		return nil, err
 	}
-	err = m.db.ExecutionRepo().Update(ctx, *executionModel)
+	updateFilters, err := executions.GetUpdateExecutionFilters(request.Event.Phase)
+	if err != nil {
+		return nil, err
+	}
+	err = m.db.ExecutionRepo().Update(ctx, *executionModel, updateFilters)
 	if err != nil {
 		logger.Debugf(ctx, "Failed to update execution with CreateWorkflowEvent [%+v] with err %v",
 			request, err)
@@ -1286,7 +1290,7 @@ func (m *ExecutionManager) UpdateExecution(ctx context.Context, request admin.Ex
 		return nil, err
 	}
 
-	if err := m.db.ExecutionRepo().Update(ctx, *executionModel); err != nil {
+	if err := m.db.ExecutionRepo().Update(ctx, *executionModel, make([]common.InlineFilter, 0)); err != nil {
 		return nil, err
 	}
 
@@ -1319,7 +1323,7 @@ func (m *ExecutionManager) GetExecutionData(
 		}
 		// Update model so as not to offload again.
 		executionModel.InputsURI = newInputsURI
-		if err := m.db.ExecutionRepo().Update(ctx, *executionModel); err != nil {
+		if err := m.db.ExecutionRepo().Update(ctx, *executionModel, make([]common.InlineFilter, 0)); err != nil {
 			return nil, err
 		}
 	}
@@ -1521,11 +1525,16 @@ func (m *ExecutionManager) TerminateExecution(
 		logger.Debugf(ctx, "failed to add abort metadata for execution [%+v] with err: %v", request.Id, err)
 		return nil, err
 	}
-	err = m.db.ExecutionRepo().Update(ctx, executionModel)
+	filters, err := executions.GetUpdateExecutionFilters(core.WorkflowExecution_ABORTING)
+	if err != nil {
+		return nil, err
+	}
+	err = m.db.ExecutionRepo().Update(ctx, executionModel, filters)
 	if err != nil {
 		logger.Debugf(ctx, "failed to save abort cause for terminated execution: %+v with err: %v", request.Id, err)
 		return nil, err
 	}
+	m.dbEventWriter.WriteTerminate(&request)
 	return &admin.ExecutionTerminateResponse{}, nil
 }
 

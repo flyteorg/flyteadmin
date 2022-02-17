@@ -28,6 +28,7 @@ const (
 	Equal
 	NotEqual
 	ValueIn
+	ValueNotIn
 )
 
 // String formats for various filter expression queries
@@ -42,6 +43,7 @@ const (
 	equalQuery              = "%s = ?"
 	notEqualQuery           = "%s <> ?"
 	valueInQuery            = "%s in (?)"
+	valueNotInQuery         = "%s not in (?)"
 )
 
 // Set of available filters which exclusively accept a single argument value.
@@ -57,7 +59,8 @@ var singleValueFilters = map[FilterExpression]bool{
 
 // Set of available filters which exclusively accept repeated argument values.
 var repeatedValueFilters = map[FilterExpression]bool{
-	ValueIn: true,
+	ValueIn:    true,
+	ValueNotIn: true,
 }
 
 const EqualExpression = "eq"
@@ -71,6 +74,7 @@ var filterNameMappings = map[string]FilterExpression{
 	EqualExpression: Equal,
 	"ne":            NotEqual,
 	"value_in":      ValueIn,
+	"value_not_in":  ValueNotIn,
 }
 
 var executionIdentifierFields = map[string]bool{
@@ -107,6 +111,8 @@ func getFilterExpressionName(expression FilterExpression) string {
 		return "not equal"
 	case ValueIn:
 		return "value in"
+	case ValueNotIn:
+		return "value not in"
 	default:
 		return ""
 	}
@@ -165,9 +171,15 @@ func (f *inlineFilterImpl) GetField() string {
 
 func (f *inlineFilterImpl) getGormQueryExpr(formattedField string) (GormQueryExpr, error) {
 
-	// ValueIn is special because it uses repeating values.
+	// ValueIn/ValueNotIn are special because they use repeating values.
 	if f.function == ValueIn {
 		queryStr := fmt.Sprintf(valueInQuery, formattedField)
+		return GormQueryExpr{
+			Query: queryStr,
+			Args:  f.repeatedValue,
+		}, nil
+	} else if f.function == ValueNotIn {
+		queryStr := fmt.Sprintf(valueNotInQuery, formattedField)
 		return GormQueryExpr{
 			Query: queryStr,
 			Args:  f.repeatedValue,

@@ -3,12 +3,14 @@ package mocks
 import (
 	"context"
 
+	"github.com/flyteorg/flyteadmin/pkg/common"
+
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 )
 
 type CreateExecutionFunc func(ctx context.Context, input models.Execution) error
-type UpdateExecutionFunc func(ctx context.Context, execution models.Execution) error
+type UpdateExecutionFunc func(ctx context.Context, execution models.Execution, filters []common.InlineFilter) error
 type GetExecutionFunc func(ctx context.Context, input interfaces.Identifier) (models.Execution, error)
 type ListExecutionFunc func(ctx context.Context, input interfaces.ListResourceInput) (
 	interfaces.ExecutionCollectionOutput, error)
@@ -35,9 +37,9 @@ func (r *MockExecutionRepo) SetUpdateCallback(updateFunction UpdateExecutionFunc
 	r.updateFunction = updateFunction
 }
 
-func (r *MockExecutionRepo) Update(ctx context.Context, execution models.Execution) error {
+func (r *MockExecutionRepo) Update(ctx context.Context, execution models.Execution, filters []common.InlineFilter) error {
 	if r.updateFunction != nil {
-		return r.updateFunction(ctx, execution)
+		return r.updateFunction(ctx, execution, filters)
 	}
 	return nil
 }

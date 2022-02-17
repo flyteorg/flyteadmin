@@ -2,6 +2,11 @@ package implementations
 
 import (
 	"context"
+	"time"
+
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	repositoryInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 
@@ -20,6 +25,16 @@ type workflowExecutionEventWriter struct {
 
 func (w *workflowExecutionEventWriter) Write(event admin.WorkflowExecutionEventRequest) {
 	w.events <- event
+}
+
+func (w *workflowExecutionEventWriter) WriteTerminate(request *admin.ExecutionTerminateRequest) {
+	w.Write(admin.WorkflowExecutionEventRequest{
+		Event: &event.WorkflowExecutionEvent{
+			ExecutionId: request.Id,
+			Phase:       core.WorkflowExecution_ABORTING,
+			OccurredAt:  timestamppb.New(time.Now()), // This is approximate since we don't get an event timestamp in Terminate calls.
+		},
+	})
 }
 
 func (w *workflowExecutionEventWriter) Run() {

@@ -1327,7 +1327,7 @@ func TestCreateWorkflowEvent(t *testing.T) {
 	}
 	closureBytes, _ := proto.Marshal(&closure)
 	updateExecutionFunc := func(
-		context context.Context, execution models.Execution) error {
+		context context.Context, execution models.Execution, filters []common.InlineFilter) error {
 
 		assert.Equal(t, "project", execution.Project)
 		assert.Equal(t, "domain", execution.Domain)
@@ -1380,7 +1380,7 @@ func TestCreateWorkflowEvent_TerminalState(t *testing.T) {
 	}
 
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
-	updateExecutionFunc := func(context context.Context, execution models.Execution) error {
+	updateExecutionFunc := func(context context.Context, execution models.Execution, filters []common.InlineFilter) error {
 		return nil
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateCallback(updateExecutionFunc)
@@ -1418,7 +1418,7 @@ func TestCreateWorkflowEvent_NoRunningToQueued(t *testing.T) {
 	}
 
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
-	updateExecutionFunc := func(context context.Context, execution models.Execution) error {
+	updateExecutionFunc := func(context context.Context, execution models.Execution, filters []common.InlineFilter) error {
 		return nil
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateCallback(updateExecutionFunc)
@@ -1452,7 +1452,7 @@ func TestCreateWorkflowEvent_CurrentlyAborting(t *testing.T) {
 	}
 
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
-	updateExecutionFunc := func(context context.Context, execution models.Execution) error {
+	updateExecutionFunc := func(context context.Context, execution models.Execution, filters []common.InlineFilter) error {
 		return nil
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateCallback(updateExecutionFunc)
@@ -1507,7 +1507,7 @@ func TestCreateWorkflowEvent_StartedRunning(t *testing.T) {
 	}
 	closureBytes, _ := proto.Marshal(&closure)
 	updateExecutionFunc := func(
-		context context.Context, execution models.Execution) error {
+		context context.Context, execution models.Execution, filters []common.InlineFilter) error {
 		assert.Equal(t, "project", execution.Project)
 		assert.Equal(t, "domain", execution.Domain)
 		assert.Equal(t, "name", execution.Name)
@@ -1636,7 +1636,7 @@ func TestCreateWorkflowEvent_InvalidEvent(t *testing.T) {
 		Message: "bar baz",
 	}
 	updateExecutionFunc := func(
-		context context.Context, execution models.Execution) error {
+		context context.Context, execution models.Execution, filters []common.InlineFilter) error {
 		return nil
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateCallback(updateExecutionFunc)
@@ -1731,7 +1731,7 @@ func TestCreateWorkflowEvent_DatabaseUpdateError(t *testing.T) {
 	}
 	expectedErr := errors.New("expected error")
 	updateExecutionFunc := func(
-		context context.Context, execution models.Execution) error {
+		context context.Context, execution models.Execution, filters []common.InlineFilter) error {
 		return expectedErr
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateCallback(updateExecutionFunc)
@@ -1909,7 +1909,7 @@ func TestUpdateExecution(t *testing.T) {
 	t.Run("empty status passed", func(t *testing.T) {
 		repository := repositoryMocks.NewMockRepository()
 		updateExecFuncCalled := false
-		updateExecFunc := func(ctx context.Context, execModel models.Execution) error {
+		updateExecFunc := func(ctx context.Context, execModel models.Execution, filters []common.InlineFilter) error {
 			stateInt := int32(admin.ExecutionState_EXECUTION_ACTIVE)
 			assert.Equal(t, stateInt, *execModel.State)
 			updateExecFuncCalled = true
@@ -1928,7 +1928,7 @@ func TestUpdateExecution(t *testing.T) {
 	t.Run("archive status passed", func(t *testing.T) {
 		repository := repositoryMocks.NewMockRepository()
 		updateExecFuncCalled := false
-		updateExecFunc := func(ctx context.Context, execModel models.Execution) error {
+		updateExecFunc := func(ctx context.Context, execModel models.Execution, filters []common.InlineFilter) error {
 			stateInt := int32(admin.ExecutionState_EXECUTION_ARCHIVED)
 			assert.Equal(t, stateInt, *execModel.State)
 			updateExecFuncCalled = true
@@ -1947,7 +1947,7 @@ func TestUpdateExecution(t *testing.T) {
 
 	t.Run("update error", func(t *testing.T) {
 		repository := repositoryMocks.NewMockRepository()
-		updateExecFunc := func(ctx context.Context, execModel models.Execution) error {
+		updateExecFunc := func(ctx context.Context, execModel models.Execution, filters []common.InlineFilter) error {
 			return fmt.Errorf("some db error")
 		}
 		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateExecutionCallback(updateExecFunc)
@@ -2405,7 +2405,7 @@ func TestTerminateExecution(t *testing.T) {
 	abortCause := "abort cause"
 	principal := "principal"
 	updateExecutionFunc := func(
-		context context.Context, execution models.Execution) error {
+		context context.Context, execution models.Execution, filters []common.InlineFilter) error {
 		assert.Equal(t, "project", execution.Project)
 		assert.Equal(t, "domain", execution.Domain)
 		assert.Equal(t, "name", execution.Name)
@@ -2440,7 +2440,8 @@ func TestTerminateExecution(t *testing.T) {
 	mockExecutor.OnID().Return("customMockExecutor")
 	workflowengine.GetRegistry().Register(&mockExecutor)
 	defer resetExecutor()
-	execManager := NewExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
+	eventWriter := &eventWriterMocks.WorkflowExecutionEventWriter{}
+	execManager := NewExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, eventWriter)
 
 	identity := auth.NewIdentityContext("", principal, "", time.Now(), sets.NewString(), nil)
 	ctx := identity.WithContext(context.Background())
@@ -2468,7 +2469,7 @@ func TestTerminateExecution_PropellerError(t *testing.T) {
 
 	repository := repositoryMocks.NewMockRepository()
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateExecutionCallback(func(
-		context context.Context, execution models.Execution) error {
+		context context.Context, execution models.Execution, filters []common.InlineFilter) error {
 		t.Fatal("update should not be called when propeller fails to terminate an execution")
 		return nil
 	})
@@ -2494,7 +2495,7 @@ func TestTerminateExecution_DatabaseError(t *testing.T) {
 
 	var expectedError = errors.New("expected error")
 	updateExecutionFunc := func(
-		context context.Context, execution models.Execution) error {
+		context context.Context, execution models.Execution, filters []common.InlineFilter) error {
 		return expectedError
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateExecutionCallback(updateExecutionFunc)

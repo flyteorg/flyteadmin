@@ -9,4 +9,5 @@ import (
 type WorkflowExecutionEventWriter interface {
 	Run()
 	Write(workflowExecutionEvent admin.WorkflowExecutionEventRequest)
+	WriteTerminate(request *admin.ExecutionTerminateRequest)
 }

@@ -56,9 +56,17 @@ func (r *ExecutionRepo) Get(ctx context.Context, input interfaces.Identifier) (m
 	return execution, nil
 }
 
-func (r *ExecutionRepo) Update(ctx context.Context, execution models.Execution) error {
+func (r *ExecutionRepo) Update(ctx context.Context, execution models.Execution, filters []common.InlineFilter) error {
 	timer := r.metrics.UpdateDuration.Start()
-	tx := r.db.Model(&execution).Updates(execution)
+	tx := r.db.Model(&execution)
+	for _, filter := range filters {
+		queryExpr, err := filter.GetGormQueryExpr()
+		if err != nil {
+			return err
+		}
+		tx = tx.Where(queryExpr.Query, queryExpr.Args)
+	}
+	tx = tx.Updates(execution)
 	timer.Stop()
 	if err := tx.Error; err != nil {
 		return r.errorTransformer.ToFlyteAdminError(err)
