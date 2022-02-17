@@ -808,6 +808,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		EventVersion:        m.config.ApplicationConfiguration().GetTopLevelConfig().EventVersion,
 		RoleNameKey:         m.config.ApplicationConfiguration().GetTopLevelConfig().RoleNameKey,
 		RawOutputDataConfig: launchPlan.Spec.RawOutputDataConfig,
+		ClusterAssignment:   request.Spec.ClusterAssignment,
 	}
 
 	overrides, err := m.addPluginOverrides(ctx, &workflowExecutionID, launchPlan.GetSpec().WorkflowId.Name, launchPlan.Id.Name)
