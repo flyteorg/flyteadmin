@@ -55,7 +55,6 @@ type SslOptions struct {
 
 var defaultServerConfig = &ServerConfig{
 	HTTPPort:   8088,
-	KubeConfig: "$HOME/.kube/config",
 	Security: ServerSecurityOptions{
 		AllowCors:      true,
 		AllowedHeaders: []string{"Content-Type", "flyte-authorization"},
