@@ -7,20 +7,24 @@ import (
 
 const phaseField = "phase"
 
+var TerminalPhaseArray = []string{
+	core.WorkflowExecution_ABORTED.String(),
+	core.WorkflowExecution_FAILED.String(),
+	core.WorkflowExecution_TIMED_OUT.String(),
+	core.WorkflowExecution_SUCCEEDED.String(),
+}
+
+var SchedulingPhases = []string{
+	core.WorkflowExecution_UNDEFINED.String(),
+	core.WorkflowExecution_QUEUED.String(),
+}
+
 func newNotTerminalFilter() (common.InlineFilter, error) {
-	return common.NewRepeatedValueFilter(common.Execution, common.ValueNotIn, "phase", []string{
-		core.WorkflowExecution_ABORTED.String(),
-		core.WorkflowExecution_FAILED.String(),
-		core.WorkflowExecution_TIMED_OUT.String(),
-		core.WorkflowExecution_SUCCEEDED.String(),
-	})
+	return common.NewRepeatedValueFilter(common.Execution, common.ValueNotIn, "phase", TerminalPhaseArray)
 }
 
 func newSchedulingFilter() (common.InlineFilter, error) {
-	return common.NewRepeatedValueFilter(common.Execution, common.ValueIn, "phase", []string{
-		core.WorkflowExecution_UNDEFINED.String(),
-		core.WorkflowExecution_QUEUED.String(),
-	})
+	return common.NewRepeatedValueFilter(common.Execution, common.ValueIn, "phase", SchedulingPhases)
 }
 
 func GetUpdateExecutionFilters(eventPhase core.WorkflowExecution_Phase) (filters []common.InlineFilter, err error) {

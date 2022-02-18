@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 
+	flyteAdminError "github.com/flyteorg/flyteadmin/pkg/errors"
+	"google.golang.org/grpc/codes"
+
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	adminErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
@@ -70,6 +73,11 @@ func (r *ExecutionRepo) Update(ctx context.Context, execution models.Execution, 
 	timer.Stop()
 	if err := tx.Error; err != nil {
 		return r.errorTransformer.ToFlyteAdminError(err)
+	}
+	if tx.RowsAffected == 0 {
+		// Nothing was found that was eligible to be updated.
+		return flyteAdminError.NewFlyteAdminErrorf(codes.NotFound, "Execution [%+v] was not found or had already changed state. Not updated to: %s",
+			execution.ExecutionKey, execution.Phase)
 	}
 	return nil
 }

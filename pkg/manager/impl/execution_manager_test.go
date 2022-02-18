@@ -1339,6 +1339,18 @@ func TestCreateWorkflowEvent(t *testing.T) {
 		assert.Equal(t, specBytes, execution.Spec)
 		assert.Equal(t, startTime, *execution.StartedAt)
 		assert.Equal(t, duration, execution.Duration)
+		assert.Len(t, filters, 2)
+		for _, filter := range filters {
+			queryExpr, err := filter.GetGormQueryExpr()
+			assert.NoError(t, err)
+			if queryExpr.Query == "phase <> ?" {
+				assert.Equal(t, queryExpr.Args, core.WorkflowExecution_FAILED.String())
+			} else if queryExpr.Query == "phase not in (?)" {
+				assert.Equal(t, queryExpr.Args, executions.TerminalPhaseArray)
+			} else {
+				t.Errorf("Unexpected query expression [%+v]", queryExpr)
+			}
+		}
 		return nil
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateCallback(updateExecutionFunc)
@@ -1453,6 +1465,18 @@ func TestCreateWorkflowEvent_CurrentlyAborting(t *testing.T) {
 
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
 	updateExecutionFunc := func(context context.Context, execution models.Execution, filters []common.InlineFilter) error {
+		assert.Len(t, filters, 2)
+		for _, filter := range filters {
+			queryExpr, err := filter.GetGormQueryExpr()
+			assert.NoError(t, err)
+			if queryExpr.Query == "phase <> ?" {
+				assert.Equal(t, queryExpr.Args, core.WorkflowExecution_ABORTED.String())
+			} else if queryExpr.Query == "phase not in (?)" {
+				assert.Equal(t, queryExpr.Args, executions.TerminalPhaseArray)
+			} else {
+				t.Errorf("Unexpected query expression [%+v]", queryExpr)
+			}
+		}
 		return nil
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateCallback(updateExecutionFunc)
@@ -1519,6 +1543,20 @@ func TestCreateWorkflowEvent_StartedRunning(t *testing.T) {
 		assert.Equal(t, occurredAt, *execution.StartedAt)
 		assert.Equal(t, time.Duration(0), execution.Duration)
 		assert.Equal(t, occurredAt, *execution.ExecutionUpdatedAt)
+		assert.Len(t, filters, 3)
+		for _, filter := range filters {
+			queryExpr, err := filter.GetGormQueryExpr()
+			assert.NoError(t, err)
+			if queryExpr.Query == "phase <> ?" {
+				assert.Equal(t, queryExpr.Args, core.WorkflowExecution_RUNNING.String())
+			} else if queryExpr.Query == "phase not in (?)" {
+				assert.Equal(t, queryExpr.Args, executions.TerminalPhaseArray)
+			} else if queryExpr.Query == "phase in (?)" {
+				assert.Equal(t, queryExpr.Args, executions.SchedulingPhases)
+			} else {
+				t.Errorf("Unexpected query expression [%+v]", queryExpr)
+			}
+		}
 		return nil
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateCallback(updateExecutionFunc)
@@ -2416,6 +2454,18 @@ func TestTerminateExecution(t *testing.T) {
 			"an abort call should not change ExecutionUpdatedAt until a corresponding execution event is received")
 		assert.Equal(t, abortCause, execution.AbortCause)
 		assert.Equal(t, testCluster, execution.Cluster)
+		assert.Len(t, filters, 2)
+		for _, filter := range filters {
+			queryExpr, err := filter.GetGormQueryExpr()
+			assert.NoError(t, err)
+			if queryExpr.Query == "phase <> ?" {
+				assert.Equal(t, queryExpr.Args, core.WorkflowExecution_ABORTING.String())
+			} else if queryExpr.Query == "phase not in (?)" {
+				assert.Equal(t, queryExpr.Args, executions.TerminalPhaseArray)
+			} else {
+				t.Errorf("Unexpected query expression [%+v]", queryExpr)
+			}
+		}
 
 		var unmarshaledClosure admin.ExecutionClosure
 		err := proto.Unmarshal(execution.Closure, &unmarshaledClosure)
@@ -2440,8 +2490,7 @@ func TestTerminateExecution(t *testing.T) {
 	mockExecutor.OnID().Return("customMockExecutor")
 	workflowengine.GetRegistry().Register(&mockExecutor)
 	defer resetExecutor()
-	eventWriter := &eventWriterMocks.WorkflowExecutionEventWriter{}
-	execManager := NewExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, eventWriter)
+	execManager := NewExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
 
 	identity := auth.NewIdentityContext("", principal, "", time.Now(), sets.NewString(), nil)
 	ctx := identity.WithContext(context.Background())
@@ -2467,10 +2516,12 @@ func TestTerminateExecution_PropellerError(t *testing.T) {
 	workflowengine.GetRegistry().Register(&mockExecutor)
 	defer resetExecutor()
 
+	updateCalled := false
 	repository := repositoryMocks.NewMockRepository()
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateExecutionCallback(func(
 		context context.Context, execution models.Execution, filters []common.InlineFilter) error {
-		t.Fatal("update should not be called when propeller fails to terminate an execution")
+		updateCalled = true
+		assert.Equal(t, core.WorkflowExecution_ABORTING.String(), execution.Phase)
 		return nil
 	})
 	execManager := NewExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
@@ -2485,6 +2536,7 @@ func TestTerminateExecution_PropellerError(t *testing.T) {
 	})
 	assert.Nil(t, resp)
 	assert.EqualError(t, err, expectedError.Error())
+	assert.True(t, updateCalled)
 }
 
 func TestTerminateExecution_DatabaseError(t *testing.T) {

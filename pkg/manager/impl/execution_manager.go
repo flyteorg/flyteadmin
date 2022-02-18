@@ -1508,6 +1508,30 @@ func (m *ExecutionManager) TerminateExecution(
 		return nil, err
 	}
 
+	err = transformers.SetExecutionAborting(&executionModel, request.Cause, getUser(ctx))
+	if err != nil {
+		logger.Debugf(ctx, "failed to add abort metadata for execution [%+v] with err: %v", request.Id, err)
+		return nil, err
+	}
+
+	filters, err := executions.GetUpdateExecutionFilters(core.WorkflowExecution_ABORTING)
+	if err != nil {
+		return nil, err
+	}
+	err = m.db.ExecutionRepo().Update(ctx, executionModel, filters)
+	if err != nil {
+		if s, ok := err.(errors.FlyteAdminError); ok {
+			if s.Code() == codes.NotFound {
+				// We know that the execution exists because we just fetched it above, so not found means the update
+				// failed to find an execution matching the filters. That is, the execution is no longer in a non-terminal phase.
+				logger.Infof(ctx, "Could not terminate execution [%+v] because it is now terminal", request.Id)
+				return &admin.ExecutionTerminateResponse{}, nil
+			}
+		}
+		logger.Debugf(ctx, "failed to save abort cause for terminated execution: %+v with err: %v", request.Id, err)
+		return nil, err
+	}
+
 	err = workflowengine.GetRegistry().GetExecutor().Abort(ctx, workflowengineInterfaces.AbortData{
 		Namespace: common.GetNamespaceName(
 			m.config.NamespaceMappingConfiguration().GetNamespaceTemplate(), request.Id.Project, request.Id.Domain),
@@ -1519,22 +1543,6 @@ func (m *ExecutionManager) TerminateExecution(
 		m.systemMetrics.TerminateExecutionFailures.Inc()
 		return nil, err
 	}
-
-	err = transformers.SetExecutionAborted(&executionModel, request.Cause, getUser(ctx))
-	if err != nil {
-		logger.Debugf(ctx, "failed to add abort metadata for execution [%+v] with err: %v", request.Id, err)
-		return nil, err
-	}
-	filters, err := executions.GetUpdateExecutionFilters(core.WorkflowExecution_ABORTING)
-	if err != nil {
-		return nil, err
-	}
-	err = m.db.ExecutionRepo().Update(ctx, executionModel, filters)
-	if err != nil {
-		logger.Debugf(ctx, "failed to save abort cause for terminated execution: %+v with err: %v", request.Id, err)
-		return nil, err
-	}
-	m.dbEventWriter.WriteTerminate(&request)
 	return &admin.ExecutionTerminateResponse{}, nil
 }
 
