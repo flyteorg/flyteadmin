@@ -22,8 +22,3 @@ func (_m *WorkflowExecutionEventWriter) Run() {
 func (_m *WorkflowExecutionEventWriter) Write(workflowExecutionEvent admin.WorkflowExecutionEventRequest) {
 	_m.Called(workflowExecutionEvent)
 }
-
-// WriteTerminate provides a mock function with given fields: request
-func (_m *WorkflowExecutionEventWriter) WriteTerminate(request *admin.ExecutionTerminateRequest) {
-	_m.Called(request)
-}
