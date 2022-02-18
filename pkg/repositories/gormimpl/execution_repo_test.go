@@ -58,7 +58,6 @@ func TestUpdateExecution(t *testing.T) {
 	)
 
 	executionRepo := NewExecutionRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
-	//	`WHERE "executions"."deleted_at" IS NULL`)
 	_ = executionRepo.Update(context.Background(),
 		models.Execution{
 			ExecutionKey: models.ExecutionKey{

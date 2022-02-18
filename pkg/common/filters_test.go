@@ -3,6 +3,8 @@ package common
 import (
 	"testing"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -85,6 +87,17 @@ func TestNewRepeatedValueFilter(t *testing.T) {
 
 	_, err = NewRepeatedValueFilter(Workflow, Equal, "domain", []string{"production", "qa"})
 	assert.EqualError(t, err, "invalid repeated value filter expression: equal")
+}
+
+func TestNewRepeatedValueNotInFilter(t *testing.T) {
+	vals := []string{core.WorkflowExecution_ABORTING.String(), core.WorkflowExecution_ABORTED.String()}
+	filter, err := NewRepeatedValueFilter(Execution, ValueNotIn, "phase", vals)
+	assert.NoError(t, err)
+
+	expression, err := filter.GetGormQueryExpr()
+	assert.NoError(t, err)
+	assert.Equal(t, "phase not in (?)", expression.Query)
+	assert.Equal(t, vals, expression.Args)
 }
 
 func TestGetGormJoinTableQueryExpr(t *testing.T) {

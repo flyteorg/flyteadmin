@@ -1342,13 +1342,11 @@ func TestCreateWorkflowEvent(t *testing.T) {
 		assert.Equal(t, specBytes, execution.Spec)
 		assert.Equal(t, startTime, *execution.StartedAt)
 		assert.Equal(t, duration, execution.Duration)
-		assert.Len(t, filters, 2)
+		assert.Len(t, filters, 1)
 		for _, filter := range filters {
 			queryExpr, err := filter.GetGormQueryExpr()
 			assert.NoError(t, err)
-			if queryExpr.Query == phaseNotEqual {
-				assert.Equal(t, queryExpr.Args, core.WorkflowExecution_FAILED.String())
-			} else if queryExpr.Query == phaseNotIn {
+			if queryExpr.Query == phaseNotIn {
 				assert.Equal(t, queryExpr.Args, executions.TerminalWorkflowExecutionPhases)
 			} else {
 				t.Errorf("Unexpected query expression [%+v]", queryExpr)
@@ -1468,13 +1466,11 @@ func TestCreateWorkflowEvent_CurrentlyAborting(t *testing.T) {
 
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
 	updateExecutionFunc := func(context context.Context, execution models.Execution, filters []common.InlineFilter) error {
-		assert.Len(t, filters, 2)
+		assert.Len(t, filters, 1)
 		for _, filter := range filters {
 			queryExpr, err := filter.GetGormQueryExpr()
 			assert.NoError(t, err)
-			if queryExpr.Query == phaseNotEqual {
-				assert.Equal(t, queryExpr.Args, core.WorkflowExecution_ABORTED.String())
-			} else if queryExpr.Query == phaseNotIn {
+			if queryExpr.Query == phaseNotIn {
 				assert.Equal(t, queryExpr.Args, executions.TerminalWorkflowExecutionPhases)
 			} else {
 				t.Errorf("Unexpected query expression [%+v]", queryExpr)
@@ -2571,6 +2567,36 @@ func TestTerminateExecution_DatabaseError(t *testing.T) {
 
 	assert.Nil(t, resp)
 	assert.EqualError(t, err, expectedError.Error())
+}
+
+func TestTerminateExecution_AlreadyTerminatingError(t *testing.T) {
+	repository := repositoryMocks.NewMockRepository()
+	startTime := time.Now()
+	executionGetFunc := makeExecutionGetFunc(t, []byte{}, &startTime)
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
+
+	updateExecutionFunc := func(
+		context context.Context, execution models.Execution, filters []common.InlineFilter) error {
+		return flyteAdminErrors.NewFlyteAdminError(codes.NotFound, "no matching exec found")
+	}
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateExecutionCallback(updateExecutionFunc)
+	mockExecutor := workflowengineMocks.WorkflowExecutor{}
+	mockExecutor.OnAbortMatch(mock.Anything, mock.Anything).Return(nil)
+	mockExecutor.OnID().Return("testMockExecutor")
+	workflowengine.GetRegistry().Register(&mockExecutor)
+	defer resetExecutor()
+	execManager := NewExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
+	resp, err := execManager.TerminateExecution(context.Background(), admin.ExecutionTerminateRequest{
+		Id: &core.WorkflowExecutionIdentifier{
+			Project: "project",
+			Domain:  "domain",
+			Name:    "name",
+		},
+		Cause: "abort cause",
+	})
+
+	assert.Empty(t, resp)
+	assert.NoError(t, err)
 }
 
 func TestGetExecutionData(t *testing.T) {

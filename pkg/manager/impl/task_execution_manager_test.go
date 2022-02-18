@@ -279,13 +279,11 @@ func TestCreateTaskEvent_Update(t *testing.T) {
 				Closure:                expectedClosureBytes,
 				Duration:               time.Minute,
 			}, input)
-			assert.Len(t, filters, 2)
+			assert.Len(t, filters, 1)
 			for _, filter := range filters {
 				queryExpr, err := filter.GetGormQueryExpr()
 				assert.NoError(t, err)
-				if queryExpr.Query == phaseNotEqual {
-					assert.Equal(t, queryExpr.Args, core.TaskExecution_SUCCEEDED.String())
-				} else if queryExpr.Query == phaseNotIn {
+				if queryExpr.Query == phaseNotIn {
 					assert.Equal(t, queryExpr.Args, executions.TerminalTaskExecutionPhases)
 				} else {
 					t.Errorf("Unexpected query expression [%+v]", queryExpr)

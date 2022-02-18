@@ -55,7 +55,9 @@ func newSchedulingFilter() (common.InlineFilter, error) {
 
 func GetUpdateExecutionFilters(eventPhase core.WorkflowExecution_Phase) (filters []common.InlineFilter, err error) {
 	// With the exeception of queued events, it's never acceptable to move into the same phase.
-	if eventPhase != core.WorkflowExecution_QUEUED {
+	// With terminal executions we don't need to add the check for the same phase because we always check the existing
+	// execution isn't already terminal.
+	if eventPhase != core.WorkflowExecution_QUEUED && !common.IsExecutionTerminal(eventPhase) {
 		notAlreadySamePhaseFilter, err := common.NewSingleValueFilter(common.Execution, common.NotEqual, phaseField, eventPhase.String())
 		if err != nil {
 			return nil, err
@@ -81,27 +83,37 @@ func GetUpdateExecutionFilters(eventPhase core.WorkflowExecution_Phase) (filters
 }
 
 func GetUpdateNodeExecutionFilters(eventPhase core.NodeExecution_Phase) (filters []common.InlineFilter, err error) {
-	notAlreadySamePhaseFilter, err := common.NewSingleValueFilter(common.Execution, common.NotEqual, phaseField, eventPhase.String())
-	if err != nil {
-		return nil, err
+	// With terminal executions we don't need to add the check for the same phase because we always check the existing
+	// execution isn't already terminal.
+	if !common.IsNodeExecutionTerminal(eventPhase) {
+		notAlreadySamePhaseFilter, err := common.NewSingleValueFilter(common.Execution, common.NotEqual, phaseField, eventPhase.String())
+		if err != nil {
+			return nil, err
+		}
+		filters = append(filters, notAlreadySamePhaseFilter)
 	}
 
 	notAlreadyTerminal, err := newNotTerminalFilter(common.NodeExecution)
 	if err != nil {
 		return nil, err
 	}
-	return []common.InlineFilter{notAlreadySamePhaseFilter, notAlreadyTerminal}, nil
+	return append(filters, notAlreadyTerminal), nil
 }
 
 func GetUpdateTaskExecutionFilters(eventPhase core.TaskExecution_Phase) (filters []common.InlineFilter, err error) {
-	notAlreadySamePhaseFilter, err := common.NewSingleValueFilter(common.Execution, common.NotEqual, phaseField, eventPhase.String())
-	if err != nil {
-		return nil, err
+	// With terminal executions we don't need to add the check for the same phase because we always check the existing
+	// execution isn't already terminal.
+	if !common.IsTaskExecutionTerminal(eventPhase) {
+		notAlreadySamePhaseFilter, err := common.NewSingleValueFilter(common.Execution, common.NotEqual, phaseField, eventPhase.String())
+		if err != nil {
+			return nil, err
+		}
+		filters = append(filters, notAlreadySamePhaseFilter)
 	}
 
 	notAlreadyTerminal, err := newNotTerminalFilter(common.TaskExecution)
 	if err != nil {
 		return nil, err
 	}
-	return []common.InlineFilter{notAlreadySamePhaseFilter, notAlreadyTerminal}, nil
+	return append(filters, notAlreadyTerminal), nil
 }
