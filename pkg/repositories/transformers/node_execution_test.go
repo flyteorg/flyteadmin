@@ -411,6 +411,7 @@ func TestFromNodeExecutionModelWithChildren(t *testing.T) {
 		},
 		InputURI: "input uri",
 		Duration: duration,
+		DynamicWorkflowRemoteClosureReference: "dummy_dynamic_worklfow_ref",
 	})
 	assert.Nil(t, err)
 	assert.True(t, proto.Equal(&admin.NodeExecution{
@@ -421,6 +422,7 @@ func TestFromNodeExecutionModelWithChildren(t *testing.T) {
 			IsParentNode: true,
 			RetryGroup:   "r",
 			SpecNodeId:   "sp",
+			IsDynamic: true,
 		},
 	}, nodeExecution))
 }
