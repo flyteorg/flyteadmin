@@ -86,6 +86,9 @@ var requestedAt = time.Now()
 var testCluster = "C1"
 var outputURI = "output uri"
 
+const phaseNotEqual = "phase <> ?"
+const phaseNotIn = "phase not in (?)"
+
 var resourceDefaults = runtimeInterfaces.TaskResourceSet{
 	CPU:    resource.MustParse("200m"),
 	Memory: resource.MustParse("200Gi"),
@@ -1343,9 +1346,9 @@ func TestCreateWorkflowEvent(t *testing.T) {
 		for _, filter := range filters {
 			queryExpr, err := filter.GetGormQueryExpr()
 			assert.NoError(t, err)
-			if queryExpr.Query == "phase <> ?" {
+			if queryExpr.Query == phaseNotEqual {
 				assert.Equal(t, queryExpr.Args, core.WorkflowExecution_FAILED.String())
-			} else if queryExpr.Query == "phase not in (?)" {
+			} else if queryExpr.Query == phaseNotIn {
 				assert.Equal(t, queryExpr.Args, executions.TerminalPhaseArray)
 			} else {
 				t.Errorf("Unexpected query expression [%+v]", queryExpr)
@@ -1469,9 +1472,9 @@ func TestCreateWorkflowEvent_CurrentlyAborting(t *testing.T) {
 		for _, filter := range filters {
 			queryExpr, err := filter.GetGormQueryExpr()
 			assert.NoError(t, err)
-			if queryExpr.Query == "phase <> ?" {
+			if queryExpr.Query == phaseNotEqual {
 				assert.Equal(t, queryExpr.Args, core.WorkflowExecution_ABORTED.String())
-			} else if queryExpr.Query == "phase not in (?)" {
+			} else if queryExpr.Query == phaseNotIn {
 				assert.Equal(t, queryExpr.Args, executions.TerminalPhaseArray)
 			} else {
 				t.Errorf("Unexpected query expression [%+v]", queryExpr)
@@ -1547,9 +1550,9 @@ func TestCreateWorkflowEvent_StartedRunning(t *testing.T) {
 		for _, filter := range filters {
 			queryExpr, err := filter.GetGormQueryExpr()
 			assert.NoError(t, err)
-			if queryExpr.Query == "phase <> ?" {
+			if queryExpr.Query == phaseNotEqual {
 				assert.Equal(t, queryExpr.Args, core.WorkflowExecution_RUNNING.String())
-			} else if queryExpr.Query == "phase not in (?)" {
+			} else if queryExpr.Query == phaseNotIn {
 				assert.Equal(t, queryExpr.Args, executions.TerminalPhaseArray)
 			} else if queryExpr.Query == "phase in (?)" {
 				assert.Equal(t, queryExpr.Args, executions.SchedulingPhases)
@@ -2458,9 +2461,9 @@ func TestTerminateExecution(t *testing.T) {
 		for _, filter := range filters {
 			queryExpr, err := filter.GetGormQueryExpr()
 			assert.NoError(t, err)
-			if queryExpr.Query == "phase <> ?" {
+			if queryExpr.Query == phaseNotEqual {
 				assert.Equal(t, queryExpr.Args, core.WorkflowExecution_ABORTING.String())
-			} else if queryExpr.Query == "phase not in (?)" {
+			} else if queryExpr.Query == phaseNotIn {
 				assert.Equal(t, queryExpr.Args, executions.TerminalPhaseArray)
 			} else {
 				t.Errorf("Unexpected query expression [%+v]", queryExpr)
