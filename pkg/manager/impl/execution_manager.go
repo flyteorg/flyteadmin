@@ -36,7 +36,6 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/util"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/validation"
 	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
-	"github.com/flyteorg/flyteadmin/pkg/repositories"
 	repositoryInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
@@ -82,7 +81,7 @@ type executionUserMetrics struct {
 }
 
 type ExecutionManager struct {
-	db                        repositories.RepositoryInterface
+	db                        repositoryInterfaces.Repository
 	config                    runtimeInterfaces.Configuration
 	storageClient             *storage.DataStore
 	queueAllocator            executions.QueueAllocator
@@ -1184,7 +1183,7 @@ func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admi
 		return nil, errors.NewFlyteAdminErrorf(codes.AlreadyExists,
 			"This phase %s was already recorded for workflow execution %v",
 			wfExecPhase.String(), request.Event.ExecutionId)
-	} else if err := validation.ValidateCluster(ctx, request.Event.ProducerId, executionModel.Cluster); err != nil {
+	} else if err := validation.ValidateCluster(ctx, executionModel.Cluster, request.Event.ProducerId); err != nil {
 		return nil, err
 	} else if common.IsExecutionTerminal(wfExecPhase) {
 		// Cannot go backwards in time from a terminal state to anything else
@@ -1505,6 +1504,17 @@ func (m *ExecutionManager) TerminateExecution(
 		return nil, err
 	}
 
+	err = transformers.SetExecutionAborting(&executionModel, request.Cause, getUser(ctx))
+	if err != nil {
+		logger.Debugf(ctx, "failed to add abort metadata for execution [%+v] with err: %v", request.Id, err)
+		return nil, err
+	}
+	err = m.db.ExecutionRepo().Update(ctx, executionModel)
+	if err != nil {
+		logger.Debugf(ctx, "failed to save abort cause for terminated execution: %+v with err: %v", request.Id, err)
+		return nil, err
+	}
+
 	err = workflowengine.GetRegistry().GetExecutor().Abort(ctx, workflowengineInterfaces.AbortData{
 		Namespace: common.GetNamespaceName(
 			m.config.NamespaceMappingConfiguration().GetNamespaceTemplate(), request.Id.Project, request.Id.Domain),
@@ -1514,17 +1524,6 @@ func (m *ExecutionManager) TerminateExecution(
 	})
 	if err != nil {
 		m.systemMetrics.TerminateExecutionFailures.Inc()
-		return nil, err
-	}
-
-	err = transformers.SetExecutionAborted(&executionModel, request.Cause, getUser(ctx))
-	if err != nil {
-		logger.Debugf(ctx, "failed to add abort metadata for execution [%+v] with err: %v", request.Id, err)
-		return nil, err
-	}
-	err = m.db.ExecutionRepo().Update(ctx, executionModel)
-	if err != nil {
-		logger.Debugf(ctx, "failed to save abort cause for terminated execution: %+v with err: %v", request.Id, err)
 		return nil, err
 	}
 	return &admin.ExecutionTerminateResponse{}, nil
@@ -1560,7 +1559,7 @@ func newExecutionSystemMetrics(scope promutils.Scope) executionSystemMetrics {
 	}
 }
 
-func NewExecutionManager(db repositories.RepositoryInterface, config runtimeInterfaces.Configuration,
+func NewExecutionManager(db repositoryInterfaces.Repository, config runtimeInterfaces.Configuration,
 	storageClient *storage.DataStore, systemScope promutils.Scope, userScope promutils.Scope,
 	publisher notificationInterfaces.Publisher, urlData dataInterfaces.RemoteURLInterface,
 	workflowManager interfaces.WorkflowInterface, namedEntityManager interfaces.NamedEntityInterface,
