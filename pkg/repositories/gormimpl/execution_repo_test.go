@@ -59,7 +59,7 @@ func TestUpdateExecution(t *testing.T) {
 
 	executionRepo := NewExecutionRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
 	//	`WHERE "executions"."deleted_at" IS NULL`)
-	err := executionRepo.Update(context.Background(),
+	_ = executionRepo.Update(context.Background(),
 		models.Execution{
 			ExecutionKey: models.ExecutionKey{
 				Project: "project",
@@ -75,8 +75,7 @@ func TestUpdateExecution(t *testing.T) {
 			ExecutionCreatedAt: &createdAt,
 			ExecutionUpdatedAt: &executionUpdatedAt,
 			Duration:           time.Hour,
-		})
-	assert.NoError(t, err)
+		}, make([]common.InlineFilter, 0))
 	assert.True(t, updated)
 }
 
