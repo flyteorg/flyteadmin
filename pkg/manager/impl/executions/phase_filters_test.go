@@ -3,17 +3,37 @@ package executions
 import (
 	"testing"
 
+	"github.com/flyteorg/flyteadmin/pkg/common"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewNotTerminalFilter(t *testing.T) {
-	filter, err := newNotTerminalFilter()
-	assert.NoError(t, err)
-	queryExpr, err := filter.GetGormQueryExpr()
-	assert.NoError(t, err)
-	assert.Equal(t, queryExpr.Query, "phase not in (?)")
-	assert.EqualValues(t, queryExpr.Args, TerminalPhaseArray)
+	t.Run("workflow executions", func(t *testing.T) {
+		filter, err := newNotTerminalFilter(common.Execution)
+		assert.NoError(t, err)
+		queryExpr, err := filter.GetGormQueryExpr()
+		assert.NoError(t, err)
+		assert.Equal(t, queryExpr.Query, "phase not in (?)")
+		assert.EqualValues(t, queryExpr.Args, TerminalWorkflowExecutionPhases)
+	})
+	t.Run("node executions", func(t *testing.T) {
+		filter, err := newNotTerminalFilter(common.NodeExecution)
+		assert.NoError(t, err)
+		queryExpr, err := filter.GetGormQueryExpr()
+		assert.NoError(t, err)
+		assert.Equal(t, queryExpr.Query, "phase not in (?)")
+		assert.EqualValues(t, queryExpr.Args, TerminalNodeExecutionPhases)
+	})
+	t.Run("task executions", func(t *testing.T) {
+		filter, err := newNotTerminalFilter(common.TaskExecution)
+		assert.NoError(t, err)
+		queryExpr, err := filter.GetGormQueryExpr()
+		assert.NoError(t, err)
+		assert.Equal(t, queryExpr.Query, "phase not in (?)")
+		assert.EqualValues(t, queryExpr.Args, TerminalTaskExecutionPhases)
+	})
 }
 
 func TestNewSchedulingFilter(t *testing.T) {
@@ -22,7 +42,7 @@ func TestNewSchedulingFilter(t *testing.T) {
 	queryExpr, err := filter.GetGormQueryExpr()
 	assert.NoError(t, err)
 	assert.Equal(t, queryExpr.Query, "phase in (?)")
-	assert.EqualValues(t, queryExpr.Args, SchedulingPhases)
+	assert.EqualValues(t, queryExpr.Args, SchedulingWorkflowPhases)
 }
 
 func TestGetUpdateExecutionFilters(t *testing.T) {
@@ -34,12 +54,12 @@ func TestGetUpdateExecutionFilters(t *testing.T) {
 		queryExpr, err := filters[0].GetGormQueryExpr()
 		assert.NoError(t, err)
 		assert.Equal(t, queryExpr.Query, "phase not in (?)")
-		assert.EqualValues(t, queryExpr.Args, TerminalPhaseArray)
+		assert.EqualValues(t, queryExpr.Args, TerminalWorkflowExecutionPhases)
 
 		queryExpr, err = filters[1].GetGormQueryExpr()
 		assert.NoError(t, err)
 		assert.Equal(t, queryExpr.Query, "phase in (?)")
-		assert.EqualValues(t, queryExpr.Args, SchedulingPhases)
+		assert.EqualValues(t, queryExpr.Args, SchedulingWorkflowPhases)
 	})
 	t.Run("running", func(t *testing.T) {
 		filters, err := GetUpdateExecutionFilters(core.WorkflowExecution_RUNNING)
@@ -54,12 +74,12 @@ func TestGetUpdateExecutionFilters(t *testing.T) {
 		queryExpr, err = filters[1].GetGormQueryExpr()
 		assert.NoError(t, err)
 		assert.Equal(t, queryExpr.Query, "phase not in (?)")
-		assert.EqualValues(t, queryExpr.Args, TerminalPhaseArray)
+		assert.EqualValues(t, queryExpr.Args, TerminalWorkflowExecutionPhases)
 
 		queryExpr, err = filters[2].GetGormQueryExpr()
 		assert.NoError(t, err)
 		assert.Equal(t, queryExpr.Query, "phase in (?)")
-		assert.EqualValues(t, queryExpr.Args, SchedulingPhases)
+		assert.EqualValues(t, queryExpr.Args, SchedulingWorkflowPhases)
 	})
 	t.Run("terminal", func(t *testing.T) {
 		filters, err := GetUpdateExecutionFilters(core.WorkflowExecution_SUCCEEDED)
@@ -74,6 +94,6 @@ func TestGetUpdateExecutionFilters(t *testing.T) {
 		queryExpr, err = filters[1].GetGormQueryExpr()
 		assert.NoError(t, err)
 		assert.Equal(t, queryExpr.Query, "phase not in (?)")
-		assert.EqualValues(t, queryExpr.Args, TerminalPhaseArray)
+		assert.EqualValues(t, queryExpr.Args, TerminalWorkflowExecutionPhases)
 	})
 }

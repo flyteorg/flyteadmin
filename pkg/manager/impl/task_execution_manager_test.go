@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/executions"
+
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
 	"github.com/flyteorg/flytestdlib/storage"
 
@@ -250,7 +252,7 @@ func TestCreateTaskEvent_Update(t *testing.T) {
 
 	updateTaskCalled := false
 	repository.TaskExecutionRepo().(*repositoryMocks.MockTaskExecutionRepo).SetUpdateCallback(
-		func(ctx context.Context, input models.TaskExecution) error {
+		func(ctx context.Context, input models.TaskExecution, filters []common.InlineFilter) error {
 			updateTaskCalled = true
 			assert.EqualValues(t, models.TaskExecution{
 				TaskExecutionKey: models.TaskExecutionKey{
@@ -277,6 +279,18 @@ func TestCreateTaskEvent_Update(t *testing.T) {
 				Closure:                expectedClosureBytes,
 				Duration:               time.Minute,
 			}, input)
+			assert.Len(t, filters, 2)
+			for _, filter := range filters {
+				queryExpr, err := filter.GetGormQueryExpr()
+				assert.NoError(t, err)
+				if queryExpr.Query == phaseNotEqual {
+					assert.Equal(t, queryExpr.Args, core.TaskExecution_SUCCEEDED.String())
+				} else if queryExpr.Query == phaseNotIn {
+					assert.Equal(t, queryExpr.Args, executions.TerminalTaskExecutionPhases)
+				} else {
+					t.Errorf("Unexpected query expression [%+v]", queryExpr)
+				}
+			}
 			return nil
 		})
 
@@ -377,7 +391,7 @@ func TestCreateTaskEvent_UpdateDatabaseError(t *testing.T) {
 
 	expectedErr := errors.New("expected error")
 	repository.TaskExecutionRepo().(*repositoryMocks.MockTaskExecutionRepo).SetUpdateCallback(
-		func(ctx context.Context, execution models.TaskExecution) error {
+		func(ctx context.Context, execution models.TaskExecution, filters []common.InlineFilter) error {
 			return expectedErr
 		})
 	nodeExecManager := NewTaskExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockTaskExecutionRemoteURL, nil)
@@ -470,7 +484,7 @@ func TestCreateTaskEvent_PhaseVersionChange(t *testing.T) {
 
 	updateTaskCalled := false
 	repository.TaskExecutionRepo().(*repositoryMocks.MockTaskExecutionRepo).SetUpdateCallback(
-		func(ctx context.Context, input models.TaskExecution) error {
+		func(ctx context.Context, input models.TaskExecution, filters []common.InlineFilter) error {
 			updateTaskCalled = true
 			assert.Equal(t, uint32(1), input.PhaseVersion)
 			return nil

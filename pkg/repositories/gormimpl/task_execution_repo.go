@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/flyteorg/flyteadmin/pkg/common"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/flyteorg/flytestdlib/promutils"
@@ -79,9 +81,17 @@ func (r *TaskExecutionRepo) Get(ctx context.Context, input interfaces.GetTaskExe
 	return taskExecution, nil
 }
 
-func (r *TaskExecutionRepo) Update(ctx context.Context, execution models.TaskExecution) error {
+func (r *TaskExecutionRepo) Update(ctx context.Context, execution models.TaskExecution, filters []common.InlineFilter) error {
 	timer := r.metrics.UpdateDuration.Start()
-	tx := r.db.Save(&execution)
+	tx := r.db
+	for _, filter := range filters {
+		queryExpr, err := filter.GetGormQueryExpr()
+		if err != nil {
+			return err
+		}
+		tx = tx.Where(queryExpr.Query, queryExpr.Args)
+	}
+	tx = tx.Save(&execution)
 	timer.Stop()
 
 	if err := tx.Error; err != nil {

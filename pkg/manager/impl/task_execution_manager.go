@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/executions"
+
 	notificationInterfaces "github.com/flyteorg/flyteadmin/pkg/async/notifications/interfaces"
 	"github.com/golang/protobuf/proto"
 
@@ -113,7 +115,11 @@ func (m *TaskExecutionManager) updateTaskExecutionModelState(
 		return models.TaskExecution{}, err
 	}
 
-	err = m.db.TaskExecutionRepo().Update(ctx, *existingTaskExecution)
+	filters, err := executions.GetUpdateTaskExecutionFilters(request.Event.Phase)
+	if err != nil {
+		return models.TaskExecution{}, err
+	}
+	err = m.db.TaskExecutionRepo().Update(ctx, *existingTaskExecution, filters)
 	if err != nil {
 		logger.Debugf(ctx, "Failed to update task execution with task id [%+v] and task execution model [%+v] with err %v",
 			request.Event.TaskId, existingTaskExecution, err)

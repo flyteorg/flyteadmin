@@ -1349,7 +1349,7 @@ func TestCreateWorkflowEvent(t *testing.T) {
 			if queryExpr.Query == phaseNotEqual {
 				assert.Equal(t, queryExpr.Args, core.WorkflowExecution_FAILED.String())
 			} else if queryExpr.Query == phaseNotIn {
-				assert.Equal(t, queryExpr.Args, executions.TerminalPhaseArray)
+				assert.Equal(t, queryExpr.Args, executions.TerminalWorkflowExecutionPhases)
 			} else {
 				t.Errorf("Unexpected query expression [%+v]", queryExpr)
 			}
@@ -1475,7 +1475,7 @@ func TestCreateWorkflowEvent_CurrentlyAborting(t *testing.T) {
 			if queryExpr.Query == phaseNotEqual {
 				assert.Equal(t, queryExpr.Args, core.WorkflowExecution_ABORTED.String())
 			} else if queryExpr.Query == phaseNotIn {
-				assert.Equal(t, queryExpr.Args, executions.TerminalPhaseArray)
+				assert.Equal(t, queryExpr.Args, executions.TerminalWorkflowExecutionPhases)
 			} else {
 				t.Errorf("Unexpected query expression [%+v]", queryExpr)
 			}
@@ -1553,9 +1553,9 @@ func TestCreateWorkflowEvent_StartedRunning(t *testing.T) {
 			if queryExpr.Query == phaseNotEqual {
 				assert.Equal(t, queryExpr.Args, core.WorkflowExecution_RUNNING.String())
 			} else if queryExpr.Query == phaseNotIn {
-				assert.Equal(t, queryExpr.Args, executions.TerminalPhaseArray)
+				assert.Equal(t, queryExpr.Args, executions.TerminalWorkflowExecutionPhases)
 			} else if queryExpr.Query == "phase in (?)" {
-				assert.Equal(t, queryExpr.Args, executions.SchedulingPhases)
+				assert.Equal(t, queryExpr.Args, executions.SchedulingWorkflowPhases)
 			} else {
 				t.Errorf("Unexpected query expression [%+v]", queryExpr)
 			}
@@ -2464,7 +2464,7 @@ func TestTerminateExecution(t *testing.T) {
 			if queryExpr.Query == phaseNotEqual {
 				assert.Equal(t, queryExpr.Args, core.WorkflowExecution_ABORTING.String())
 			} else if queryExpr.Query == phaseNotIn {
-				assert.Equal(t, queryExpr.Args, executions.TerminalPhaseArray)
+				assert.Equal(t, queryExpr.Args, executions.TerminalWorkflowExecutionPhases)
 			} else {
 				t.Errorf("Unexpected query expression [%+v]", queryExpr)
 			}

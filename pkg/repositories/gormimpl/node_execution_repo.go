@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/flyteorg/flyteadmin/pkg/common"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/flyteorg/flytestdlib/promutils"
@@ -64,9 +66,17 @@ func (r *NodeExecutionRepo) Get(ctx context.Context, input interfaces.NodeExecut
 	return nodeExecution, nil
 }
 
-func (r *NodeExecutionRepo) Update(ctx context.Context, nodeExecution *models.NodeExecution) error {
+func (r *NodeExecutionRepo) Update(ctx context.Context, nodeExecution *models.NodeExecution, filters []common.InlineFilter) error {
 	timer := r.metrics.UpdateDuration.Start()
-	tx := r.db.Model(&nodeExecution).Updates(nodeExecution)
+	tx := r.db.Model(&nodeExecution)
+	for _, filter := range filters {
+		queryExpr, err := filter.GetGormQueryExpr()
+		if err != nil {
+			return err
+		}
+		tx = tx.Where(queryExpr.Query, queryExpr.Args)
+	}
+	tx = tx.Updates(nodeExecution)
 	timer.Stop()
 	if err := tx.Error; err != nil {
 		return r.errorTransformer.ToFlyteAdminError(err)

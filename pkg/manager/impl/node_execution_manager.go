@@ -4,6 +4,8 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/executions"
+
 	eventWriter "github.com/flyteorg/flyteadmin/pkg/async/events/interfaces"
 
 	notificationInterfaces "github.com/flyteorg/flyteadmin/pkg/async/notifications/interfaces"
@@ -164,7 +166,11 @@ func (m *NodeExecutionManager) updateNodeExecutionWithEvent(
 		logger.Debugf(ctx, "failed to update node execution model: %+v with err: %v", request.Event.Id, err)
 		return updateFailed, err
 	}
-	err = m.db.NodeExecutionRepo().Update(ctx, nodeExecutionModel)
+	filters, err := executions.GetUpdateNodeExecutionFilters(request.Event.Phase)
+	if err != nil {
+		return updateFailed, err
+	}
+	err = m.db.NodeExecutionRepo().Update(ctx, nodeExecutionModel, filters)
 	if err != nil {
 		logger.Debugf(ctx, "Failed to update node execution with id [%+v] with err %v",
 			request.Event.Id, err)

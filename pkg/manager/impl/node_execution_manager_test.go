@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/executions"
+
 	eventWriterMocks "github.com/flyteorg/flyteadmin/pkg/async/events/mocks"
 
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
@@ -182,7 +184,7 @@ func TestCreateNodeEvent_Update(t *testing.T) {
 			}, nil
 		})
 	repository.NodeExecutionRepo().(*repositoryMocks.MockNodeExecutionRepo).SetUpdateCallback(
-		func(ctx context.Context, nodeExecution *models.NodeExecution) error {
+		func(ctx context.Context, nodeExecution *models.NodeExecution, filters []common.InlineFilter) error {
 			expectedClosure := admin.NodeExecutionClosure{
 				StartedAt: occurredAtProto,
 				Phase:     core.NodeExecution_RUNNING,
@@ -207,7 +209,18 @@ func TestCreateNodeEvent_Update(t *testing.T) {
 				NodeExecutionUpdatedAt:                &occurredAt,
 				DynamicWorkflowRemoteClosureReference: "s3://bucket/admin/metadata/project/domain/name/node id/proj_domain_dynamic_wf_abc123",
 			}, *nodeExecution)
-
+			assert.Len(t, filters, 2)
+			for _, filter := range filters {
+				queryExpr, err := filter.GetGormQueryExpr()
+				assert.NoError(t, err)
+				if queryExpr.Query == phaseNotEqual {
+					assert.Equal(t, queryExpr.Args, core.NodeExecution_RUNNING.String())
+				} else if queryExpr.Query == phaseNotIn {
+					assert.Equal(t, queryExpr.Args, executions.TerminalNodeExecutionPhases)
+				} else {
+					t.Errorf("Unexpected query expression [%+v]", queryExpr)
+				}
+			}
 			return nil
 		})
 
@@ -286,7 +299,7 @@ func TestCreateNodeEvent_UpdateDatabaseError(t *testing.T) {
 
 	expectedErr := errors.New("expected error")
 	repository.NodeExecutionRepo().(*repositoryMocks.MockNodeExecutionRepo).SetUpdateCallback(
-		func(ctx context.Context, nodeExecution *models.NodeExecution) error {
+		func(ctx context.Context, nodeExecution *models.NodeExecution, filters []common.InlineFilter) error {
 			return expectedErr
 		})
 	nodeExecManager := NewNodeExecutionManager(repository, getMockExecutionsConfigProvider(), make([]string, 0), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockNodeExecutionRemoteURL, nil, &eventWriterMocks.NodeExecutionEventWriter{})
