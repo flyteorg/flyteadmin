@@ -54,7 +54,7 @@ type SslOptions struct {
 }
 
 var defaultServerConfig = &ServerConfig{
-	HTTPPort:   8088,
+	HTTPPort: 8088,
 	Security: ServerSecurityOptions{
 		AllowCors:      true,
 		AllowedHeaders: []string{"Content-Type", "flyte-authorization"},
