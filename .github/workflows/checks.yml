@@ -27,9 +27,10 @@ jobs:
   endtoend:
     name: End2End Test
     needs: [docker-build]
-    uses: flyteorg/flytetools/.github/workflows/end2end.yml@master
+    uses: flyteorg/flytetools/.github/workflows/end2end.yml@postupgrade
     with:
       priorities: "P0"
+      preupgrade: true
 
   integration:
     name: Integration Test
