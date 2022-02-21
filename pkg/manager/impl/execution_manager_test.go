@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"google.golang.org/grpc/status"
+
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/flyteorg/flyteadmin/pkg/workflowengine"
@@ -45,7 +47,6 @@ import (
 	notificationMocks "github.com/flyteorg/flyteadmin/pkg/async/notifications/mocks"
 	dataMocks "github.com/flyteorg/flyteadmin/pkg/data/mocks"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
-	"github.com/flyteorg/flyteadmin/pkg/repositories"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	repositoryMocks "github.com/flyteorg/flyteadmin/pkg/repositories/mocks"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
@@ -147,7 +148,7 @@ func getMockExecutionsConfigProvider() runtimeInterfaces.Configuration {
 	return mockExecutionsConfigProvider
 }
 
-func setDefaultLpCallbackForExecTest(repository repositories.RepositoryInterface) {
+func setDefaultLpCallbackForExecTest(repository interfaces.Repository) {
 	lpSpec := testutils.GetSampleLpSpecForTest()
 	lpSpec.Labels = &admin.Labels{
 		Values: map[string]string{
@@ -212,7 +213,7 @@ func getMockStorageForExecTest(ctx context.Context) *storage.DataStore {
 	return mockStorage
 }
 
-func getMockRepositoryForExecTest() repositories.RepositoryInterface {
+func getMockRepositoryForExecTest() interfaces.Repository {
 	repository := repositoryMocks.NewMockRepository()
 	repository.WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetGetCallback(
 		func(input interfaces.Identifier) (models.Workflow, error) {
@@ -1677,6 +1678,7 @@ func TestCreateWorkflowEvent_UpdateModelError(t *testing.T) {
 			OutputResult: &event.WorkflowExecutionEvent_Error{
 				Error: &executionError,
 			},
+			ProducerId: testCluster,
 		},
 	})
 	assert.Nil(t, resp)
@@ -1748,6 +1750,62 @@ func TestCreateWorkflowEvent_DatabaseUpdateError(t *testing.T) {
 	})
 	assert.Nil(t, resp)
 	assert.EqualError(t, expectedErr, err.Error())
+}
+
+func TestCreateWorkflowEvent_IncompatibleCluster(t *testing.T) {
+	repository := repositoryMocks.NewMockRepository()
+	occurredAt := time.Now().UTC()
+
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(
+		func(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
+			return models.Execution{
+				ExecutionKey: models.ExecutionKey{
+					Project: "project",
+					Domain:  "domain",
+					Name:    "name",
+				},
+				BaseModel: models.BaseModel{
+					ID: uint(8),
+				},
+				Spec:         specBytes,
+				Phase:        core.WorkflowExecution_RUNNING.String(),
+				Closure:      closureBytes,
+				LaunchPlanID: uint(1),
+				WorkflowID:   uint(2),
+				StartedAt:    &occurredAt,
+				Cluster:      testCluster,
+			}, nil
+		},
+	)
+
+	execManager := NewExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
+	occurredAtTimestamp, _ := ptypes.TimestampProto(occurredAt)
+	resp, err := execManager.CreateWorkflowEvent(context.Background(), admin.WorkflowExecutionEventRequest{
+		RequestId: "1",
+		Event: &event.WorkflowExecutionEvent{
+			ExecutionId: &executionIdentifier,
+			OccurredAt:  occurredAtTimestamp,
+			Phase:       core.WorkflowExecution_ABORTING,
+			ProducerId:  "C2",
+		},
+	})
+	assert.NotNil(t, err)
+	adminError := err.(flyteAdminErrors.FlyteAdminError)
+	assert.Equal(t, adminError.Code(), codes.FailedPrecondition)
+	s, ok := status.FromError(err)
+	assert.True(t, ok)
+	var seenIncompatibleClusterErr bool
+	for _, detail := range s.Details() {
+		failureReason, ok := detail.(*admin.EventFailureReason)
+		if ok {
+			if failureReason.GetIncompatibleCluster() != nil {
+				seenIncompatibleClusterErr = true
+				break
+			}
+		}
+	}
+	assert.True(t, seenIncompatibleClusterErr)
+	assert.Nil(t, resp)
 }
 
 func TestGetExecution(t *testing.T) {
@@ -2408,10 +2466,12 @@ func TestTerminateExecution_PropellerError(t *testing.T) {
 	workflowengine.GetRegistry().Register(&mockExecutor)
 	defer resetExecutor()
 
+	updateCalled := false
 	repository := repositoryMocks.NewMockRepository()
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateExecutionCallback(func(
 		context context.Context, execution models.Execution) error {
-		t.Fatal("update should not be called when propeller fails to terminate an execution")
+		updateCalled = true
+		assert.Equal(t, core.WorkflowExecution_ABORTING.String(), execution.Phase)
 		return nil
 	})
 	execManager := NewExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
@@ -2426,6 +2486,7 @@ func TestTerminateExecution_PropellerError(t *testing.T) {
 	})
 	assert.Nil(t, resp)
 	assert.EqualError(t, err, expectedError.Error())
+	assert.True(t, updateCalled)
 }
 
 func TestTerminateExecution_DatabaseError(t *testing.T) {

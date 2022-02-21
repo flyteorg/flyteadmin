@@ -15,8 +15,8 @@ type MockApplicationProvider struct {
 	cloudEventConfig     interfaces.CloudEventsConfig
 }
 
-func (p *MockApplicationProvider) GetDbConfig() interfaces.DbConfig {
-	return p.dbConfig
+func (p *MockApplicationProvider) GetDbConfig() *interfaces.DbConfig {
+	return &p.dbConfig
 }
 
 func (p *MockApplicationProvider) SetDbConfig(dbConfig interfaces.DbConfig) {
