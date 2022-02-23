@@ -50,19 +50,35 @@ func TestValidateTask(t *testing.T) {
 		getMockTaskConfigProvider(), mockWhitelistConfigProvider, taskApplicationConfigProvider)
 	assert.EqualError(t, err, "Requested CPU default [1536Mi] is greater than current limit set in the platform configuration [200m]. Please contact Flyte Admins to change these limits or consult the configuration")
 
+	request.Spec.Template.Target = &core.TaskTemplate_K8SPod{}
+	err = ValidateTask(context.Background(), request, testutils.GetRepoWithDefaultProject(),
+		getMockTaskConfigProvider(), mockWhitelistConfigProvider, taskApplicationConfigProvider)
+	assert.Nil(t, err)
+
 	resourceList := corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1.5Gi")}
 	podSpec := &corev1.PodSpec{Containers: []corev1.Container{{Resources: corev1.ResourceRequirements{Requests: resourceList}}}}
-	data, err := json.Marshal(podSpec)
+	request.Spec.Template.Target = &core.TaskTemplate_K8SPod{K8SPod: &core.K8SPod{PodSpec: transformStructToStructPB(t, podSpec)}}
+	err = ValidateTask(context.Background(), request, testutils.GetRepoWithDefaultProject(),
+		getMockTaskConfigProvider(), mockWhitelistConfigProvider, taskApplicationConfigProvider)
+	assert.EqualError(t, err, "Requested CPU default [1536Mi] is greater than current limit set in the platform configuration [200m]. Please contact Flyte Admins to change these limits or consult the configuration")
+
+	resourceList = corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m")}
+	podSpec = &corev1.PodSpec{Containers: []corev1.Container{{Resources: corev1.ResourceRequirements{Requests: resourceList}}}}
+	request.Spec.Template.Target = &core.TaskTemplate_K8SPod{K8SPod: &core.K8SPod{PodSpec: transformStructToStructPB(t, podSpec)}}
+	err = ValidateTask(context.Background(), request, testutils.GetRepoWithDefaultProject(),
+		getMockTaskConfigProvider(), mockWhitelistConfigProvider, taskApplicationConfigProvider)
+	assert.Nil(t, err)
+}
+
+func transformStructToStructPB(t *testing.T, obj interface{}) *structpb.Struct {
+	data, err := json.Marshal(obj)
 	assert.Nil(t, err)
 	podSpecMap := make(map[string]interface{})
 	err = json.Unmarshal(data, &podSpecMap)
 	assert.Nil(t, err)
 	s, err := structpb.NewStruct(podSpecMap)
 	assert.Nil(t, err)
-	request.Spec.Template.Target = &core.TaskTemplate_K8SPod{K8SPod: &core.K8SPod{PodSpec: s}}
-	err = ValidateTask(context.Background(), request, testutils.GetRepoWithDefaultProject(),
-		getMockTaskConfigProvider(), mockWhitelistConfigProvider, taskApplicationConfigProvider)
-	assert.EqualError(t, err, "Requested CPU default [1536Mi] is greater than current limit set in the platform configuration [200m]. Please contact Flyte Admins to change these limits or consult the configuration")
+	return s
 }
 
 func TestValidateTaskEmptyProject(t *testing.T) {
