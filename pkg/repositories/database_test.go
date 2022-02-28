@@ -99,7 +99,7 @@ func TestGetPostgresDsn(t *testing.T) {
 func TestSetupDbConnectionPool(t *testing.T) {
 	t.Run("successful", func(t *testing.T) {
 		gormDb, err := gorm.Open(sqlite.Open(filepath.Join(os.TempDir(), "gorm.db")), &gorm.Config{})
-		assert.NotNil(t, err)
+		assert.Nil(t, err)
 		dbConfig := &runtimeInterfaces.DbConfig{
 			DeprecatedPort:     5432,
 			MaxIdleConnections: 10,
