@@ -3,13 +3,18 @@ package repositories
 import (
 	"context"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flytestdlib/logger"
-	gormLogger "gorm.io/gorm/logger"
 
 	"github.com/stretchr/testify/assert"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	gormLogger "gorm.io/gorm/logger"
 )
 
 func TestGetGormLogLevel(t *testing.T) {
@@ -88,5 +93,38 @@ func TestGetPostgresDsn(t *testing.T) {
 		pgConfig.PasswordPath = tmpFile.Name()
 		dsn := getPostgresDsn(context.TODO(), pgConfig)
 		assert.Equal(t, "host=localhost port=5432 dbname=postgres user=postgres password=123abc ", dsn)
+	})
+}
+
+func TestSetupDbConnectionPool(t *testing.T) {
+	t.Run("successful", func(t *testing.T) {
+		gormDb, err := gorm.Open(sqlite.Open(filepath.Join(os.TempDir(), "gorm.db")), &gorm.Config{})
+
+		dbConfig := &runtimeInterfaces.DbConfig{
+			DeprecatedPort:     5432,
+			MaxIdleConnections: 10,
+			MaxOpenConnections: 1000,
+			ConnMaxLifeTime:    time.Hour,
+		}
+		err = setupDbConnectionPool(gormDb, dbConfig)
+		assert.Nil(t, err)
+		genericDb, err := gormDb.DB()
+		assert.Nil(t, err)
+		assert.Equal(t, genericDb.Stats().MaxOpenConnections, 1000)
+	})
+	t.Run("failed to get DB", func(t *testing.T) {
+		gormDb := &gorm.DB{
+			Config: &gorm.Config{
+				ConnPool: &gorm.PreparedStmtDB{},
+			},
+		}
+		dbConfig := &runtimeInterfaces.DbConfig{
+			DeprecatedPort:     5432,
+			MaxIdleConnections: 10,
+			MaxOpenConnections: 1000,
+			ConnMaxLifeTime:    time.Hour,
+		}
+		err := setupDbConnectionPool(gormDb, dbConfig)
+		assert.NotNil(t, err)
 	})
 }
