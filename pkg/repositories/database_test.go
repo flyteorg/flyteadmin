@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"testing"
 
@@ -40,7 +39,7 @@ func TestGetGormLogLevel(t *testing.T) {
 
 func TestResolvePassword(t *testing.T) {
 	password := "123abc"
-	tmpFile, err := ioutil.TempFile("", fmt.Sprintf("prefix"))
+	tmpFile, err := ioutil.TempFile("", "prefix")
 	if err != nil {
 		t.Errorf("Couldn't open temp file: %v", err)
 	}
@@ -78,7 +77,7 @@ func TestGetPostgresDsn(t *testing.T) {
 	})
 	t.Run("with password path", func(t *testing.T) {
 		password := "123abc"
-		tmpFile, err := ioutil.TempFile("", fmt.Sprintf("prefix"))
+		tmpFile, err := ioutil.TempFile("", "prefix")
 		if err != nil {
 			t.Errorf("Couldn't open temp file: %v", err)
 		}
@@ -88,6 +87,6 @@ func TestGetPostgresDsn(t *testing.T) {
 		}
 		pgConfig.PasswordPath = tmpFile.Name()
 		dsn := getPostgresDsn(context.TODO(), pgConfig)
-		assert.Equal(t, "host=localhost port=5432 dbname=postgres user=postgres password=123abc sslmode=disable", dsn)
+		assert.Equal(t, "host=localhost port=5432 dbname=postgres user=postgres password=123abc ", dsn)
 	})
 }
