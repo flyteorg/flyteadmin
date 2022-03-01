@@ -78,12 +78,17 @@ func GetDB(ctx context.Context, dbConfig *runtimeInterfaces.DbConfig, logConfig 
 	var dialector gorm.Dialector
 	logLevel := getGormLogLevel(ctx, logConfig)
 
+	logger.Warnf(ctx, "DBConfig [%+v]", dbConfig)
+
 	switch {
 	// TODO: Figure out a better proxy for a non-empty postgres config
 	case len(dbConfig.PostgresConfig.Host) > 0 || len(dbConfig.PostgresConfig.User) > 0 || len(dbConfig.PostgresConfig.DbName) > 0:
+		logger.Warnf(ctx, "*** Using PostgresConfig [%+v]", dbConfig.PostgresConfig)
+		logger.Warnf(ctx, "DSN [%+s]", getPostgresDsn(ctx, dbConfig.PostgresConfig))
 		dialector = postgres.Open(getPostgresDsn(ctx, dbConfig.PostgresConfig))
 		// TODO: add other gorm-supported db type handling in further case blocks.
 	case len(dbConfig.DeprecatedHost) > 0 || len(dbConfig.DeprecatedUser) > 0 || len(dbConfig.DeprecatedDbName) > 0:
+		logger.Warn(ctx, "*** Using deprecated dbConfig [%+v]", dbConfig)
 		pgConfig := runtimeInterfaces.PostgresConfig{
 			Host:         dbConfig.DeprecatedHost,
 			Port:         dbConfig.DeprecatedPort,
@@ -94,6 +99,7 @@ func GetDB(ctx context.Context, dbConfig *runtimeInterfaces.DbConfig, logConfig 
 			ExtraOptions: dbConfig.DeprecatedExtraOptions,
 			Debug:        dbConfig.DeprecatedDebug,
 		}
+		logger.Warnf(ctx, "DSN [%+s]", getPostgresDsn(ctx, pgConfig))
 		dialector = postgres.Open(getPostgresDsn(ctx, pgConfig))
 	default:
 		panic(fmt.Sprintf("Unrecognized database config %v", dbConfig))
