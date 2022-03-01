@@ -40,8 +40,10 @@ func getGormLogLevel(ctx context.Context, logConfig *logger.Config) gormLogger.L
 
 // Resolves a password value from either a user-provided inline value or a filepath whose contents contain a password.
 func resolvePassword(ctx context.Context, passwordVal, passwordPath string) string {
+	logger.Warnf(ctx, "***resolving password with val [%s] and path [%s]", passwordVal, passwordPath)
 	password := passwordVal
 	if len(passwordPath) > 0 {
+		logger.Warnf(ctx, "***password path is > 0")
 		if _, err := os.Stat(passwordPath); os.IsNotExist(err) {
 			logger.Fatalf(ctx,
 				"missing database password at specified path [%s]", passwordPath)
@@ -54,7 +56,9 @@ func resolvePassword(ctx context.Context, passwordVal, passwordPath string) stri
 		// Passwords can contain special characters as long as they are percent encoded
 		// https://www.postgresql.org/docs/current/libpq-connect.html
 		password = strings.TrimSpace(string(passwordVal))
+		logger.Warnf(ctx, "***set password from path [%c]...", password[0])
 	}
+	logger.Warnf(ctx, "** Returning password [%c]", password[0])
 	return password
 }
 
@@ -88,7 +92,7 @@ func GetDB(ctx context.Context, dbConfig *runtimeInterfaces.DbConfig, logConfig 
 		dialector = postgres.Open(getPostgresDsn(ctx, dbConfig.PostgresConfig))
 		// TODO: add other gorm-supported db type handling in further case blocks.
 	case len(dbConfig.DeprecatedHost) > 0 || len(dbConfig.DeprecatedUser) > 0 || len(dbConfig.DeprecatedDbName) > 0:
-		logger.Warn(ctx, "*** Using deprecated dbConfig [%+v]", dbConfig)
+		logger.Warnf(ctx, "*** Using deprecated dbConfig [%+v]", dbConfig)
 		pgConfig := runtimeInterfaces.PostgresConfig{
 			Host:         dbConfig.DeprecatedHost,
 			Port:         dbConfig.DeprecatedPort,
