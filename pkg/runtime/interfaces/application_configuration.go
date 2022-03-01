@@ -1,8 +1,6 @@
 package interfaces
 
 import (
-	"time"
-
 	"github.com/flyteorg/flytestdlib/config"
 
 	"golang.org/x/time/rate"
@@ -20,11 +18,11 @@ type DbConfig struct {
 	DeprecatedExtraOptions string `json:"options" pflag:",deprecated"`
 	DeprecatedDebug        bool   `json:"debug" pflag:",deprecated"`
 
-	EnableForeignKeyConstraintWhenMigrating bool           `json:"enableForeignKeyConstraintWhenMigrating" pflag:",Whether to enable gorm foreign keys when migrating the db"`
-	MaxIdleConnections                      int            `json:"maxIdleConnections" pflag:",maxIdleConns sets the maximum number of connections in the idle connection pool."`
-	MaxOpenConnections                      int            `json:"maxOpenConnections" pflag:",maxOpenConns sets the maximum number of open connections to the database."`
-	ConnMaxLifeTime                         time.Duration  `json:"connMaxLifeTime" pflag:",sets the maximum amount of time a connection may be reused"`
-	PostgresConfig                          PostgresConfig `json:"postgres"`
+	EnableForeignKeyConstraintWhenMigrating bool            `json:"enableForeignKeyConstraintWhenMigrating" pflag:",Whether to enable gorm foreign keys when migrating the db"`
+	MaxIdleConnections                      int             `json:"maxIdleConnections" pflag:",maxIdleConns sets the maximum number of connections in the idle connection pool."`
+	MaxOpenConnections                      int             `json:"maxOpenConnections" pflag:",maxOpenConns sets the maximum number of open connections to the database."`
+	ConnMaxLifeTime                         config.Duration `json:"connMaxLifeTime" pflag:",sets the maximum amount of time a connection may be reused"`
+	PostgresConfig                          PostgresConfig  `json:"postgres"`
 }
 
 // PostgresConfig includes specific config options for opening a connection to a postgres database.

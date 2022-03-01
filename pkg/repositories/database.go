@@ -116,7 +116,7 @@ func setupDbConnectionPool(gormDb *gorm.DB, dbConfig *runtimeInterfaces.DbConfig
 	if err != nil {
 		return err
 	}
-	genericDb.SetConnMaxLifetime(dbConfig.ConnMaxLifeTime)
+	genericDb.SetConnMaxLifetime(dbConfig.ConnMaxLifeTime.Duration)
 	genericDb.SetMaxIdleConns(dbConfig.MaxIdleConnections)
 	genericDb.SetMaxOpenConns(dbConfig.MaxOpenConnections)
 	return nil

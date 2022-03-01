@@ -9,6 +9,7 @@ import (
 	"time"
 
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	"github.com/flyteorg/flytestdlib/config"
 	"github.com/flyteorg/flytestdlib/logger"
 
 	"github.com/stretchr/testify/assert"
@@ -104,7 +105,21 @@ func TestSetupDbConnectionPool(t *testing.T) {
 			DeprecatedPort:     5432,
 			MaxIdleConnections: 10,
 			MaxOpenConnections: 1000,
-			ConnMaxLifeTime:    time.Hour,
+			ConnMaxLifeTime:    config.Duration{Duration: time.Hour},
+		}
+		err = setupDbConnectionPool(gormDb, dbConfig)
+		assert.Nil(t, err)
+		genericDb, err := gormDb.DB()
+		assert.Nil(t, err)
+		assert.Equal(t, genericDb.Stats().MaxOpenConnections, 1000)
+	})
+	t.Run("unset duration", func(t *testing.T) {
+		gormDb, err := gorm.Open(sqlite.Open(filepath.Join(os.TempDir(), "gorm.db")), &gorm.Config{})
+		assert.Nil(t, err)
+		dbConfig := &runtimeInterfaces.DbConfig{
+			DeprecatedPort:     5432,
+			MaxIdleConnections: 10,
+			MaxOpenConnections: 1000,
 		}
 		err = setupDbConnectionPool(gormDb, dbConfig)
 		assert.Nil(t, err)
@@ -122,7 +137,7 @@ func TestSetupDbConnectionPool(t *testing.T) {
 			DeprecatedPort:     5432,
 			MaxIdleConnections: 10,
 			MaxOpenConnections: 1000,
-			ConnMaxLifeTime:    time.Hour,
+			ConnMaxLifeTime:    config.Duration{Duration: time.Hour},
 		}
 		err := setupDbConnectionPool(gormDb, dbConfig)
 		assert.NotNil(t, err)

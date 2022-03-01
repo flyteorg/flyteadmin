@@ -29,7 +29,7 @@ var databaseConfig = config.MustRegisterSection(database, &interfaces.DbConfig{
 	DeprecatedExtraOptions: "sslmode=disable",
 	MaxIdleConnections:     10,
 	MaxOpenConnections:     1000,
-	ConnMaxLifeTime:        time.Hour,
+	ConnMaxLifeTime:        config.Duration{Duration: time.Hour},
 })
 var flyteAdminConfig = config.MustRegisterSection(flyteAdmin, &interfaces.ApplicationConfig{
 	ProfilerPort:          metricPort,
