@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"os"
-	"path/filepath"
 	"testing"
 
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
@@ -42,7 +40,7 @@ func TestGetGormLogLevel(t *testing.T) {
 
 func TestResolvePassword(t *testing.T) {
 	password := "123abc"
-	tmpFile, err := ioutil.TempFile("", fmt.Sprintf("%s-", filepath.Base(os.Args[0])))
+	tmpFile, err := ioutil.TempFile("", fmt.Sprintf("prefix"))
 	if err != nil {
 		t.Errorf("Couldn't open temp file: %v", err)
 	}
@@ -80,7 +78,7 @@ func TestGetPostgresDsn(t *testing.T) {
 	})
 	t.Run("with password path", func(t *testing.T) {
 		password := "123abc"
-		tmpFile, err := ioutil.TempFile("", fmt.Sprintf("%s-", filepath.Base(os.Args[0])))
+		tmpFile, err := ioutil.TempFile("", fmt.Sprintf("prefix"))
 		if err != nil {
 			t.Errorf("Couldn't open temp file: %v", err)
 		}
