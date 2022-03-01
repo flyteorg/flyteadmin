@@ -139,15 +139,25 @@ func TestGetUpdateTaskExecutionFilters(t *testing.T) {
 		assert.Equal(t, queryExpr.Query, "phase not in (?)")
 		assert.EqualValues(t, queryExpr.Args, TerminalTaskExecutionPhases)
 	})
-	t.Run("non terminal", func(t *testing.T) {
+	t.Run("running", func(t *testing.T) {
 		filters, err := GetUpdateTaskExecutionFilters(core.TaskExecution_RUNNING)
+		assert.NoError(t, err)
+		assert.Len(t, filters, 1)
+
+		queryExpr, err := filters[0].GetGormQueryExpr()
+		assert.NoError(t, err)
+		assert.Equal(t, queryExpr.Query, "phase not in (?)")
+		assert.EqualValues(t, queryExpr.Args, TerminalTaskExecutionPhases)
+	})
+	t.Run("non terminal", func(t *testing.T) {
+		filters, err := GetUpdateTaskExecutionFilters(core.TaskExecution_INITIALIZING)
 		assert.NoError(t, err)
 		assert.Len(t, filters, 2)
 
 		queryExpr, err := filters[0].GetGormQueryExpr()
 		assert.NoError(t, err)
 		assert.Equal(t, queryExpr.Query, "phase <> ?")
-		assert.EqualValues(t, queryExpr.Args, core.TaskExecution_RUNNING.String())
+		assert.EqualValues(t, queryExpr.Args, core.TaskExecution_INITIALIZING.String())
 
 		queryExpr, err = filters[1].GetGormQueryExpr()
 		assert.NoError(t, err)

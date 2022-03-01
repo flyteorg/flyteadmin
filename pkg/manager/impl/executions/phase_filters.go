@@ -103,7 +103,7 @@ func GetUpdateNodeExecutionFilters(eventPhase core.NodeExecution_Phase) (filters
 func GetUpdateTaskExecutionFilters(eventPhase core.TaskExecution_Phase) (filters []common.InlineFilter, err error) {
 	// With terminal executions we don't need to add the check for the same phase because we always check the existing
 	// execution isn't already terminal. RUNNING can have multiple phase versions
-	if !(common.IsTaskExecutionTerminal(eventPhase) || eventPhase != core.TaskExecution_RUNNING) {
+	if !(common.IsTaskExecutionTerminal(eventPhase) || eventPhase == core.TaskExecution_RUNNING) {
 		notAlreadySamePhaseFilter, err := common.NewSingleValueFilter(common.Execution, common.NotEqual, phaseField, eventPhase.String())
 		if err != nil {
 			return nil, err
