@@ -50,10 +50,10 @@ func TestValidateTask(t *testing.T) {
 		getMockTaskConfigProvider(), mockWhitelistConfigProvider, taskApplicationConfigProvider)
 	assert.EqualError(t, err, "Requested CPU default [1536Mi] is greater than current limit set in the platform configuration [200m]. Please contact Flyte Admins to change these limits or consult the configuration")
 
-	request.Spec.Template.Target = &core.TaskTemplate_K8SPod{}
+	request.Spec.Template.Target = &core.TaskTemplate_K8SPod{K8SPod: &core.K8SPod{}}
 	err = ValidateTask(context.Background(), request, testutils.GetRepoWithDefaultProject(),
 		getMockTaskConfigProvider(), mockWhitelistConfigProvider, taskApplicationConfigProvider)
-	assert.Nil(t, err)
+	assert.EqualError(t, err, "invalid TaskSpecification, pod tasks should specify their target as a K8sPod with a defined pod spec")
 
 	resourceList := corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1.5Gi")}
 	podSpec := &corev1.PodSpec{Containers: []corev1.Container{{Resources: corev1.ResourceRequirements{Requests: resourceList}}}}

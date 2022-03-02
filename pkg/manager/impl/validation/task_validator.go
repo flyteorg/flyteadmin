@@ -45,7 +45,8 @@ func validateContainer(task core.TaskTemplate, taskConfig runtime.TaskResourceCo
 // This is called for a task with a non-nil k8s pod.
 func validateK8sPod(task core.TaskTemplate, taskConfig runtime.TaskResourceConfiguration) error {
 	if task.GetK8SPod().PodSpec == nil {
-		return nil
+		return errors.NewFlyteAdminErrorf(codes.InvalidArgument,
+			"invalid TaskSpecification, pod tasks should specify their target as a K8sPod with a defined pod spec")
 	}
 	var podSpec corev1.PodSpec
 	if err := utils.UnmarshalStructToObj(task.GetK8SPod().PodSpec, &podSpec); err != nil {
