@@ -80,7 +80,7 @@ func TestUpdateClusterResourceAttributes(t *testing.T) {
 		Attributes: &admin.ProjectDomainAttributes{
 			Project:            "admintests",
 			Domain:             "development",
-			MatchingAttributes: matchingAttributes,
+			MatchingAttributes: clusterMatchingAttributes,
 		},
 	}, response))
 
