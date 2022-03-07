@@ -6,6 +6,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/invopop/jsonschema"
+
 	"github.com/NYTimes/gizmo/pubsub"
 	"github.com/NYTimes/gizmo/pubsub/pubsubtest"
 	pbcloudevents "github.com/cloudevents/sdk-go/binding/format/protobuf/v2"
@@ -93,11 +95,15 @@ func TestNewCloudEventsPublisher_EventTypes(t *testing.T) {
 						cloudevent := cloudevents.NewEvent()
 						err := pbcloudevents.Protobuf.Unmarshal(body, &cloudevent)
 						assert.Nil(t, err)
+						reflector := jsonschema.Reflector{ExpandedStruct: true}
+						schema, err := json.Marshal(reflector.Reflect(event))
+						assert.Nil(t, err)
 
 						assert.Equal(t, cloudevent.DataContentType(), cloudevents.ApplicationJSON)
 						assert.Equal(t, cloudevent.SpecVersion(), cloudevents.VersionV1)
 						assert.Equal(t, cloudevent.Type(), proto.MessageName(event))
 						assert.Equal(t, cloudevent.Source(), cloudEventSource)
+						assert.Equal(t, cloudevent.Extensions(), map[string]interface{}{jsonSchema: string(schema)})
 
 						e, err := json.Marshal(event)
 						assert.Nil(t, err)

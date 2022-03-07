@@ -3,7 +3,6 @@ package implementations
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/NYTimes/gizmo/pubsub"
@@ -24,6 +23,7 @@ import (
 
 const (
 	cloudEventSource = "https://github.com/flyteorg/flyteadmin"
+	jsonSchema       = "jsonschema"
 )
 
 type CloudEventPublisher struct {
@@ -47,13 +47,18 @@ func (p *CloudEventPublisher) Publish(ctx context.Context, notificationType stri
 	event.SetID(uuid.New().String())
 	event.SetTime(time.Now())
 	reflector := jsonschema.Reflector{ExpandedStruct: true}
-	schema, _ := json.Marshal(reflector.Reflect(msg))
-	event.SetDataSchema(string(schema))
-	fmt.Println(string(schema))
+	schema, err := json.Marshal(reflector.Reflect(msg))
+	if err != nil {
+		p.systemMetrics.PublishError.Inc()
+		logger.Errorf(ctx, "Failed to marshal cloudevent JsonSchema: %v", err)
+		return err
+	}
+	event.SetExtension(jsonSchema, string(schema))
 
 	if err := event.SetData(cloudevents.ApplicationJSON, &msg); err != nil {
 		p.systemMetrics.PublishError.Inc()
 		logger.Errorf(ctx, "Failed to encode data with error: %v", err)
+		return err
 	}
 
 	eventByte, err := pbcloudevents.Protobuf.Marshal(&event)
