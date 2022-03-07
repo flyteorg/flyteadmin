@@ -67,7 +67,7 @@ func getPostgresDsn(ctx context.Context, pgConfig runtimeInterfaces.PostgresConf
 			pgConfig.Host, pgConfig.Port, pgConfig.DbName, pgConfig.User)
 	}
 	return fmt.Sprintf("host=%s port=%d dbname=%s user=%s password=%s %s",
-		pgConfig.Host, pgConfig.Port, pgConfig.DbName, pgConfig.User, pgConfig.Password, pgConfig.ExtraOptions)
+		pgConfig.Host, pgConfig.Port, pgConfig.DbName, pgConfig.User, password, pgConfig.ExtraOptions)
 }
 
 func GetDB(ctx context.Context, dbConfig *runtimeInterfaces.DbConfig, logConfig *logger.Config) (
@@ -98,9 +98,26 @@ func GetDB(ctx context.Context, dbConfig *runtimeInterfaces.DbConfig, logConfig 
 	default:
 		panic(fmt.Sprintf("Unrecognized database config %v", dbConfig))
 	}
-
-	return gorm.Open(dialector, &gorm.Config{
+	gormDb, err := gorm.Open(dialector, &gorm.Config{
 		Logger:                                   gormLogger.Default.LogMode(logLevel),
 		DisableForeignKeyConstraintWhenMigrating: !dbConfig.EnableForeignKeyConstraintWhenMigrating,
 	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Setup connection pool settings
+	return gormDb, setupDbConnectionPool(gormDb, dbConfig)
+}
+
+func setupDbConnectionPool(gormDb *gorm.DB, dbConfig *runtimeInterfaces.DbConfig) error {
+	genericDb, err := gormDb.DB()
+	if err != nil {
+		return err
+	}
+	genericDb.SetConnMaxLifetime(dbConfig.ConnMaxLifeTime.Duration)
+	genericDb.SetMaxIdleConns(dbConfig.MaxIdleConnections)
+	genericDb.SetMaxOpenConns(dbConfig.MaxOpenConnections)
+	return nil
 }
