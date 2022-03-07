@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/NYTimes/gizmo/pubsub"
@@ -95,11 +94,9 @@ func TestNewCloudEventsPublisher_EventTypes(t *testing.T) {
 						err := pbcloudevents.Protobuf.Unmarshal(body, &cloudevent)
 						assert.Nil(t, err)
 
-						fmt.Println(cloudevent)
 						assert.Equal(t, cloudevent.DataContentType(), cloudevents.ApplicationJSON)
 						assert.Equal(t, cloudevent.SpecVersion(), cloudevents.VersionV1)
-						assert.Equal(t, cloudevent.SpecVersion(), cloudevents.VersionV1)
-						assert.Equal(t, cloudevent.Type(), cloudEventType)
+						assert.Equal(t, cloudevent.Type(), proto.MessageName(event))
 						assert.Equal(t, cloudevent.Source(), cloudEventSource)
 
 						e, err := json.Marshal(event)

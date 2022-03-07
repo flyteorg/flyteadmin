@@ -2,10 +2,13 @@ package implementations
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/NYTimes/gizmo/pubsub"
 	"github.com/google/uuid"
+	"github.com/invopop/jsonschema"
 
 	pbcloudevents "github.com/cloudevents/sdk-go/binding/format/protobuf/v2"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
@@ -20,7 +23,6 @@ import (
 )
 
 const (
-	cloudEventType   = "com.flyte.workflow"
 	cloudEventSource = "https://github.com/flyteorg/flyteadmin"
 )
 
@@ -40,10 +42,14 @@ func (p *CloudEventPublisher) Publish(ctx context.Context, notificationType stri
 
 	event := cloudevents.NewEvent()
 	// CloudEvent specification: https://github.com/cloudevents/spec/blob/v1.0/spec.md#required-attributes
-	event.SetType(cloudEventType)
+	event.SetType(notificationType)
 	event.SetSource(cloudEventSource)
 	event.SetID(uuid.New().String())
 	event.SetTime(time.Now())
+	reflector := jsonschema.Reflector{ExpandedStruct: true}
+	schema, _ := json.Marshal(reflector.Reflect(msg))
+	event.SetDataSchema(string(schema))
+	fmt.Println(string(schema))
 
 	if err := event.SetData(cloudevents.ApplicationJSON, &msg); err != nil {
 		p.systemMetrics.PublishError.Inc()

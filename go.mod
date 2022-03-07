@@ -162,6 +162,7 @@ require (
 	github.com/bradfitz/gomemcache v0.0.0-20180710155616-bc664df96737 // indirect
 	github.com/googleapis/gnostic v0.5.1 // indirect
 	github.com/imdario/mergo v0.3.11 // indirect
+	github.com/invopop/jsonschema v0.3.0
 	github.com/pquerna/cachecontrol v0.0.0-20171018203845-0dec1b30a021 // indirect
 	github.com/prometheus/common v0.18.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
