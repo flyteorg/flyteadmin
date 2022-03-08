@@ -162,6 +162,8 @@ func setDefaultLpCallbackForExecTest(repository interfaces.Repository) {
 			"annotation4": "4",
 		},
 	}
+	lpSpec.RawOutputDataConfig = &admin.RawOutputDataConfig{OutputLocationPrefix: "default_raw_output"}
+
 	lpSpecBytes, _ := proto.Marshal(&lpSpec)
 	lpClosure := admin.LaunchPlanClosure{
 		ExpectedInputs: lpSpec.DefaultInputs,
@@ -260,12 +262,15 @@ func TestCreateExecution(t *testing.T) {
 	}
 
 	principal := "principal"
+	raw_output := "raw_output"
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(
 		func(ctx context.Context, input models.Execution) error {
 			var spec admin.ExecutionSpec
 			err := proto.Unmarshal(input.Spec, &spec)
 			assert.NoError(t, err)
+
 			assert.Equal(t, principal, spec.Metadata.Principal)
+			assert.Equal(t, raw_output, spec.RawOutputDataConfig.OutputLocationPrefix)
 			return nil
 		})
 	setDefaultLpCallbackForExecTest(repository)
@@ -334,6 +339,7 @@ func TestCreateExecution(t *testing.T) {
 	request.Spec.Metadata = &admin.ExecutionMetadata{
 		Principal: "unused - populated from authenticated context",
 	}
+	request.Spec.RawOutputDataConfig = &admin.RawOutputDataConfig{OutputLocationPrefix: raw_output}
 
 	identity := auth.NewIdentityContext("", principal, "", time.Now(), sets.NewString(), nil)
 	ctx := identity.WithContext(context.Background())
@@ -406,7 +412,8 @@ func TestCreateExecutionFromWorkflowNode(t *testing.T) {
 			err := proto.Unmarshal(input.Spec, &spec)
 			assert.NoError(t, err)
 			assert.Equal(t, admin.ExecutionMetadata_CHILD_WORKFLOW, spec.Metadata.Mode)
-			assert.Equal(t, "feeny", spec.Metadata.Principal)
+			assert.Equal(t, principal, spec.Metadata.Principal)
+			assert.Equal(t, "default_raw_output", spec.RawOutputDataConfig.OutputLocationPrefix)
 			assert.True(t, proto.Equal(&parentNodeExecutionID, spec.Metadata.ParentNodeExecution))
 			assert.EqualValues(t, input.ParentNodeExecutionID, 1)
 			assert.EqualValues(t, input.SourceExecutionID, 2)
