@@ -5,14 +5,21 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"strings"
 
+	repoErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flytestdlib/logger"
+
+	"github.com/jackc/pgconn"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	gormLogger "gorm.io/gorm/logger"
 )
+
+const pqInvalidDBCode = "3D000"
+const defaultDB = "postgres"
 
 // getGormLogLevel converts between the flytestdlib configured log level to the equivalent gorm log level.
 func getGormLogLevel(ctx context.Context, logConfig *logger.Config) gormLogger.LogLevel {
@@ -70,21 +77,24 @@ func getPostgresDsn(ctx context.Context, pgConfig runtimeInterfaces.PostgresConf
 		pgConfig.Host, pgConfig.Port, pgConfig.DbName, pgConfig.User, password, pgConfig.ExtraOptions)
 }
 
+// GetDB uses the dbConfig to gorm DB object. If the db doesn't exist for the dbConfig then a new one is created
+// by using the same dbConfig but just changing the dbName to the default postgres db.
+// TODO : support default db names across different providers. eg : postgres is default dbName to connect to for postgres
 func GetDB(ctx context.Context, dbConfig *runtimeInterfaces.DbConfig, logConfig *logger.Config) (
 	*gorm.DB, error) {
 	if dbConfig == nil {
 		panic("Cannot initialize database repository from empty db config")
 	}
-	var dialector gorm.Dialector
 	logLevel := getGormLogLevel(ctx, logConfig)
 
+	var pgConfig runtimeInterfaces.PostgresConfig
 	switch {
 	// TODO: Figure out a better proxy for a non-empty postgres config
 	case len(dbConfig.PostgresConfig.Host) > 0 || len(dbConfig.PostgresConfig.User) > 0 || len(dbConfig.PostgresConfig.DbName) > 0:
-		dialector = postgres.Open(getPostgresDsn(ctx, dbConfig.PostgresConfig))
+		pgConfig = dbConfig.PostgresConfig
 		// TODO: add other gorm-supported db type handling in further case blocks.
 	case len(dbConfig.DeprecatedHost) > 0 || len(dbConfig.DeprecatedUser) > 0 || len(dbConfig.DeprecatedDbName) > 0:
-		pgConfig := runtimeInterfaces.PostgresConfig{
+		pgConfig = runtimeInterfaces.PostgresConfig{
 			Host:         dbConfig.DeprecatedHost,
 			Port:         dbConfig.DeprecatedPort,
 			DbName:       dbConfig.DeprecatedDbName,
@@ -94,14 +104,16 @@ func GetDB(ctx context.Context, dbConfig *runtimeInterfaces.DbConfig, logConfig 
 			ExtraOptions: dbConfig.DeprecatedExtraOptions,
 			Debug:        dbConfig.DeprecatedDebug,
 		}
-		dialector = postgres.Open(getPostgresDsn(ctx, pgConfig))
+
 	default:
 		panic(fmt.Sprintf("Unrecognized database config %v", dbConfig))
 	}
-	gormDb, err := gorm.Open(dialector, &gorm.Config{
+
+	gormConfig := &gorm.Config{
 		Logger:                                   gormLogger.Default.LogMode(logLevel),
 		DisableForeignKeyConstraintWhenMigrating: !dbConfig.EnableForeignKeyConstraintWhenMigrating,
-	})
+	}
+	gormDb, err := createIfNotExists(ctx, pgConfig, gormConfig)
 
 	if err != nil {
 		return nil, err
@@ -109,6 +121,63 @@ func GetDB(ctx context.Context, dbConfig *runtimeInterfaces.DbConfig, logConfig 
 
 	// Setup connection pool settings
 	return gormDb, setupDbConnectionPool(gormDb, dbConfig)
+}
+
+// Creates DB if it doesn't exist for the passed in config
+func createIfNotExists(ctx context.Context, pgConfig runtimeInterfaces.PostgresConfig,
+	gormConfig *gorm.Config) (*gorm.DB, error) {
+	dialect := postgres.Open(getPostgresDsn(ctx, pgConfig))
+	gormDb, err := gorm.Open(dialect, gormConfig)
+	if err == nil {
+		return gormDb, nil
+	}
+
+	// if db does not exist, try creating it
+	cErr, ok := err.(repoErrors.ConnectError)
+	if !ok {
+		logger.Errorf(ctx, "Failed to cast error of type: %v, err: %v", reflect.TypeOf(err),
+			err)
+		return nil, err
+	}
+	pqError := cErr.Unwrap().(*pgconn.PgError)
+	if pqError.Code != pqInvalidDBCode {
+		return nil, err
+	}
+
+	logger.Warningf(ctx, "Database [%v] does not exist, trying to create it now", pgConfig.DbName)
+
+	defaultDbPgConfig := pgConfig
+	defaultDbPgConfig.DbName = defaultDB
+	defaultDbDialect := postgres.Open(getPostgresDsn(ctx, defaultDbPgConfig))
+	gormDb, err = gorm.Open(defaultDbDialect, gormConfig)
+
+	if err != nil {
+		return nil, err
+	}
+
+	type DatabaseResult struct {
+		Exists bool
+	}
+	var checkExists DatabaseResult
+	result := gormDb.Raw("SELECT EXISTS(SELECT datname FROM pg_catalog.pg_database WHERE datname = ?)", pgConfig.DbName).Scan(&checkExists)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	// create db if it does not exist
+	if !checkExists.Exists {
+		logger.Infof(ctx, "Creating Database %v since it does not exist", pgConfig.DbName)
+
+		// NOTE: golang sql drivers do not support parameter injection for CREATE calls
+		createDBStatement := fmt.Sprintf("CREATE DATABASE %s", pgConfig.DbName)
+		result = gormDb.Exec(createDBStatement)
+
+		if result.Error != nil {
+			return nil, result.Error
+		}
+	}
+	// Now try connecting to the db again
+	return gorm.Open(dialect, gormConfig)
 }
 
 func setupDbConnectionPool(gormDb *gorm.DB, dbConfig *runtimeInterfaces.DbConfig) error {
