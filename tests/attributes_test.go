@@ -1,3 +1,4 @@
+//go:build integration
 // +build integration
 
 package tests
@@ -7,11 +8,12 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/flyteorg/flyteadmin/pkg/repositories"
+
 	"github.com/golang/protobuf/proto"
 
 	"github.com/stretchr/testify/assert"
 
-	databaseConfig "github.com/flyteorg/flyteadmin/pkg/repositories/config"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 )
 
@@ -25,12 +27,113 @@ var matchingAttributes = &admin.MatchingAttributes{
 	},
 }
 
+func TestUpdateClusterResourceAttributes(t *testing.T) {
+	clusterMatchingAttributes := &admin.MatchingAttributes{
+		Target: &admin.MatchingAttributes_ClusterResourceAttributes{
+			ClusterResourceAttributes: &admin.ClusterResourceAttributes{
+				Attributes: map[string]string{
+					"key": "value",
+				},
+			},
+		},
+	}
+
+	ctx := context.Background()
+	client, conn := GetTestAdminServiceClient()
+	defer conn.Close()
+	db, err := repositories.GetDB(ctx, getDbConfig(), getLoggerConfig())
+	assert.Nil(t, err)
+	truncateTableForTesting(db, "resources")
+	sqlDB, err := db.DB()
+	assert.Nil(t, err)
+	err = sqlDB.Close()
+	assert.Nil(t, err)
+
+	req := admin.ProjectDomainAttributesUpdateRequest{
+		Attributes: &admin.ProjectDomainAttributes{
+			Project:            "admintests",
+			Domain:             "development",
+			MatchingAttributes: clusterMatchingAttributes,
+		},
+	}
+
+	_, err = client.UpdateProjectDomainAttributes(ctx, &req)
+	fmt.Println(err)
+	assert.Nil(t, err)
+
+
+	listResp, err := client.ListMatchableAttributes(ctx, &admin.ListMatchableAttributesRequest{
+		ResourceType: admin.MatchableResource_CLUSTER_RESOURCE,
+	})
+	fmt.Println(err)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(listResp.GetConfigurations()))
+
+	response, err := client.GetProjectDomainAttributes(ctx, &admin.ProjectDomainAttributesGetRequest{
+		Project:      "admintests",
+		Domain:       "development",
+		ResourceType: admin.MatchableResource_CLUSTER_RESOURCE,
+	})
+	fmt.Println(err)
+	assert.Nil(t, err)
+	assert.True(t, proto.Equal(&admin.ProjectDomainAttributesGetResponse{
+		Attributes: &admin.ProjectDomainAttributes{
+			Project:            "admintests",
+			Domain:             "development",
+			MatchingAttributes: clusterMatchingAttributes,
+		},
+	}, response))
+
+	var updatedClusterMatchingAttributes = &admin.MatchingAttributes{
+		Target: &admin.MatchingAttributes_ClusterResourceAttributes{
+			ClusterResourceAttributes: &admin.ClusterResourceAttributes{
+				Attributes: map[string]string{
+					"key": "value2",
+				},
+			},
+		},
+	}
+	req = admin.ProjectDomainAttributesUpdateRequest{
+		Attributes: &admin.ProjectDomainAttributes{
+			Project:            "admintests",
+			Domain:             "development",
+			MatchingAttributes: updatedClusterMatchingAttributes,
+		},
+	}
+
+	_, err = client.UpdateProjectDomainAttributes(ctx, &req)
+	fmt.Println(err)
+	assert.Nil(t, err)
+
+	listResp, err = client.ListMatchableAttributes(ctx, &admin.ListMatchableAttributesRequest{
+		ResourceType: admin.MatchableResource_CLUSTER_RESOURCE,
+	})
+	fmt.Println(err)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(listResp.GetConfigurations()))
+
+	response, err = client.GetProjectDomainAttributes(ctx, &admin.ProjectDomainAttributesGetRequest{
+		Project:      "admintests",
+		Domain:       "development",
+		ResourceType: admin.MatchableResource_CLUSTER_RESOURCE,
+	})
+	fmt.Println(err)
+	assert.Nil(t, err)
+	assert.True(t, proto.Equal(&admin.ProjectDomainAttributesGetResponse{
+		Attributes: &admin.ProjectDomainAttributes{
+			Project:            "admintests",
+			Domain:             "development",
+			MatchingAttributes: updatedClusterMatchingAttributes,
+		},
+	}, response))
+
+}
+
 func TestUpdateProjectDomainAttributes(t *testing.T) {
 	ctx := context.Background()
 	client, conn := GetTestAdminServiceClient()
 	defer conn.Close()
-
-	db, err := databaseConfig.OpenDbConnection(databaseConfig.NewPostgresConfigProvider(getDbConfig(), adminScope))
+	db, err := repositories.GetDB(ctx, getDbConfig(), getLoggerConfig())
 	assert.Nil(t, err)
 	truncateTableForTesting(db, "resources")
 	sqlDB, err := db.DB()
@@ -62,6 +165,42 @@ func TestUpdateProjectDomainAttributes(t *testing.T) {
 			Project:            "admintests",
 			Domain:             "development",
 			MatchingAttributes: matchingAttributes,
+		},
+	}, response))
+
+	var updatedMatchingAttributes = &admin.MatchingAttributes{
+		Target: &admin.MatchingAttributes_TaskResourceAttributes{
+			TaskResourceAttributes: &admin.TaskResourceAttributes{
+				Defaults: &admin.TaskResourceSpec{
+					Cpu: "1",
+				},
+			},
+		},
+	}
+	req = admin.ProjectDomainAttributesUpdateRequest{
+		Attributes: &admin.ProjectDomainAttributes{
+			Project:            "admintests",
+			Domain:             "development",
+			MatchingAttributes: updatedMatchingAttributes,
+		},
+	}
+
+	_, err = client.UpdateProjectDomainAttributes(ctx, &req)
+	fmt.Println(err)
+	assert.Nil(t, err)
+
+	response, err = client.GetProjectDomainAttributes(ctx, &admin.ProjectDomainAttributesGetRequest{
+		Project:      "admintests",
+		Domain:       "development",
+		ResourceType: admin.MatchableResource_TASK_RESOURCE,
+	})
+	fmt.Println(err)
+	assert.Nil(t, err)
+	assert.True(t, proto.Equal(&admin.ProjectDomainAttributesGetResponse{
+		Attributes: &admin.ProjectDomainAttributes{
+			Project:            "admintests",
+			Domain:             "development",
+			MatchingAttributes: updatedMatchingAttributes,
 		},
 	}, response))
 
@@ -106,7 +245,7 @@ func TestUpdateWorkflowAttributes(t *testing.T) {
 	client, conn := GetTestAdminServiceClient()
 	defer conn.Close()
 
-	db, err := databaseConfig.OpenDbConnection(databaseConfig.NewPostgresConfigProvider(getDbConfig(), adminScope))
+	db, err := repositories.GetDB(ctx, getDbConfig(), getLoggerConfig())
 	assert.Nil(t, err)
 	truncateTableForTesting(db, "resources")
 	sqlDB, err := db.DB()
@@ -167,7 +306,7 @@ func TestListAllMatchableAttributes(t *testing.T) {
 	client, conn := GetTestAdminServiceClient()
 	defer conn.Close()
 
-	db, err := databaseConfig.OpenDbConnection(databaseConfig.NewPostgresConfigProvider(getDbConfig(), adminScope))
+	db, err := repositories.GetDB(ctx, getDbConfig(), getLoggerConfig())
 	assert.Nil(t, err)
 	truncateTableForTesting(db, "resources")
 	sqlDB, err := db.DB()

@@ -13,14 +13,20 @@ const SectionKey = "server"
 
 type ServerConfig struct {
 	HTTPPort             int                   `json:"httpPort" pflag:",On which http port to serve admin"`
-	GrpcPort             int                   `json:"grpcPort" pflag:",On which grpc port to serve admin"`
-	GrpcServerReflection bool                  `json:"grpcServerReflection" pflag:",Enable GRPC Server Reflection"`
+	GrpcPort             int                   `json:"grpcPort" pflag:",deprecated"`
+	GrpcServerReflection bool                  `json:"grpcServerReflection" pflag:",deprecated"`
 	KubeConfig           string                `json:"kube-config" pflag:",Path to kubernetes client config file, default is empty, useful for incluster config."`
 	Master               string                `json:"master" pflag:",The address of the Kubernetes API server."`
 	Security             ServerSecurityOptions `json:"security"`
-
+	GrpcConfig           GrpcConfig            `json:"grpc"`
 	// Deprecated: please use auth.AppAuth.ThirdPartyConfig instead.
 	DeprecatedThirdPartyConfig authConfig.ThirdPartyConfigOptions `json:"thirdPartyConfig" pflag:",Deprecated please use auth.appAuth.thirdPartyConfig instead."`
+}
+
+type GrpcConfig struct {
+	Port                int  `json:"port" pflag:",On which grpc port to serve admin"`
+	ServerReflection    bool `json:"serverReflection" pflag:",Enable GRPC Server Reflection"`
+	MaxMessageSizeBytes int  `json:"maxMessageSizeBytes" pflag:",The max size in bytes for incoming gRPC messages"`
 }
 
 type ServerSecurityOptions struct {
@@ -38,7 +44,7 @@ type ServerSecurityOptions struct {
 	AllowedOrigins []string `json:"allowedOrigins"`
 	// These are the Access-Control-Request-Headers that the server will respond to.
 	// By default, the server will allow Accept, Accept-Language, Content-Language, and Content-Type.
-	// User this setting to add any additional headers which are needed
+	// DeprecatedUser this setting to add any additional headers which are needed
 	AllowedHeaders []string `json:"allowedHeaders"`
 }
 
@@ -48,13 +54,15 @@ type SslOptions struct {
 }
 
 var defaultServerConfig = &ServerConfig{
-	HTTPPort:             8088,
-	GrpcPort:             8089,
-	GrpcServerReflection: true,
+	HTTPPort: 8088,
 	Security: ServerSecurityOptions{
 		AllowCors:      true,
 		AllowedHeaders: []string{"Content-Type", "flyte-authorization"},
 		AllowedOrigins: []string{"http://localhost:8080"},
+	},
+	GrpcConfig: GrpcConfig{
+		Port:             8089,
+		ServerReflection: true,
 	},
 }
 var serverConfig = config.MustRegisterSection(SectionKey, defaultServerConfig)
@@ -74,11 +82,14 @@ func SetConfig(s *ServerConfig) {
 }
 
 func (s ServerConfig) GetHostAddress() string {
-	return fmt.Sprintf(":%d", s.HTTPPort)
+	return fmt.Sprintf("0.0.0.0:%d", s.HTTPPort)
 }
 
 func (s ServerConfig) GetGrpcHostAddress() string {
-	return fmt.Sprintf(":%d", s.GrpcPort)
+	if s.GrpcConfig.Port >= 0 {
+		return fmt.Sprintf("0.0.0.0:%d", s.GrpcConfig.Port)
+	}
+	return fmt.Sprintf("0.0.0.0:%d", s.GrpcPort)
 }
 
 func init() {
