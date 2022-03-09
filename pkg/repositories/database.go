@@ -110,7 +110,7 @@ func GetDB(ctx context.Context, dbConfig *runtimeInterfaces.DbConfig, logConfig 
 		}
 		gormDb, err = gorm.Open(postgres.Open(getPostgresDsn(ctx, pgConfig)), gormConfig)
 		if err != nil {
-			gormDb, err = createPostgresDbIfNotExists(ctx, gormConfig, dbConfig.PostgresConfig)
+			gormDb, err = createPostgresDbIfNotExists(ctx, gormConfig, pgConfig)
 		}
 	default:
 		panic(fmt.Sprintf("Unrecognized database config %v", dbConfig))
