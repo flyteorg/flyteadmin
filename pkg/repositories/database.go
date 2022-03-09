@@ -77,9 +77,9 @@ func getPostgresDsn(ctx context.Context, pgConfig runtimeInterfaces.PostgresConf
 		pgConfig.Host, pgConfig.Port, pgConfig.DbName, pgConfig.User, password, pgConfig.ExtraOptions)
 }
 
-// GetDB uses the dbConfig to gorm DB object. If the db doesn't exist for the dbConfig then a new one is created
-// by using the same dbConfig but just changing the dbName to the default postgres db.
-// TODO : support default db names across different providers. eg : postgres is default dbName to connect to for postgres
+// GetDB uses the dbConfig to create gorm DB object. If the db doesn't exist for the dbConfig then a new one is created
+// using the default db for the provider. eg : postgres has default dbName as postgres
+// TODO : support default db names across different providers.
 func GetDB(ctx context.Context, dbConfig *runtimeInterfaces.DbConfig, logConfig *logger.Config) (
 	*gorm.DB, error) {
 	if dbConfig == nil {
@@ -132,7 +132,7 @@ func createIfNotExists(ctx context.Context, pgConfig runtimeInterfaces.PostgresC
 		return gormDb, nil
 	}
 
-	// if db does not exist, try creating it
+	// Check if its invalid db code error
 	cErr, ok := err.(repoErrors.ConnectError)
 	if !ok {
 		logger.Errorf(ctx, "Failed to cast error of type: %v, err: %v", reflect.TypeOf(err),
@@ -146,6 +146,7 @@ func createIfNotExists(ctx context.Context, pgConfig runtimeInterfaces.PostgresC
 
 	logger.Warningf(ctx, "Database [%v] does not exist, trying to create it now", pgConfig.DbName)
 
+	// Connect tp the default db for postgres
 	defaultDbPgConfig := pgConfig
 	defaultDbPgConfig.DbName = defaultDB
 	defaultDbDialect := postgres.Open(getPostgresDsn(ctx, defaultDbPgConfig))
@@ -155,6 +156,7 @@ func createIfNotExists(ctx context.Context, pgConfig runtimeInterfaces.PostgresC
 		return nil, err
 	}
 
+	// Check if the configured db exists to be used for flyteadmin
 	type DatabaseResult struct {
 		Exists bool
 	}
