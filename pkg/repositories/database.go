@@ -147,15 +147,12 @@ func createPostgresDbIfNotExists(ctx context.Context, gormConfig *gorm.Config, p
 	// initialize the user-specified database.
 	defaultDbPgConfig := pgConfig
 	defaultDbPgConfig.DbName = defaultDB
-	defaultDBDialector := postgres.Open(getPostgresDsn(ctx, pgConfig))
+	defaultDBDialector := postgres.Open(getPostgresDsn(ctx, defaultDbPgConfig))
 	gormDb, err = gorm.Open(defaultDBDialector, gormConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	type DatabaseResult struct {
-		Exists bool
-	}
 	// Because we asserted earlier that the db does not exist, we create it now.
 	logger.Infof(ctx, "Creating database %v", pgConfig.DbName)
 
