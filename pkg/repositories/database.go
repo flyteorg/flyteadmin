@@ -93,10 +93,11 @@ func GetDB(ctx context.Context, dbConfig *runtimeInterfaces.DbConfig, logConfig 
 	switch {
 	// TODO: Figure out a better proxy for a non-empty postgres config
 	case len(dbConfig.PostgresConfig.Host) > 0 || len(dbConfig.PostgresConfig.User) > 0 || len(dbConfig.PostgresConfig.DbName) > 0:
-		gormDb, err = gorm.Open(postgres.Open(getPostgresDsn(ctx, dbConfig.PostgresConfig)), gormConfig)
+		gormDb, err = createPostgresDbIfNotExists(ctx, gormConfig, dbConfig.PostgresConfig)
 		if err != nil {
-			gormDb, err = createPostgresDbIfNotExists(ctx, gormConfig, dbConfig.PostgresConfig)
+			return nil, err
 		}
+
 	case len(dbConfig.DeprecatedHost) > 0 || len(dbConfig.DeprecatedUser) > 0 || len(dbConfig.DeprecatedDbName) > 0:
 		pgConfig := runtimeInterfaces.PostgresConfig{
 			Host:         dbConfig.DeprecatedHost,
@@ -108,9 +109,9 @@ func GetDB(ctx context.Context, dbConfig *runtimeInterfaces.DbConfig, logConfig 
 			ExtraOptions: dbConfig.DeprecatedExtraOptions,
 			Debug:        dbConfig.DeprecatedDebug,
 		}
-		gormDb, err = gorm.Open(postgres.Open(getPostgresDsn(ctx, pgConfig)), gormConfig)
+		gormDb, err = createPostgresDbIfNotExists(ctx, gormConfig, pgConfig)
 		if err != nil {
-			gormDb, err = createPostgresDbIfNotExists(ctx, gormConfig, pgConfig)
+			return nil, err
 		}
 	default:
 		panic(fmt.Sprintf("Unrecognized database config %v", dbConfig))
