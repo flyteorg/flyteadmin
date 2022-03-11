@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"gorm.io/driver/sqlite"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -79,9 +80,13 @@ func GetDB(ctx context.Context, dbConfig *runtimeInterfaces.DbConfig, logConfig 
 	logLevel := getGormLogLevel(ctx, logConfig)
 
 	switch {
-	// TODO: Figure out a better proxy for a non-empty postgres config
-	case len(dbConfig.PostgresConfig.Host) > 0 || len(dbConfig.PostgresConfig.User) > 0 || len(dbConfig.PostgresConfig.DbName) > 0:
-		dialector = postgres.Open(getPostgresDsn(ctx, dbConfig.PostgresConfig))
+	case dbConfig.SQLiteConfig != nil:
+		if dbConfig.SQLiteConfig.File == "" {
+			return nil, fmt.Errorf("illegal sqlite database configuration. `file` is a required parameter and should be a path")
+		}
+		dialector = sqlite.Open(dbConfig.SQLiteConfig.File)
+	case dbConfig.PostgresConfig != nil && (len(dbConfig.PostgresConfig.Host) > 0 || len(dbConfig.PostgresConfig.User) > 0 || len(dbConfig.PostgresConfig.DbName) > 0):
+		dialector = postgres.Open(getPostgresDsn(ctx, *dbConfig.PostgresConfig))
 		// TODO: add other gorm-supported db type handling in further case blocks.
 	case len(dbConfig.DeprecatedHost) > 0 || len(dbConfig.DeprecatedUser) > 0 || len(dbConfig.DeprecatedDbName) > 0:
 		pgConfig := runtimeInterfaces.PostgresConfig{
@@ -96,7 +101,7 @@ func GetDB(ctx context.Context, dbConfig *runtimeInterfaces.DbConfig, logConfig 
 		}
 		dialector = postgres.Open(getPostgresDsn(ctx, pgConfig))
 	default:
-		panic(fmt.Sprintf("Unrecognized database config %v", dbConfig))
+		return nil, fmt.Errorf("unrecognized database config, %v. Supported only postgres and sqlite", dbConfig)
 	}
 	gormDb, err := gorm.Open(dialector, &gorm.Config{
 		Logger:                                   gormLogger.Default.LogMode(logLevel),

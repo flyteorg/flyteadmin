@@ -22,7 +22,8 @@ type DbConfig struct {
 	MaxIdleConnections                      int             `json:"maxIdleConnections" pflag:",maxIdleConnections sets the maximum number of connections in the idle connection pool."`
 	MaxOpenConnections                      int             `json:"maxOpenConnections" pflag:",maxOpenConnections sets the maximum number of open connections to the database."`
 	ConnMaxLifeTime                         config.Duration `json:"connMaxLifeTime" pflag:",sets the maximum amount of time a connection may be reused"`
-	PostgresConfig                          PostgresConfig  `json:"postgres"`
+	PostgresConfig                          *PostgresConfig  `json:"postgres"`
+	SQLiteConfig                            *SQLiteConfig    `json:"sqlite,omitempty"`
 }
 
 // PostgresConfig includes specific config options for opening a connection to a postgres database.
@@ -38,7 +39,12 @@ type PostgresConfig struct {
 	Debug        bool   `json:"debug" pflag:" Whether or not to start the database connection with debug mode enabled."`
 }
 
-// This configuration is the base configuration to start admin
+// SQLiteConfig can be used to configure
+type SQLiteConfig struct {
+	File string `json:"file" pflag:",The path to the file (existing or new) where the DB should be created / stored. If existing, then this will be re-used, else a new will be created"`
+}
+
+// ApplicationConfig is the base configuration to start admin
 type ApplicationConfig struct {
 	// The RoleName key inserted as an annotation (https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/)
 	// in Flyte Workflow CRDs created in the CreateExecution flow. The corresponding role value is defined in the

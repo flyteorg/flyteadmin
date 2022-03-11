@@ -58,7 +58,7 @@ var defaultServerConfig = &ServerConfig{
 	Security: ServerSecurityOptions{
 		AllowCors:      true,
 		AllowedHeaders: []string{"Content-Type", "flyte-authorization"},
-		AllowedOrigins: []string{"http://localhost:8080"},
+		AllowedOrigins: []string{"http://localhost:8088"},
 	},
 	GrpcConfig: GrpcConfig{
 		Port:             8089,
