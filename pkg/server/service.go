@@ -18,9 +18,9 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/secretmanager"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/gorilla/handlers"
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpcmiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpcauth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
+	grpcprometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -68,19 +68,19 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authCtx interf
 	var chainedUnaryInterceptors grpc.UnaryServerInterceptor
 	if cfg.Security.UseAuth {
 		logger.Infof(ctx, "Creating gRPC server with authentication")
-		chainedUnaryInterceptors = grpc_middleware.ChainUnaryServer(grpc_prometheus.UnaryServerInterceptor,
+		chainedUnaryInterceptors = grpcmiddleware.ChainUnaryServer(grpcprometheus.UnaryServerInterceptor,
 			auth.GetAuthenticationCustomMetadataInterceptor(authCtx),
-			grpc_auth.UnaryServerInterceptor(auth.GetAuthenticationInterceptor(authCtx)),
+			grpcauth.UnaryServerInterceptor(auth.GetAuthenticationInterceptor(authCtx)),
 			auth.AuthenticationLoggingInterceptor,
 			blanketAuthorization,
 		)
 	} else {
 		logger.Infof(ctx, "Creating gRPC server without authentication")
-		chainedUnaryInterceptors = grpc_middleware.ChainUnaryServer(grpc_prometheus.UnaryServerInterceptor)
+		chainedUnaryInterceptors = grpcmiddleware.ChainUnaryServer(grpcprometheus.UnaryServerInterceptor)
 	}
 
 	serverOpts := []grpc.ServerOption{
-		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+		grpc.StreamInterceptor(grpcprometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(chainedUnaryInterceptors),
 	}
 	if cfg.GrpcConfig.MaxMessageSizeBytes > 0 {
@@ -88,7 +88,7 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authCtx interf
 	}
 	serverOpts = append(serverOpts, opts...)
 	grpcServer := grpc.NewServer(serverOpts...)
-	grpc_prometheus.Register(grpcServer)
+	grpcprometheus.Register(grpcServer)
 	service.RegisterAdminServiceServer(grpcServer, adminservice.NewAdminServer(ctx, cfg.KubeConfig, cfg.Master))
 	if cfg.Security.UseAuth {
 		service.RegisterAuthMetadataServiceServer(grpcServer, authCtx.AuthMetadataService())
