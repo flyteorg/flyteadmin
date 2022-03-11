@@ -59,7 +59,7 @@ func TestResolvePassword(t *testing.T) {
 }
 
 func TestGetPostgresDsn(t *testing.T) {
-	pgConfig := runtimeInterfaces.PostgresConfig{
+	pgConfig := &runtimeInterfaces.PostgresConfig{
 		Host:         "localhost",
 		Port:         5432,
 		DbName:       "postgres",
