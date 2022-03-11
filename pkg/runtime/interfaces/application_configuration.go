@@ -6,6 +6,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
+
 // DbConfig is used to for initiating the database connection with the store that holds registered
 // entities (e.g. workflows, tasks, launch plans...)
 type DbConfig struct {

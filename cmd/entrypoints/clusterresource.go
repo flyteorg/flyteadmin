@@ -2,6 +2,7 @@ package entrypoints
 
 import (
 	"context"
+	errors2 "github.com/pkg/errors"
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 
@@ -88,14 +89,14 @@ var controllerRunCmd = &cobra.Command{
 var controllerSyncCmd = &cobra.Command{
 	Use:   "sync",
 	Short: "This command will sync cluster resources",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
 		configuration := runtime.NewConfigurationProvider()
 		scope := promutils.NewScope(configuration.ApplicationConfiguration().GetTopLevelConfig().MetricsScope).NewSubScope("clusterresource")
 		clusterResourceController := getClusterResourceController(ctx, scope, configuration)
 		err := clusterResourceController.Sync(ctx)
 		if err != nil {
-			logger.Fatalf(ctx, "Failed to sync cluster resources [%+v]", err)
+			return errors2.Wrap(err, "Failed to sync cluster resources ")
 		}
 		logger.Infof(ctx, "ClusterResourceController synced successfully")
 	},
