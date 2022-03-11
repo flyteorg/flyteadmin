@@ -6,7 +6,6 @@ import (
 	"golang.org/x/time/rate"
 )
 
-
 // DbConfig is used to for initiating the database connection with the store that holds registered
 // entities (e.g. workflows, tasks, launch plans...)
 type DbConfig struct {
@@ -23,8 +22,8 @@ type DbConfig struct {
 	MaxIdleConnections                      int             `json:"maxIdleConnections" pflag:",maxIdleConnections sets the maximum number of connections in the idle connection pool."`
 	MaxOpenConnections                      int             `json:"maxOpenConnections" pflag:",maxOpenConnections sets the maximum number of open connections to the database."`
 	ConnMaxLifeTime                         config.Duration `json:"connMaxLifeTime" pflag:",sets the maximum amount of time a connection may be reused"`
-	PostgresConfig                          *PostgresConfig  `json:"postgres,omitempty"`
-	SQLiteConfig                            *SQLiteConfig    `json:"sqlite,omitempty"`
+	PostgresConfig                          *PostgresConfig `json:"postgres,omitempty"`
+	SQLiteConfig                            *SQLiteConfig   `json:"sqlite,omitempty"`
 }
 
 // SQLiteConfig can be used to configure

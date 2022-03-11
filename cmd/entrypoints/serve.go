@@ -2,13 +2,15 @@ package entrypoints
 
 import (
 	"context"
+
 	"github.com/flyteorg/flytestdlib/profutils"
+
+	_ "net/http/pprof" // Required to serve application.
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/server"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/spf13/cobra"
-	_ "net/http/pprof" // Required to serve application.
 
 	runtimeConfig "github.com/flyteorg/flyteadmin/pkg/runtime"
 	"github.com/flyteorg/flytestdlib/contextutils"
@@ -45,4 +47,3 @@ func init() {
 		contextutils.ExecIDKey, contextutils.WorkflowIDKey, contextutils.NodeIDKey, contextutils.TaskIDKey,
 		contextutils.TaskTypeKey, common.RuntimeTypeKey, common.RuntimeVersionKey)
 }
-

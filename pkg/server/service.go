@@ -3,6 +3,10 @@ package server
 import (
 	"context"
 	"crypto/tls"
+	"net"
+	"net/http"
+	"strings"
+
 	"github.com/flyteorg/flyteadmin/auth"
 	"github.com/flyteorg/flyteadmin/auth/authzserver"
 	authConfig "github.com/flyteorg/flyteadmin/auth/config"
@@ -14,9 +18,9 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/secretmanager"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/gorilla/handlers"
-	"github.com/grpc-ecosystem/go-grpc-middleware"
-	"github.com/grpc-ecosystem/go-grpc-middleware/auth"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -26,9 +30,6 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
-	"net"
-	"net/http"
-	"strings"
 )
 
 var defaultCorsHeaders = []string{"Content-Type"}
@@ -62,7 +63,7 @@ func blanketAuthorization(ctx context.Context, req interface{}, _ *grpc.UnarySer
 
 // Creates a new gRPC Server with all the configuration
 func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authCtx interfaces.AuthenticationContext,
-	opts ...grpc.ServerOption) (*grpc.Server, error) {
+	opts ...grpc.ServerOption) *grpc.Server {
 	// Not yet implemented for streaming
 	var chainedUnaryInterceptors grpc.UnaryServerInterceptor
 	if cfg.Security.UseAuth {
@@ -100,7 +101,7 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authCtx interf
 	if cfg.GrpcConfig.ServerReflection || cfg.GrpcServerReflection {
 		reflection.Register(grpcServer)
 	}
-	return grpcServer, nil
+	return grpcServer
 }
 
 func GetHandleOpenapiSpec(ctx context.Context) http.HandlerFunc {
@@ -218,10 +219,7 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig, authCfg
 		}
 	}
 
-	grpcServer, err := newGRPCServer(ctx, cfg, authCtx)
-	if err != nil {
-		return errors.Wrap(err, "failed to create GRPC server")
-	}
+	grpcServer := newGRPCServer(ctx, cfg, authCtx)
 
 	logger.Infof(ctx, "Serving GRPC Traffic on: %s", cfg.GetGrpcHostAddress())
 	lis, err := net.Listen("tcp", cfg.GetGrpcHostAddress())
@@ -319,13 +317,10 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig, authCfg *
 		}
 	}
 
-	grpcServer, err := newGRPCServer(ctx, cfg, authCtx,
-		grpc.Creds(credentials.NewServerTLSFromCert(cert)))
-	if err != nil {
-		return errors.Wrap(err, "failed to create GRPC server")
-	}
+	grpcServer := newGRPCServer(ctx, cfg, authCtx, grpc.Creds(credentials.NewServerTLSFromCert(cert)))
 
 	// Whatever certificate is used, pass it along for easier development
+	// #nosec G402
 	dialCreds := credentials.NewTLS(&tls.Config{
 		ServerName: cfg.GetHostAddress(),
 		RootCAs:    certPool,
@@ -350,6 +345,7 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig, authCfg *
 	srv := &http.Server{
 		Addr:    cfg.GetHostAddress(),
 		Handler: grpcHandlerFunc(grpcServer, httpServer),
+		// #nosec G402
 		TLSConfig: &tls.Config{
 			Certificates: []tls.Certificate{*cert},
 			NextProtos:   []string{"h2"},
