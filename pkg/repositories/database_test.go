@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"testing"
 	"time"
@@ -141,5 +142,27 @@ func TestSetupDbConnectionPool(t *testing.T) {
 		}
 		err := setupDbConnectionPool(gormDb, dbConfig)
 		assert.NotNil(t, err)
+	})
+}
+
+func TestGetDB(t *testing.T) {
+	ctx := context.TODO()
+
+	t.Run("missing DB Config", func(t *testing.T) {
+		_, err := GetDB(ctx, &runtimeInterfaces.DbConfig{}, &logger.Config{})
+		assert.Error(t, err)
+	})
+
+	t.Run("sqlite config", func(t *testing.T) {
+		dbFile := path.Join(t.TempDir(), "admin.db")
+		db, err := GetDB(ctx, &runtimeInterfaces.DbConfig{
+			SQLiteConfig: &runtimeInterfaces.SQLiteConfig{
+				File: dbFile,
+			},
+		}, &logger.Config{})
+		assert.NoError(t, err)
+		assert.NotNil(t, db)
+		assert.FileExists(t, dbFile)
+		assert.Equal(t, "sqlite", db.Name())
 	})
 }
