@@ -186,7 +186,11 @@ func AuthenticationLoggingInterceptor(ctx context.Context, req interface{}, info
 	// Invoke 'handler' to use your gRPC server implementation and get
 	// the response.
 	identityContext := IdentityContextFromContext(ctx)
-	logger.Debugf(ctx, "gRPC server info in logging interceptor [%s] method [%s]\n", identityContext.UserID(), info.FullMethod)
+	var emailPlaceholder string
+	if len(identityContext.UserInfo().GetEmail()) > 0 {
+		emailPlaceholder = fmt.Sprintf(" (%s) ", identityContext.UserInfo().GetEmail())
+	}
+	logger.Debugf(ctx, "gRPC server info in logging interceptor [%s]%smethod [%s]\n", identityContext.UserID(), emailPlaceholder, info.FullMethod)
 	return handler(ctx, req)
 }
 
@@ -220,7 +224,7 @@ func SetContextForIdentity(ctx context.Context, identityContext interfaces.Ident
 	email := identityContext.UserInfo().GetEmail()
 	newCtx := identityContext.WithContext(ctx)
 	if len(email) > 0 {
-		newCtx = WithUserEmail(newCtx, identityContext.UserID())
+		newCtx = WithUserEmail(newCtx, email)
 	}
 
 	return WithAuditFields(newCtx, identityContext.UserID(), []string{identityContext.AppID()}, identityContext.AuthenticatedAt())
