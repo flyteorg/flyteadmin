@@ -12,7 +12,6 @@ import (
 
 	"golang.org/x/oauth2"
 
-	"github.com/flyteorg/flyteadmin/pkg/audit"
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"google.golang.org/grpc/peer"
 
@@ -34,6 +33,13 @@ const (
 )
 
 type HTTPRequestToMetadataAnnotator func(ctx context.Context, request *http.Request) metadata.MD
+
+type AuthenticatedClientMeta struct {
+	ClientIds     []string
+	TokenIssuedAt time.Time
+	ClientIP      string
+	Subject       string
+}
 
 func RegisterHandlers(ctx context.Context, handler interfaces.HandlerRegisterer, authCtx interfaces.AuthenticationContext) {
 	// Add HTTP handlers for OAuth2 endpoints
@@ -263,7 +269,7 @@ func WithAuditFields(ctx context.Context, subject string, clientIds []string, to
 	if ok {
 		clientIP = peerInfo.Addr.String()
 	}
-	return context.WithValue(ctx, common.AuditFieldsContextKey, audit.AuthenticatedClientMeta{
+	return context.WithValue(ctx, common.AuditFieldsContextKey, AuthenticatedClientMeta{
 		ClientIds:     clientIds,
 		TokenIssuedAt: tokenIssuedAt,
 		ClientIP:      clientIP,
