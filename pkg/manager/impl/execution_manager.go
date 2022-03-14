@@ -567,6 +567,11 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		annotations = requestSpec.Annotations.Values
 	}
 
+	rawOutputDataConfig := launchPlan.Spec.RawOutputDataConfig
+	if requestSpec.RawOutputDataConfig != nil {
+		rawOutputDataConfig = requestSpec.RawOutputDataConfig
+	}
+
 	resolvedAuthRole := resolveAuthRole(request, launchPlan)
 	resolvedSecurityCtx := resolveSecurityCtx(ctx, request, launchPlan, resolvedAuthRole)
 	executionParameters := workflowengineInterfaces.ExecutionParameters{
@@ -579,7 +584,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		TaskResources:       &platformTaskResources,
 		EventVersion:        m.config.ApplicationConfiguration().GetTopLevelConfig().EventVersion,
 		RoleNameKey:         m.config.ApplicationConfiguration().GetTopLevelConfig().RoleNameKey,
-		RawOutputDataConfig: launchPlan.Spec.RawOutputDataConfig,
+		RawOutputDataConfig: rawOutputDataConfig,
 	}
 
 	overrides, err := m.addPluginOverrides(ctx, &workflowExecutionID, workflowExecutionID.Name, "")

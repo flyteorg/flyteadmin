@@ -267,7 +267,6 @@ func TestCreateExecution(t *testing.T) {
 			var spec admin.ExecutionSpec
 			err := proto.Unmarshal(input.Spec, &spec)
 			assert.NoError(t, err)
-
 			assert.Equal(t, principal, spec.Metadata.Principal)
 			assert.Equal(t, rawOutput, spec.RawOutputDataConfig.OutputLocationPrefix)
 			return nil
@@ -2930,6 +2929,7 @@ func TestRelaunchExecution_LegacyModel(t *testing.T) {
 		var spec admin.ExecutionSpec
 		err := proto.Unmarshal(input.Spec, &spec)
 		assert.Nil(t, err)
+		assert.Equal(t, "default_raw_output", spec.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, admin.ExecutionMetadata_RELAUNCH, spec.Metadata.Mode)
 		assert.Equal(t, int32(admin.ExecutionMetadata_RELAUNCH), input.Mode)
 		assert.True(t, proto.Equal(spec.Inputs, getLegacySpec().Inputs))
