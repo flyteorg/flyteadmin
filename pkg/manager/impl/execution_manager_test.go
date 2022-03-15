@@ -410,7 +410,6 @@ func TestCreateExecutionFromWorkflowNode(t *testing.T) {
 			err := proto.Unmarshal(input.Spec, &spec)
 			assert.NoError(t, err)
 			assert.Equal(t, admin.ExecutionMetadata_CHILD_WORKFLOW, spec.Metadata.Mode)
-			assert.Equal(t, principal, spec.Metadata.Principal)
 			assert.True(t, proto.Equal(&parentNodeExecutionID, spec.Metadata.ParentNodeExecution))
 			assert.EqualValues(t, input.ParentNodeExecutionID, 1)
 			assert.EqualValues(t, input.SourceExecutionID, 2)
