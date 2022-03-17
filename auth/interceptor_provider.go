@@ -10,23 +10,23 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var interceptor grpc.UnaryServerInterceptor = blanketAuthorization
-
-type interceptorProvider struct {}
+type interceptorProvider struct {
+	interceptor grpc.UnaryServerInterceptor
+}
 
 func (i *interceptorProvider) Register(newInterceptor grpc.UnaryServerInterceptor) {
-	logger.Warnf(context.Background(), "** registered interceptor [%+v]", interceptor)
-	interceptor = newInterceptor
+	logger.Warnf(context.Background(), "** registered interceptor [%+v]", i.interceptor)
+	i.interceptor = newInterceptor
 }
 
 func (i *interceptorProvider) Get() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-		logger.Warnf(context.Background(), "** returning interceptor [%+v]", interceptor)
-		return interceptor(ctx, req, info, handler)
+		logger.Warnf(context.Background(), "** returning interceptor [%+v]", i.interceptor)
+		return i.interceptor(ctx, req, info, handler)
 	}
 }
 
-func customAuthorization(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+func CustomAuthorization(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	return GetInterceptorProvider().Get()(ctx, req, info, handler)
 }
 
@@ -46,7 +46,9 @@ func blanketAuthorization(ctx context.Context, req interface{}, _ *grpc.UnarySer
 }
 
 func NewInterceptorProvider() interfaces.InterceptorProvider {
-	return &interceptorProvider{}
+	return &interceptorProvider{
+		interceptor: blanketAuthorization,
+	}
 }
 
 var authInterceptorProvider = NewInterceptorProvider()
