@@ -27,6 +27,7 @@ func (i *interceptorProvider) Get() grpc.UnaryServerInterceptor {
 }
 
 func CustomAuthorization(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	logger.Warnf(ctx, "** getting intercept provider [%+v]", GetInterceptorProvider().Get())
 	return GetInterceptorProvider().Get()(ctx, req, info, handler)
 }
 
@@ -46,9 +47,9 @@ func blanketAuthorization(ctx context.Context, req interface{}, _ *grpc.UnarySer
 }
 
 func NewInterceptorProvider() interfaces.InterceptorProvider {
-	return &interceptorProvider{
-		interceptor: blanketAuthorization,
-	}
+	ip := interceptorProvider{}
+	ip.Register(blanketAuthorization)
+	return &ip
 }
 
 var authInterceptorProvider = NewInterceptorProvider()
