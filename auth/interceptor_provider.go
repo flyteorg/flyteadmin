@@ -2,26 +2,28 @@ package auth
 
 import (
 	"context"
+	"github.com/flyteorg/flyteadmin/auth/interfaces"
 	"github.com/flyteorg/flytestdlib/logger"
 
-	"github.com/flyteorg/flyteadmin/auth/interfaces"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-type interceptorProvider struct {
-	interceptor grpc.UnaryServerInterceptor
-}
+var interceptor grpc.UnaryServerInterceptor = blanketAuthorization
 
-func (i *interceptorProvider) Register(interceptor grpc.UnaryServerInterceptor) {
+type interceptorProvider struct {}
+
+func (i *interceptorProvider) Register(newInterceptor grpc.UnaryServerInterceptor) {
 	logger.Warnf(context.Background(), "** registered interceptor [%+v]", interceptor)
-	i.interceptor = interceptor
+	interceptor = newInterceptor
 }
 
 func (i *interceptorProvider) Get() grpc.UnaryServerInterceptor {
-	logger.Warnf(context.Background(), "** returning interceptor [%+v]", i.interceptor)
-	return i.interceptor
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+		logger.Warnf(context.Background(), "** returning interceptor [%+v]", interceptor)
+		return interceptor(ctx, req, info, handler)
+	}
 }
 
 func blanketAuthorization(ctx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (
@@ -40,9 +42,7 @@ func blanketAuthorization(ctx context.Context, req interface{}, _ *grpc.UnarySer
 }
 
 func NewInterceptorProvider() interfaces.InterceptorProvider {
-	return &interceptorProvider{
-		interceptor: blanketAuthorization,
-	}
+	return &interceptorProvider{}
 }
 
 var authInterceptorProvider = NewInterceptorProvider()
