@@ -26,6 +26,10 @@ func (i *interceptorProvider) Get() grpc.UnaryServerInterceptor {
 	}
 }
 
+func customAuthorization(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	return GetInterceptorProvider().Get()(ctx, req, info, handler)
+}
+
 func blanketAuthorization(ctx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (
 	resp interface{}, err error) {
 	logger.Warnf(ctx, "** running blanket authorization")
