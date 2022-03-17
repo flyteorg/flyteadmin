@@ -84,7 +84,7 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authCtx interf
 			auth.GetAuthenticationCustomMetadataInterceptor(authCtx),
 			grpcauth.UnaryServerInterceptor(auth.GetAuthenticationInterceptor(authCtx)),
 			auth.AuthenticationLoggingInterceptor,
-			auth.GetInterceptorProvider().Provide(),
+			auth.GetInterceptorProvider().Get(),
 		)
 	} else {
 		logger.Infof(ctx, "Creating gRPC server without authentication")
