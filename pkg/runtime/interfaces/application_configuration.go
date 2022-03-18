@@ -29,6 +29,7 @@ type DbConfig struct {
 // SQLiteConfig can be used to configure
 type SQLiteConfig struct {
 	File string `json:"file" pflag:",The path to the file (existing or new) where the DB should be created / stored. If existing, then this will be re-used, else a new will be created"`
+	Debug        bool   `json:"debug" pflag:" Whether or not to start the database connection with debug mode enabled."`
 }
 
 // PostgresConfig includes specific config options for opening a connection to a postgres database.

@@ -98,6 +98,7 @@ func GetDB(ctx context.Context, dbConfig *runtimeInterfaces.DbConfig, logConfig 
 		if dbConfig.SQLiteConfig.File == "" {
 			return nil, fmt.Errorf("illegal sqlite database configuration. `file` is a required parameter and should be a path")
 		}
+		logger.Debugf(ctx, "Opening sqlite db connection")
 		gormDb, err = gorm.Open(sqlite.Open(dbConfig.SQLiteConfig.File), gormConfig)
 		if err != nil {
 			return nil, err
