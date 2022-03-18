@@ -365,4 +365,32 @@ func TestServerConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_dataProxy.upload.maxSize", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := defaultServerConfig.DataProxy.Upload.MaxSize.String()
+
+			cmdFlags.Set("dataProxy.upload.maxSize", testValue)
+			if vString, err := cmdFlags.GetString("dataProxy.upload.maxSize"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.DataProxy.Upload.MaxSize)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_dataProxy.upload.maxExpiresIn", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := defaultServerConfig.DataProxy.Upload.MaxExpiresIn.String()
+
+			cmdFlags.Set("dataProxy.upload.maxExpiresIn", testValue)
+			if vString, err := cmdFlags.GetString("dataProxy.upload.maxExpiresIn"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.DataProxy.Upload.MaxExpiresIn)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 }

@@ -4,6 +4,11 @@ import (
 	"context"
 	"crypto/tls"
 
+	"github.com/flyteorg/flyteadmin/dataproxy"
+	runtime2 "github.com/flyteorg/flyteadmin/pkg/runtime"
+	"github.com/flyteorg/flytestdlib/promutils"
+	"github.com/flyteorg/flytestdlib/storage"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -113,17 +118,30 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authCtx interf
 		grpc.StreamInterceptor(grpcPrometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(chainedUnaryInterceptors),
 	}
+
 	if cfg.GrpcConfig.MaxMessageSizeBytes > 0 {
 		serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(cfg.GrpcConfig.MaxMessageSizeBytes))
 	}
+
 	serverOpts = append(serverOpts, opts...)
 	grpcServer := grpc.NewServer(serverOpts...)
 	grpcPrometheus.Register(grpcServer)
-	flyteService.RegisterAdminServiceServer(grpcServer, adminservice.NewAdminServer(ctx, cfg.KubeConfig, cfg.Master))
+	configuration := runtime2.NewConfigurationProvider()
+	adminScope := promutils.NewScope(configuration.ApplicationConfiguration().GetTopLevelConfig().GetMetricsScope()).NewSubScope("admin")
+	storeConfig := storage.GetConfig()
+	dataStorageClient, err := storage.NewDataStore(storeConfig, adminScope.NewSubScope("storage"))
+	if err != nil {
+		logger.Error(ctx, "Failed to initialize storage config")
+		panic(err)
+	}
+
+	flyteService.RegisterAdminServiceServer(grpcServer, adminservice.NewAdminServer(ctx, configuration, cfg.KubeConfig, cfg.Master, dataStorageClient, adminScope))
 	if cfg.Security.UseAuth {
 		flyteService.RegisterAuthMetadataServiceServer(grpcServer, authCtx.AuthMetadataService())
 		flyteService.RegisterIdentityServiceServer(grpcServer, authCtx.IdentityService())
 	}
+
+	flyteService.RegisterDataProxyServer(grpcServer, dataproxy.NewService(cfg.DataProxy, dataStorageClient))
 
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus("flyteadmin", grpc_health_v1.HealthCheckResponse_SERVING)
@@ -202,6 +220,10 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, authCfg *authC
 	err = flyteService.RegisterIdentityServiceHandlerFromEndpoint(ctx, gwmux, grpcAddress, grpcConnectionOpts)
 	if err != nil {
 		return nil, errors.Wrap(err, "error registering identity service")
+	}
+
+	if err = flyteService.RegisterDataProxyHandlerFromEndpoint(ctx, gwmux, grpcAddress, grpcConnectionOpts); err != nil {
+		return nil, errors.Wrap(err, "error registering data proxy service")
 	}
 
 	mux.Handle("/", gwmux)

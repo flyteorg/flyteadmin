@@ -69,5 +69,7 @@ func (cfg ServerConfig) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "thirdPartyConfig.flyteClient.clientId"), defaultServerConfig.DeprecatedThirdPartyConfig.FlyteClientConfig.ClientID, "public identifier for the app which handles authorization for a Flyte deployment")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "thirdPartyConfig.flyteClient.redirectUri"), defaultServerConfig.DeprecatedThirdPartyConfig.FlyteClientConfig.RedirectURI, "This is the callback uri registered with the app which handles authorization for a Flyte deployment")
 	cmdFlags.StringSlice(fmt.Sprintf("%v%v", prefix, "thirdPartyConfig.flyteClient.scopes"), []string{}, "Recommended scopes for the client to request.")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "dataProxy.upload.maxSize"), defaultServerConfig.DataProxy.Upload.MaxSize.String(), "Maximum allowed upload size.")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "dataProxy.upload.maxExpiresIn"), defaultServerConfig.DataProxy.Upload.MaxExpiresIn.String(), "Maximum allowed expiration duration.")
 	return cmdFlags
 }
