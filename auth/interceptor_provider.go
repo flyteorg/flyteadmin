@@ -10,28 +10,36 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type interceptorProvider struct {
-	interceptor grpc.UnaryServerInterceptor
-}
+var interceptor grpc.UnaryServerInterceptor
+var defaultInterceptor grpc.UnaryServerInterceptor
+
+type interceptorProvider struct {}
 
 func (i *interceptorProvider) Register(newInterceptor grpc.UnaryServerInterceptor) {
-	logger.Warnf(context.Background(), "** registered interceptor [%+v]", i.interceptor)
-	i.interceptor = newInterceptor
+	logger.Warnf(context.Background(), "** registered interceptor [%+v]", interceptor)
+	interceptor = newInterceptor
+}
+
+func (i *interceptorProvider) RegisterDefault(newInterceptor grpc.UnaryServerInterceptor) {
+	logger.Warnf(context.Background(), "** registered default interceptor [%+v]", interceptor)
+	defaultInterceptor = newInterceptor
 }
 
 func (i *interceptorProvider) Get() grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-		logger.Warnf(context.Background(), "** returning interceptor [%+v]", i.interceptor)
-		return i.interceptor(ctx, req, info, handler)
+	logger.Warnf(context.TODO(), "**getting interceptor, interceptor [%+v] and default [%+v]", interceptor, defaultInterceptor)
+	if interceptor != nil {
+		return interceptor
 	}
+	return defaultInterceptor
 }
 
 func CustomAuthorization(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-	logger.Warnf(ctx, "** getting intercept provider [%+v]", GetInterceptorProvider().Get())
-	return GetInterceptorProvider().Get()(ctx, req, info, handler)
+	return func() (resp interface{}, err error) {
+		return GetInterceptorProvider().Get()(ctx, req, info, handler)
+	}()
 }
 
-func blanketAuthorization(ctx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (
+func BlanketAuthorization(ctx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (
 	resp interface{}, err error) {
 	logger.Warnf(ctx, "** running blanket authorization")
 	identityContext := IdentityContextFromContext(ctx)
@@ -47,9 +55,7 @@ func blanketAuthorization(ctx context.Context, req interface{}, _ *grpc.UnarySer
 }
 
 func NewInterceptorProvider() interfaces.InterceptorProvider {
-	ip := interceptorProvider{}
-	ip.Register(blanketAuthorization)
-	return &ip
+	return &interceptorProvider{}
 }
 
 var authInterceptorProvider = NewInterceptorProvider()

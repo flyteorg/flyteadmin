@@ -3,6 +3,7 @@ package adminservice
 import (
 	"context"
 	"fmt"
+	"github.com/flyteorg/flyteadmin/auth"
 	"runtime/debug"
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
@@ -95,6 +96,9 @@ func NewAdminServer(ctx context.Context, kubeConfig, master string) *AdminServic
 	workflowExecutor := workflowengineImpl.NewK8sWorkflowExecutor(execCluster, workflowBuilder)
 	logger.Info(ctx, "Successfully created a workflow executor engine")
 	workflowengine.GetRegistry().RegisterDefault(workflowExecutor)
+
+	logger.Warnf(ctx, "**Registering blanket auth server")
+	auth.GetInterceptorProvider().RegisterDefault(auth.BlanketAuthorization)
 
 	dataStorageClient, err := storage.NewDataStore(storeConfig, adminScope.NewSubScope("storage"))
 	if err != nil {

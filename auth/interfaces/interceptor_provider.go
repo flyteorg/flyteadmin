@@ -6,6 +6,7 @@ import "google.golang.org/grpc"
 type InterceptorProvider interface {
 	// Register adds the singleton, custom authorization grpc server interceptor
 	Register(interceptor grpc.UnaryServerInterceptor)
+	RegisterDefault(interceptor grpc.UnaryServerInterceptor)
 	// Get returns an authorization grpc server interceptor. If none has been registered, default blanket authorization
 	// interceptor will be provided which always grants permission.
 	Get() grpc.UnaryServerInterceptor
