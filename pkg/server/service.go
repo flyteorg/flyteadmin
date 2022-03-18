@@ -131,10 +131,8 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, _ *authConfig.
 	mux := http.NewServeMux()
 
 	// Add any additional handlers that have been passed in for the main HTTP server
-	if additionalHandlers != nil {
-		for p, f := range additionalHandlers {
-			mux.HandleFunc(p, f)
-		}
+	for p, f := range additionalHandlers {
+		mux.HandleFunc(p, f)
 	}
 
 	// Register healthcheck
