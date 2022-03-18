@@ -33,7 +33,7 @@ var serveCmd = &cobra.Command{
 			}
 		}()
 
-		return server.Serve(ctx)
+		return server.Serve(ctx, nil)
 	},
 }
 

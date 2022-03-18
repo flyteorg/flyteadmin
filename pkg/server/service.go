@@ -35,15 +35,14 @@ import (
 var defaultCorsHeaders = []string{"Content-Type"}
 
 // Serve starts a server and blocks the calling goroutine
-func Serve(ctx context.Context) error {
+func Serve(ctx context.Context, additionalHandlers map[string]func(http.ResponseWriter, *http.Request)) error {
 	serverConfig := config.GetConfig()
-	authCfg := authConfig.GetConfig()
 
 	if serverConfig.Security.Secure {
-		return serveGatewaySecure(ctx, serverConfig, authCfg)
+		return serveGatewaySecure(ctx, serverConfig, authConfig.GetConfig(), additionalHandlers)
 	}
 
-	return serveGatewayInsecure(ctx, serverConfig, authCfg)
+	return serveGatewayInsecure(ctx, serverConfig, authConfig.GetConfig(), additionalHandlers)
 }
 
 func blanketAuthorization(ctx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (
@@ -125,10 +124,18 @@ func healthCheckFunc(w http.ResponseWriter, _ *http.Request) {
 }
 
 func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, _ *authConfig.Config, authCtx interfaces.AuthenticationContext,
+	additionalHandlers map[string]func(http.ResponseWriter, *http.Request),
 	grpcAddress string, grpcConnectionOpts ...grpc.DialOption) (*http.ServeMux, error) {
 
 	// Register the server that will serve HTTP/REST Traffic
 	mux := http.NewServeMux()
+
+	// Add any additional handlers that have been passed in for the main HTTP server
+	if additionalHandlers != nil {
+		for p, f := range additionalHandlers {
+			mux.HandleFunc(p, f)
+		}
+	}
 
 	// Register healthcheck
 	mux.HandleFunc("/healthcheck", healthCheckFunc)
@@ -179,7 +186,7 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, _ *authConfig.
 	return mux, nil
 }
 
-func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig, authCfg *authConfig.Config) error {
+func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig, authCfg *authConfig.Config, additionalHandlers map[string]func(http.ResponseWriter, *http.Request)) error {
 	logger.Infof(ctx, "Serving Flyte Admin Insecure")
 
 	// This will parse configuration and create the necessary objects for dealing with auth
@@ -241,7 +248,7 @@ func serveGatewayInsecure(ctx context.Context, cfg *config.ServerConfig, authCfg
 		grpcOptions = append(grpcOptions,
 			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(cfg.GrpcConfig.MaxMessageSizeBytes)))
 	}
-	httpServer, err := newHTTPServer(ctx, cfg, authCfg, authCtx, cfg.GetGrpcHostAddress(), grpcOptions...)
+	httpServer, err := newHTTPServer(ctx, cfg, authCfg, authCtx, additionalHandlers, cfg.GetGrpcHostAddress(), grpcOptions...)
 	if err != nil {
 		return err
 	}
@@ -280,7 +287,7 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 	})
 }
 
-func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig, authCfg *authConfig.Config) error {
+func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig, authCfg *authConfig.Config, additionalHandlers map[string]func(http.ResponseWriter, *http.Request)) error {
 	certPool, cert, err := GetSslCredentials(ctx, cfg.Security.Ssl.CertificateFile, cfg.Security.Ssl.KeyFile)
 	if err != nil {
 		return err
@@ -332,7 +339,7 @@ func serveGatewaySecure(ctx context.Context, cfg *config.ServerConfig, authCfg *
 		serverOpts = append(serverOpts,
 			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(cfg.GrpcConfig.MaxMessageSizeBytes)))
 	}
-	httpServer, err := newHTTPServer(ctx, cfg, authCfg, authCtx, cfg.GetHostAddress(), serverOpts...)
+	httpServer, err := newHTTPServer(ctx, cfg, authCfg, authCtx, additionalHandlers, cfg.GetHostAddress(), serverOpts...)
 	if err != nil {
 		return err
 	}
