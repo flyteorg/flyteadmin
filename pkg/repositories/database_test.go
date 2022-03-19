@@ -149,13 +149,13 @@ func TestGetDB(t *testing.T) {
 	ctx := context.TODO()
 
 	t.Run("missing DB Config", func(t *testing.T) {
-		_, err := GetDB(ctx, &runtimeInterfaces.DbConfig{}, &logger.Config{})
+		_, _, err := GetDB(ctx, &runtimeInterfaces.DbConfig{}, &logger.Config{})
 		assert.Error(t, err)
 	})
 
 	t.Run("sqlite config", func(t *testing.T) {
 		dbFile := path.Join(t.TempDir(), "admin.db")
-		db, err := GetDB(ctx, &runtimeInterfaces.DbConfig{
+		db, _, err := GetDB(ctx, &runtimeInterfaces.DbConfig{
 			SQLiteConfig: &runtimeInterfaces.SQLiteConfig{
 				File: dbFile,
 			},

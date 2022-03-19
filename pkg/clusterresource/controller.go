@@ -679,7 +679,7 @@ func NewClusterResourceControllerFromConfig(ctx context.Context, scope promutils
 		dbConfig := runtime.NewConfigurationProvider().ApplicationConfiguration().GetDbConfig()
 		logConfig := logger.GetConfig()
 
-		db, err := repositories.GetDB(ctx, dbConfig, logConfig)
+		db, _, err := repositories.GetDB(ctx, dbConfig, logConfig)
 		if err != nil {
 			return nil, err
 		}

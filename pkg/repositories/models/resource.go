@@ -1,6 +1,11 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
 
 type ResourcePriority int32
 
@@ -26,4 +31,9 @@ type Resource struct {
 	Priority     ResourcePriority
 	// Serialized flyteidl.admin.MatchingAttributes.
 	Attributes []byte
+}
+
+func (r *Resource) BeforeCreate(tx *gorm.DB) error {
+	r.ID = int64(uuid.New().ID())
+	return nil
 }

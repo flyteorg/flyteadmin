@@ -200,16 +200,6 @@ var Migrations = []*gormigrate.Migration{
 			return tx.Exec("UPDATE named_entity_metadata set state = NULL").Error
 		},
 	},
-	// Modify the workflows table, if necessary
-	{
-		ID: "2020-04-03-workflow-state",
-		Migrate: func(tx *gorm.DB) error {
-			return tx.Exec("ALTER TABLE workflows DROP COLUMN IF EXISTS state").Error
-		},
-		Rollback: func(tx *gorm.DB) error {
-			return tx.Exec("ALTER TABLE workflows ADD COLUMN IF NOT EXISTS state integer;").Error
-		},
-	},
 	// Modify the executions & node_execution table, if necessary
 	{
 		ID: "2020-04-29-executions",
@@ -340,6 +330,32 @@ var Migrations = []*gormigrate.Migration{
 		},
 	},
 
+	// Add state to execution model.
+	{
+		ID: "2022-01-11-execution-state",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&models.Execution{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Table("execution").Migrator().DropColumn(&models.Execution{}, "state")
+		},
+	},
+}
+
+// PostgresMigrations adds onto the defacto migrations. These migrations are exclusive to postgres, because:
+// Databases like Sqlite don't support dropping columns.
+// Databases like Sqlite don't use rigid column types, so modifying the id column type is unsupported
+var PostgresMigrations = append(Migrations, []*gormigrate.Migration{
+	// Modify the workflows table, if necessary
+	{
+		ID: "2020-04-03-workflow-state",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.Exec("ALTER TABLE workflows DROP COLUMN IF EXISTS state").Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Exec("ALTER TABLE workflows ADD COLUMN IF NOT EXISTS state integer;").Error
+		},
+	},
 	// For any new table, Please use the following pattern due to a bug
 	// in the postgres gorm layer https://github.com/go-gorm/postgres/issues/65
 	{
@@ -359,18 +375,7 @@ var Migrations = []*gormigrate.Migration{
 			return alterTableColumnType(db, "id", "int")
 		},
 	},
-
-	// Add state to execution model.
-	{
-		ID: "2022-01-11-execution-state",
-		Migrate: func(tx *gorm.DB) error {
-			return tx.AutoMigrate(&models.Execution{})
-		},
-		Rollback: func(tx *gorm.DB) error {
-			return tx.Table("execution").Migrator().DropColumn(&models.Execution{}, "state")
-		},
-	},
-}
+}...)
 
 func alterTableColumnType(db *sql.DB, columnName, columnType string) error {
 

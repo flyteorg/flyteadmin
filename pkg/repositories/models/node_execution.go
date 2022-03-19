@@ -2,6 +2,9 @@ package models
 
 import (
 	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // IMPORTANT: If you update the model below, be sure to double check model definitions in
@@ -48,4 +51,9 @@ type NodeExecution struct {
 	CacheStatus *string
 	// In the case of dynamic workflow nodes, the remote closure is uploaded to the path specified here.
 	DynamicWorkflowRemoteClosureReference string
+}
+
+func (n *NodeExecution) BeforeCreate(tx *gorm.DB) error {
+	n.ID = uint(uuid.New().ID())
+	return nil
 }
