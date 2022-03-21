@@ -130,6 +130,7 @@ func CreateTaskExecutionModel(ctx context.Context, input CreateTaskExecutionMode
 		CustomInfo: input.Request.Event.CustomInfo,
 		Reason:     input.Request.Event.Reason,
 		TaskType:   input.Request.Event.TaskType,
+		Metadata:   input.Request.Event.Metadata,
 	}
 
 	eventPhase := input.Request.Event.Phase
