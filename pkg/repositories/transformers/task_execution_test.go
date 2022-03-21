@@ -855,9 +855,9 @@ func TestMergeExternalResources(t *testing.T) {
 	testCases := []testCase{
 		{
 			existing: nil,
-			latest: nil,
+			latest:   nil,
 			expected: nil,
-			name: "do nothing",
+			name:     "do nothing",
 		},
 		{
 			existing: []*event.ExternalResourceInfo{
@@ -914,56 +914,56 @@ func TestMergeExternalResources(t *testing.T) {
 		{
 			existing: []*event.ExternalResourceInfo{
 				&event.ExternalResourceInfo{
-					ExternalId: "foo",
-					Index: 0,
+					ExternalId:   "foo",
+					Index:        0,
 					RetryAttempt: 0,
-					Phase: core.TaskExecution_UNDEFINED,
+					Phase:        core.TaskExecution_UNDEFINED,
 				},
 				&event.ExternalResourceInfo{
-					ExternalId: "bar",
-					Index: 1,
+					ExternalId:   "bar",
+					Index:        1,
 					RetryAttempt: 0,
-					Phase: core.TaskExecution_UNDEFINED,
+					Phase:        core.TaskExecution_UNDEFINED,
 				},
 				&event.ExternalResourceInfo{
-					ExternalId: "baz",
-					Index: 2,
+					ExternalId:   "baz",
+					Index:        2,
 					RetryAttempt: 0,
-					Phase: core.TaskExecution_UNDEFINED,
+					Phase:        core.TaskExecution_UNDEFINED,
 				},
 			},
 			latest: []*event.ExternalResourceInfo{
 				&event.ExternalResourceInfo{
-					ExternalId: "bar",
-					Index: 1,
+					ExternalId:   "bar",
+					Index:        1,
 					RetryAttempt: 1,
-					Phase: core.TaskExecution_UNDEFINED,
+					Phase:        core.TaskExecution_UNDEFINED,
 				},
 				&event.ExternalResourceInfo{
-					ExternalId: "baz",
-					Index: 2,
+					ExternalId:   "baz",
+					Index:        2,
 					RetryAttempt: 0,
-					Phase: core.TaskExecution_RUNNING,
+					Phase:        core.TaskExecution_RUNNING,
 				},
 			},
 			expected: []*event.ExternalResourceInfo{
 				&event.ExternalResourceInfo{
-					ExternalId: "foo",
-					Index: 0,
+					ExternalId:   "foo",
+					Index:        0,
 					RetryAttempt: 0,
-					Phase: core.TaskExecution_UNDEFINED,
+					Phase:        core.TaskExecution_UNDEFINED,
 				},
 				&event.ExternalResourceInfo{
-					ExternalId: "bar",
-					Index: 1,
+					ExternalId:   "bar",
+					Index:        1,
 					RetryAttempt: 1,
-					Phase: core.TaskExecution_UNDEFINED,
+					Phase:        core.TaskExecution_UNDEFINED,
 				},
 				&event.ExternalResourceInfo{
-					ExternalId: "baz",
-					Index: 2,
+					ExternalId:   "baz",
+					Index:        2,
 					RetryAttempt: 0,
-					Phase: core.TaskExecution_RUNNING,
+					Phase:        core.TaskExecution_RUNNING,
 				},
 			},
 			name: "update existing with subtasks",
@@ -1037,61 +1037,56 @@ func TestMergeMetadata(t *testing.T) {
 	testCases := []testCase{
 		{
 			existing: nil,
-			latest: nil,
+			latest:   nil,
 			expected: nil,
-			name: "do nothing",
+			name:     "do nothing",
 		},
 		{
-			existing: &event.TaskExecutionMetadata{
-			},
-			latest: nil,
-			expected: &event.TaskExecutionMetadata{
-			},
-			name: "use existing",
+			existing: &event.TaskExecutionMetadata{},
+			latest:   nil,
+			expected: &event.TaskExecutionMetadata{},
+			name:     "use existing",
 		},
 		{
 			existing: nil,
-			latest: &event.TaskExecutionMetadata{
-			},
-			expected: &event.TaskExecutionMetadata{
-			},
-			name: "use latest",
+			latest:   &event.TaskExecutionMetadata{},
+			expected: &event.TaskExecutionMetadata{},
+			name:     "use latest",
 		},
 		{
 			existing: &event.TaskExecutionMetadata{
-				GeneratedName: "foo",
+				GeneratedName:    "foo",
 				ResourcePoolInfo: []*event.ResourcePoolInfo{},
 				PluginIdentifier: "bar",
-				InstanceClass: 1,
+				InstanceClass:    1,
 			},
-			latest: &event.TaskExecutionMetadata{
-			},
+			latest: &event.TaskExecutionMetadata{},
 			expected: &event.TaskExecutionMetadata{
-				GeneratedName: "foo",
+				GeneratedName:    "foo",
 				ResourcePoolInfo: []*event.ResourcePoolInfo{},
 				PluginIdentifier: "bar",
-				InstanceClass: 1,
+				InstanceClass:    1,
 			},
 			name: "no updates",
 		},
 		{
 			existing: &event.TaskExecutionMetadata{
-				GeneratedName: "foo",
+				GeneratedName:    "foo",
 				ResourcePoolInfo: []*event.ResourcePoolInfo{},
 				PluginIdentifier: "bar",
-				InstanceClass: 0,
+				InstanceClass:    0,
 			},
 			latest: &event.TaskExecutionMetadata{
-				GeneratedName: "bar",
+				GeneratedName:    "bar",
 				ResourcePoolInfo: []*event.ResourcePoolInfo{},
 				PluginIdentifier: "foo",
-				InstanceClass: 1,
+				InstanceClass:    1,
 			},
 			expected: &event.TaskExecutionMetadata{
-				GeneratedName: "bar",
+				GeneratedName:    "bar",
 				ResourcePoolInfo: []*event.ResourcePoolInfo{},
 				PluginIdentifier: "foo",
-				InstanceClass: 1,
+				InstanceClass:    1,
 			},
 			name: "all updates",
 		},

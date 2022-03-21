@@ -280,7 +280,7 @@ func mergeExternalResources(existing, latest []*event.ExternalResourceInfo) []*e
 		if externalResource.GetIndex() == 0 && externalResource.GetRetryAttempt() == 0 && externalResource.GetPhase() == 0 {
 			// updating an external resource to retryAttempt 0 and phase 0 is invalid, because that
 			// is the initial state, so we use this condition to signify an external resource
-			// without these parameters (ex. a simple ExternalResourceID). 
+			// without these parameters (ex. a simple ExternalResourceID).
 			index = i
 		} else {
 			index = int(externalResource.GetIndex())
@@ -290,7 +290,7 @@ func mergeExternalResources(existing, latest []*event.ExternalResourceInfo) []*e
 			// if the latest external resources contains an out of order update
 			// (ie. index > len(existing)) then we should append placeholder external resources
 			// that will be updated later
-			for index - 1 >= len(existing) {
+			for index-1 >= len(existing) {
 				existing = append(existing, &event.ExternalResourceInfo{Index: uint32(len(existing))})
 			}
 
