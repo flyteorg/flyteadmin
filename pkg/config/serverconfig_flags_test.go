@@ -256,7 +256,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 	t.Run("Test_security.allowedOrigins", func(t *testing.T) {
 
 		t.Run("Override", func(t *testing.T) {
-			testValue := join_ServerConfig("1,1", ",")
+			testValue := join_ServerConfig(defaultServerConfig.Security.AllowedOrigins, ",")
 
 			cmdFlags.Set("security.allowedOrigins", testValue)
 			if vStringSlice, err := cmdFlags.GetStringSlice("security.allowedOrigins"); err == nil {
@@ -270,7 +270,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 	t.Run("Test_security.allowedHeaders", func(t *testing.T) {
 
 		t.Run("Override", func(t *testing.T) {
-			testValue := join_ServerConfig("1,1", ",")
+			testValue := join_ServerConfig(defaultServerConfig.Security.AllowedHeaders, ",")
 
 			cmdFlags.Set("security.allowedHeaders", testValue)
 			if vStringSlice, err := cmdFlags.GetStringSlice("security.allowedHeaders"); err == nil {
@@ -354,7 +354,7 @@ func TestServerConfig_SetFlags(t *testing.T) {
 	t.Run("Test_thirdPartyConfig.flyteClient.scopes", func(t *testing.T) {
 
 		t.Run("Override", func(t *testing.T) {
-			testValue := join_ServerConfig("1,1", ",")
+			testValue := join_ServerConfig(defaultServerConfig.DeprecatedThirdPartyConfig.FlyteClientConfig.Scopes, ",")
 
 			cmdFlags.Set("thirdPartyConfig.flyteClient.scopes", testValue)
 			if vStringSlice, err := cmdFlags.GetStringSlice("thirdPartyConfig.flyteClient.scopes"); err == nil {
