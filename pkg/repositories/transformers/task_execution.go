@@ -15,6 +15,7 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
@@ -241,6 +242,67 @@ func mergeCustom(existing, latest *_struct.Struct) (*_struct.Struct, error) {
 	return &response, nil
 }
 
+// mergeMetadata merges an existing TaskExecutionMetadata instance with the provided instance. This
+// includes updating non-defaulted fields and merging ExternalResources.
+func mergeMetadata(existing, latest *event.TaskExecutionMetadata) *event.TaskExecutionMetadata {
+	if existing == nil {
+		return latest
+	}
+
+	if latest == nil {
+		return existing
+	}
+
+	if latest.GeneratedName != "" && existing.GeneratedName != latest.GeneratedName {
+		existing.GeneratedName = latest.GeneratedName
+	}
+	existing.ExternalResources = mergeExternalResources(existing.ExternalResources, latest.ExternalResources)
+	existing.ResourcePoolInfo = latest.ResourcePoolInfo
+	if latest.PluginIdentifier != "" && existing.PluginIdentifier != latest.PluginIdentifier {
+		existing.PluginIdentifier = latest.PluginIdentifier
+	}
+	if latest.InstanceClass != event.TaskExecutionMetadata_DEFAULT && existing.InstanceClass != latest.InstanceClass {
+		existing.InstanceClass = latest.InstanceClass
+	}
+
+	return existing
+}
+
+// mergeExternalResources combines lists of external resources. This involves appending new
+// resources and updating in-place resources attributes.
+func mergeExternalResources(existing, latest []*event.ExternalResourceInfo) []*event.ExternalResourceInfo {
+	if len(latest) == 0 {
+		return existing
+	}
+
+	for i, externalResource := range latest {
+		var index int
+		if externalResource.GetIndex() == 0 && externalResource.GetRetryAttempt() == 0 && externalResource.GetPhase() == 0 {
+			// updating an external resource to retryAttempt 0 and phase 0 is invalid, because that
+			// is the initial state, so we use this condition to signify an external resource
+			// without these parameters (ex. a simple ExternalResourceID). 
+			index = i
+		} else {
+			index = int(externalResource.GetIndex())
+		}
+
+		if index >= len(existing) {
+			// if the latest external resources contains an out of order update
+			// (ie. index > len(existing)) then we should append placeholder external resources
+			// that will be updated later
+			for index - 1 >= len(existing) {
+				existing = append(existing, &event.ExternalResourceInfo{Index: uint32(len(existing))})
+			}
+
+			existing = append(existing, externalResource)
+		} else {
+			existing[index] = externalResource
+		}
+	}
+
+	return existing
+}
+
 func UpdateTaskExecutionModel(ctx context.Context, request *admin.TaskExecutionEventRequest, taskExecutionModel *models.TaskExecution,
 	inlineEventDataPolicy interfaces.InlineEventDataPolicy, storageClient *storage.DataStore) error {
 	var taskExecutionClosure admin.TaskExecutionClosure
@@ -273,8 +335,9 @@ func UpdateTaskExecutionModel(ctx context.Context, request *admin.TaskExecutionE
 	}
 	taskExecutionClosure.CustomInfo, err = mergeCustom(taskExecutionClosure.CustomInfo, request.Event.CustomInfo)
 	if err != nil {
-		return errors.NewFlyteAdminErrorf(codes.Internal, "failed to merge task even custom_info with error: %v", err)
+		return errors.NewFlyteAdminErrorf(codes.Internal, "failed to merge task event custom_info with error: %v", err)
 	}
+	taskExecutionClosure.Metadata = mergeMetadata(taskExecutionClosure.Metadata, request.Event.Metadata)
 	marshaledClosure, err := proto.Marshal(&taskExecutionClosure)
 	if err != nil {
 		return errors.NewFlyteAdminErrorf(
