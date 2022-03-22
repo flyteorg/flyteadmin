@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/flyteorg/flyteadmin/plugins"
+
 	"github.com/flyteorg/flytestdlib/logger"
 
 	"github.com/flyteorg/flytestdlib/config"
@@ -15,9 +17,10 @@ import (
 )
 
 var (
-	cfgFile        string
-	kubeMasterURL  string
-	configAccessor = viper.NewAccessor(config.Options{})
+	cfgFile             string
+	kubeMasterURL       string
+	configAccessor      = viper.NewAccessor(config.Options{})
+	pluginRegistryStore = plugins.NewAtomicRegistry(plugins.NewRegistry())
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -43,7 +46,8 @@ Or over HTTP 1.1 with curl:
 
 // Execute adds all child commands to the root command sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() error {
+func Execute(pluginRegistry *plugins.Registry) error {
+	pluginRegistryStore.Store(pluginRegistry)
 	if err := RootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		return err
