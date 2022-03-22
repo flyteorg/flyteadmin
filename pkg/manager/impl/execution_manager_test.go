@@ -162,6 +162,7 @@ func setDefaultLpCallbackForExecTest(repository interfaces.Repository) {
 			"annotation4": "4",
 		},
 	}
+
 	lpSpecBytes, _ := proto.Marshal(&lpSpec)
 	lpClosure := admin.LaunchPlanClosure{
 		ExpectedInputs: lpSpec.DefaultInputs,
@@ -260,12 +261,14 @@ func TestCreateExecution(t *testing.T) {
 	}
 
 	principal := "principal"
+	rawOutput := "raw_output"
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(
 		func(ctx context.Context, input models.Execution) error {
 			var spec admin.ExecutionSpec
 			err := proto.Unmarshal(input.Spec, &spec)
 			assert.NoError(t, err)
 			assert.Equal(t, principal, spec.Metadata.Principal)
+			assert.Equal(t, rawOutput, spec.RawOutputDataConfig.OutputLocationPrefix)
 			return nil
 		})
 	setDefaultLpCallbackForExecTest(repository)
@@ -334,6 +337,7 @@ func TestCreateExecution(t *testing.T) {
 	request.Spec.Metadata = &admin.ExecutionMetadata{
 		Principal: "unused - populated from authenticated context",
 	}
+	request.Spec.RawOutputDataConfig = &admin.RawOutputDataConfig{OutputLocationPrefix: rawOutput}
 
 	identity := auth.NewIdentityContext("", principal, "", time.Now(), sets.NewString(), nil)
 	ctx := identity.WithContext(context.Background())
@@ -406,7 +410,6 @@ func TestCreateExecutionFromWorkflowNode(t *testing.T) {
 			err := proto.Unmarshal(input.Spec, &spec)
 			assert.NoError(t, err)
 			assert.Equal(t, admin.ExecutionMetadata_CHILD_WORKFLOW, spec.Metadata.Mode)
-			assert.Equal(t, "feeny", spec.Metadata.Principal)
 			assert.True(t, proto.Equal(&parentNodeExecutionID, spec.Metadata.ParentNodeExecution))
 			assert.EqualValues(t, input.ParentNodeExecutionID, 1)
 			assert.EqualValues(t, input.SourceExecutionID, 2)
@@ -1626,6 +1629,58 @@ func TestCreateWorkflowEvent_InvalidPhaseChange(t *testing.T) {
 	assert.True(t, ok)
 }
 
+func TestCreateWorkflowEvent_ClusterReassignmentOnQueued(t *testing.T) {
+	repository := repositoryMocks.NewMockRepository()
+	occurredAt := time.Now().UTC()
+
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(
+		func(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
+			return models.Execution{
+				ExecutionKey: models.ExecutionKey{
+					Project: "project",
+					Domain:  "domain",
+					Name:    "name",
+				},
+				BaseModel: models.BaseModel{
+					ID: uint(8),
+				},
+				Spec:         specBytes,
+				Phase:        core.WorkflowExecution_UNDEFINED.String(),
+				Closure:      closureBytes,
+				LaunchPlanID: uint(1),
+				WorkflowID:   uint(2),
+				StartedAt:    &occurredAt,
+			}, nil
+		},
+	)
+	newCluster := "C2"
+	updateExecutionFunc := func(
+		context context.Context, execution models.Execution) error {
+		assert.Equal(t, core.WorkflowExecution_QUEUED.String(), execution.Phase)
+		assert.Equal(t, newCluster, execution.Cluster)
+		return nil
+	}
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateCallback(updateExecutionFunc)
+
+	occurredAtTimestamp, _ := ptypes.TimestampProto(occurredAt)
+	mockDbEventWriter := &eventWriterMocks.WorkflowExecutionEventWriter{}
+	request := admin.WorkflowExecutionEventRequest{
+		RequestId: "1",
+		Event: &event.WorkflowExecutionEvent{
+			ExecutionId: &executionIdentifier,
+			OccurredAt:  occurredAtTimestamp,
+			Phase:       core.WorkflowExecution_QUEUED,
+			ProducerId:  newCluster,
+		},
+	}
+	mockDbEventWriter.On("Write", request)
+	execManager := NewExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, &mockPublisher, mockDbEventWriter)
+
+	resp, err := execManager.CreateWorkflowEvent(context.Background(), request)
+	assert.Nil(t, err)
+	assert.NotNil(t, resp)
+}
+
 func TestCreateWorkflowEvent_InvalidEvent(t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
 	startTime := time.Now()
@@ -2466,10 +2521,12 @@ func TestTerminateExecution_PropellerError(t *testing.T) {
 	workflowengine.GetRegistry().Register(&mockExecutor)
 	defer resetExecutor()
 
+	updateCalled := false
 	repository := repositoryMocks.NewMockRepository()
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateExecutionCallback(func(
 		context context.Context, execution models.Execution) error {
-		t.Fatal("update should not be called when propeller fails to terminate an execution")
+		updateCalled = true
+		assert.Equal(t, core.WorkflowExecution_ABORTING.String(), execution.Phase)
 		return nil
 	})
 	execManager := NewExecutionManager(repository, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
@@ -2484,6 +2541,7 @@ func TestTerminateExecution_PropellerError(t *testing.T) {
 	})
 	assert.Nil(t, resp)
 	assert.EqualError(t, err, expectedError.Error())
+	assert.True(t, updateCalled)
 }
 
 func TestTerminateExecution_DatabaseError(t *testing.T) {
@@ -2870,6 +2928,7 @@ func TestRelaunchExecution_LegacyModel(t *testing.T) {
 		var spec admin.ExecutionSpec
 		err := proto.Unmarshal(input.Spec, &spec)
 		assert.Nil(t, err)
+		assert.Equal(t, "default_raw_output", spec.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, admin.ExecutionMetadata_RELAUNCH, spec.Metadata.Mode)
 		assert.Equal(t, int32(admin.ExecutionMetadata_RELAUNCH), input.Mode)
 		assert.True(t, proto.Equal(spec.Inputs, getLegacySpec().Inputs))

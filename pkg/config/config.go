@@ -54,8 +54,7 @@ type SslOptions struct {
 }
 
 var defaultServerConfig = &ServerConfig{
-	HTTPPort:   8088,
-	KubeConfig: "$HOME/.kube/config",
+	HTTPPort: 8088,
 	Security: ServerSecurityOptions{
 		AllowCors:      true,
 		AllowedHeaders: []string{"Content-Type", "flyte-authorization"},
@@ -83,14 +82,14 @@ func SetConfig(s *ServerConfig) {
 }
 
 func (s ServerConfig) GetHostAddress() string {
-	return fmt.Sprintf(":%d", s.HTTPPort)
+	return fmt.Sprintf("0.0.0.0:%d", s.HTTPPort)
 }
 
 func (s ServerConfig) GetGrpcHostAddress() string {
 	if s.GrpcConfig.Port >= 0 {
-		return fmt.Sprintf(":%d", s.GrpcConfig.Port)
+		return fmt.Sprintf("0.0.0.0:%d", s.GrpcConfig.Port)
 	}
-	return fmt.Sprintf(":%d", s.GrpcPort)
+	return fmt.Sprintf("0.0.0.0:%d", s.GrpcPort)
 }
 
 func init() {
