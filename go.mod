@@ -173,6 +173,6 @@ replace github.com/robfig/cron/v3 => github.com/unionai/cron/v3 v3.0.2-0.2021082
 
 replace github.com/flyteorg/flytestdlib => github.com/flyteorg/flytestdlib v0.4.14-0.20220317174857-4ad0f74a9003
 
-replace github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v0.23.2-0.20220317225603-d9d82d249346
+replace github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v0.24.3-0.20220322213916-cb08c994d871
 
 replace github.com/graymeta/stow => github.com/flyteorg/stow v0.2.8-0.20220317232124-b6548d46208a
