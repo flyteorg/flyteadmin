@@ -55,20 +55,12 @@ func (s Service) CreateUploadLocation(ctx context.Context, req *service.CreateUp
 		req.Suffix = rand.String(20)
 	}
 
-	keySuffixArr := make([]string, 0, 4)
-	if len(s.cfg.Upload.StoragePrefix) > 0 {
-		keySuffixArr = append(keySuffixArr, s.cfg.Upload.StoragePrefix)
-	}
-
-	keySuffixArr = append(keySuffixArr, req.Project, req.Domain, req.Suffix)
-	keySuffix := strings.Join(keySuffixArr, "/")
-	rawOutputPrefix, err := ioutils.NewShardedRawOutputPath(ctx, s.shardSelector, s.dataStore.GetBaseContainerFQN(ctx),
-		keySuffix, s.dataStore)
+	storagePath, err := createShardedStorageLocation(ctx, req, s.shardSelector, s.dataStore, s.cfg.Upload)
 	if err != nil {
-		return nil, fmt.Errorf("failed to construct datastore reference. Error: %w", err)
+		return nil, err
 	}
 
-	resp, err := s.dataStore.CreateSignedURL(ctx, rawOutputPrefix.GetRawOutputPrefix(), storage.SignedURLProperties{
+	resp, err := s.dataStore.CreateSignedURL(ctx, storagePath, storage.SignedURLProperties{
 		Scope:     stow.ClientMethodPut,
 		ExpiresIn: req.ExpiresIn.AsDuration(),
 		// TODO: pass max allowed upload size
@@ -80,9 +72,33 @@ func (s Service) CreateUploadLocation(ctx context.Context, req *service.CreateUp
 
 	return &service.CreateUploadLocationResponse{
 		SignedUrl: resp.URL.String(),
-		NativeUrl: rawOutputPrefix.GetRawOutputPrefix().String(),
+		NativeUrl: storagePath.String(),
 		ExpiresAt: timestamppb.New(time.Now().Add(req.ExpiresIn.AsDuration())),
 	}, nil
+}
+
+func createShardedStorageLocation(ctx context.Context, req *service.CreateUploadLocationRequest,
+	shardSelector ioutils.ShardSelector, store *storage.DataStore, cfg config.DataProxyUploadConfig) (storage.DataReference, error) {
+	keySuffixArr := make([]string, 0, 4)
+	if len(cfg.StoragePrefix) > 0 {
+		keySuffixArr = append(keySuffixArr, cfg.StoragePrefix)
+	}
+
+	keySuffixArr = append(keySuffixArr, req.Project, req.Domain, req.Suffix)
+	prefix, err := shardSelector.GetShardPrefix(ctx, []byte(strings.Join(keySuffixArr, "/")))
+	if err != nil {
+		return "", err
+	}
+
+	keySuffixArr = append([]string{prefix}, keySuffixArr...)
+
+	storagePath, err := store.ConstructReference(ctx, store.GetBaseContainerFQN(ctx),
+		keySuffixArr...)
+	if err != nil {
+		return "", fmt.Errorf("failed to construct datastore reference. Error: %w", err)
+	}
+
+	return storagePath, nil
 }
 
 func NewService(cfg config.DataProxyConfig, dataStore *storage.DataStore) (Service, error) {
