@@ -372,9 +372,7 @@ func TestCreateExecutionFromWorkflowNode(t *testing.T) {
 			assert.EqualValues(t, input.NodeExecutionIdentifier, parentNodeExecutionID)
 			getNodeExecutionCalled = true
 			return models.NodeExecution{
-				BaseModel: models.BaseModel{
-					ID: 1,
-				},
+				ID: 1,
 			}, nil
 		},
 	)
@@ -1197,9 +1195,7 @@ func TestRecoverExecution_RecoveredChildNode(t *testing.T) {
 		assert.True(t, proto.Equal(&parentNodeExecution, &input.NodeExecutionIdentifier))
 
 		return models.NodeExecution{
-			BaseModel: models.BaseModel{
-				ID: parentNodeDatabaseID,
-			},
+			ID: parentNodeDatabaseID,
 		}, nil
 	})
 

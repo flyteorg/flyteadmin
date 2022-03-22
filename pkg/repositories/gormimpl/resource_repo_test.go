@@ -22,7 +22,7 @@ func TestCreateWorkflowAttributes(t *testing.T) {
 	query := GlobalMock.NewMock()
 	GlobalMock.Logging = true
 	query.WithQuery(
-		`INSERT INTO "resources" ("created_at","updated_at","deleted_at","project","domain","workflow","launch_plan","resource_type","priority","attributes","id") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING "id"`)
+		`INSERT INTO "resources" ("created_at","updated_at","deleted_at","project","domain","workflow","launch_plan","resource_type","priority","attributes") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING "id"`)
 
 	err := resourceRepo.CreateOrUpdate(context.Background(), models.Resource{
 		Project:      "project",
@@ -65,7 +65,7 @@ func TestUpdateWorkflowAttributes_WithExisting(t *testing.T) {
 
 	mockSaveQuery := GlobalMock.NewMock()
 	mockSaveQuery.WithQuery(
-		`INSERT INTO "resources" ("created_at","updated_at","deleted_at","project","domain","workflow","launch_plan","resource_type","priority","attributes","id") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`)
+		`INSERT INTO "resources" ("created_at","updated_at","deleted_at","project","domain","workflow","launch_plan","resource_type","priority","attributes") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`)
 
 	err := resourceRepo.CreateOrUpdate(context.Background(), models.Resource{
 		ResourceType: resourceType.String(),
