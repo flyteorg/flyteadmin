@@ -2,15 +2,15 @@ package implementations
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
-	"github.com/NYTimes/gizmo/pubsub"
-	"github.com/google/uuid"
-	"github.com/invopop/jsonschema"
+	"github.com/Shopify/sarama"
+	"github.com/cloudevents/sdk-go/protocol/kafka_sarama/v2"
 
+	"github.com/NYTimes/gizmo/pubsub"
 	pbcloudevents "github.com/cloudevents/sdk-go/binding/format/protobuf/v2"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
+	"github.com/google/uuid"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -23,11 +23,54 @@ import (
 
 const (
 	cloudEventSource = "https://github.com/flyteorg/flyteadmin"
-	jsonSchema       = "jsonschema"
+	jsonSchemaURL    = "jsonSchemaURL"
 )
 
+type Receiver = string
+
+const (
+	Kafka Receiver = "Kafka"
+)
+
+type CloudEventSender interface {
+	Send(ctx context.Context, notificationType string, event cloudevents.Event) error
+}
+
+type PubSubSender struct {
+	Pub pubsub.Publisher
+}
+
+func (s *PubSubSender) Send(ctx context.Context, notificationType string, event cloudevents.Event) error {
+	eventByte, err := pbcloudevents.Protobuf.Marshal(&event)
+	if err != nil {
+		logger.Errorf(ctx, "Failed to marshal cloudevent with error: %v", err)
+		return err
+	}
+	if err := s.Pub.PublishRaw(ctx, notificationType, eventByte); err != nil {
+		logger.Errorf(ctx, "Failed to publish a message with key [%s] and message [%s] and error: %v", notificationType, event.String(), err)
+		return err
+	}
+
+	return nil
+}
+
+type KafkaSender struct {
+	Client cloudevents.Client
+}
+
+func (s *KafkaSender) Send(ctx context.Context, notificationType string, event cloudevents.Event) error {
+	if result := s.Client.Send(
+		// Set the producer message key
+		kafka_sarama.WithMessageKey(context.Background(), sarama.StringEncoder(event.ID())),
+		event,
+	); cloudevents.IsUndelivered(result) {
+		logger.Errorf(ctx, "failed to send: %v", result)
+	}
+	return nil
+}
+
 type CloudEventPublisher struct {
-	pub           pubsub.Publisher
+	sender        CloudEventSender
 	systemMetrics eventPublisherSystemMetrics
 	events        sets.String
 }
@@ -46,14 +89,7 @@ func (p *CloudEventPublisher) Publish(ctx context.Context, notificationType stri
 	event.SetSource(cloudEventSource)
 	event.SetID(uuid.New().String())
 	event.SetTime(time.Now())
-	reflector := jsonschema.Reflector{ExpandedStruct: true}
-	schema, err := json.Marshal(reflector.Reflect(msg))
-	if err != nil {
-		p.systemMetrics.PublishError.Inc()
-		logger.Errorf(ctx, "Failed to marshal cloudevent JsonSchema: %v", err)
-		return err
-	}
-	event.SetExtension(jsonSchema, string(schema))
+	event.SetExtension(jsonSchemaURL, "https://github.com/pingsutw/flyteidl/blob/cloudevent2/jsonschema/workflow_execution.json")
 
 	if err := event.SetData(cloudevents.ApplicationJSON, &msg); err != nil {
 		p.systemMetrics.PublishError.Inc()
@@ -61,18 +97,10 @@ func (p *CloudEventPublisher) Publish(ctx context.Context, notificationType stri
 		return err
 	}
 
-	eventByte, err := pbcloudevents.Protobuf.Marshal(&event)
-	if err != nil {
+	if err := p.sender.Send(ctx, notificationType, event); err != nil {
 		p.systemMetrics.PublishError.Inc()
-		logger.Errorf(ctx, "Failed to marshal cloudevent with error: %v", err)
 		return err
 	}
-	if err := p.pub.PublishRaw(ctx, notificationType, eventByte); err != nil {
-		p.systemMetrics.PublishError.Inc()
-		logger.Errorf(ctx, "Failed to publish a message with key [%s] and message [%s] and error: %v", notificationType, msg.String(), err)
-		return err
-	}
-
 	return nil
 }
 
@@ -80,7 +108,7 @@ func (p *CloudEventPublisher) shouldPublishEvent(notificationType string) bool {
 	return p.events.Has(notificationType)
 }
 
-func NewCloudEventsPublisher(pub pubsub.Publisher, scope promutils.Scope, eventTypes []string) interfaces.Publisher {
+func NewCloudEventsPublisher(sender CloudEventSender, scope promutils.Scope, eventTypes []string) interfaces.Publisher {
 	eventSet := sets.NewString()
 
 	for _, event := range eventTypes {
@@ -98,7 +126,7 @@ func NewCloudEventsPublisher(pub pubsub.Publisher, scope promutils.Scope, eventT
 	}
 
 	return &CloudEventPublisher{
-		pub:           pub,
+		sender:        sender,
 		systemMetrics: newEventPublisherSystemMetrics(scope.NewSubScope("cloudevents_publisher")),
 		events:        eventSet,
 	}

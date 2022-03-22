@@ -162,7 +162,9 @@ require (
 
 require (
 	github.com/Azure/go-autorest/autorest v0.11.17 // indirect
+	github.com/Shopify/sarama v1.26.4
 	github.com/bradfitz/gomemcache v0.0.0-20180710155616-bc664df96737 // indirect
+	github.com/cloudevents/sdk-go/protocol/kafka_sarama/v2 v2.8.0
 	github.com/googleapis/gnostic v0.5.1 // indirect
 	github.com/imdario/mergo v0.3.11 // indirect
 	github.com/invopop/jsonschema v0.3.0

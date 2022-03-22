@@ -1,6 +1,7 @@
 package interfaces
 
 import (
+	"github.com/Shopify/sarama"
 	"github.com/flyteorg/flytestdlib/config"
 
 	"golang.org/x/time/rate"
@@ -97,6 +98,10 @@ type AWSConfig struct {
 // This section holds common config for GCP
 type GCPConfig struct {
 	ProjectID string `json:"projectId"`
+}
+
+type KafkaConfig struct {
+	Version sarama.KafkaVersion
 }
 
 // This section holds configuration for the event scheduler used to schedule workflow executions.
@@ -389,9 +394,12 @@ type CloudEventsConfig struct {
 	Enable bool `json:"enable"`
 	// Defines the cloud provider that backs the scheduler. In the absence of a specification the no-op, 'local'
 	// scheme is used.
-	Type      string    `json:"type"`
-	AWSConfig AWSConfig `json:"aws"`
-	GCPConfig GCPConfig `json:"gcp"`
+	Type        string      `json:"type"`
+	AWSConfig   AWSConfig   `json:"aws"`
+	GCPConfig   GCPConfig   `json:"gcp"`
+	KafkaConfig KafkaConfig `json:"kafka"`
+	// kafka broker addresses
+	Brokers []string `json:"brokers"`
 	// Publish events to a pubsub tops
 	EventsPublisherConfig EventsPublisherConfig `json:"eventsPublisher"`
 	// Number of times to attempt recreating a notifications processor client should there be any disruptions.

@@ -6,8 +6,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/invopop/jsonschema"
-
 	"github.com/NYTimes/gizmo/pubsub"
 	"github.com/NYTimes/gizmo/pubsub/pubsubtest"
 	pbcloudevents "github.com/cloudevents/sdk-go/binding/format/protobuf/v2"
@@ -19,6 +17,7 @@ import (
 
 var testCloudEventPublisher pubsubtest.TestPublisher
 var mockCloudEventPublisher pubsub.Publisher = &testCloudEventPublisher
+var mockPubSubSender = &PubSubSender{Pub: mockCloudEventPublisher}
 
 // This method should be invoked before every test around Publisher.
 func initializeCloudEventPublisher() {
@@ -84,7 +83,7 @@ func TestNewCloudEventsPublisher_EventTypes(t *testing.T) {
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
 				initializeCloudEventPublisher()
-				var currentEventPublisher = NewCloudEventsPublisher(mockCloudEventPublisher, promutils.NewTestScope(), test.eventTypes)
+				var currentEventPublisher = NewCloudEventsPublisher(mockPubSubSender, promutils.NewTestScope(), test.eventTypes)
 				var cnt = 0
 				for id, event := range test.events {
 					assert.Nil(t, currentEventPublisher.Publish(context.Background(), proto.MessageName(event),
@@ -95,15 +94,12 @@ func TestNewCloudEventsPublisher_EventTypes(t *testing.T) {
 						cloudevent := cloudevents.NewEvent()
 						err := pbcloudevents.Protobuf.Unmarshal(body, &cloudevent)
 						assert.Nil(t, err)
-						reflector := jsonschema.Reflector{ExpandedStruct: true}
-						schema, err := json.Marshal(reflector.Reflect(event))
-						assert.Nil(t, err)
 
 						assert.Equal(t, cloudevent.DataContentType(), cloudevents.ApplicationJSON)
 						assert.Equal(t, cloudevent.SpecVersion(), cloudevents.VersionV1)
 						assert.Equal(t, cloudevent.Type(), proto.MessageName(event))
 						assert.Equal(t, cloudevent.Source(), cloudEventSource)
-						assert.Equal(t, cloudevent.Extensions(), map[string]interface{}{jsonSchema: string(schema)})
+						assert.Equal(t, cloudevent.Extensions(), map[string]interface{}{jsonSchemaURL: "https://github.com/pingsutw/flyteidl/blob/cloudevent2/jsonschema/workflow_execution.json"})
 
 						e, err := json.Marshal(event)
 						assert.Nil(t, err)
@@ -119,7 +115,7 @@ func TestNewCloudEventsPublisher_EventTypes(t *testing.T) {
 
 func TestCloudEventPublisher_PublishError(t *testing.T) {
 	initializeCloudEventPublisher()
-	currentEventPublisher := NewCloudEventsPublisher(mockCloudEventPublisher, promutils.NewTestScope(), []string{"*"})
+	currentEventPublisher := NewCloudEventsPublisher(mockPubSubSender, promutils.NewTestScope(), []string{"*"})
 	var publishError = errors.New("publish() returns an error")
 	testCloudEventPublisher.GivenError = publishError
 	assert.Equal(t, publishError, currentEventPublisher.Publish(context.Background(),

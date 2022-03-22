@@ -5,6 +5,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Shopify/sarama"
+
+	"github.com/cloudevents/sdk-go/protocol/kafka_sarama/v2"
+	cloudevents "github.com/cloudevents/sdk-go/v2"
+
 	"github.com/flyteorg/flyteadmin/pkg/async"
 
 	"github.com/flyteorg/flyteadmin/pkg/async/notifications/implementations"
@@ -254,7 +259,7 @@ func NewCloudEventsPublisher(config runtimeInterfaces.CloudEventsConfig, scope p
 		if err != nil {
 			panic(err)
 		}
-		return implementations.NewCloudEventsPublisher(publisher, scope, config.EventsPublisherConfig.EventTypes)
+		return implementations.NewCloudEventsPublisher(&implementations.PubSubSender{Pub: publisher}, scope, config.EventsPublisherConfig.EventTypes)
 	case common.GCP:
 		pubsubConfig := gizmoGCP.Config{
 			Topic: config.EventsPublisherConfig.TopicName,
@@ -270,12 +275,26 @@ func NewCloudEventsPublisher(config runtimeInterfaces.CloudEventsConfig, scope p
 		if err != nil {
 			panic(err)
 		}
-		return implementations.NewCloudEventsPublisher(publisher, scope, config.EventsPublisherConfig.EventTypes)
+		return implementations.NewCloudEventsPublisher(&implementations.PubSubSender{Pub: publisher}, scope, config.EventsPublisherConfig.EventTypes)
+	case implementations.Kafka:
+		saramaConfig := sarama.NewConfig()
+		saramaConfig.Version = config.KafkaConfig.Version
+		sender, err := kafka_sarama.NewSender(config.Brokers, saramaConfig, config.EventsPublisherConfig.TopicName)
+		if err != nil {
+			panic(err)
+		}
+		defer sender.Close(context.Background())
+		client, err := cloudevents.NewClient(sender, cloudevents.WithTimeNow(), cloudevents.WithUUIDs())
+		if err != nil {
+			logger.Fatalf(context.Background(), "failed to create client, %v", err)
+			panic(err)
+		}
+		return implementations.NewCloudEventsPublisher(&implementations.KafkaSender{Client: client}, scope, config.EventsPublisherConfig.EventTypes)
 	case common.Local:
 		fallthrough
 	default:
 		logger.Infof(context.Background(),
-			"Using default noop events publisher implementation for config type [%s]", config.Type)
+			"Using default noop cloud events publisher implementation for config type [%s]", config.Type)
 		return implementations.NewNoopPublish()
 	}
 }
