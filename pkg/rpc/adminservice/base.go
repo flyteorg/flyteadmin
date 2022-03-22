@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"runtime/debug"
 
+	"github.com/flyteorg/flyteadmin/plugins"
+
 	interfaces2 "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
@@ -22,7 +24,6 @@ import (
 	manager "github.com/flyteorg/flyteadmin/pkg/manager/impl"
 	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories"
-	"github.com/flyteorg/flyteadmin/pkg/workflowengine"
 	workflowengineImpl "github.com/flyteorg/flyteadmin/pkg/workflowengine/impl"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/profutils"
@@ -59,7 +60,7 @@ func (m *AdminService) interceptPanic(ctx context.Context, request proto.Message
 
 const defaultRetries = 3
 
-func NewAdminServer(ctx context.Context, configuration interfaces2.Configuration, kubeConfig, master string, dataStorageClient *storage.DataStore, adminScope promutils.Scope) *AdminService {
+func NewAdminServer(ctx context.Context, pluginRegistry *plugins.Registry, configuration interfaces2.Configuration, kubeConfig, master string, dataStorageClient *storage.DataStore, adminScope promutils.Scope) *AdminService {
 	applicationConfiguration := configuration.ApplicationConfiguration().GetTopLevelConfig()
 
 	panicCounter := adminScope.MustNewCounter("initialization_panic",
@@ -92,7 +93,7 @@ func NewAdminServer(ctx context.Context, configuration interfaces2.Configuration
 		adminScope.NewSubScope("builder").NewSubScope("flytepropeller"))
 	workflowExecutor := workflowengineImpl.NewK8sWorkflowExecutor(execCluster, workflowBuilder)
 	logger.Info(ctx, "Successfully created a workflow executor engine")
-	workflowengine.GetRegistry().RegisterDefault(workflowExecutor)
+	pluginRegistry.RegisterDefault(plugins.PluginIDWorkflowExecutor, workflowExecutor)
 
 	publisher := notifications.NewNotificationsPublisher(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope)
 	processor := notifications.NewNotificationsProcessor(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope)
@@ -135,7 +136,7 @@ func NewAdminServer(ctx context.Context, configuration interfaces2.Configuration
 		executionEventWriter.Run()
 	}()
 
-	executionManager := manager.NewExecutionManager(repo, configuration, dataStorageClient,
+	executionManager := manager.NewExecutionManager(repo, pluginRegistry, configuration, dataStorageClient,
 		adminScope.NewSubScope("execution_manager"), adminScope.NewSubScope("user_execution_metrics"),
 		publisher, urlData, workflowManager, namedEntityManager, eventPublisher, executionEventWriter)
 	versionManager := manager.NewVersionManager()

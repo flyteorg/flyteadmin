@@ -139,7 +139,7 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, registry *plug
 		panic(err)
 	}
 
-	flyteService.RegisterAdminServiceServer(grpcServer, adminservice.NewAdminServer(ctx, configuration, cfg.KubeConfig, cfg.Master, dataStorageClient, adminScope))
+	flyteService.RegisterAdminServiceServer(grpcServer, adminservice.NewAdminServer(ctx, registry, configuration, cfg.KubeConfig, cfg.Master, dataStorageClient, adminScope))
 	if cfg.Security.UseAuth {
 		flyteService.RegisterAuthMetadataServiceServer(grpcServer, authCtx.AuthMetadataService())
 		flyteService.RegisterIdentityServiceServer(grpcServer, authCtx.IdentityService())
