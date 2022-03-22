@@ -1,10 +1,5 @@
 package models
 
-import (
-	"github.com/google/uuid"
-	"gorm.io/gorm"
-)
-
 // IMPORTANT: If you update the model below, be sure to double check model definitions in
 // pkg/repositories/config/migration_models.go
 
@@ -25,9 +20,4 @@ type Task struct {
 	Digest []byte
 	// Task type (also stored in the closure put promoted as a column for filtering).
 	Type string `valid:"length(0|255)"`
-}
-
-func (t *Task) BeforeCreate(tx *gorm.DB) error {
-	t.ID = uint(uuid.New().ID())
-	return nil
 }

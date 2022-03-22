@@ -2,8 +2,6 @@ package models
 
 import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 // NamedEntityMetadata primary key
@@ -41,9 +39,4 @@ type NamedEntityKey struct {
 type NamedEntity struct {
 	NamedEntityKey
 	NamedEntityMetadataFields
-}
-
-func (n *NamedEntityMetadata) BeforeCreate(tx *gorm.DB) error {
-	n.ID = uint(uuid.New().ID())
-	return nil
 }

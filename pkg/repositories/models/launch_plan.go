@@ -1,10 +1,5 @@
 package models
 
-import (
-	"github.com/google/uuid"
-	"gorm.io/gorm"
-)
-
 // Launch plan primary key
 type LaunchPlanKey struct {
 	Project string `gorm:"primary_key;index:lp_project_domain_name_idx,lp_project_domain_idx" valid:"length(0|255)"`
@@ -36,9 +31,4 @@ type LaunchPlan struct {
 	// Hash of the launch plan
 	Digest       []byte
 	ScheduleType LaunchPlanScheduleType
-}
-
-func (l *LaunchPlan) BeforeCreate(tx *gorm.DB) error {
-	l.ID = uint(uuid.New().ID())
-	return nil
 }

@@ -17,7 +17,10 @@ type NodeExecutionKey struct {
 
 // By convention, gorm foreign key references are of the form {ModelName}ID
 type NodeExecution struct {
-	BaseModel
+	ID        uint `gorm:"type:uuid;index"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt *time.Time `gorm:"index"`
 	NodeExecutionKey
 	// Also stored in the closure, but defined as a separate column because it's useful for filtering and sorting.
 	Phase     string

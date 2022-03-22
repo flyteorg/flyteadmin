@@ -1,10 +1,5 @@
 package models
 
-import (
-	"github.com/google/uuid"
-	"gorm.io/gorm"
-)
-
 type Project struct {
 	BaseModel
 	Identifier  string `gorm:"primary_key"`
@@ -13,9 +8,4 @@ type Project struct {
 	Labels      []byte
 	// GORM doesn't save the zero value for ints, so we use a pointer for the State field
 	State *int32 `gorm:"default:0;index"`
-}
-
-func (p *Project) BeforeCreate(tx *gorm.DB) error {
-	p.ID = uint(uuid.New().ID())
-	return nil
 }

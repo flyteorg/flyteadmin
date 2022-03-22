@@ -40,14 +40,21 @@ func withDB(ctx context.Context, do func(db *gorm.DB, dbType repositories.Databa
 	return do(db, dbType)
 }
 
+func getMigrations(dbType repositories.DatabaseType) []*gormigrate.Migration {
+	var migrations = make([]*gormigrate.Migration, 0, len(config.Migrations))
+	for _, migration := range config.Migrations {
+		if dbType == repositories.DatabaseTypeSqlite && migration.Options.IgnoreForSqlite {
+			continue
+		}
+		migrations = append(migrations, &migration.Migration)
+	}
+	return migrations
+}
+
 // Migrate runs all configured migrations
 func Migrate(ctx context.Context) error {
 	return withDB(ctx, func(db *gorm.DB, dbType repositories.DatabaseType) error {
-		migrations := config.Migrations
-		if dbType == repositories.DatabaseTypePostgres {
-			migrations = config.PostgresMigrations
-		}
-		m := gormigrate.New(db.Debug(), gormigrate.DefaultOptions, migrations)
+		m := gormigrate.New(db.Debug(), gormigrate.DefaultOptions, getMigrations(dbType))
 		if err := m.Migrate(); err != nil {
 			return fmt.Errorf("database migration failed: %v", err)
 		}
@@ -59,11 +66,7 @@ func Migrate(ctx context.Context) error {
 // Rollback rolls back the last migration
 func Rollback(ctx context.Context) error {
 	return withDB(ctx, func(db *gorm.DB, dbType repositories.DatabaseType) error {
-		migrations := config.Migrations
-		if dbType == repositories.DatabaseTypePostgres {
-			migrations = config.PostgresMigrations
-		}
-		m := gormigrate.New(db, gormigrate.DefaultOptions, migrations)
+		m := gormigrate.New(db, gormigrate.DefaultOptions, getMigrations(dbType))
 		err := m.RollbackLast()
 		if err != nil {
 			return fmt.Errorf("could not rollback latest migration: %v", err)

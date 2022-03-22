@@ -3,6 +3,9 @@ package config
 import (
 	"time"
 
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 )
 
@@ -31,7 +34,10 @@ type NodeExecutionKey struct {
 }
 
 type NodeExecution struct {
-	models.BaseModel
+	ID        uint `gorm:"type:uuid"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt *time.Time `gorm:"index"`
 	NodeExecutionKey
 	// Also stored in the closure, but defined as a separate column because it's useful for filtering and sorting.
 	Phase     string
@@ -83,4 +89,9 @@ type TaskExecution struct {
 	Duration               time.Duration
 	// The child node executions (if any) launched by this task execution.
 	ChildNodeExecution []NodeExecution `gorm:"foreignkey:ParentTaskExecutionID;references:ID"`
+}
+
+func (n *NodeExecution) BeforeCreate(tx *gorm.DB) error {
+	n.ID = uint(uuid.New().ID())
+	return nil
 }

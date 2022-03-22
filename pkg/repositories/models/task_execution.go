@@ -2,9 +2,6 @@ package models
 
 import (
 	"time"
-
-	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 // IMPORTANT: If you update the model below, be sure to double check model definitions in
@@ -39,9 +36,4 @@ type TaskExecution struct {
 	Duration               time.Duration
 	// The child node executions (if any) launched by this task execution.
 	ChildNodeExecution []NodeExecution `gorm:"foreignkey:ParentTaskExecutionID;references:ID"`
-}
-
-func (t *TaskExecution) BeforeCreate(tx *gorm.DB) error {
-	t.ID = uint(uuid.New().ID())
-	return nil
 }

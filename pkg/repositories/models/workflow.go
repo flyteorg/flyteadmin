@@ -1,10 +1,5 @@
 package models
 
-import (
-	"github.com/google/uuid"
-	"gorm.io/gorm"
-)
-
 // Workflow primary key
 type WorkflowKey struct {
 	Project string `gorm:"primary_key;index:workflow_project_domain_name_idx;index:workflow_project_domain_idx"  valid:"length(0|255)"`
@@ -21,9 +16,4 @@ type Workflow struct {
 	RemoteClosureIdentifier string `gorm:"not null" valid:"length(0|255)"`
 	// Hash of the compiled workflow closure
 	Digest []byte
-}
-
-func (w *Workflow) BeforeCreate(tx *gorm.DB) error {
-	w.ID = uint(uuid.New().ID())
-	return nil
 }

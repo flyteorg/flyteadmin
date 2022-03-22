@@ -3,9 +3,6 @@ package models
 import (
 	"time"
 
-	"github.com/google/uuid"
-	"gorm.io/gorm"
-
 	"github.com/flyteorg/flytestdlib/storage"
 )
 
@@ -61,9 +58,4 @@ type Execution struct {
 	User string `gorm:"index" valid:"length(0|255)"`
 	// GORM doesn't save the zero value for ints, so we use a pointer for the State field
 	State *int32 `gorm:"index;default:0"`
-}
-
-func (e *Execution) BeforeCreate(tx *gorm.DB) error {
-	e.ID = uint(uuid.New().ID())
-	return nil
 }
