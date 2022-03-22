@@ -585,6 +585,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		EventVersion:        m.config.ApplicationConfiguration().GetTopLevelConfig().EventVersion,
 		RoleNameKey:         m.config.ApplicationConfiguration().GetTopLevelConfig().RoleNameKey,
 		RawOutputDataConfig: rawOutputDataConfig,
+		ClusterAssignment:   request.Spec.ClusterAssignment,
 	}
 
 	overrides, err := m.addPluginOverrides(ctx, &workflowExecutionID, workflowExecutionID.Name, "")

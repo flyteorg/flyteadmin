@@ -262,6 +262,17 @@ func TestCreateExecution(t *testing.T) {
 
 	principal := "principal"
 	rawOutput := "raw_output"
+	clusterAssignment := admin.ClusterAssignment{
+		Affinity: &admin.Affinity{
+			Selectors: []*admin.Selector{
+				{
+					Key:      "foo",
+					Value:    []string{"bar"},
+					Operator: admin.Selector_NOT_EQUALS,
+				},
+			},
+		},
+	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(
 		func(ctx context.Context, input models.Execution) error {
 			var spec admin.ExecutionSpec
@@ -269,6 +280,7 @@ func TestCreateExecution(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, principal, spec.Metadata.Principal)
 			assert.Equal(t, rawOutput, spec.RawOutputDataConfig.OutputLocationPrefix)
+			assert.True(t, proto.Equal(spec.ClusterAssignment, &clusterAssignment))
 			return nil
 		})
 	setDefaultLpCallbackForExecTest(repository)
@@ -338,6 +350,7 @@ func TestCreateExecution(t *testing.T) {
 		Principal: "unused - populated from authenticated context",
 	}
 	request.Spec.RawOutputDataConfig = &admin.RawOutputDataConfig{OutputLocationPrefix: rawOutput}
+	request.Spec.ClusterAssignment = &clusterAssignment
 
 	identity := auth.NewIdentityContext("", principal, "", time.Now(), sets.NewString(), nil)
 	ctx := identity.WithContext(context.Background())
