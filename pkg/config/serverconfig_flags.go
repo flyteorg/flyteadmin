@@ -71,5 +71,7 @@ func (cfg ServerConfig) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.StringSlice(fmt.Sprintf("%v%v", prefix, "thirdPartyConfig.flyteClient.scopes"), defaultServerConfig.DeprecatedThirdPartyConfig.FlyteClientConfig.Scopes, "Recommended scopes for the client to request.")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "dataProxy.upload.maxSize"), defaultServerConfig.DataProxy.Upload.MaxSize.String(), "Maximum allowed upload size.")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "dataProxy.upload.maxExpiresIn"), defaultServerConfig.DataProxy.Upload.MaxExpiresIn.String(), "Maximum allowed expiration duration.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "dataProxy.upload.defaultFileNameLength"), defaultServerConfig.DataProxy.Upload.DefaultFileNameLength, "Default length for the generated file name if not provided in the request.")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "dataProxy.upload.storagePrefix"), defaultServerConfig.DataProxy.Upload.StoragePrefix, "Storage prefix to use for all upload requests.")
 	return cmdFlags
 }

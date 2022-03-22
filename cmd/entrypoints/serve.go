@@ -3,6 +3,7 @@ package entrypoints
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 
 	"github.com/flyteorg/flyteadmin/dataproxy"
 	runtime2 "github.com/flyteorg/flyteadmin/pkg/runtime"
@@ -141,7 +142,12 @@ func newGRPCServer(ctx context.Context, cfg *config.ServerConfig, authCtx interf
 		flyteService.RegisterIdentityServiceServer(grpcServer, authCtx.IdentityService())
 	}
 
-	flyteService.RegisterDataProxyServer(grpcServer, dataproxy.NewService(cfg.DataProxy, dataStorageClient))
+	dataProxySvc, err := dataproxy.NewService(cfg.DataProxy, dataStorageClient)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize dataProxy service. Error: %w", err)
+	}
+
+	flyteService.RegisterDataProxyServer(grpcServer, dataProxySvc)
 
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus("flyteadmin", grpc_health_v1.HealthCheckResponse_SERVING)

@@ -393,4 +393,32 @@ func TestServerConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_dataProxy.upload.defaultFileNameLength", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("dataProxy.upload.defaultFileNameLength", testValue)
+			if vInt, err := cmdFlags.GetInt("dataProxy.upload.defaultFileNameLength"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vInt), &actual.DataProxy.Upload.DefaultFileNameLength)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_dataProxy.upload.storagePrefix", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("dataProxy.upload.storagePrefix", testValue)
+			if vString, err := cmdFlags.GetString("dataProxy.upload.storagePrefix"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.DataProxy.Upload.StoragePrefix)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 }

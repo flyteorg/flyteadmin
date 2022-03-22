@@ -3,7 +3,10 @@ package dataproxy
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
+
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
 	"google.golang.org/protobuf/types/known/durationpb"
 
@@ -22,8 +25,9 @@ type Service struct {
 	service.DataProxyServer
 	*service.UnimplementedDataProxyServer
 
-	cfg       config.DataProxyConfig
-	dataStore *storage.DataStore
+	cfg           config.DataProxyConfig
+	dataStore     *storage.DataStore
+	shardSelector ioutils.ShardSelector
 }
 
 // CreateUploadLocation creates a temporary signed url to allow callers to upload content.
@@ -51,13 +55,20 @@ func (s Service) CreateUploadLocation(ctx context.Context, req *service.CreateUp
 		req.Suffix = rand.String(20)
 	}
 
-	path := s.dataStore.GetBaseContainerFQN(ctx)
-	path, err := s.dataStore.ConstructReference(ctx, path, rand.String(2), req.Project, req.Domain, req.Suffix)
+	keySuffixArr := make([]string, 0, 4)
+	if len(s.cfg.Upload.StoragePrefix) > 0 {
+		keySuffixArr = append(keySuffixArr, s.cfg.Upload.StoragePrefix)
+	}
+
+	keySuffixArr = append(keySuffixArr, req.Project, req.Domain, req.Suffix)
+	keySuffix := strings.Join(keySuffixArr, "/")
+	rawOutputPrefix, err := ioutils.NewShardedRawOutputPath(ctx, s.shardSelector, s.dataStore.GetBaseContainerFQN(ctx),
+		keySuffix, s.dataStore)
 	if err != nil {
 		return nil, fmt.Errorf("failed to construct datastore reference. Error: %w", err)
 	}
 
-	resp, err := s.dataStore.CreateSignedURL(ctx, path, storage.SignedURLProperties{
+	resp, err := s.dataStore.CreateSignedURL(ctx, rawOutputPrefix.GetRawOutputPrefix(), storage.SignedURLProperties{
 		Scope:     stow.ClientMethodPut,
 		ExpiresIn: req.ExpiresIn.AsDuration(),
 		// TODO: pass max allowed upload size
@@ -69,14 +80,21 @@ func (s Service) CreateUploadLocation(ctx context.Context, req *service.CreateUp
 
 	return &service.CreateUploadLocationResponse{
 		SignedUrl: resp.URL.String(),
-		NativeUrl: path.String(),
+		NativeUrl: rawOutputPrefix.GetRawOutputPrefix().String(),
 		ExpiresAt: timestamppb.New(time.Now().Add(req.ExpiresIn.AsDuration())),
 	}, nil
 }
 
-func NewService(cfg config.DataProxyConfig, dataStore *storage.DataStore) Service {
-	return Service{
-		cfg:       cfg,
-		dataStore: dataStore,
+func NewService(cfg config.DataProxyConfig, dataStore *storage.DataStore) (Service, error) {
+	// Context is not used in the constructor. Should ideally be removed.
+	selector, err := ioutils.NewBase36PrefixShardSelector(context.TODO())
+	if err != nil {
+		return Service{}, err
 	}
+
+	return Service{
+		cfg:           cfg,
+		dataStore:     dataStore,
+		shardSelector: selector,
+	}, nil
 }

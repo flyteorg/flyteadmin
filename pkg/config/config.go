@@ -33,8 +33,10 @@ type DataProxyConfig struct {
 }
 
 type DataProxyUploadConfig struct {
-	MaxSize      resource.Quantity `json:"maxSize" pflag:",Maximum allowed upload size."`
-	MaxExpiresIn config.Duration   `json:"maxExpiresIn" pflag:",Maximum allowed expiration duration."`
+	MaxSize               resource.Quantity `json:"maxSize" pflag:",Maximum allowed upload size."`
+	MaxExpiresIn          config.Duration   `json:"maxExpiresIn" pflag:",Maximum allowed expiration duration."`
+	DefaultFileNameLength int               `json:"defaultFileNameLength" pflag:",Default length for the generated file name if not provided in the request."`
+	StoragePrefix         string            `json:"storagePrefix" pflag:",Storage prefix to use for all upload requests."`
 }
 
 type GrpcConfig struct {
@@ -80,8 +82,9 @@ var defaultServerConfig = &ServerConfig{
 	},
 	DataProxy: DataProxyConfig{
 		Upload: DataProxyUploadConfig{
-			MaxSize:      resource.MustParse("6Mi"),
-			MaxExpiresIn: config.Duration{Duration: time.Hour},
+			MaxSize:               resource.MustParse("6Mi"),
+			MaxExpiresIn:          config.Duration{Duration: time.Hour},
+			DefaultFileNameLength: 20,
 		},
 	},
 }
