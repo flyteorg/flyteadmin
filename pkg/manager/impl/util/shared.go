@@ -3,13 +3,13 @@ package util
 
 import (
 	"context"
-	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 	"time"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/validation"
+	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 	repoInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
@@ -235,8 +235,10 @@ func GetTaskExecutionModel(
 	return &taskExecutionModel, nil
 }
 
+// GetMatchableResource gets matchable resource for resourceType and project - domain combination.
+// Returns an error if such a resource is not found.
 func GetMatchableResource(ctx context.Context, resourceManager interfaces.ResourceInterface, resourceType admin.MatchableResource,
-	project ,domain string) (*interfaces.ResourceResponse, error) {
+	project, domain string) (*interfaces.ResourceResponse, error) {
 	matchableResource, err := resourceManager.GetResource(ctx, interfaces.ResourceRequest{
 		Project:      project,
 		Domain:       domain,

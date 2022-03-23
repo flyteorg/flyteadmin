@@ -71,7 +71,7 @@ type ApplicationConfig struct {
 	AssumableIamRole string `json:"assumableIamRole"`
 	// k8s_service_account references a kubernetes service account to impersonate.
 	K8SServiceAccount string `json:"k8sServiceAccount"`
-	
+
 	// Prefix for where offloaded data from user workflows will be written
 	OutputLocationPrefix string `json:"outputLocationPrefix"`
 }
