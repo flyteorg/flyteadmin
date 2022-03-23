@@ -3713,6 +3713,70 @@ func TestGetExecutionConfig_Spec(t *testing.T) {
 	assert.Equal(t, execConfig.MaxParallelism, int32(25))
 }
 
+func TestGetClusterAssignment(t *testing.T) {
+	clusterAssignment := admin.ClusterAssignment{
+		Affinity: &admin.Affinity{
+			Selectors: []*admin.Selector{
+				{
+					Key:      "foo",
+					Value:    []string{"bar"},
+					Operator: admin.Selector_EQUALS,
+				},
+			},
+		},
+	}
+	resourceManager := managerMocks.MockResourceManager{}
+	resourceManager.GetResourceFunc = func(ctx context.Context,
+		request managerInterfaces.ResourceRequest) (*managerInterfaces.ResourceResponse, error) {
+		assert.EqualValues(t, request, managerInterfaces.ResourceRequest{
+			Project:      workflowIdentifier.Project,
+			Domain:       workflowIdentifier.Domain,
+			ResourceType: admin.MatchableResource_CLUSTER_ASSIGNMENT,
+		})
+		return &managerInterfaces.ResourceResponse{
+			Attributes: &admin.MatchingAttributes{
+				Target: &admin.MatchingAttributes_ClusterAssignment{
+					ClusterAssignment: &clusterAssignment,
+				},
+			},
+		}, nil
+	}
+
+	executionManager := ExecutionManager{
+		resourceManager: &resourceManager,
+	}
+	t.Run("value from db", func(t *testing.T) {
+		ca, err := executionManager.getClusterAssignment(context.TODO(), &admin.ExecutionCreateRequest{
+			Project: workflowIdentifier.Project,
+			Domain:  workflowIdentifier.Domain,
+			Spec:    &admin.ExecutionSpec{},
+		})
+		assert.NoError(t, err)
+		assert.True(t, proto.Equal(ca, &clusterAssignment))
+	})
+	t.Run("value from request", func(t *testing.T) {
+		reqClusterAssignment := admin.ClusterAssignment{
+			Affinity: &admin.Affinity{
+				Selectors: []*admin.Selector{
+					{
+						Key:      "baz",
+						Operator: admin.Selector_IN,
+					},
+				},
+			},
+		}
+		ca, err := executionManager.getClusterAssignment(context.TODO(), &admin.ExecutionCreateRequest{
+			Project: workflowIdentifier.Project,
+			Domain:  workflowIdentifier.Domain,
+			Spec: &admin.ExecutionSpec{
+				ClusterAssignment: &reqClusterAssignment,
+			},
+		})
+		assert.NoError(t, err)
+		assert.True(t, proto.Equal(ca, &reqClusterAssignment))
+	})
+}
+
 func TestResolvePermissions(t *testing.T) {
 	assumableIamRole := "role"
 	k8sServiceAccount := "sa"
