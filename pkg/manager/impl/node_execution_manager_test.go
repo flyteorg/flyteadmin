@@ -657,9 +657,7 @@ func TestListNodeExecutionsWithParent(t *testing.T) {
 	repository.NodeExecutionRepo().(*repositoryMocks.MockNodeExecutionRepo).SetGetCallback(func(ctx context.Context, input interfaces.NodeExecutionResource) (execution models.NodeExecution, e error) {
 		assert.Equal(t, "parent_1", input.NodeExecutionIdentifier.NodeId)
 		return models.NodeExecution{
-			BaseModel: models.BaseModel{
-				ID: parentID,
-			},
+			ID: parentID,
 		}, nil
 	})
 	repository.NodeExecutionRepo().(*repositoryMocks.MockNodeExecutionRepo).SetListCallback(

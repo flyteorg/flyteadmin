@@ -65,7 +65,7 @@ func TestUpdateNodeExecution(t *testing.T) {
 	nodeExecutionQuery.WithQuery(`UPDATE "node_executions" SET "id"=$1,"updated_at"=$2,"execution_project"=$3,"execution_domain"=$4,"execution_name"=$5,"node_id"=$6,"phase"=$7,"input_uri"=$8,"closure"=$9,"started_at"=$10,"node_execution_created_at"=$11,"node_execution_updated_at"=$12,"duration"=$13 WHERE "execution_project" = $14 AND "execution_domain" = $15 AND "execution_name" = $16 AND "node_id" = $17`)
 	err := nodeExecutionRepo.Update(context.Background(),
 		&models.NodeExecution{
-			BaseModel: models.BaseModel{ID: 1},
+			ID: 1,
 			NodeExecutionKey: models.NodeExecutionKey{
 				NodeID: "1",
 				ExecutionKey: models.ExecutionKey{
@@ -381,9 +381,7 @@ func TestNodeExecutionExists(t *testing.T) {
 				Name:    "1",
 			},
 		},
-		BaseModel: models.BaseModel{
-			ID: id,
-		},
+		ID:      id,
 		Phase:   nodePhase,
 		Closure: []byte("closure"),
 	}

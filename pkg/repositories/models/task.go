@@ -5,10 +5,10 @@ package models
 
 // Task primary key
 type TaskKey struct {
-	Project string `gorm:"primary_key;index:task_project_domain_name_idx;index:task_project_domain_idx" valid:"length(0|255)"`
-	Domain  string `gorm:"primary_key;index:task_project_domain_name_idx;index:task_project_domain_idx" valid:"length(0|255)"`
-	Name    string `gorm:"primary_key;index:task_project_domain_name_idx" valid:"length(0|255)"`
-	Version string `gorm:"primary_key" valid:"length(0|255)"`
+	Project string `gorm:"uniqueIndex:primary_task_index;index:task_project_domain_name_idx;index:task_project_domain_idx" valid:"length(0|255)"`
+	Domain  string `gorm:"uniqueIndex:primary_task_index;index:task_project_domain_name_idx;index:task_project_domain_idx" valid:"length(0|255)"`
+	Name    string `gorm:"uniqueIndex:primary_task_index;index:task_project_domain_name_idx" valid:"length(0|255)"`
+	Version string `gorm:"uniqueIndex:primary_task_index" valid:"length(0|255)"`
 }
 
 // Database model to encapsulate a task.

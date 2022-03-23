@@ -2,10 +2,10 @@ package models
 
 // Workflow primary key
 type WorkflowKey struct {
-	Project string `gorm:"primary_key;index:workflow_project_domain_name_idx;index:workflow_project_domain_idx"  valid:"length(0|255)"`
-	Domain  string `gorm:"primary_key;index:workflow_project_domain_name_idx;index:workflow_project_domain_idx"  valid:"length(0|255)"`
-	Name    string `gorm:"primary_key;index:workflow_project_domain_name_idx"  valid:"length(0|255)"`
-	Version string `gorm:"primary_key"`
+	Project string `gorm:"uniqueIndex:primary_workflow_index;index:workflow_project_domain_name_idx;index:workflow_project_domain_idx"  valid:"length(0|255)"`
+	Domain  string `gorm:"uniqueIndex:primary_workflow_index;index:workflow_project_domain_name_idx;index:workflow_project_domain_idx"  valid:"length(0|255)"`
+	Name    string `gorm:"uniqueIndex:primary_workflow_index;index:workflow_project_domain_name_idx"  valid:"length(0|255)"`
+	Version string `gorm:"uniqueIndex:primary_workflow_index"`
 }
 
 // Database model to encapsulate a workflow.

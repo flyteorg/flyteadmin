@@ -11,9 +11,9 @@ import (
 
 // Execution primary key
 type ExecutionKey struct {
-	Project string `gorm:"primary_key;column:execution_project" valid:"length(0|255)"`
-	Domain  string `gorm:"primary_key;column:execution_domain" valid:"length(0|255)"`
-	Name    string `gorm:"primary_key;column:execution_name" valid:"length(0|255)"`
+	Project string `gorm:"uniqueIndex:primary_exec_index;column:execution_project" valid:"length(0|255)"`
+	Domain  string `gorm:"uniqueIndex:primary_exec_index;column:execution_domain" valid:"length(0|255)"`
+	Name    string `gorm:"uniqueIndex:primary_exec_index;column:execution_name" valid:"length(0|255)"`
 }
 
 // Database model to encapsulate a (workflow) execution.

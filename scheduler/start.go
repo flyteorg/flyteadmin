@@ -33,7 +33,7 @@ func StartScheduler(ctx context.Context) error {
 	databaseConfig := configuration.ApplicationConfiguration().GetDbConfig()
 	logConfig := logger.GetConfig()
 
-	db, err := repositories.GetDB(ctx, databaseConfig, logConfig)
+	db, _, err := repositories.GetDB(ctx, databaseConfig, logConfig)
 	if err != nil {
 		logger.Fatal(ctx, err)
 	}

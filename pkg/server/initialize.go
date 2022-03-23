@@ -12,12 +12,12 @@ import (
 	"gorm.io/gorm"
 )
 
-func withDB(ctx context.Context, do func(db *gorm.DB) error) error {
+func withDB(ctx context.Context, do func(db *gorm.DB, dbType repositories.DatabaseType) error) error {
 	configuration := runtime.NewConfigurationProvider()
 	databaseConfig := configuration.ApplicationConfiguration().GetDbConfig()
 	logConfig := logger.GetConfig()
 
-	db, err := repositories.GetDB(ctx, databaseConfig, logConfig)
+	db, dbType, err := repositories.GetDB(ctx, databaseConfig, logConfig)
 	if err != nil {
 		logger.Fatal(ctx, err)
 	}
@@ -37,13 +37,24 @@ func withDB(ctx context.Context, do func(db *gorm.DB) error) error {
 		return err
 	}
 
-	return do(db)
+	return do(db, dbType)
+}
+
+func getMigrations(dbType repositories.DatabaseType) []*gormigrate.Migration {
+	var migrations = make([]*gormigrate.Migration, 0, len(config.Migrations))
+	for _, migration := range config.Migrations {
+		if dbType == repositories.DatabaseTypeSqlite && migration.Options.IgnoreForSqlite {
+			continue
+		}
+		migrations = append(migrations, &migration.Migration)
+	}
+	return migrations
 }
 
 // Migrate runs all configured migrations
 func Migrate(ctx context.Context) error {
-	return withDB(ctx, func(db *gorm.DB) error {
-		m := gormigrate.New(db, gormigrate.DefaultOptions, config.Migrations)
+	return withDB(ctx, func(db *gorm.DB, dbType repositories.DatabaseType) error {
+		m := gormigrate.New(db.Debug(), gormigrate.DefaultOptions, getMigrations(dbType))
 		if err := m.Migrate(); err != nil {
 			return fmt.Errorf("database migration failed: %v", err)
 		}
@@ -54,8 +65,8 @@ func Migrate(ctx context.Context) error {
 
 // Rollback rolls back the last migration
 func Rollback(ctx context.Context) error {
-	return withDB(ctx, func(db *gorm.DB) error {
-		m := gormigrate.New(db, gormigrate.DefaultOptions, config.Migrations)
+	return withDB(ctx, func(db *gorm.DB, dbType repositories.DatabaseType) error {
+		m := gormigrate.New(db, gormigrate.DefaultOptions, getMigrations(dbType))
 		err := m.RollbackLast()
 		if err != nil {
 			return fmt.Errorf("could not rollback latest migration: %v", err)
@@ -67,7 +78,7 @@ func Rollback(ctx context.Context) error {
 
 // SeedProjects creates a set of given projects in the DB
 func SeedProjects(ctx context.Context, projects []string) error {
-	return withDB(ctx, func(db *gorm.DB) error {
+	return withDB(ctx, func(db *gorm.DB, _ repositories.DatabaseType) error {
 		if err := config.SeedProjects(db, projects); err != nil {
 			return fmt.Errorf("could not add projects to database with err: %v", err)
 		}

@@ -540,9 +540,7 @@ func TestGetTaskExecution(t *testing.T) {
 				Closure:   closureBytes,
 				ChildNodeExecution: []models.NodeExecution{
 					{
-						BaseModel: models.BaseModel{
-							ID: uint(2),
-						},
+						ID: uint(2),
 					},
 				},
 			}, nil
