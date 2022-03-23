@@ -38,6 +38,11 @@ var flyteAdminConfig = config.MustRegisterSection(flyteAdmin, &interfaces.Applic
 	EventVersion:          2,
 	AsyncEventsBufferSize: 100,
 	MaxParallelism:        25,
+	Labels:                map[string]string{"defaultFlyteLabelKey": "defaultFlyteLabelValue"},
+	Annotations:           map[string]string{"defaultFlyteAnnotationKey": "defaultFlyteAnnotationValue"},
+	OutputLocationPrefix:  "defaultFlyteOutputLocationPrefix",
+	K8SServiceAccount:     "default",
+	AssumableIamRole:      "default",
 })
 
 var schedulerConfig = config.MustRegisterSection(scheduler, &interfaces.SchedulerConfig{

@@ -3,6 +3,7 @@ package util
 
 import (
 	"context"
+	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 	"time"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
@@ -232,4 +233,21 @@ func GetTaskExecutionModel(
 		return nil, err
 	}
 	return &taskExecutionModel, nil
+}
+
+func GetMatchableResource(ctx context.Context, resourceManager interfaces.ResourceInterface, resourceType admin.MatchableResource,
+	project ,domain string) (*interfaces.ResourceResponse, error) {
+	matchableResource, err := resourceManager.GetResource(ctx, interfaces.ResourceRequest{
+		Project:      project,
+		Domain:       domain,
+		ResourceType: resourceType,
+	})
+	if err != nil {
+		if flyteAdminError, ok := err.(errors.FlyteAdminError); !ok || flyteAdminError.Code() != codes.NotFound {
+			logger.Errorf(ctx, "Failed to get %v overrides in %s project %s domain with error: %v", resourceType,
+				project, domain, err)
+			return nil, err
+		}
+	}
+	return matchableResource, nil
 }

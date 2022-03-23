@@ -428,41 +428,71 @@ func (m *ExecutionManager) getInheritedExecMetadata(ctx context.Context, request
 	return parentNodeExecutionID, sourceExecutionID, nil
 }
 
+// WorkflowExecutionConfigInterface is used as common interface for capturing the common behavior catering to the needs
+// of fetching the WorkflowExecutionConfig across LaunchPlanSpec, ExecutionCreateRequest
+// MatchableResource_WORKFLOW_EXECUTION_CONFIG and ApplicationConfig
+type WorkflowExecutionConfigInterface interface {
+	// GetMaxParallelism Can be used to control the number of parallel nodes to run within the workflow. This is useful to achieve fairness.
+	GetMaxParallelism() int32
+	// GetRawOutputDataConfig Encapsulates user settings pertaining to offloaded data (i.e. Blobs, Schema, query data, etc.).
+	GetRawOutputDataConfig() *admin.RawOutputDataConfig
+	// GetSecurityContext Indicates security context permissions for executions triggered with this matchable attribute.
+	GetSecurityContext() *core.SecurityContext
+	// GetAnnotations Custom annotations to be applied to a triggered execution resource.
+	GetAnnotations() *admin.Annotations
+	// GetLabels Custom labels to be applied to a triggered execution resource.
+	GetLabels() *admin.Labels
+}
+
+// Merge into workflowExecConfig from spec
+func mergeIntoExecConfig(workflowExecConfig *admin.WorkflowExecutionConfig, spec WorkflowExecutionConfigInterface) {
+	if workflowExecConfig.GetMaxParallelism() == 0 && spec.GetMaxParallelism() > 0 {
+		workflowExecConfig.MaxParallelism = spec.GetMaxParallelism()
+	}
+	if workflowExecConfig.GetSecurityContext() == nil && spec.GetSecurityContext() != nil {
+		workflowExecConfig.SecurityContext = spec.GetSecurityContext()
+	}
+	if workflowExecConfig.GetRawOutputDataConfig() == nil && spec.GetRawOutputDataConfig() != nil {
+		workflowExecConfig.RawOutputDataConfig = spec.GetRawOutputDataConfig()
+	}
+	if workflowExecConfig.GetLabels() == nil && spec.GetLabels() != nil {
+		workflowExecConfig.Labels = spec.GetLabels()
+	}
+	if  workflowExecConfig.GetAnnotations() == nil && spec.GetAnnotations() != nil {
+		workflowExecConfig.Annotations = spec.GetAnnotations()
+	}
+}
+
 // Produces execution-time attributes for workflow execution.
 // Defaults to overridable execution values set in the execution create request, then looks at the launch plan values
 // (if any) before defaulting to values set in the matchable resource db and further if matchable resources don't
 // exist then defaults to one set in application configuration
 func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admin.ExecutionCreateRequest,
 	launchPlan *admin.LaunchPlan) (*admin.WorkflowExecutionConfig, error) {
-	if request.Spec.MaxParallelism > 0 {
-		return &admin.WorkflowExecutionConfig{
-			MaxParallelism: request.Spec.MaxParallelism,
-		}, nil
-	}
-	if launchPlan != nil && launchPlan.Spec.MaxParallelism > 0 {
-		return &admin.WorkflowExecutionConfig{
-			MaxParallelism: launchPlan.Spec.MaxParallelism,
-		}, nil
+
+	workflowExecConfig := &admin.WorkflowExecutionConfig{}
+	// merge the request spec into workflowExecConfig
+	mergeIntoExecConfig(workflowExecConfig, request.Spec)
+
+	if launchPlan != nil && launchPlan.Spec != nil {
+		// merge the launch plan spec into workflowExecConfig
+		mergeIntoExecConfig(workflowExecConfig, launchPlan.Spec)
 	}
 
-	resource, err := m.resourceManager.GetResource(ctx, interfaces.ResourceRequest{
-		Project:      request.Project,
-		Domain:       request.Domain,
-		ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
-	})
+	matchableResource, err := util.GetMatchableResource(ctx, m.resourceManager,
+		admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG, request.Project, request.Domain)
 	if err != nil {
-		if flyteAdminError, ok := err.(errors.FlyteAdminError); !ok || flyteAdminError.Code() != codes.NotFound {
-			logger.Errorf(ctx, "Failed to get workflow execution config overrides with error: %v", err)
-			return nil, err
-		}
+		return nil, err
 	}
-	if resource != nil && resource.Attributes.GetWorkflowExecutionConfig() != nil {
-		return resource.Attributes.GetWorkflowExecutionConfig(), nil
+
+	if matchableResource != nil && matchableResource.Attributes.GetWorkflowExecutionConfig() != nil {
+		// merge the matchable resource workflow execution config into workflowExecConfig
+		mergeIntoExecConfig(workflowExecConfig, matchableResource.Attributes.GetWorkflowExecutionConfig())
 	}
+	//  merge the application config into workflowExecConfig
+	mergeIntoExecConfig(workflowExecConfig, m.config.ApplicationConfiguration().GetTopLevelConfig())
 	// Defaults to one from the application config
-	return &admin.WorkflowExecutionConfig{
-		MaxParallelism: m.config.ApplicationConfiguration().GetTopLevelConfig().GetMaxParallelism(),
-	}, nil
+	return workflowExecConfig, nil
 }
 
 func (m *ExecutionManager) getClusterAssignment(ctx context.Context, request *admin.ExecutionCreateRequest) (
