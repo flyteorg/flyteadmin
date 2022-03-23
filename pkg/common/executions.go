@@ -1,12 +1,11 @@
 package common
 
 import (
-	"math/rand"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"k8s.io/apimachinery/pkg/util/rand"
 )
 
-const ExecutionIDLength = 10
+const ExecutionIDLength = 20
 
 // In kubernetes, resource names must comply with this regex: '[a-z]([-a-z0-9]*[a-z0-9])?'
 const AllowedExecutionIDStartCharStr = "abcdefghijklmnopqrstuvwxyz"
