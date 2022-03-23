@@ -23,7 +23,7 @@ import (
 
 const (
 	cloudEventSource = "https://github.com/flyteorg/flyteadmin"
-	jsonSchemaURL    = "jsonSchemaURL"
+	jsonSchemaURL    = "jsonschemaurl"
 )
 
 type Receiver = string
