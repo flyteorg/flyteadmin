@@ -2,9 +2,6 @@ package models
 
 import (
 	"time"
-
-	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 // IMPORTANT: If you update the model below, be sure to double check model definitions in
@@ -17,10 +14,7 @@ type NodeExecutionKey struct {
 
 // By convention, gorm foreign key references are of the form {ModelName}ID
 type NodeExecution struct {
-	ID        uint `gorm:"type:uuid;index"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt *time.Time `gorm:"index"`
+	BaseModel
 	NodeExecutionKey
 	// Also stored in the closure, but defined as a separate column because it's useful for filtering and sorting.
 	Phase     string
@@ -54,9 +48,4 @@ type NodeExecution struct {
 	CacheStatus *string
 	// In the case of dynamic workflow nodes, the remote closure is uploaded to the path specified here.
 	DynamicWorkflowRemoteClosureReference string
-}
-
-func (n *NodeExecution) BeforeCreate(tx *gorm.DB) error {
-	n.ID = uint(uuid.New().ID())
-	return nil
 }

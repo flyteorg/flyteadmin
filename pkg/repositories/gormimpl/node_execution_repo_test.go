@@ -381,7 +381,7 @@ func TestNodeExecutionExists(t *testing.T) {
 				Name:    "1",
 			},
 		},
-		ID: id,
+		ID:      id,
 		Phase:   nodePhase,
 		Closure: []byte("closure"),
 	}

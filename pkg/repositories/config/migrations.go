@@ -96,7 +96,7 @@ var Migrations = []*Migration{
 		Migration: gormigrate.Migration{
 			ID: "2019-01-29-executions-events",
 			Migrate: func(tx *gorm.DB) error {
-				return tx.AutoMigrate(&models.ExecutionEvent{})
+				return tx.AutoMigrate(&ExecutionEvent{})
 			},
 			Rollback: func(tx *gorm.DB) error {
 				return tx.Migrator().DropTable("executions_events")
@@ -121,7 +121,7 @@ var Migrations = []*Migration{
 		Migration: gormigrate.Migration{
 			ID: "2019-01-29-node-executions-events",
 			Migrate: func(tx *gorm.DB) error {
-				return tx.AutoMigrate(&models.NodeExecutionEvent{})
+				return tx.AutoMigrate(&NodeExecutionEvent{})
 			},
 			Rollback: func(tx *gorm.DB) error {
 				return tx.Migrator().DropTable("node_executions_events")
@@ -263,7 +263,7 @@ var Migrations = []*Migration{
 		Migration: gormigrate.Migration{
 			ID: "2020-04-29-executions",
 			Migrate: func(tx *gorm.DB) error {
-				return tx.AutoMigrate(&models.Execution{}, &models.NodeExecution{})
+				return tx.AutoMigrate(&models.Execution{}, &NodeExecution{})
 			},
 			Rollback: func(tx *gorm.DB) error {
 				if err := tx.Model(&models.Execution{}).Migrator().DropColumn(&models.Execution{}, "error_code"); err != nil {
@@ -272,10 +272,10 @@ var Migrations = []*Migration{
 				if err := tx.Model(&models.Execution{}).Migrator().DropColumn(&models.Execution{}, "error_kind"); err != nil {
 					return err
 				}
-				if err := tx.Model(&models.NodeExecution{}).Migrator().DropColumn(&models.NodeExecution{}, "error_code"); err != nil {
+				if err := tx.Model(&NodeExecution{}).Migrator().DropColumn(&NodeExecution{}, "error_code"); err != nil {
 					return err
 				}
-				if err := tx.Model(&models.NodeExecution{}).Migrator().DropColumn(&models.NodeExecution{}, "error_kind"); err != nil {
+				if err := tx.Model(&NodeExecution{}).Migrator().DropColumn(&NodeExecution{}, "error_kind"); err != nil {
 					return err
 				}
 				return nil
@@ -300,10 +300,10 @@ var Migrations = []*Migration{
 		Migration: gormigrate.Migration{
 			ID: "2020-07-27-cachestatus",
 			Migrate: func(tx *gorm.DB) error {
-				return tx.AutoMigrate(&models.NodeExecution{})
+				return tx.AutoMigrate(&NodeExecution{})
 			},
 			Rollback: func(tx *gorm.DB) error {
-				return tx.Model(&models.NodeExecution{}).Migrator().DropColumn(&models.NodeExecution{}, "cache_status")
+				return tx.Model(&NodeExecution{}).Migrator().DropColumn(&NodeExecution{}, "cache_status")
 			},
 		},
 	},
@@ -311,13 +311,13 @@ var Migrations = []*Migration{
 		Migration: gormigrate.Migration{
 			ID: "2020-07-31-node-execution",
 			Migrate: func(tx *gorm.DB) error {
-				return tx.AutoMigrate(&models.NodeExecution{})
+				return tx.AutoMigrate(&NodeExecution{})
 			},
 			Rollback: func(tx *gorm.DB) error {
-				if err := tx.Model(&models.NodeExecution{}).Migrator().DropColumn(&models.NodeExecution{}, "parent_id"); err != nil {
+				if err := tx.Model(&NodeExecution{}).Migrator().DropColumn(&NodeExecution{}, "parent_id"); err != nil {
 					return err
 				}
-				return tx.Model(&models.NodeExecution{}).Migrator().DropColumn(&models.NodeExecution{}, "node_execution_metadata")
+				return tx.Model(&NodeExecution{}).Migrator().DropColumn(&NodeExecution{}, "node_execution_metadata")
 			},
 		},
 	},
@@ -380,10 +380,10 @@ var Migrations = []*Migration{
 		Migration: gormigrate.Migration{
 			ID: "2021-04-19-node-execution_dynamic-workflow",
 			Migrate: func(tx *gorm.DB) error {
-				return tx.AutoMigrate(&models.NodeExecution{})
+				return tx.AutoMigrate(&NodeExecution{})
 			},
 			Rollback: func(tx *gorm.DB) error {
-				return tx.Model(&models.NodeExecution{}).Migrator().DropColumn(&models.NodeExecution{}, "dynamic_workflow_remote_closure_reference")
+				return tx.Model(&NodeExecution{}).Migrator().DropColumn(&NodeExecution{}, "dynamic_workflow_remote_closure_reference")
 			},
 		},
 	},
