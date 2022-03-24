@@ -452,13 +452,19 @@ func mergeIntoExecConfig(workflowExecConfig *admin.WorkflowExecutionConfig, spec
 	if workflowExecConfig.GetSecurityContext() == nil && spec.GetSecurityContext() != nil {
 		workflowExecConfig.SecurityContext = spec.GetSecurityContext()
 	}
-	if workflowExecConfig.GetRawOutputDataConfig() == nil && spec.GetRawOutputDataConfig() != nil {
+	// Launchplan spec has label, annotation and rawOutputDataConfig initialized with empty values.
+	// Hence we do a deep check in the following conditions before assignment
+	if (workflowExecConfig.GetRawOutputDataConfig() == nil ||
+		len(workflowExecConfig.GetRawOutputDataConfig().GetOutputLocationPrefix()) == 0) &&
+		(spec.GetRawOutputDataConfig() != nil && len(spec.GetRawOutputDataConfig().OutputLocationPrefix) > 0) {
 		workflowExecConfig.RawOutputDataConfig = spec.GetRawOutputDataConfig()
 	}
-	if workflowExecConfig.GetLabels() == nil && spec.GetLabels() != nil {
+	if (workflowExecConfig.GetLabels() == nil || len(workflowExecConfig.GetLabels().Values) == 0) &&
+		(spec.GetLabels() != nil && len(spec.GetLabels().Values) > 0) {
 		workflowExecConfig.Labels = spec.GetLabels()
 	}
-	if workflowExecConfig.GetAnnotations() == nil && spec.GetAnnotations() != nil {
+	if (workflowExecConfig.GetAnnotations() == nil || len(workflowExecConfig.GetLabels().Values) == 0) &&
+		(spec.GetAnnotations() != nil && len(spec.GetAnnotations().Values) > 0) {
 		workflowExecConfig.Annotations = spec.GetAnnotations()
 	}
 }
@@ -609,21 +615,23 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	}
 
 	var labels map[string]string
-	if requestSpec.Labels != nil {
-		labels = requestSpec.Labels.Values
+	if executionConfig.Labels != nil {
+		labels = executionConfig.Labels.Values
 	}
+
 	labels, err = m.addProjectLabels(ctx, request.Project, labels)
 	if err != nil {
 		return nil, nil, err
 	}
+
 	var annotations map[string]string
-	if requestSpec.Annotations != nil {
-		annotations = requestSpec.Annotations.Values
+	if executionConfig.Annotations != nil {
+		annotations = executionConfig.Annotations.Values
 	}
 
-	rawOutputDataConfig := launchPlan.Spec.RawOutputDataConfig
-	if requestSpec.RawOutputDataConfig != nil {
-		rawOutputDataConfig = requestSpec.RawOutputDataConfig
+	var rawOutputDataConfig *admin.RawOutputDataConfig
+	if executionConfig.RawOutputDataConfig != nil {
+		rawOutputDataConfig = executionConfig.RawOutputDataConfig
 	}
 
 	clusterAssignment, err := m.getClusterAssignment(ctx, &request)
@@ -847,7 +855,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	namespace := common.GetNamespaceName(
 		m.config.NamespaceMappingConfiguration().GetNamespaceTemplate(), workflowExecutionID.Project, workflowExecutionID.Domain)
 
-	labels, err := resolveStringMap(requestSpec.GetLabels(), launchPlan.Spec.Labels, "labels", m.config.RegistrationValidationConfiguration().GetMaxLabelEntries())
+	labels, err := resolveStringMap(executionConfig.GetLabels(), launchPlan.Spec.Labels, "labels", m.config.RegistrationValidationConfiguration().GetMaxLabelEntries())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -855,11 +863,11 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	if err != nil {
 		return nil, nil, err
 	}
-	annotations, err := resolveStringMap(requestSpec.GetAnnotations(), launchPlan.Spec.Annotations, "annotations", m.config.RegistrationValidationConfiguration().GetMaxAnnotationEntries())
+	annotations, err := resolveStringMap(executionConfig.GetAnnotations(), launchPlan.Spec.Annotations, "annotations", m.config.RegistrationValidationConfiguration().GetMaxAnnotationEntries())
 	if err != nil {
 		return nil, nil, err
 	}
-	rawOutputDataConfig := launchPlan.Spec.RawOutputDataConfig
+	var rawOutputDataConfig *admin.RawOutputDataConfig
 	if requestSpec.RawOutputDataConfig != nil {
 		rawOutputDataConfig = requestSpec.RawOutputDataConfig
 	}
