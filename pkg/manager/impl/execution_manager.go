@@ -463,7 +463,7 @@ func mergeIntoExecConfig(workflowExecConfig *admin.WorkflowExecutionConfig, spec
 		(spec.GetLabels() != nil && len(spec.GetLabels().Values) > 0) {
 		workflowExecConfig.Labels = spec.GetLabels()
 	}
-	if (workflowExecConfig.GetAnnotations() == nil || len(workflowExecConfig.GetLabels().Values) == 0) &&
+	if (workflowExecConfig.GetAnnotations() == nil || len(workflowExecConfig.GetAnnotations().Values) == 0) &&
 		(spec.GetAnnotations() != nil && len(spec.GetAnnotations().Values) > 0) {
 		workflowExecConfig.Annotations = spec.GetAnnotations()
 	}

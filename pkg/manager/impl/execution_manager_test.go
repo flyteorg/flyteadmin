@@ -3639,9 +3639,6 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 
 	applicationConfig := runtime.NewConfigurationProvider()
 
-	defaultLabels := applicationConfig.ApplicationConfiguration().GetTopLevelConfig().Labels
-	defaultAnnotations := applicationConfig.ApplicationConfiguration().GetTopLevelConfig().Annotations
-	defaultOutputLocationPrefix := applicationConfig.ApplicationConfiguration().GetTopLevelConfig().OutputLocationPrefix
 	defaultK8sServiceAccount := applicationConfig.ApplicationConfiguration().GetTopLevelConfig().K8SServiceAccount
 	defaultMaxParallelism := applicationConfig.ApplicationConfiguration().GetTopLevelConfig().MaxParallelism
 
@@ -3855,8 +3852,8 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, rmMaxParallelism, execConfig.MaxParallelism)
 		assert.Equal(t, rmK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
-		assert.Equal(t, defaultOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
-		assert.Equal(t, defaultLabels, execConfig.GetLabels().Values)
+		assert.Nil(t, execConfig.GetRawOutputDataConfig())
+		assert.Nil(t, execConfig.GetLabels())
 		assert.Equal(t, rmAnnotations, execConfig.GetAnnotations().Values)
 	})
 	t.Run("matchable resource with no config", func(t *testing.T) {
@@ -3887,9 +3884,9 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
 		assert.Equal(t, defaultK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
-		assert.Equal(t, defaultOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
-		assert.Equal(t, defaultLabels, execConfig.GetLabels().Values)
-		assert.Equal(t, defaultAnnotations, execConfig.GetAnnotations().Values)
+		assert.Nil(t, execConfig.GetRawOutputDataConfig())
+		assert.Nil(t, execConfig.GetLabels())
+		assert.Nil(t, execConfig.GetAnnotations())
 	})
 }
 
