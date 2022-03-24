@@ -155,6 +155,20 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_authorizedUris", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1,1"
+
+			cmdFlags.Set("authorizedUris", testValue)
+			if vStringSlice, err := cmdFlags.GetStringSlice("authorizedUris"); err == nil {
+				testDecodeRaw_Config(t, vStringSlice, &actual.AuthorizedURIs)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 	t.Run("Test_userAuth.redirectUrl", func(t *testing.T) {
 
 		t.Run("Override", func(t *testing.T) {
@@ -228,7 +242,7 @@ func TestConfig_SetFlags(t *testing.T) {
 	t.Run("Test_userAuth.openId.scopes", func(t *testing.T) {
 
 		t.Run("Override", func(t *testing.T) {
-			testValue := join_Config(DefaultConfig.UserAuth.OpenID.Scopes, ",")
+			testValue := join_Config("1,1", ",")
 
 			cmdFlags.Set("userAuth.openId.scopes", testValue)
 			if vStringSlice, err := cmdFlags.GetStringSlice("userAuth.openId.scopes"); err == nil {
@@ -382,7 +396,7 @@ func TestConfig_SetFlags(t *testing.T) {
 	t.Run("Test_appAuth.externalAuthServer.allowedAudience", func(t *testing.T) {
 
 		t.Run("Override", func(t *testing.T) {
-			testValue := join_Config(DefaultConfig.AppAuth.ExternalAuthServer.AllowedAudience, ",")
+			testValue := join_Config("1,1", ",")
 
 			cmdFlags.Set("appAuth.externalAuthServer.allowedAudience", testValue)
 			if vStringSlice, err := cmdFlags.GetStringSlice("appAuth.externalAuthServer.allowedAudience"); err == nil {
@@ -438,7 +452,7 @@ func TestConfig_SetFlags(t *testing.T) {
 	t.Run("Test_appAuth.thirdPartyConfig.flyteClient.scopes", func(t *testing.T) {
 
 		t.Run("Override", func(t *testing.T) {
-			testValue := join_Config(DefaultConfig.AppAuth.ThirdParty.FlyteClientConfig.Scopes, ",")
+			testValue := join_Config("1,1", ",")
 
 			cmdFlags.Set("appAuth.thirdPartyConfig.flyteClient.scopes", testValue)
 			if vStringSlice, err := cmdFlags.GetStringSlice("appAuth.thirdPartyConfig.flyteClient.scopes"); err == nil {
