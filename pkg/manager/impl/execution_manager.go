@@ -466,6 +466,30 @@ func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admi
 	}, nil
 }
 
+func (m *ExecutionManager) getClusterAssignment(ctx context.Context, request *admin.ExecutionCreateRequest) (
+	*admin.ClusterAssignment, error) {
+	if request.Spec.ClusterAssignment != nil {
+		return request.Spec.ClusterAssignment, nil
+	}
+
+	resource, err := m.resourceManager.GetResource(ctx, interfaces.ResourceRequest{
+		Project:      request.Project,
+		Domain:       request.Domain,
+		ResourceType: admin.MatchableResource_CLUSTER_ASSIGNMENT,
+	})
+	if err != nil {
+		if flyteAdminError, ok := err.(errors.FlyteAdminError); !ok || flyteAdminError.Code() != codes.NotFound {
+			logger.Errorf(ctx, "Failed to get cluster assignment overrides with error: %v", err)
+			return nil, err
+		}
+	}
+	if resource != nil && resource.Attributes.GetClusterAssignment() != nil {
+		return resource.Attributes.GetClusterAssignment(), nil
+	}
+	// Defaults to empty assignment with no selectors
+	return &admin.ClusterAssignment{}, nil
+}
+
 func (m *ExecutionManager) launchSingleTaskExecution(
 	ctx context.Context, request admin.ExecutionCreateRequest, requestedAt time.Time) (
 	context.Context, *models.Execution, error) {
@@ -573,6 +597,11 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		rawOutputDataConfig = requestSpec.RawOutputDataConfig
 	}
 
+	clusterAssignment, err := m.getClusterAssignment(ctx, &request)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	resolvedAuthRole := resolveAuthRole(request, launchPlan)
 	resolvedSecurityCtx := resolveSecurityCtx(ctx, request, launchPlan, resolvedAuthRole)
 	executionParameters := workflowengineInterfaces.ExecutionParameters{
@@ -586,6 +615,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		EventVersion:        m.config.ApplicationConfiguration().GetTopLevelConfig().EventVersion,
 		RoleNameKey:         m.config.ApplicationConfiguration().GetTopLevelConfig().RoleNameKey,
 		RawOutputDataConfig: rawOutputDataConfig,
+		ClusterAssignment:   clusterAssignment,
 	}
 
 	overrides, err := m.addPluginOverrides(ctx, &workflowExecutionID, workflowExecutionID.Name, "")
@@ -806,6 +836,11 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		rawOutputDataConfig = requestSpec.RawOutputDataConfig
 	}
 
+	clusterAssignment, err := m.getClusterAssignment(ctx, &request)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	resolvedAuthRole := resolveAuthRole(request, launchPlan)
 	resolvedSecurityCtx := resolveSecurityCtx(ctx, request, launchPlan, resolvedAuthRole)
 	executionParameters := workflowengineInterfaces.ExecutionParameters{
@@ -819,6 +854,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		EventVersion:        m.config.ApplicationConfiguration().GetTopLevelConfig().EventVersion,
 		RoleNameKey:         m.config.ApplicationConfiguration().GetTopLevelConfig().RoleNameKey,
 		RawOutputDataConfig: rawOutputDataConfig,
+		ClusterAssignment:   clusterAssignment,
 	}
 
 	overrides, err := m.addPluginOverrides(ctx, &workflowExecutionID, launchPlan.GetSpec().WorkflowId.Name, launchPlan.Id.Name)
