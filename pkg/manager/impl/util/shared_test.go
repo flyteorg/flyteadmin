@@ -3,22 +3,22 @@ package util
 import (
 	"context"
 	"errors"
-	managerInterfaces "github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
-	managerMocks "github.com/flyteorg/flyteadmin/pkg/manager/mocks"
 	"strings"
 	"testing"
-
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	commonMocks "github.com/flyteorg/flyteadmin/pkg/common/mocks"
 	flyteAdminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
+	managerInterfaces "github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
+	managerMocks "github.com/flyteorg/flyteadmin/pkg/manager/mocks"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	repositoryMocks "github.com/flyteorg/flyteadmin/pkg/repositories/mocks"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/storage"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
@@ -481,7 +481,7 @@ func TestGetMatchableResource(t *testing.T) {
 	resourceType := admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG
 	project := "dummyProject"
 	domain := "dummyDomain"
-	t.Run("succesful fetch", func(t *testing.T) {
+	t.Run("successful fetch", func(t *testing.T) {
 		resourceManager := &managerMocks.MockResourceManager{}
 		resourceManager.GetResourceFunc = func(ctx context.Context,
 			request managerInterfaces.ResourceRequest) (*managerInterfaces.ResourceResponse, error) {
