@@ -3620,7 +3620,7 @@ func TestCreateSingleTaskExecution(t *testing.T) {
 	mockExecutor.OnExecuteMatch(mock.Anything, mock.Anything, mock.Anything).Return(workflowengineInterfaces.ExecutionResponse{}, nil)
 	mockExecutor.OnID().Return("testMockExecutor")
 	r := plugins.NewRegistry()
-	r.Register(plugins.PluginIDWorkflowExecutor, &mockExecutor)
+	r.RegisterDefault(plugins.PluginIDWorkflowExecutor, &mockExecutor)
 	execManager := NewExecutionManager(repository, r, getMockExecutionsConfigProvider(), mockStorage, mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, workflowManager, namedEntityManager, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
 	request := admin.ExecutionCreateRequest{
 		Project: "flytekit",

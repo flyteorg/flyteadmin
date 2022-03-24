@@ -8,8 +8,8 @@ import (
 
 func TestNewRegistry(t *testing.T) {
 	r := NewRegistry()
-	assert.NotNil(t, r.m)
-	assert.NotNil(t, r.mDefault)
+	assert.NotNil(t, &r.m)
+	assert.NotNil(t, &r.mDefault)
 }
 
 func TestNewAtomicRegistry(t *testing.T) {
