@@ -3888,6 +3888,31 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.Nil(t, execConfig.GetLabels())
 		assert.Nil(t, execConfig.GetAnnotations())
 	})
+	t.Run("matchable resource failure", func(t *testing.T) {
+		resourceManager.GetResourceFunc = func(ctx context.Context,
+			request managerInterfaces.ResourceRequest) (*managerInterfaces.ResourceResponse, error) {
+			assert.EqualValues(t, request, managerInterfaces.ResourceRequest{
+				Project:      workflowIdentifier.Project,
+				Domain:       workflowIdentifier.Domain,
+				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
+			})
+			return nil, fmt.Errorf("failed to fetch the resources")
+		}
+		request := &admin.ExecutionCreateRequest{
+			Project: workflowIdentifier.Project,
+			Domain:  workflowIdentifier.Domain,
+			Spec:    &admin.ExecutionSpec{},
+		}
+		launchPlan := &admin.LaunchPlan{
+			Spec: &admin.LaunchPlanSpec{},
+		}
+		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
+		assert.Equal(t, fmt.Errorf("failed to fetch the resources"), err)
+		assert.Nil(t, execConfig.GetSecurityContext())
+		assert.Nil(t, execConfig.GetRawOutputDataConfig())
+		assert.Nil(t, execConfig.GetLabels())
+		assert.Nil(t, execConfig.GetAnnotations())
+	})
 }
 
 func TestGetExecutionConfig(t *testing.T) {
