@@ -466,6 +466,30 @@ func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admi
 	}, nil
 }
 
+func (m *ExecutionManager) getClusterAssignment(ctx context.Context, request *admin.ExecutionCreateRequest) (
+	*admin.ClusterAssignment, error) {
+	if request.Spec.ClusterAssignment != nil {
+		return request.Spec.ClusterAssignment, nil
+	}
+
+	resource, err := m.resourceManager.GetResource(ctx, interfaces.ResourceRequest{
+		Project:      request.Project,
+		Domain:       request.Domain,
+		ResourceType: admin.MatchableResource_CLUSTER_ASSIGNMENT,
+	})
+	if err != nil {
+		if flyteAdminError, ok := err.(errors.FlyteAdminError); !ok || flyteAdminError.Code() != codes.NotFound {
+			logger.Errorf(ctx, "Failed to get cluster assignment overrides with error: %v", err)
+			return nil, err
+		}
+	}
+	if resource != nil && resource.Attributes.GetClusterAssignment() != nil {
+		return resource.Attributes.GetClusterAssignment(), nil
+	}
+	// Defaults to empty assignment with no selectors
+	return &admin.ClusterAssignment{}, nil
+}
+
 func (m *ExecutionManager) launchSingleTaskExecution(
 	ctx context.Context, request admin.ExecutionCreateRequest, requestedAt time.Time) (
 	context.Context, *models.Execution, error) {
@@ -568,6 +592,16 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		annotations = requestSpec.Annotations.Values
 	}
 
+	rawOutputDataConfig := launchPlan.Spec.RawOutputDataConfig
+	if requestSpec.RawOutputDataConfig != nil {
+		rawOutputDataConfig = requestSpec.RawOutputDataConfig
+	}
+
+	clusterAssignment, err := m.getClusterAssignment(ctx, &request)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	resolvedAuthRole := resolveAuthRole(request, launchPlan)
 	resolvedSecurityCtx := resolveSecurityCtx(ctx, request, launchPlan, resolvedAuthRole)
 	executionParameters := workflowengineInterfaces.ExecutionParameters{
@@ -580,7 +614,8 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		TaskResources:       &platformTaskResources,
 		EventVersion:        m.config.ApplicationConfiguration().GetTopLevelConfig().EventVersion,
 		RoleNameKey:         m.config.ApplicationConfiguration().GetTopLevelConfig().RoleNameKey,
-		RawOutputDataConfig: launchPlan.Spec.RawOutputDataConfig,
+		RawOutputDataConfig: rawOutputDataConfig,
+		ClusterAssignment:   clusterAssignment,
 	}
 
 	overrides, err := m.addPluginOverrides(ctx, &workflowExecutionID, workflowExecutionID.Name, "")
@@ -795,6 +830,15 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	if err != nil {
 		return nil, nil, err
 	}
+	rawOutputDataConfig := launchPlan.Spec.RawOutputDataConfig
+	if requestSpec.RawOutputDataConfig != nil {
+		rawOutputDataConfig = requestSpec.RawOutputDataConfig
+	}
+
+	clusterAssignment, err := m.getClusterAssignment(ctx, &request)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	resolvedAuthRole := resolveAuthRole(request, launchPlan)
 	resolvedSecurityCtx := resolveSecurityCtx(ctx, request, launchPlan, resolvedAuthRole)
@@ -808,7 +852,8 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		TaskResources:       &platformTaskResources,
 		EventVersion:        m.config.ApplicationConfiguration().GetTopLevelConfig().EventVersion,
 		RoleNameKey:         m.config.ApplicationConfiguration().GetTopLevelConfig().RoleNameKey,
-		RawOutputDataConfig: launchPlan.Spec.RawOutputDataConfig,
+		RawOutputDataConfig: rawOutputDataConfig,
+		ClusterAssignment:   clusterAssignment,
 	}
 
 	overrides, err := m.addPluginOverrides(ctx, &workflowExecutionID, launchPlan.GetSpec().WorkflowId.Name, launchPlan.Id.Name)
@@ -1178,15 +1223,20 @@ func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admi
 
 	wfExecPhase := core.WorkflowExecution_Phase(core.WorkflowExecution_Phase_value[executionModel.Phase])
 	// Subsequent queued events announcing a cluster reassignment are permitted.
-	if wfExecPhase == request.Event.Phase && request.Event.Phase != core.WorkflowExecution_QUEUED {
-		logger.Debugf(ctx, "This phase %s was already recorded for workflow execution %v",
-			wfExecPhase.String(), request.Event.ExecutionId)
-		return nil, errors.NewFlyteAdminErrorf(codes.AlreadyExists,
-			"This phase %s was already recorded for workflow execution %v",
-			wfExecPhase.String(), request.Event.ExecutionId)
-	} else if err := validation.ValidateCluster(ctx, executionModel.Cluster, request.Event.ProducerId); err != nil {
-		return nil, err
-	} else if common.IsExecutionTerminal(wfExecPhase) {
+	if request.Event.Phase != core.WorkflowExecution_QUEUED {
+		if wfExecPhase == request.Event.Phase {
+			logger.Debugf(ctx, "This phase %s was already recorded for workflow execution %v",
+				wfExecPhase.String(), request.Event.ExecutionId)
+			return nil, errors.NewFlyteAdminErrorf(codes.AlreadyExists,
+				"This phase %s was already recorded for workflow execution %v",
+				wfExecPhase.String(), request.Event.ExecutionId)
+		} else if err := validation.ValidateCluster(ctx, executionModel.Cluster, request.Event.ProducerId); err != nil {
+			// Only perform event cluster validation **after** an execution has moved on from QUEUED.
+			return nil, err
+		}
+	}
+
+	if common.IsExecutionTerminal(wfExecPhase) {
 		// Cannot go backwards in time from a terminal state to anything else
 		curPhase := wfExecPhase.String()
 		errorMsg := fmt.Sprintf("Invalid phase change from %s to %s for workflow execution %v", curPhase, request.Event.Phase.String(), request.Event.ExecutionId)
