@@ -12,7 +12,7 @@ on:
 jobs:
   lint:
     name: Lint
-    uses: flyteorg/flytetools/.github/workflows/lint.yml@master
+    uses: flyteorg/flytetools/.github/workflows/lint.yml@upgrade-go
 
   tests:
     name: Unit Tests
