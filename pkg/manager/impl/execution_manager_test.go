@@ -3736,10 +3736,10 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
 		assert.NoError(t, err)
 		assert.Equal(t, requestMaxParallelism, execConfig.MaxParallelism)
-		assert.Equal(t, launchPlanK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
+		assert.Nil(t, execConfig.SecurityContext)
+		assert.Nil(t, execConfig.Annotations)
 		assert.Equal(t, requestOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, requestLabels, execConfig.GetLabels().Values)
-		assert.Equal(t, launchPlanAnnotations, execConfig.GetAnnotations().Values)
 	})
 	t.Run("request with no config", func(t *testing.T) {
 		request := &admin.ExecutionCreateRequest{

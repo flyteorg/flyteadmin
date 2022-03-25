@@ -444,13 +444,16 @@ type WorkflowExecutionConfigInterface interface {
 	GetLabels() *admin.Labels
 }
 
-// Merge into workflowExecConfig from spec
-func mergeIntoExecConfig(workflowExecConfig *admin.WorkflowExecutionConfig, spec WorkflowExecutionConfigInterface) {
+// Merge into workflowExecConfig from spec and return true if any value has been changed
+func mergeIntoExecConfig(workflowExecConfig *admin.WorkflowExecutionConfig, spec WorkflowExecutionConfigInterface) bool {
+	isChanged := false
 	if workflowExecConfig.GetMaxParallelism() == 0 && spec.GetMaxParallelism() > 0 {
 		workflowExecConfig.MaxParallelism = spec.GetMaxParallelism()
+		isChanged = true
 	}
 	if workflowExecConfig.GetSecurityContext() == nil && spec.GetSecurityContext() != nil {
 		workflowExecConfig.SecurityContext = spec.GetSecurityContext()
+		isChanged = true
 	}
 	// Launchplan spec has label, annotation and rawOutputDataConfig initialized with empty values.
 	// Hence we do a deep check in the following conditions before assignment
@@ -458,15 +461,19 @@ func mergeIntoExecConfig(workflowExecConfig *admin.WorkflowExecutionConfig, spec
 		len(workflowExecConfig.GetRawOutputDataConfig().GetOutputLocationPrefix()) == 0) &&
 		(spec.GetRawOutputDataConfig() != nil && len(spec.GetRawOutputDataConfig().OutputLocationPrefix) > 0) {
 		workflowExecConfig.RawOutputDataConfig = spec.GetRawOutputDataConfig()
+		isChanged = true
 	}
 	if (workflowExecConfig.GetLabels() == nil || len(workflowExecConfig.GetLabels().Values) == 0) &&
 		(spec.GetLabels() != nil && len(spec.GetLabels().Values) > 0) {
 		workflowExecConfig.Labels = spec.GetLabels()
+		isChanged = true
 	}
 	if (workflowExecConfig.GetAnnotations() == nil || len(workflowExecConfig.GetAnnotations().Values) == 0) &&
 		(spec.GetAnnotations() != nil && len(spec.GetAnnotations().Values) > 0) {
 		workflowExecConfig.Annotations = spec.GetAnnotations()
+		isChanged = true
 	}
+	return isChanged
 }
 
 // Produces execution-time attributes for workflow execution.
@@ -478,11 +485,15 @@ func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admi
 
 	workflowExecConfig := &admin.WorkflowExecutionConfig{}
 	// merge the request spec into workflowExecConfig
-	mergeIntoExecConfig(workflowExecConfig, request.Spec)
+	if isChanged := mergeIntoExecConfig(workflowExecConfig, request.Spec); isChanged {
+		return workflowExecConfig, nil
+	}
 
 	if launchPlan != nil && launchPlan.Spec != nil {
 		// merge the launch plan spec into workflowExecConfig
-		mergeIntoExecConfig(workflowExecConfig, launchPlan.Spec)
+		if isChanged := mergeIntoExecConfig(workflowExecConfig, launchPlan.Spec); isChanged {
+			return workflowExecConfig, nil
+		}
 	}
 
 	matchableResource, err := util.GetMatchableResource(ctx, m.resourceManager,
@@ -493,7 +504,10 @@ func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admi
 
 	if matchableResource != nil && matchableResource.Attributes.GetWorkflowExecutionConfig() != nil {
 		// merge the matchable resource workflow execution config into workflowExecConfig
-		mergeIntoExecConfig(workflowExecConfig, matchableResource.Attributes.GetWorkflowExecutionConfig())
+		if isChanged := mergeIntoExecConfig(workflowExecConfig,
+			matchableResource.Attributes.GetWorkflowExecutionConfig()); isChanged {
+			return workflowExecConfig, nil
+		}
 	}
 	//  merge the application config into workflowExecConfig
 	mergeIntoExecConfig(workflowExecConfig, m.config.ApplicationConfiguration().GetTopLevelConfig())

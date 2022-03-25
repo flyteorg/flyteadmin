@@ -501,7 +501,8 @@ func TestGetMatchableResource(t *testing.T) {
 			}, nil
 		}
 
-		_, err := GetMatchableResource(context.Background(), resourceManager, resourceType, project, domain)
+		mr, err := GetMatchableResource(context.Background(), resourceManager, resourceType, project, domain)
+		assert.Equal(t, int32(12), mr.Attributes.GetWorkflowExecutionConfig().MaxParallelism)
 		assert.Nil(t, err)
 	})
 
