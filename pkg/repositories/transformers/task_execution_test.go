@@ -844,6 +844,86 @@ func TestMergeCustoms(t *testing.T) {
 	})
 }
 
+func TestMergeExternalResource(t *testing.T) {
+	type testCase struct {
+		existing *event.ExternalResourceInfo
+		latest   *event.ExternalResourceInfo
+		expected *event.ExternalResourceInfo
+		name     string
+	}
+
+	testCases := []testCase{
+		{
+			existing: nil,
+			latest:   nil,
+			expected: nil,
+			name:     "do nothing",
+		},
+		{
+			existing: &event.ExternalResourceInfo{
+				ExternalId: "foo",
+			},
+			latest: nil,
+			expected: &event.ExternalResourceInfo{
+				ExternalId: "foo",
+			},
+			name: "use existing",
+		},
+		{
+			existing: nil,
+			latest: &event.ExternalResourceInfo{
+				ExternalId: "foo",
+			},
+			expected: &event.ExternalResourceInfo{
+				ExternalId: "foo",
+			},
+			name: "use latest",
+		},
+		{
+			existing: &event.ExternalResourceInfo{
+				ExternalId:   "foo",
+				CacheStatus:  core.CatalogCacheStatus_CACHE_HIT,
+				RetryAttempt: 1,
+				Phase:        core.TaskExecution_RUNNING,
+			},
+			latest: &event.ExternalResourceInfo{
+				Phase:        core.TaskExecution_SUCCEEDED,
+			},
+			expected: &event.ExternalResourceInfo{
+				ExternalId:   "foo",
+				CacheStatus:  core.CatalogCacheStatus_CACHE_HIT,
+				RetryAttempt: 1,
+				Phase:        core.TaskExecution_SUCCEEDED,
+			},
+			name: "update phase",
+		},
+		{
+			existing: &event.ExternalResourceInfo{
+			},
+			latest: &event.ExternalResourceInfo{
+				ExternalId:   "foo",
+				CacheStatus:  core.CatalogCacheStatus_CACHE_HIT,
+				RetryAttempt: 1,
+				Phase:        core.TaskExecution_RUNNING,
+			},
+			expected: &event.ExternalResourceInfo{
+				ExternalId:   "foo",
+				CacheStatus:  core.CatalogCacheStatus_CACHE_HIT,
+				RetryAttempt: 1,
+				Phase:        core.TaskExecution_RUNNING,
+			},
+			name: "update everything",
+		},
+	}
+
+	for _, mergeTestCase := range testCases {
+		t.Run(mergeTestCase.name, func(t *testing.T) {
+			actual := mergeExternalResource(mergeTestCase.existing, mergeTestCase.latest)
+			assert.True(t, proto.Equal(mergeTestCase.expected, actual))
+		})
+	}
+}
+
 func TestMergeExternalResources(t *testing.T) {
 	type testCase struct {
 		existing []*event.ExternalResourceInfo

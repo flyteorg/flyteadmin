@@ -242,9 +242,9 @@ func mergeCustom(existing, latest *_struct.Struct) (*_struct.Struct, error) {
 	return &response, nil
 }
 
-// mergeMetadata merges an existing TaskExecutionMetadata instance with the provided instance. This
-// includes updating non-defaulted fields and merging ExternalResources.
-func mergeMetadata(existing, latest *event.TaskExecutionMetadata) *event.TaskExecutionMetadata {
+// mergeExternalResource combines the lastest ExternalResourceInfo proto with an existing instance
+// by updating fields and merging logs.
+func mergeExternalResource(existing, latest *event.ExternalResourceInfo) *event.ExternalResourceInfo {
 	if existing == nil {
 		return latest
 	}
@@ -253,17 +253,18 @@ func mergeMetadata(existing, latest *event.TaskExecutionMetadata) *event.TaskExe
 		return existing
 	}
 
-	if latest.GeneratedName != "" && existing.GeneratedName != latest.GeneratedName {
-		existing.GeneratedName = latest.GeneratedName
+	if latest.ExternalId != "" && existing.ExternalId != latest.ExternalId {
+		existing.ExternalId = latest.ExternalId
 	}
-	existing.ExternalResources = mergeExternalResources(existing.ExternalResources, latest.ExternalResources)
-	existing.ResourcePoolInfo = latest.ResourcePoolInfo
-	if latest.PluginIdentifier != "" && existing.PluginIdentifier != latest.PluginIdentifier {
-		existing.PluginIdentifier = latest.PluginIdentifier
+	// we only update if the index is equal so updating existing.Index is not necessary
+	if latest.RetryAttempt != 0 && existing.RetryAttempt != latest.RetryAttempt {
+		existing.RetryAttempt = latest.RetryAttempt
 	}
-	if latest.InstanceClass != event.TaskExecutionMetadata_DEFAULT && existing.InstanceClass != latest.InstanceClass {
-		existing.InstanceClass = latest.InstanceClass
+	existing.Phase = latest.Phase
+	if latest.CacheStatus != core.CatalogCacheStatus_CACHE_DISABLED && existing.CacheStatus != latest.CacheStatus {
+		existing.CacheStatus = latest.CacheStatus
 	}
+	existing.Logs = mergeLogs(existing.Logs, latest.Logs)
 
 	return existing
 }
@@ -296,8 +297,34 @@ func mergeExternalResources(existing, latest []*event.ExternalResourceInfo) []*e
 
 			existing = append(existing, externalResource)
 		} else {
-			existing[index] = externalResource
+			existing[index] = mergeExternalResource(existing[index], externalResource)
 		}
+	}
+
+	return existing
+}
+
+// mergeMetadata merges an existing TaskExecutionMetadata instance with the provided instance. This
+// includes updating non-defaulted fields and merging ExternalResources.
+func mergeMetadata(existing, latest *event.TaskExecutionMetadata) *event.TaskExecutionMetadata {
+	if existing == nil {
+		return latest
+	}
+
+	if latest == nil {
+		return existing
+	}
+
+	if latest.GeneratedName != "" && existing.GeneratedName != latest.GeneratedName {
+		existing.GeneratedName = latest.GeneratedName
+	}
+	existing.ExternalResources = mergeExternalResources(existing.ExternalResources, latest.ExternalResources)
+	existing.ResourcePoolInfo = latest.ResourcePoolInfo
+	if latest.PluginIdentifier != "" && existing.PluginIdentifier != latest.PluginIdentifier {
+		existing.PluginIdentifier = latest.PluginIdentifier
+	}
+	if latest.InstanceClass != event.TaskExecutionMetadata_DEFAULT && existing.InstanceClass != latest.InstanceClass {
+		existing.InstanceClass = latest.InstanceClass
 	}
 
 	return existing
