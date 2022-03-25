@@ -26,7 +26,6 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories"
 	workflowengineImpl "github.com/flyteorg/flyteadmin/pkg/workflowengine/impl"
 	"github.com/flyteorg/flytestdlib/logger"
-	"github.com/flyteorg/flytestdlib/profutils"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/storage"
 	"github.com/golang/protobuf/proto"
@@ -60,7 +59,8 @@ func (m *AdminService) interceptPanic(ctx context.Context, request proto.Message
 
 const defaultRetries = 3
 
-func NewAdminServer(ctx context.Context, pluginRegistry *plugins.Registry, configuration interfaces2.Configuration, kubeConfig, master string, dataStorageClient *storage.DataStore, adminScope promutils.Scope) *AdminService {
+func NewAdminServer(ctx context.Context, pluginRegistry *plugins.Registry, configuration interfaces2.Configuration,
+	kubeConfig, master string, dataStorageClient *storage.DataStore, adminScope promutils.Scope) *AdminService {
 	applicationConfiguration := configuration.ApplicationConfiguration().GetTopLevelConfig()
 
 	panicCounter := adminScope.MustNewCounter("initialization_panic",
@@ -146,15 +146,6 @@ func NewAdminServer(ctx context.Context, pluginRegistry *plugins.Registry, confi
 	go func() {
 		logger.Info(ctx, "Starting the scheduled workflow executor")
 		scheduledWorkflowExecutor.Run()
-	}()
-
-	// Serve profiling endpoints.
-	go func() {
-		err := profutils.StartProfilingServerWithDefaultHandlers(
-			ctx, applicationConfiguration.GetProfilerPort(), nil)
-		if err != nil {
-			logger.Panicf(ctx, "Failed to Start profiling and Metrics server. Error, %v", err)
-		}
 	}()
 
 	nodeExecutionEventWriter := eventWriter.NewNodeExecutionEventWriter(repo, applicationConfiguration.GetAsyncEventsBufferSize())

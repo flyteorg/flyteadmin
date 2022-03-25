@@ -17,10 +17,9 @@ import (
 )
 
 var (
-	cfgFile             string
-	kubeMasterURL       string
-	configAccessor      = viper.NewAccessor(config.Options{})
-	pluginRegistryStore = plugins.NewAtomicRegistry(plugins.NewRegistry())
+	cfgFile        string
+	kubeMasterURL  string
+	configAccessor = viper.NewAccessor(config.Options{})
 )
 
 // RootCmd represents the base command when called without any subcommands
