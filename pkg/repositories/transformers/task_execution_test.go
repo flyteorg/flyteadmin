@@ -887,7 +887,7 @@ func TestMergeExternalResource(t *testing.T) {
 				Phase:        core.TaskExecution_RUNNING,
 			},
 			latest: &event.ExternalResourceInfo{
-				Phase:        core.TaskExecution_SUCCEEDED,
+				Phase: core.TaskExecution_SUCCEEDED,
 			},
 			expected: &event.ExternalResourceInfo{
 				ExternalId:   "foo",
@@ -898,8 +898,7 @@ func TestMergeExternalResource(t *testing.T) {
 			name: "update phase",
 		},
 		{
-			existing: &event.ExternalResourceInfo{
-			},
+			existing: &event.ExternalResourceInfo{},
 			latest: &event.ExternalResourceInfo{
 				ExternalId:   "foo",
 				CacheStatus:  core.CatalogCacheStatus_CACHE_HIT,
