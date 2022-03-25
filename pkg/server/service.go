@@ -254,6 +254,9 @@ func serveGatewayInsecure(ctx context.Context, pluginRegistry *plugins.Registry,
 	}
 
 	grpcServer, err := newGRPCServer(ctx, pluginRegistry, cfg, storageConfig, authCtx, scope)
+	if err != nil {
+		return fmt.Errorf("failed to create a newGRPCServer. Error: %w", err)
+	}
 
 	logger.Infof(ctx, "Serving GRPC Traffic on: %s", cfg.GetGrpcHostAddress())
 	lis, err := net.Listen("tcp", cfg.GetGrpcHostAddress())
@@ -355,7 +358,7 @@ func serveGatewaySecure(ctx context.Context, pluginRegistry *plugins.Registry, c
 
 	grpcServer, err := newGRPCServer(ctx, pluginRegistry, cfg, storageCfg, authCtx, scope, grpc.Creds(credentials.NewServerTLSFromCert(cert)))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create a newGRPCServer. Error: %w", err)
 	}
 
 	// Whatever certificate is used, pass it along for easier development
