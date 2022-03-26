@@ -12,22 +12,22 @@ on:
 jobs:
   lint:
     name: Lint
-    uses: flyteorg/flytetools/.github/workflows/lint.yml@upgrade-go
+    uses: flyteorg/flytetools/.github/workflows/lint.yml@master
 
   tests:
     name: Unit Tests
-    uses: flyteorg/flytetools/.github/workflows/tests.yml@upgrade-go
+    uses: flyteorg/flytetools/.github/workflows/tests.yml@master
     secrets:
       FLYTE_BOT_PAT: ${{ secrets.FLYTE_BOT_PAT }}
 
   docker-build:
     name: Docker Build Images
-    uses: flyteorg/flytetools/.github/workflows/docker_build.yml@upgrade-go
+    uses: flyteorg/flytetools/.github/workflows/docker_build.yml@master
 
   endtoend:
     name: End2End Test
     needs: [ docker-build ]
-    uses: flyteorg/flytetools/.github/workflows/end2end.yml@upgrade-go
+    uses: flyteorg/flytetools/.github/workflows/end2end.yml@master
     with:
       priorities: "P0"
       cache_key: ${{ needs.docker-build.outputs.cache_key }}
@@ -35,33 +35,33 @@ jobs:
   integration:
     name: Integration Test
     needs: [ docker-build ]
-    uses: flyteorg/flytetools/.github/workflows/integration.yml@upgrade-go
+    uses: flyteorg/flytetools/.github/workflows/integration.yml@master
     with:
       cache_key: ${{ needs.docker-build.outputs.cache_key }}
 
   generate:
     name: Check Go Generate
-    uses: flyteorg/flytetools/.github/workflows/go_generate.yml@upgrade-go
+    uses: flyteorg/flytetools/.github/workflows/go_generate.yml@master
 
   bump_version:
     name: Bump Version
     if: ${{ github.event_name != 'pull_request' }}
     needs: [ endtoend,  integration, lint, tests, generate ] # Only to ensure it can successfully build
-    uses: flyteorg/flytetools/.github/workflows/bump_version.yml@upgrade-go
+    uses: flyteorg/flytetools/.github/workflows/bump_version.yml@master
     secrets:
       FLYTE_BOT_PAT: ${{ secrets.FLYTE_BOT_PAT }}
 
   goreleaser:
     name: Goreleaser
     needs: [ bump_version ] # Only to ensure it can successfully build
-    uses: flyteorg/flytetools/.github/workflows/goreleaser.yml@upgrade-go
+    uses: flyteorg/flytetools/.github/workflows/goreleaser.yml@master
     secrets:
       FLYTE_BOT_PAT: ${{ secrets.FLYTE_BOT_PAT }}
 
   push_docker_image:
     name: Build & Push Flyteadmin Image
     needs: [ bump_version ]
-    uses: flyteorg/flytetools/.github/workflows/publish.yml@upgrade-go
+    uses: flyteorg/flytetools/.github/workflows/publish.yml@master
     with:
       version: ${{ needs.bump_version.outputs.version }}
       dockerfile: Dockerfile
@@ -75,7 +75,7 @@ jobs:
   push-docker-image-flytescheduler:
     name: Build & Push Flytescheduler Image
     needs: [ bump_version ]
-    uses: flyteorg/flytetools/.github/workflows/publish.yml@upgrade-go
+    uses: flyteorg/flytetools/.github/workflows/publish.yml@master
     with:
       version: ${{ needs.bump_version.outputs.version }}
       push: true
