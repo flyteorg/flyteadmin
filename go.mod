@@ -172,4 +172,4 @@ require (
 
 replace github.com/robfig/cron/v3 => github.com/unionai/cron/v3 v3.0.2-0.20210825070134-bfc34418fe84
 
-replace github.com/flyteorg/datacatalog => /Users/kevin/git/datacatalog
+replace github.com/flyteorg/datacatalog => github.com/pingsutw/datacatalog v0.3.20-0.20220327153301-99505e14d76a
