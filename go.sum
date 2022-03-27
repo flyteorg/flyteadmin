@@ -366,10 +366,11 @@ github.com/flyteorg/flytepropeller v0.16.36 h1:5uE8JsutrPVyLVrRJ8BgvhZUOmTBFkEkn
 github.com/flyteorg/flytepropeller v0.16.36/go.mod h1:DGCjQSRp8VYOBH56aQyAZfNf1Vgh+GNpwQL7uhottYM=
 github.com/flyteorg/flytestdlib v0.3.13/go.mod h1:Tz8JCECAbX6VWGwFT6cmEQ+RJpZ/6L9pswu3fzWs220=
 github.com/flyteorg/flytestdlib v0.4.13/go.mod h1:fv1ar34LJLMTaf0tbfetisLykUlARi7rP+NQTUn6QQs=
-github.com/flyteorg/flytestdlib v0.4.15 h1:g+HVbCVBJmr7tPzeoA4YCwToa7qpxTIvJGZf6jlgGUw=
-github.com/flyteorg/flytestdlib v0.4.15/go.mod h1:TNmlzHxu3BFtQENz0pf9Lq+KsaNnYenuRKsP/i1Bqbg=
-github.com/flyteorg/stow v0.3.0 h1:GpWuDDDP1fqLqh5ooOSeuPvD8x6+s0Kldv3S33GccgY=
+github.com/flyteorg/flytestdlib v0.4.16 h1:r4dCPUOqoE9xCAhOw9KDB7O6cBoCxyEtepIWYcj93H0=
+github.com/flyteorg/flytestdlib v0.4.16/go.mod h1:WA5Y4hrcgD0ybGOKJVOQ4sP8q7NLRV+S5SWOlH0axgM=
 github.com/flyteorg/stow v0.3.0/go.mod h1:wxg2Iy44Ddn5fT47daJQw1aSuF7ZFjeLL6AWj1zjic0=
+github.com/flyteorg/stow v0.3.1 h1:cBMbWl03Gsy5KoA5mutUYTuYpqtT7Pb8+ANGCLnmFEs=
+github.com/flyteorg/stow v0.3.1/go.mod h1:HBld7ud0i4khMHwJjkO8v+NSP7ddKa/ruhf4I8fliaA=
 github.com/fogleman/gg v1.2.1-0.20190220221249-0403632d5b90/go.mod h1:R/bRT+9gY/C5z7JzPU0zXsXHKM4/ayA+zqcVNZzPa1k=
 github.com/fogleman/gg v1.3.0/go.mod h1:R/bRT+9gY/C5z7JzPU0zXsXHKM4/ayA+zqcVNZzPa1k=
 github.com/form3tech-oss/jwt-go v3.2.2+incompatible h1:TcekIExNqud5crz4xD2pavyTgWiPvpYe4Xau31I0PRk=

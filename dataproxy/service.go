@@ -15,7 +15,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/flyteorg/flytestdlib/storage"
-	"github.com/graymeta/stow"
+	"github.com/flyteorg/stow"
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
