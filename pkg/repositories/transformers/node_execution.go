@@ -121,6 +121,8 @@ func CreateNodeExecutionModel(ctx context.Context, input ToNodeExecutionModelInp
 	nodeExecutionMetadata := admin.NodeExecutionMetaData{
 		RetryGroup: input.Request.Event.RetryGroup,
 		SpecNodeId: input.Request.Event.SpecNodeId,
+		IsParentNode: input.Request.Event.IsParent,
+		IsDynamic: input.Request.Event.IsDynamic,
 	}
 
 	if input.Request.Event.Phase == core.NodeExecution_RUNNING {
@@ -238,12 +240,16 @@ func FromNodeExecutionModel(nodeExecutionModel models.NodeExecution) (*admin.Nod
 	if err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal nodeExecutionMetadata")
 	}
-	if len(nodeExecutionModel.ChildNodeExecutions) > 0 {
-		nodeExecutionMetadata.IsParentNode = true
-		if len(nodeExecutionModel.DynamicWorkflowRemoteClosureReference) > 0 {
-			nodeExecutionMetadata.IsDynamic = true
+	// TODO: delete this block and references to preloading child node executions no earlier than Q3 2022
+	if !(nodeExecutionMetadata.IsParentNode || nodeExecutionMetadata.IsDynamic) {
+		if len(nodeExecutionModel.ChildNodeExecutions) > 0 {
+			nodeExecutionMetadata.IsParentNode = true
+			if len(nodeExecutionModel.DynamicWorkflowRemoteClosureReference) > 0 {
+				nodeExecutionMetadata.IsDynamic = true
+			}
 		}
 	}
+
 	return &admin.NodeExecution{
 		Id: &core.NodeExecutionIdentifier{
 			NodeId: nodeExecutionModel.NodeID,
