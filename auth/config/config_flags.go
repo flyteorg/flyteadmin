@@ -54,7 +54,6 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "grpcAuthorizationHeader"), DefaultConfig.GrpcAuthorizationHeader, "")
 	cmdFlags.Bool(fmt.Sprintf("%v%v", prefix, "disableForHttp"), DefaultConfig.DisableForHTTP, "Disables auth enforcement on HTTP Endpoints.")
 	cmdFlags.Bool(fmt.Sprintf("%v%v", prefix, "disableForGrpc"), DefaultConfig.DisableForGrpc, "Disables auth enforcement on Grpc Endpoints.")
-	cmdFlags.StringSlice(fmt.Sprintf("%v%v", prefix, "authorizedUris"), DefaultConfig.AuthorizedURIs, "Optional: Defines the set of URIs that clients are allowed to visit the service on. If set,  the system will attempt to match the incoming host to the first authorized URIs and use that (including the scheme) when generating metadata endpoints and when validating audience and issuer claims. If not provided,  the urls will be deduced based on the request url and the 'secure' setting.")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "userAuth.redirectUrl"), DefaultConfig.UserAuth.RedirectURL.String(), "")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "userAuth.openId.clientId"), DefaultConfig.UserAuth.OpenID.ClientID, "")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "userAuth.openId.clientSecretName"), DefaultConfig.UserAuth.OpenID.ClientSecretName, "")

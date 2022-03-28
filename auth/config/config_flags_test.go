@@ -155,20 +155,6 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
-	t.Run("Test_authorizedUris", func(t *testing.T) {
-
-		t.Run("Override", func(t *testing.T) {
-			testValue := DefaultConfig.AuthorizedURIs
-
-			cmdFlags.Set("authorizedUris", testValue)
-			if vStringSlice, err := cmdFlags.GetStringSlice("authorizedUris"); err == nil {
-				testDecodeRaw_Config(t, vStringSlice, &actual.AuthorizedURIs)
-
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-	})
 	t.Run("Test_userAuth.redirectUrl", func(t *testing.T) {
 
 		t.Run("Override", func(t *testing.T) {

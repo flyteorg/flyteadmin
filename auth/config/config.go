@@ -139,7 +139,7 @@ type Config struct {
 	// when generating metadata endpoints and when validating audience and issuer claims. If no matching authorizedUri
 	// is found, it'll default to the first one. If not provided, the urls will be deduced based on the request url and
 	// the `secure` setting.
-	AuthorizedURIs []config.URL `json:"authorizedUris" pflag:",Optional: Defines the set of URIs that clients are allowed to visit the service on. If set, the system will attempt to match the incoming host to the first authorized URIs and use that (including the scheme) when generating metadata endpoints and when validating audience and issuer claims. If not provided, the urls will be deduced based on the request url and the 'secure' setting."`
+	AuthorizedURIs []config.URL `json:"authorizedUris" pflag:"-,Optional: Defines the set of URIs that clients are allowed to visit the service on. If set, the system will attempt to match the incoming host to the first authorized URIs and use that (including the scheme) when generating metadata endpoints and when validating audience and issuer claims. If not provided, the urls will be deduced based on the request url and the 'secure' setting."`
 
 	// UserAuth settings used to authenticate end users in web-browsers.
 	UserAuth UserAuthConfig `json:"userAuth" pflag:",Defines Auth options for users."`
