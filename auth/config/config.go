@@ -15,23 +15,30 @@ import (
 type SecretName = string
 
 const (
+	// SecretNameOIdCClientSecret defines the default OIdC client secret name to use.
 	// #nosec
-	// Default OIdC client secret name to use.
 	SecretNameOIdCClientSecret SecretName = "oidc_client_secret"
+
+	// SecretNameCookieHashKey defines the default cookie hash key secret name to use.
 	// #nosec
 	SecretNameCookieHashKey SecretName = "cookie_hash_key"
+
+	// SecretNameCookieBlockKey defines the default cookie block key secret name to use.
 	// #nosec
 	SecretNameCookieBlockKey SecretName = "cookie_block_key"
+
+	// SecretNameClaimSymmetricKey must be a base64 encoded secret of exactly 32 bytes
 	// #nosec
-	// Base64 encoded secret of exactly 32 bytes
 	SecretNameClaimSymmetricKey SecretName = "claim_symmetric_key"
+
+	// SecretNameTokenSigningRSAKey is the privateKey used to sign JWT tokens. The default strategy uses RS256 (RSA Signature with SHA-256)
 	// #nosec
-	// PrivateKey is used to sign JWT tokens. The default strategy uses RS256 (RSA Signature with SHA-256)
 	SecretNameTokenSigningRSAKey SecretName = "token_rsa_key.pem"
-	// #nosec
-	// PrivateKey that was used to sign old JWT tokens. The default strategy uses RS256 (RSA Signature with SHA-256)
+
+	// SecretNameOldTokenSigningRSAKey is the privateKey used to sign old JWT tokens. The default strategy uses RS256 (RSA Signature with SHA-256)
 	// This is used to support key rotation. When present, it'll only be used to validate incoming tokens. New tokens
 	// will not be issued using this key.
+	// #nosec
 	SecretNameOldTokenSigningRSAKey SecretName = "token_rsa_key_old.pem"
 )
 
