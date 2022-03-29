@@ -37,18 +37,6 @@ func TestGetCloudEventPublisher(t *testing.T) {
 		assert.NotNil(t, NewCloudEventsPublisher(cfg, promutils.NewTestScope()))
 	})
 
-	t.Run("aws config", func(t *testing.T) {
-		cfg.AWSConfig = runtimeInterfaces.AWSConfig{Region: "us-east-1"}
-		cfg.Type = common.AWS
-		assert.NotNil(t, NewCloudEventsPublisher(cfg, promutils.NewTestScope()))
-	})
-
-	t.Run("gcp config", func(t *testing.T) {
-		cfg.GCPConfig = runtimeInterfaces.GCPConfig{ProjectID: "project"}
-		cfg.Type = common.GCP
-		assert.NotNil(t, NewCloudEventsPublisher(cfg, promutils.NewTestScope()))
-	})
-
 	t.Run("disable cloud event publisher", func(t *testing.T) {
 		cfg.Enable = false
 		assert.NotNil(t, NewCloudEventsPublisher(cfg, promutils.NewTestScope()))
