@@ -21,11 +21,13 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Data about the node execution that is only referenced by FlyteAdmin and never by external callers.
 type NodeExecutionInternalData struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Event version > 0 indicates that node execution events can now include populated IsParent and IsDynamic fields.
 	EventVersion int32 `protobuf:"varint,1,opt,name=event_version,json=eventVersion,proto3" json:"event_version,omitempty"`
 }
 

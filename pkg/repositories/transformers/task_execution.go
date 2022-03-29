@@ -317,9 +317,6 @@ func FromTaskExecutionModel(taskExecutionModel models.TaskExecution) (*admin.Tas
 		InputUri: taskExecutionModel.InputURI,
 		Closure:  &closure,
 	}
-	if len(taskExecutionModel.ChildNodeExecution) > 0 {
-		taskExecution.IsParent = true
-	}
 
 	return taskExecution, nil
 }
