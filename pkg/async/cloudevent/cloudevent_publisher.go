@@ -2,7 +2,6 @@ package cloudevent
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -37,13 +36,13 @@ const (
 	Kafka Receiver = "Kafka"
 )
 
-// CloudEventSender Defines the interface for sending cloudevents.
-type CloudEventSender interface {
+// Sender Defines the interface for sending cloudevents.
+type Sender interface {
 	// Send a cloud event to other services (pub/sub or Kafka)
 	Send(ctx context.Context, notificationType string, event cloudevents.Event) error
 }
 
-// PubSubSender Implementation of CloudEventSender
+// PubSubSender Implementation of Sender
 type PubSubSender struct {
 	Pub pubsub.Publisher
 }
@@ -62,7 +61,7 @@ func (s *PubSubSender) Send(ctx context.Context, notificationType string, event 
 	return nil
 }
 
-// KafkaSender Implementation of CloudEventSender
+// KafkaSender Implementation of Sender
 type KafkaSender struct {
 	Client cloudevents.Client
 }
@@ -73,19 +72,19 @@ func (s *KafkaSender) Send(ctx context.Context, notificationType string, event c
 		kafka_sarama.WithMessageKey(context.Background(), sarama.StringEncoder(event.ID())),
 		event,
 	); cloudevents.IsUndelivered(result) {
-		return errors.New(fmt.Sprintf("failed to send event: %v", result))
+		return fmt.Errorf("failed to send event: %v", result)
 	}
 	return nil
 }
 
 // CloudEventPublisher This event publisher acts to asynchronously publish workflow execution events.
-type CloudEventPublisher struct {
-	sender        CloudEventSender
+type Publisher struct {
+	sender        Sender
 	systemMetrics implementations.EventPublisherSystemMetrics
 	events        sets.String
 }
 
-func (p *CloudEventPublisher) Publish(ctx context.Context, notificationType string, msg proto.Message) error {
+func (p *Publisher) Publish(ctx context.Context, notificationType string, msg proto.Message) error {
 	if !p.shouldPublishEvent(notificationType) {
 		return nil
 	}
@@ -115,11 +114,11 @@ func (p *CloudEventPublisher) Publish(ctx context.Context, notificationType stri
 	return nil
 }
 
-func (p *CloudEventPublisher) shouldPublishEvent(notificationType string) bool {
+func (p *Publisher) shouldPublishEvent(notificationType string) bool {
 	return p.events.Has(notificationType)
 }
 
-func NewCloudEventsPublisher(sender CloudEventSender, scope promutils.Scope, eventTypes []string) interfaces.Publisher {
+func NewCloudEventsPublisher(sender Sender, scope promutils.Scope, eventTypes []string) interfaces.Publisher {
 	eventSet := sets.NewString()
 
 	for _, event := range eventTypes {
@@ -136,7 +135,7 @@ func NewCloudEventsPublisher(sender CloudEventSender, scope promutils.Scope, eve
 		}
 	}
 
-	return &CloudEventPublisher{
+	return &Publisher{
 		sender:        sender,
 		systemMetrics: implementations.NewEventPublisherSystemMetrics(scope.NewSubScope("cloudevents_publisher")),
 		events:        eventSet,
