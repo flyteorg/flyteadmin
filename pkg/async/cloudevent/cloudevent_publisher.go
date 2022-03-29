@@ -88,8 +88,8 @@ func (p *Publisher) Publish(ctx context.Context, notificationType string, msg pr
 	if !p.shouldPublishEvent(notificationType) {
 		return nil
 	}
-	logger.Debugf(ctx, "Publishing the following message [%+v]", msg)
 	p.systemMetrics.PublishTotal.Inc()
+	logger.Debugf(ctx, "Publishing the following message [%+v]", msg)
 
 	event := cloudevents.NewEvent()
 	// CloudEvent specification: https://github.com/cloudevents/spec/blob/v1.0/spec.md#required-attributes

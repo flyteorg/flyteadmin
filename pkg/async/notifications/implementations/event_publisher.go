@@ -50,11 +50,10 @@ var SupportedEvents = map[string]string{
 
 // The key is the notification type as defined as an enum.
 func (p *EventPublisher) Publish(ctx context.Context, notificationType string, msg proto.Message) error {
-	p.systemMetrics.PublishTotal.Inc()
-
 	if !p.shouldPublishEvent(notificationType) {
 		return nil
 	}
+	p.systemMetrics.PublishTotal.Inc()
 	logger.Debugf(ctx, "Publishing the following message [%+v]", msg)
 
 	err := p.pub.Publish(ctx, notificationType, msg)
