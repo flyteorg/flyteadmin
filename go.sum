@@ -356,6 +356,8 @@ github.com/flyteorg/flyteidl v0.24.6 h1:n2796X9Sw7mNDtXWwsJr84DLQpz8Cptvb7LptfJL
 github.com/flyteorg/flyteidl v0.24.6/go.mod h1:576W2ViEyjTpT+kEVHAGbrTP3HARNUZ/eCwrNPmdx9U=
 github.com/flyteorg/flyteidl v0.24.8-0.20220328184517-33e77dba1a2c h1:Cb31gIDcntAF6BWSsGSWwlkXbAWuERITwmmVCUip2aA=
 github.com/flyteorg/flyteidl v0.24.8-0.20220328184517-33e77dba1a2c/go.mod h1:576W2ViEyjTpT+kEVHAGbrTP3HARNUZ/eCwrNPmdx9U=
+github.com/flyteorg/flyteidl v0.24.9-0.20220329203633-3ceda1b53516 h1:3pkTt8Jts2rs3lWUGcPPLscL2DjzybQTybz+ac/UQuI=
+github.com/flyteorg/flyteidl v0.24.9-0.20220329203633-3ceda1b53516/go.mod h1:vHSugApgS3hRITIafzQDU8DZD/W8wFRfFcgaFU35Dww=
 github.com/flyteorg/flyteplugins v0.10.16 h1:rwNI2MACPbcST2O6CEUsNW6bccz7ZLni0GiY3orevfw=
 github.com/flyteorg/flyteplugins v0.10.16/go.mod h1:YBWV8QnFakDJfLyua8pYddiWqszAqseBKIJPNMERlos=
 github.com/flyteorg/flytepropeller v0.16.36 h1:5uE8JsutrPVyLVrRJ8BgvhZUOmTBFkEkn5xmIOo21nU=

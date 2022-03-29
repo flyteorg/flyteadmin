@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package flyteadmin.models;
+option go_package = "/models";
+
+message NodeExecutionInternalData {
+    int32 event_version = 1;
+}

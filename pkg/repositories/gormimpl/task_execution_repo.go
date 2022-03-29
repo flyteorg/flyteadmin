@@ -52,7 +52,7 @@ func (r *TaskExecutionRepo) Get(ctx context.Context, input interfaces.GetTaskExe
 			},
 			RetryAttempt: &input.TaskExecutionID.RetryAttempt,
 		},
-	}).Preload("ChildNodeExecution").Take(&taskExecution)
+	}).Take(&taskExecution)
 	timer.Stop()
 
 	if tx.Error != nil && errors.Is(tx.Error, gorm.ErrRecordNotFound) {
@@ -96,7 +96,7 @@ func (r *TaskExecutionRepo) List(ctx context.Context, input interfaces.ListResou
 	}
 
 	var taskExecutions []models.TaskExecution
-	tx := r.db.Limit(input.Limit).Offset(input.Offset).Preload("ChildNodeExecution")
+	tx := r.db.Limit(input.Limit).Offset(input.Offset)
 
 	// And add three join conditions (joining multiple tables is fine even we only filter on a subset of table attributes).
 	// We are joining on task -> taskExec->NodeExec -> Exec.

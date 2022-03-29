@@ -15,11 +15,11 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/golang/protobuf/ptypes"
 
+	"github.com/flyteorg/flyteadmin/pkg/errors"
+	genModel "github.com/flyteorg/flyteadmin/pkg/repositories/gen/models"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"google.golang.org/grpc/codes"
-
-	"github.com/flyteorg/flyteadmin/pkg/errors"
-	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 )
 
 type ToNodeExecutionModelInput struct {
@@ -160,6 +160,15 @@ func CreateNodeExecutionModel(ctx context.Context, input ToNodeExecutionModelInp
 	}
 	nodeExecution.ParentID = input.ParentID
 	nodeExecution.DynamicWorkflowRemoteClosureReference = input.DynamicWorkflowRemoteClosure
+
+	internalData := &genModel.NodeExecutionInternalData{
+		EventVersion: input.Request.Event.EventVersion,
+	}
+	internalDataBytes, err := proto.Marshal(internalData)
+	if err != nil {
+		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to marshal node execution data with err: %v", err)
+	}
+	nodeExecution.InternalData = internalDataBytes
 	return nodeExecution, nil
 }
 
@@ -291,15 +300,13 @@ func FromNodeExecutionModel(nodeExecutionModel models.NodeExecution) (*admin.Nod
 	}, nil
 }
 
-func FromNodeExecutionModels(
-	nodeExecutionModels []models.NodeExecution) ([]*admin.NodeExecution, error) {
-	nodeExecutions := make([]*admin.NodeExecution, len(nodeExecutionModels))
-	for idx, nodeExecutionModel := range nodeExecutionModels {
-		nodeExecution, err := FromNodeExecutionModel(nodeExecutionModel)
+func GetNodeExecutionInternalData(internalData []byte) (*genModel.NodeExecutionInternalData, error) {
+	var nodeExecutionInternalData genModel.NodeExecutionInternalData
+	if len(internalData) > 0 {
+		err := proto.Unmarshal(internalData, &nodeExecutionInternalData)
 		if err != nil {
-			return nil, err
+			return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal node execution data: %v", err)
 		}
-		nodeExecutions[idx] = nodeExecution
 	}
-	return nodeExecutions, nil
+	return &nodeExecutionInternalData, nil
 }
