@@ -25,6 +25,15 @@ func initTestConfig() error {
 	return configAccessor.UpdateConfig(context.TODO())
 }
 
+func initTestEventConfig() error {
+	configAccessor := viper.NewAccessor(config.Options{
+		RootSection: cloudEventsConfig,
+		SearchPaths: []string{filepath.Join("testdata", "event.yaml")},
+		StrictMode:  true,
+	})
+	return configAccessor.UpdateConfig(context.TODO())
+}
+
 func TestClusterConfig(t *testing.T) {
 	err := initTestConfig()
 	assert.NoError(t, err)
@@ -48,4 +57,15 @@ func TestClusterConfig(t *testing.T) {
 	assert.True(t, clusters[1].Enabled)
 
 	assert.Equal(t, "file_path", clusters[1].Auth.Type)
+}
+
+func TestGetCloudEventsConfig(t *testing.T) {
+	err := initTestEventConfig()
+	assert.NoError(t, err)
+	configProvider := NewConfigurationProvider()
+	cloudEventsConfig := configProvider.ApplicationConfiguration().GetCloudEventsConfig()
+	assert.Equal(t, true, cloudEventsConfig.Enable)
+	assert.Equal(t, "aws", cloudEventsConfig.Type)
+	assert.Equal(t, "us-east-1", cloudEventsConfig.AWSConfig.Region)
+	assert.Equal(t, "topic", cloudEventsConfig.EventsPublisherConfig.TopicName)
 }

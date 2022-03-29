@@ -21,9 +21,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type mockKafKaSender struct{}
+
+func (s mockKafKaSender) Send(ctx context.Context, notificationType string, event cloudevents.Event) error {
+	return publishError
+}
+
+var publishError = errors.New("publish() returns an error")
 var testCloudEventPublisher pubsubtest.TestPublisher
 var mockCloudEventPublisher pubsub.Publisher = &testCloudEventPublisher
 var mockPubSubSender = &PubSubSender{Pub: mockCloudEventPublisher}
+var mockKafkaSender = &mockKafKaSender{}
 
 var executionID = core.WorkflowExecutionIdentifier{
 	Project: "project",
@@ -181,8 +189,11 @@ func TestNewCloudEventsPublisher_EventTypes(t *testing.T) {
 func TestCloudEventPublisher_PublishError(t *testing.T) {
 	initializeCloudEventPublisher()
 	currentEventPublisher := NewCloudEventsPublisher(mockPubSubSender, promutils.NewTestScope(), []string{"*"})
-	var publishError = errors.New("publish() returns an error")
 	testCloudEventPublisher.GivenError = publishError
+	assert.Equal(t, publishError, currentEventPublisher.Publish(context.Background(),
+		proto.MessageName(taskRequest), taskRequest))
+
+	currentEventPublisher = NewCloudEventsPublisher(mockKafkaSender, promutils.NewTestScope(), []string{"*"})
 	assert.Equal(t, publishError, currentEventPublisher.Publish(context.Background(),
 		proto.MessageName(taskRequest), taskRequest))
 }

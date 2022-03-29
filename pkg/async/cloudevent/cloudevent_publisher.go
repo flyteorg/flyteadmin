@@ -72,7 +72,7 @@ func (s *KafkaSender) Send(ctx context.Context, notificationType string, event c
 		kafka_sarama.WithMessageKey(context.Background(), sarama.StringEncoder(event.ID())),
 		event,
 	); cloudevents.IsUndelivered(result) {
-		return fmt.Errorf("failed to send event: %v", result)
+		return fmt.Errorf("failed to send cloud event: %v", result)
 	}
 	return nil
 }
