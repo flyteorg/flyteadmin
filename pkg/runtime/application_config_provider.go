@@ -39,6 +39,7 @@ var flyteAdminConfig = config.MustRegisterSection(flyteAdmin, &interfaces.Applic
 	EventVersion:          2,
 	AsyncEventsBufferSize: 100,
 	MaxParallelism:        25,
+	K8SServiceAccount:     "default",
 })
 
 var schedulerConfig = config.MustRegisterSection(scheduler, &interfaces.SchedulerConfig{

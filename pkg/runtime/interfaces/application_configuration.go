@@ -2,6 +2,8 @@ package interfaces
 
 import (
 	"github.com/Shopify/sarama"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/config"
 
 	"golang.org/x/time/rate"
@@ -23,7 +25,13 @@ type DbConfig struct {
 	MaxIdleConnections                      int             `json:"maxIdleConnections" pflag:",maxIdleConnections sets the maximum number of connections in the idle connection pool."`
 	MaxOpenConnections                      int             `json:"maxOpenConnections" pflag:",maxOpenConnections sets the maximum number of open connections to the database."`
 	ConnMaxLifeTime                         config.Duration `json:"connMaxLifeTime" pflag:",sets the maximum amount of time a connection may be reused"`
-	PostgresConfig                          PostgresConfig  `json:"postgres"`
+	PostgresConfig                          *PostgresConfig `json:"postgres,omitempty"`
+	SQLiteConfig                            *SQLiteConfig   `json:"sqlite,omitempty"`
+}
+
+// SQLiteConfig can be used to configure
+type SQLiteConfig struct {
+	File string `json:"file" pflag:",The path to the file (existing or new) where the DB should be created / stored. If existing, then this will be re-used, else a new will be created"`
 }
 
 // PostgresConfig includes specific config options for opening a connection to a postgres database.
@@ -39,7 +47,7 @@ type PostgresConfig struct {
 	Debug        bool   `json:"debug" pflag:" Whether or not to start the database connection with debug mode enabled."`
 }
 
-// This configuration is the base configuration to start admin
+// ApplicationConfig is the base configuration to start admin
 type ApplicationConfig struct {
 	// The RoleName key inserted as an annotation (https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/)
 	// in Flyte Workflow CRDs created in the CreateExecution flow. The corresponding role value is defined in the
@@ -60,6 +68,19 @@ type ApplicationConfig struct {
 	// This is useful to achieve fairness. Note: MapTasks are regarded as one unit,
 	// and parallelism/concurrency of MapTasks is independent from this.
 	MaxParallelism int32 `json:"maxParallelism"`
+	// Labels to apply to the execution resource.
+	Labels map[string]string `json:"labels,omitempty"`
+	// Annotations to apply to the execution resource.
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Optional: security context override to apply this execution.
+	// iam_role references the fully qualified name of Identity & Access Management role to impersonate.
+	AssumableIamRole string `json:"assumableIamRole"`
+	// k8s_service_account references a kubernetes service account to impersonate.
+	K8SServiceAccount string `json:"k8sServiceAccount"`
+
+	// Prefix for where offloaded data from user workflows will be written
+	OutputLocationPrefix string `json:"outputLocationPrefix"`
 }
 
 func (a *ApplicationConfig) GetRoleNameKey() string {
@@ -88,6 +109,33 @@ func (a *ApplicationConfig) GetAsyncEventsBufferSize() int {
 
 func (a *ApplicationConfig) GetMaxParallelism() int32 {
 	return a.MaxParallelism
+}
+
+func (a *ApplicationConfig) GetRawOutputDataConfig() *admin.RawOutputDataConfig {
+	return &admin.RawOutputDataConfig{
+		OutputLocationPrefix: a.OutputLocationPrefix,
+	}
+}
+
+func (a *ApplicationConfig) GetSecurityContext() *core.SecurityContext {
+	return &core.SecurityContext{
+		RunAs: &core.Identity{
+			IamRole:           a.AssumableIamRole,
+			K8SServiceAccount: a.K8SServiceAccount,
+		},
+	}
+}
+
+func (a *ApplicationConfig) GetAnnotations() *admin.Annotations {
+	return &admin.Annotations{
+		Values: a.Annotations,
+	}
+}
+
+func (a *ApplicationConfig) GetLabels() *admin.Labels {
+	return &admin.Labels{
+		Values: a.Labels,
+	}
 }
 
 // This section holds common config for AWS
