@@ -210,10 +210,8 @@ func (m *NodeExecutionManager) CreateNodeEvent(ctx context.Context, request admi
 		logger.Debugf(ctx, "CreateNodeEvent called with invalid identifier [%+v]: %v", request.Event.Id, err)
 	}
 	ctx = getNodeExecutionContext(ctx, request.Event.Id)
-	if request.Event.Id.NodeId == "n0" {
-		logger.Debugf(ctx, "*** Received node execution event for Node Exec Id [%+v] transitioning to phase [%v], w/ Metadata [%v]",
-			request.Event.Id, request.Event.Phase, request.Event)
-	}
+	logger.Debugf(ctx, "Received node execution event for Node Exec Id [%+v] transitioning to phase [%v], w/ Metadata [%v]",
+		request.Event.Id, request.Event.Phase, request.Event.ParentTaskMetadata)
 
 	executionID := request.Event.Id.ExecutionId
 	workflowExecution, err := m.db.ExecutionRepo().Get(ctx, repoInterfaces.Identifier{

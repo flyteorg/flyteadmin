@@ -206,7 +206,7 @@ func TestCreateNodeExecutionModel(t *testing.T) {
 						RetryAttempt: 1,
 					},
 				},
-				IsParent: true,
+				IsParent:  true,
 				IsDynamic: true,
 			},
 		},
@@ -223,7 +223,7 @@ func TestCreateNodeExecutionModel(t *testing.T) {
 	var closureBytes, _ = proto.Marshal(closure)
 	var nodeExecutionMetadata, _ = proto.Marshal(&admin.NodeExecutionMetaData{
 		IsParentNode: true,
-		IsDynamic: true,
+		IsDynamic:    true,
 	})
 	assert.Equal(t, &models.NodeExecution{
 		NodeExecutionKey: models.NodeExecutionKey{
@@ -359,7 +359,7 @@ func TestUpdateNodeExecutionModel(t *testing.T) {
 						ExecutionId: childExecutionID,
 					},
 				},
-				IsParent: true,
+				IsParent:  true,
 				IsDynamic: true,
 			},
 		}
@@ -368,7 +368,7 @@ func TestUpdateNodeExecutionModel(t *testing.T) {
 		}
 		nodeExecMetadataSerialized, _ := proto.Marshal(&nodeExecMetadata)
 		nodeExecutionModel := models.NodeExecution{
-			Phase: core.NodeExecution_UNDEFINED.String(),
+			Phase:                 core.NodeExecution_UNDEFINED.String(),
 			NodeExecutionMetadata: nodeExecMetadataSerialized,
 		}
 		err := UpdateNodeExecutionModel(context.TODO(), &request, &nodeExecutionModel, childExecutionID, dynamicWorkflowClosureRef,
@@ -380,11 +380,10 @@ func TestUpdateNodeExecutionModel(t *testing.T) {
 		assert.Nil(t, nodeExecutionModel.CacheStatus)
 		assert.Equal(t, nodeExecutionModel.DynamicWorkflowRemoteClosureReference, dynamicWorkflowClosureRef)
 
-		nodeExecutionMetadata.IsParentNode = true
-		nodeExecutionMetadata.IsDynamic = true
-		nodeExecMetadataSerialized, _ = proto.Marshal(&nodeExecutionMetadata)
-		assert.Equal(t, nodeExecutionModel.NodeExecutionMetadata, nodeExecMetadataSerialized)
-
+		nodeExecMetadata.IsParentNode = true
+		nodeExecMetadata.IsDynamic = true
+		nodeExecMetadataExpected, _ := proto.Marshal(&nodeExecMetadata)
+		assert.Equal(t, nodeExecutionModel.NodeExecutionMetadata, nodeExecMetadataExpected)
 	})
 }
 
