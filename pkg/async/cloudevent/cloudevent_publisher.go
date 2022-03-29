@@ -77,7 +77,7 @@ func (s *KafkaSender) Send(ctx context.Context, notificationType string, event c
 	return nil
 }
 
-// CloudEventPublisher This event publisher acts to asynchronously publish workflow execution events.
+// Publisher This event publisher acts to asynchronously publish workflow execution events.
 type Publisher struct {
 	sender        Sender
 	systemMetrics implementations.EventPublisherSystemMetrics
@@ -89,7 +89,6 @@ func (p *Publisher) Publish(ctx context.Context, notificationType string, msg pr
 		return nil
 	}
 	logger.Debugf(ctx, "Publishing the following message [%+v]", msg)
-
 	p.systemMetrics.PublishTotal.Inc()
 
 	event := cloudevents.NewEvent()
