@@ -99,6 +99,9 @@ func addTerminalState(
 }
 
 func CreateNodeExecutionModel(ctx context.Context, input ToNodeExecutionModelInput) (*models.NodeExecution, error) {
+	if input.Request.Event.Id.NodeId == "n0" {
+		logger.Warning(ctx, "*** creating node exec with event [%+v]", input.Request)
+	}
 	nodeExecution := &models.NodeExecution{
 		NodeExecutionKey: models.NodeExecutionKey{
 			NodeID: input.Request.Event.Id.NodeId,
@@ -167,6 +170,9 @@ func UpdateNodeExecutionModel(
 	ctx context.Context, request *admin.NodeExecutionEventRequest, nodeExecutionModel *models.NodeExecution,
 	targetExecution *core.WorkflowExecutionIdentifier, dynamicWorkflowRemoteClosure string,
 	inlineEventDataPolicy interfaces.InlineEventDataPolicy, storageClient *storage.DataStore) error {
+	if request.Event.Id.NodeId == "n0" {
+		logger.Warning(ctx, "*** updating node exec with event [%+v]", request)
+	}
 	var nodeExecutionClosure admin.NodeExecutionClosure
 	err := proto.Unmarshal(nodeExecutionModel.Closure, &nodeExecutionClosure)
 	if err != nil {
@@ -225,6 +231,33 @@ func UpdateNodeExecutionModel(
 	}
 	nodeExecutionModel.NodeExecutionUpdatedAt = &updatedAt
 	nodeExecutionModel.DynamicWorkflowRemoteClosureReference = dynamicWorkflowRemoteClosure
+
+	var nodeExecutionMetadata admin.NodeExecutionMetaData
+	if len(nodeExecutionModel.NodeExecutionMetadata) > 0 {
+		if err := proto.Unmarshal(nodeExecutionModel.NodeExecutionMetadata, &nodeExecutionMetadata); err != nil {
+			return errors.NewFlyteAdminErrorf(codes.Internal,
+				"failed to unmarshal node execution metadata with error: %+v", err)
+		}
+	}
+	var updateNodeExecMetadata bool
+	if request.Event.IsParent {
+		nodeExecutionMetadata.IsParentNode = true
+		updateNodeExecMetadata = true
+	}
+	if request.Event.IsDynamic {
+		nodeExecutionMetadata.IsDynamic = true
+		updateNodeExecMetadata = true
+	}
+	if updateNodeExecMetadata {
+		logger.Warning(ctx, "**** updating node exec metadata to [%+v]", nodeExecutionMetadata)
+		nodeExecMetadataBytes, err := proto.Marshal(&nodeExecutionMetadata)
+		if err != nil {
+			return errors.NewFlyteAdminErrorf(codes.Internal,
+				"failed to marshal node execution metadata with error: %+v", err)
+		}
+		nodeExecutionModel.NodeExecutionMetadata = nodeExecMetadataBytes
+	}
+
 	return nil
 }
 
@@ -241,14 +274,14 @@ func FromNodeExecutionModel(nodeExecutionModel models.NodeExecution) (*admin.Nod
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal nodeExecutionMetadata")
 	}
 	// TODO: delete this block and references to preloading child node executions no earlier than Q3 2022
-	if !(nodeExecutionMetadata.IsParentNode || nodeExecutionMetadata.IsDynamic) {
+	/*if !(nodeExecutionMetadata.IsParentNode || nodeExecutionMetadata.IsDynamic) {
 		if len(nodeExecutionModel.ChildNodeExecutions) > 0 {
 			nodeExecutionMetadata.IsParentNode = true
 			if len(nodeExecutionModel.DynamicWorkflowRemoteClosureReference) > 0 {
 				nodeExecutionMetadata.IsDynamic = true
 			}
 		}
-	}
+	}*/
 
 	return &admin.NodeExecution{
 		Id: &core.NodeExecutionIdentifier{

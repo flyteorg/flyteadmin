@@ -206,6 +206,8 @@ func TestCreateNodeExecutionModel(t *testing.T) {
 						RetryAttempt: 1,
 					},
 				},
+				IsParent: true,
+				IsDynamic: true,
 			},
 		},
 		ParentTaskExecutionID: &parentTaskExecID,
@@ -219,6 +221,10 @@ func TestCreateNodeExecutionModel(t *testing.T) {
 		UpdatedAt: occurredAtProto,
 	}
 	var closureBytes, _ = proto.Marshal(closure)
+	var nodeExecutionMetadata, _ = proto.Marshal(&admin.NodeExecutionMetaData{
+		IsParentNode: true,
+		IsDynamic: true,
+	})
 	assert.Equal(t, &models.NodeExecution{
 		NodeExecutionKey: models.NodeExecutionKey{
 			NodeID: "node id",
@@ -234,7 +240,7 @@ func TestCreateNodeExecutionModel(t *testing.T) {
 		StartedAt:              &occurredAt,
 		NodeExecutionCreatedAt: &occurredAt,
 		NodeExecutionUpdatedAt: &occurredAt,
-		NodeExecutionMetadata:  []byte{},
+		NodeExecutionMetadata:  nodeExecutionMetadata,
 		ParentTaskExecutionID:  &parentTaskExecID,
 	}, nodeExecutionModel)
 }
@@ -342,6 +348,43 @@ func TestUpdateNodeExecutionModel(t *testing.T) {
 		}
 		var closureBytes, _ = proto.Marshal(closure)
 		assert.Equal(t, nodeExecutionModel.Closure, closureBytes)
+	})
+	t.Run("is parent & is dynamic", func(t *testing.T) {
+		request := admin.NodeExecutionEventRequest{
+			Event: &event.NodeExecutionEvent{
+				Phase:      core.NodeExecution_RUNNING,
+				OccurredAt: occurredAtProto,
+				TargetMetadata: &event.NodeExecutionEvent_WorkflowNodeMetadata{
+					WorkflowNodeMetadata: &event.WorkflowNodeMetadata{
+						ExecutionId: childExecutionID,
+					},
+				},
+				IsParent: true,
+				IsDynamic: true,
+			},
+		}
+		nodeExecMetadata := admin.NodeExecutionMetaData{
+			SpecNodeId: "foo",
+		}
+		nodeExecMetadataSerialized, _ := proto.Marshal(&nodeExecMetadata)
+		nodeExecutionModel := models.NodeExecution{
+			Phase: core.NodeExecution_UNDEFINED.String(),
+			NodeExecutionMetadata: nodeExecMetadataSerialized,
+		}
+		err := UpdateNodeExecutionModel(context.TODO(), &request, &nodeExecutionModel, childExecutionID, dynamicWorkflowClosureRef,
+			interfaces.InlineEventDataPolicyStoreInline, commonMocks.GetMockStorageClient())
+		assert.Nil(t, err)
+		assert.Equal(t, core.NodeExecution_RUNNING.String(), nodeExecutionModel.Phase)
+		assert.Equal(t, occurredAt, *nodeExecutionModel.StartedAt)
+		assert.EqualValues(t, occurredAt, *nodeExecutionModel.NodeExecutionUpdatedAt)
+		assert.Nil(t, nodeExecutionModel.CacheStatus)
+		assert.Equal(t, nodeExecutionModel.DynamicWorkflowRemoteClosureReference, dynamicWorkflowClosureRef)
+
+		nodeExecutionMetadata.IsParentNode = true
+		nodeExecutionMetadata.IsDynamic = true
+		nodeExecMetadataSerialized, _ = proto.Marshal(&nodeExecutionMetadata)
+		assert.Equal(t, nodeExecutionModel.NodeExecutionMetadata, nodeExecMetadataSerialized)
+
 	})
 }
 
