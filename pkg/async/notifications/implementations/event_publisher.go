@@ -16,7 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type eventPublisherSystemMetrics struct {
+type EventPublisherSystemMetrics struct {
 	Scope          promutils.Scope
 	PublishTotal   prometheus.Counter
 	PublishSuccess prometheus.Counter
@@ -26,7 +26,7 @@ type eventPublisherSystemMetrics struct {
 // TODO: Add a counter that encompasses the publisher stats grouped by project and domain.
 type EventPublisher struct {
 	pub           pubsub.Publisher
-	systemMetrics eventPublisherSystemMetrics
+	systemMetrics EventPublisherSystemMetrics
 	events        sets.String
 }
 
@@ -42,7 +42,7 @@ const (
 	AllTypesShort = "*"
 )
 
-var supportedEvents = map[string]string{
+var SupportedEvents = map[string]string{
 	Task:     proto.MessageName(&taskExecutionReq),
 	Node:     proto.MessageName(&nodeExecutionReq),
 	Workflow: proto.MessageName(&workflowExecutionReq),
@@ -71,8 +71,8 @@ func (p *EventPublisher) shouldPublishEvent(notificationType string) bool {
 	return p.events.Has(notificationType)
 }
 
-func newEventPublisherSystemMetrics(scope promutils.Scope) eventPublisherSystemMetrics {
-	return eventPublisherSystemMetrics{
+func NewEventPublisherSystemMetrics(scope promutils.Scope) EventPublisherSystemMetrics {
+	return EventPublisherSystemMetrics{
 		Scope:          scope,
 		PublishTotal:   scope.MustNewCounter("event_publish_total", "overall count of publish messages"),
 		PublishSuccess: scope.MustNewCounter("event_publish_success", "success count of publish messages"),
@@ -85,12 +85,12 @@ func NewEventsPublisher(pub pubsub.Publisher, scope promutils.Scope, eventTypes 
 
 	for _, event := range eventTypes {
 		if event == AllTypes || event == AllTypesShort {
-			for _, e := range supportedEvents {
+			for _, e := range SupportedEvents {
 				eventSet = eventSet.Insert(e)
 			}
 			break
 		}
-		if e, found := supportedEvents[event]; found {
+		if e, found := SupportedEvents[event]; found {
 			eventSet = eventSet.Insert(e)
 		} else {
 			logger.Errorf(context.Background(), "Unsupported event type [%s] in the config")
@@ -99,7 +99,7 @@ func NewEventsPublisher(pub pubsub.Publisher, scope promutils.Scope, eventTypes 
 
 	return &EventPublisher{
 		pub:           pub,
-		systemMetrics: newEventPublisherSystemMetrics(scope.NewSubScope("events_publisher")),
+		systemMetrics: NewEventPublisherSystemMetrics(scope.NewSubScope("events_publisher")),
 		events:        eventSet,
 	}
 }

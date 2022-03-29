@@ -1,8 +1,12 @@
-package implementations
+package cloudevent
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
+
+	"github.com/flyteorg/flyteadmin/pkg/async/notifications/implementations"
 
 	"github.com/Shopify/sarama"
 	"github.com/cloudevents/sdk-go/protocol/kafka_sarama/v2"
@@ -23,7 +27,8 @@ import (
 
 const (
 	cloudEventSource = "https://github.com/flyteorg/flyteadmin"
-	jsonSchemaURL    = "jsonschemaurl"
+	jsonSchemaURLKey = "jsonschemaurl"
+	jsonSchemaURL    = "https://github.com/flyteorg/flyteidl/blob/cloudevent2/jsonschema/workflow_execution.json"
 )
 
 type Receiver = string
@@ -32,10 +37,13 @@ const (
 	Kafka Receiver = "Kafka"
 )
 
+// CloudEventSender Defines the interface for sending cloudevents.
 type CloudEventSender interface {
+	// Send a cloud event to other services (pub/sub or Kafka)
 	Send(ctx context.Context, notificationType string, event cloudevents.Event) error
 }
 
+// PubSubSender Implementation of CloudEventSender
 type PubSubSender struct {
 	Pub pubsub.Publisher
 }
@@ -54,6 +62,7 @@ func (s *PubSubSender) Send(ctx context.Context, notificationType string, event 
 	return nil
 }
 
+// KafkaSender Implementation of CloudEventSender
 type KafkaSender struct {
 	Client cloudevents.Client
 }
@@ -64,24 +73,25 @@ func (s *KafkaSender) Send(ctx context.Context, notificationType string, event c
 		kafka_sarama.WithMessageKey(context.Background(), sarama.StringEncoder(event.ID())),
 		event,
 	); cloudevents.IsUndelivered(result) {
-		logger.Errorf(ctx, "failed to send: %v", result)
+		return errors.New(fmt.Sprintf("failed to send event: %v", result))
 	}
 	return nil
 }
 
+// CloudEventPublisher This event publisher acts to asynchronously publish workflow execution events.
 type CloudEventPublisher struct {
 	sender        CloudEventSender
-	systemMetrics eventPublisherSystemMetrics
+	systemMetrics implementations.EventPublisherSystemMetrics
 	events        sets.String
 }
 
 func (p *CloudEventPublisher) Publish(ctx context.Context, notificationType string, msg proto.Message) error {
-	p.systemMetrics.PublishTotal.Inc()
-
 	if !p.shouldPublishEvent(notificationType) {
 		return nil
 	}
 	logger.Debugf(ctx, "Publishing the following message [%+v]", msg)
+
+	p.systemMetrics.PublishTotal.Inc()
 
 	event := cloudevents.NewEvent()
 	// CloudEvent specification: https://github.com/cloudevents/spec/blob/v1.0/spec.md#required-attributes
@@ -89,7 +99,7 @@ func (p *CloudEventPublisher) Publish(ctx context.Context, notificationType stri
 	event.SetSource(cloudEventSource)
 	event.SetID(uuid.New().String())
 	event.SetTime(time.Now())
-	event.SetExtension(jsonSchemaURL, "https://github.com/pingsutw/flyteidl/blob/cloudevent2/jsonschema/workflow_execution.json")
+	event.SetExtension(jsonSchemaURLKey, jsonSchemaURL)
 
 	if err := event.SetData(cloudevents.ApplicationJSON, &msg); err != nil {
 		p.systemMetrics.PublishError.Inc()
@@ -101,6 +111,7 @@ func (p *CloudEventPublisher) Publish(ctx context.Context, notificationType stri
 		p.systemMetrics.PublishError.Inc()
 		return err
 	}
+	p.systemMetrics.PublishSuccess.Inc()
 	return nil
 }
 
@@ -112,22 +123,22 @@ func NewCloudEventsPublisher(sender CloudEventSender, scope promutils.Scope, eve
 	eventSet := sets.NewString()
 
 	for _, event := range eventTypes {
-		if event == AllTypes || event == AllTypesShort {
-			for _, e := range supportedEvents {
+		if event == implementations.AllTypes || event == implementations.AllTypesShort {
+			for _, e := range implementations.SupportedEvents {
 				eventSet = eventSet.Insert(e)
 			}
 			break
 		}
-		if e, found := supportedEvents[event]; found {
+		if e, found := implementations.SupportedEvents[event]; found {
 			eventSet = eventSet.Insert(e)
 		} else {
-			logger.Errorf(context.Background(), "Unsupported event type [%s] in the config")
+			panic(fmt.Errorf("unsupported event type [%s] in the config", event))
 		}
 	}
 
 	return &CloudEventPublisher{
 		sender:        sender,
-		systemMetrics: newEventPublisherSystemMetrics(scope.NewSubScope("cloudevents_publisher")),
+		systemMetrics: implementations.NewEventPublisherSystemMetrics(scope.NewSubScope("cloudevents_publisher")),
 		events:        eventSet,
 	}
 }

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/flyteorg/flyteadmin/pkg/async/cloudevent"
+
 	"github.com/Shopify/sarama"
 
 	"github.com/cloudevents/sdk-go/protocol/kafka_sarama/v2"
@@ -259,7 +261,7 @@ func NewCloudEventsPublisher(config runtimeInterfaces.CloudEventsConfig, scope p
 		if err != nil {
 			panic(err)
 		}
-		return implementations.NewCloudEventsPublisher(&implementations.PubSubSender{Pub: publisher}, scope, config.EventsPublisherConfig.EventTypes)
+		return cloudevent.NewCloudEventsPublisher(&cloudevent.PubSubSender{Pub: publisher}, scope, config.EventsPublisherConfig.EventTypes)
 	case common.GCP:
 		pubsubConfig := gizmoGCP.Config{
 			Topic: config.EventsPublisherConfig.TopicName,
@@ -275,8 +277,8 @@ func NewCloudEventsPublisher(config runtimeInterfaces.CloudEventsConfig, scope p
 		if err != nil {
 			panic(err)
 		}
-		return implementations.NewCloudEventsPublisher(&implementations.PubSubSender{Pub: publisher}, scope, config.EventsPublisherConfig.EventTypes)
-	case implementations.Kafka:
+		return cloudevent.NewCloudEventsPublisher(&cloudevent.PubSubSender{Pub: publisher}, scope, config.EventsPublisherConfig.EventTypes)
+	case cloudevent.Kafka:
 		saramaConfig := sarama.NewConfig()
 		saramaConfig.Version = config.KafkaConfig.Version
 		sender, err := kafka_sarama.NewSender(config.Brokers, saramaConfig, config.EventsPublisherConfig.TopicName)
@@ -289,7 +291,7 @@ func NewCloudEventsPublisher(config runtimeInterfaces.CloudEventsConfig, scope p
 			logger.Fatalf(context.Background(), "failed to create client, %v", err)
 			panic(err)
 		}
-		return implementations.NewCloudEventsPublisher(&implementations.KafkaSender{Client: client}, scope, config.EventsPublisherConfig.EventTypes)
+		return cloudevent.NewCloudEventsPublisher(&cloudevent.KafkaSender{Client: client}, scope, config.EventsPublisherConfig.EventTypes)
 	case common.Local:
 		fallthrough
 	default:

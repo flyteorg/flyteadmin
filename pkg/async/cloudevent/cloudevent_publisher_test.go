@@ -1,10 +1,16 @@
-package implementations
+package cloudevent
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
 	"testing"
+	"time"
+
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+	"github.com/golang/protobuf/ptypes"
 
 	"github.com/NYTimes/gizmo/pubsub"
 	"github.com/NYTimes/gizmo/pubsub/pubsubtest"
@@ -18,6 +24,65 @@ import (
 var testCloudEventPublisher pubsubtest.TestPublisher
 var mockCloudEventPublisher pubsub.Publisher = &testCloudEventPublisher
 var mockPubSubSender = &PubSubSender{Pub: mockCloudEventPublisher}
+
+var executionID = core.WorkflowExecutionIdentifier{
+	Project: "project",
+	Domain:  "domain",
+	Name:    "name",
+}
+var nodeExecutionID = core.NodeExecutionIdentifier{
+	NodeId:      "node id",
+	ExecutionId: &executionID,
+}
+
+var taskID = &core.Identifier{
+	ResourceType: core.ResourceType_TASK,
+	Project:      "p",
+	Domain:       "d",
+	Version:      "v",
+	Name:         "n",
+}
+
+var occurredAt = time.Now().UTC()
+var occurredAtProto, _ = ptypes.TimestampProto(occurredAt)
+
+var taskPhase = core.TaskExecution_RUNNING
+
+var retryAttempt = uint32(1)
+
+const requestID = "request id"
+
+var taskRequest = &admin.TaskExecutionEventRequest{
+	RequestId: requestID,
+	Event: &event.TaskExecutionEvent{
+		TaskId:                taskID,
+		ParentNodeExecutionId: &nodeExecutionID,
+		RetryAttempt:          retryAttempt,
+		Phase:                 taskPhase,
+		OccurredAt:            occurredAtProto,
+	},
+}
+
+var nodeRequest = &admin.NodeExecutionEventRequest{
+	RequestId: requestID,
+	Event: &event.NodeExecutionEvent{
+		ProducerId: "propeller",
+		Id:         &nodeExecutionID,
+		OccurredAt: occurredAtProto,
+		Phase:      core.NodeExecution_RUNNING,
+		InputUri:   "input uri",
+	},
+}
+
+var workflowRequest = &admin.WorkflowExecutionEventRequest{
+	Event: &event.WorkflowExecutionEvent{
+		Phase: core.WorkflowExecution_SUCCEEDED,
+		OutputResult: &event.WorkflowExecutionEvent_OutputUri{
+			OutputUri: "somestring",
+		},
+		ExecutionId: &executionID,
+	},
+}
 
 // This method should be invoked before every test around Publisher.
 func initializeCloudEventPublisher() {
@@ -91,19 +156,19 @@ func TestNewCloudEventsPublisher_EventTypes(t *testing.T) {
 					if test.shouldSendEvent[id] {
 						assert.Equal(t, proto.MessageName(event), testCloudEventPublisher.Published[cnt].Key)
 						body := testCloudEventPublisher.Published[cnt].Body
-						cloudevent := cloudevents.NewEvent()
-						err := pbcloudevents.Protobuf.Unmarshal(body, &cloudevent)
+						cloudEvent := cloudevents.NewEvent()
+						err := pbcloudevents.Protobuf.Unmarshal(body, &cloudEvent)
 						assert.Nil(t, err)
 
-						assert.Equal(t, cloudevent.DataContentType(), cloudevents.ApplicationJSON)
-						assert.Equal(t, cloudevent.SpecVersion(), cloudevents.VersionV1)
-						assert.Equal(t, cloudevent.Type(), proto.MessageName(event))
-						assert.Equal(t, cloudevent.Source(), cloudEventSource)
-						assert.Equal(t, cloudevent.Extensions(), map[string]interface{}{jsonSchemaURL: "https://github.com/pingsutw/flyteidl/blob/cloudevent2/jsonschema/workflow_execution.json"})
+						assert.Equal(t, cloudEvent.DataContentType(), cloudevents.ApplicationJSON)
+						assert.Equal(t, cloudEvent.SpecVersion(), cloudevents.VersionV1)
+						assert.Equal(t, cloudEvent.Type(), proto.MessageName(event))
+						assert.Equal(t, cloudEvent.Source(), cloudEventSource)
+						assert.Equal(t, cloudEvent.Extensions(), map[string]interface{}{jsonSchemaURLKey: jsonSchemaURL})
 
 						e, err := json.Marshal(event)
 						assert.Nil(t, err)
-						assert.Equal(t, cloudevent.Data(), e)
+						assert.Equal(t, cloudEvent.Data(), e)
 						cnt++
 					}
 				}
