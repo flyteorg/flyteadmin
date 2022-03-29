@@ -3,7 +3,6 @@ package notifications
 import (
 	"testing"
 
-	"github.com/Shopify/sarama"
 	"github.com/flyteorg/flyteadmin/pkg/async/cloudevent"
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
@@ -33,13 +32,7 @@ func TestGetCloudEventPublisher(t *testing.T) {
 		EventsPublisherConfig: runtimeInterfaces.EventsPublisherConfig{TopicName: "topic"},
 	}
 
-	t.Run("disable cloud event publisher", func(t *testing.T) {
-		cfg.Enable = false
-		assert.NotNil(t, NewCloudEventsPublisher(cfg, promutils.NewTestScope()))
-	})
-
 	t.Run("local publisher", func(t *testing.T) {
-		cfg.Enable = false
 		cfg.Type = common.Local
 		assert.NotNil(t, NewCloudEventsPublisher(cfg, promutils.NewTestScope()))
 	})
@@ -56,11 +49,8 @@ func TestGetCloudEventPublisher(t *testing.T) {
 		assert.NotNil(t, NewCloudEventsPublisher(cfg, promutils.NewTestScope()))
 	})
 
-	t.Run("kafka config", func(t *testing.T) {
-		version, err := sarama.ParseKafkaVersion("0.8.2.0")
-		assert.Nil(t, err)
-		cfg.Type = cloudevent.Kafka
-		cfg.KafkaConfig = runtimeInterfaces.KafkaConfig{Version: version}
+	t.Run("disable cloud event publisher", func(t *testing.T) {
+		cfg.Enable = false
 		assert.NotNil(t, NewCloudEventsPublisher(cfg, promutils.NewTestScope()))
 	})
 }
