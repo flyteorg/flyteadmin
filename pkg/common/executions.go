@@ -9,7 +9,7 @@ import (
 )
 
 const ExecutionIDLength = 20
-const ExecutionStringFormat = "f%s"
+const ExecutionStringFormat = "a%s"
 
 /* #nosec */
 func GetExecutionName(seed int64) string {
