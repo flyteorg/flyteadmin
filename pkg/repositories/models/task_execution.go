@@ -34,4 +34,6 @@ type TaskExecution struct {
 	// the execution was UpdatedAt, not to be confused with gorm.Model.UpdatedAt
 	TaskExecutionUpdatedAt *time.Time
 	Duration               time.Duration
+	// The child node executions (if any) launched by this task execution.
+	ChildNodeExecution []NodeExecution `gorm:"foreignkey:ParentTaskExecutionID;references:ID"`
 }
