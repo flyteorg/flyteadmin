@@ -235,13 +235,14 @@ func GetTaskExecutionModel(
 	return &taskExecutionModel, nil
 }
 
-// GetMatchableResource gets matchable resource for resourceType and project - domain combination.
+// GetMatchableResource gets matchable resource for resourceType and project - domain - workflow combination.
 // Returns nil with nothing is found or return an error
 func GetMatchableResource(ctx context.Context, resourceManager interfaces.ResourceInterface, resourceType admin.MatchableResource,
-	project, domain string) (*interfaces.ResourceResponse, error) {
+	project, domain, name string) (*interfaces.ResourceResponse, error) {
 	matchableResource, err := resourceManager.GetResource(ctx, interfaces.ResourceRequest{
 		Project:      project,
 		Domain:       domain,
+		Workflow:     name,
 		ResourceType: resourceType,
 	})
 	if err != nil {
