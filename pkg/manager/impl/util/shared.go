@@ -238,17 +238,17 @@ func GetTaskExecutionModel(
 // GetMatchableResource gets matchable resource for resourceType and project - domain - workflow combination.
 // Returns nil with nothing is found or return an error
 func GetMatchableResource(ctx context.Context, resourceManager interfaces.ResourceInterface, resourceType admin.MatchableResource,
-	project, domain, name string) (*interfaces.ResourceResponse, error) {
+	project, domain, workflowName string) (*interfaces.ResourceResponse, error) {
 	matchableResource, err := resourceManager.GetResource(ctx, interfaces.ResourceRequest{
 		Project:      project,
 		Domain:       domain,
-		Workflow:     name,
+		Workflow:     workflowName,
 		ResourceType: resourceType,
 	})
 	if err != nil {
 		if flyteAdminError, ok := err.(errors.FlyteAdminError); !ok || flyteAdminError.Code() != codes.NotFound {
-			logger.Errorf(ctx, "Failed to get %v overrides in %s project %s domain with error: %v", resourceType,
-				project, domain, err)
+			logger.Errorf(ctx, "Failed to get %v overrides in %s project %s domain %s workflow with error: %v", resourceType,
+				project, domain, workflowName, err)
 			return nil, err
 		}
 	}
