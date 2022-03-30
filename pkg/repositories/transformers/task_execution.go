@@ -277,11 +277,19 @@ func mergeExternalResources(existing, latest []*event.ExternalResourceInfo) []*e
 	}
 
 	for i, externalResource := range latest {
+		// to ensure we update the correct ExternalResource we identify the resource index based on
+		// one of two categories:
+		// (1) a simple ID of an ExternalResource will only have the ExternalID populated. therefore
+		// we use the index into the event array (ie. i).
+		// (2) a subtask which contains an index, log links, phase, etc. if the index is set
+		// (ie. != 0) or if any of the other fields are set we use the ExternalResource index.
+		//
+		// therefore, if we want to track any fields (other than ExternalID) we need to provide an
+		// index to ensure correctness. additionally, if we only track ExternalID, any additions
+		// need to include all previous ExternalResources.
 		var index int
-		if externalResource.GetIndex() == 0 && externalResource.GetRetryAttempt() == 0 && externalResource.GetPhase() == 0 {
-			// updating an external resource to retryAttempt 0 and phase 0 is invalid, because that
-			// is the initial state, so we use this condition to signify an external resource
-			// without these parameters (ex. a simple ExternalResourceID).
+		if externalResource.GetIndex() == 0 && externalResource.GetCacheStatus() == 0 && len(externalResource.GetLogs()) != 0 &&
+			externalResource.GetPhase() == 0 && externalResource.GetRetryAttempt() == 0 {
 			index = i
 		} else {
 			index = int(externalResource.GetIndex())
