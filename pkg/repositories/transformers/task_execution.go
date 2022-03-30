@@ -288,7 +288,7 @@ func mergeExternalResources(existing, latest []*event.ExternalResourceInfo) []*e
 		// index to ensure correctness. additionally, if we only track ExternalID, any additions
 		// need to include all previous ExternalResources.
 		var index int
-		if externalResource.GetIndex() == 0 && externalResource.GetCacheStatus() == 0 && len(externalResource.GetLogs()) != 0 &&
+		if externalResource.GetIndex() == 0 && externalResource.GetCacheStatus() == 0 && len(externalResource.GetLogs()) == 0 &&
 			externalResource.GetPhase() == 0 && externalResource.GetRetryAttempt() == 0 {
 			index = i
 		} else {
