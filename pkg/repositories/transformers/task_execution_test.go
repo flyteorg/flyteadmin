@@ -942,12 +942,14 @@ func TestMergeExternalResources(t *testing.T) {
 			existing: []*event.ExternalResourceInfo{
 				&event.ExternalResourceInfo{
 					ExternalId: "foo",
+					Index:      1,
 				},
 			},
 			latest: nil,
 			expected: []*event.ExternalResourceInfo{
 				&event.ExternalResourceInfo{
 					ExternalId: "foo",
+					Index:      1,
 				},
 			},
 			name: "use existing",
@@ -957,11 +959,13 @@ func TestMergeExternalResources(t *testing.T) {
 			latest: []*event.ExternalResourceInfo{
 				&event.ExternalResourceInfo{
 					ExternalId: "foo",
+					Index:      1,
 				},
 			},
 			expected: []*event.ExternalResourceInfo{
 				&event.ExternalResourceInfo{
 					ExternalId: "foo",
+					Index:      1,
 				},
 			},
 			name: "use latest",
@@ -969,26 +973,79 @@ func TestMergeExternalResources(t *testing.T) {
 		{
 			existing: []*event.ExternalResourceInfo{
 				&event.ExternalResourceInfo{
-					ExternalId: "foo",
+					ExternalId: "baz",
+					Index:      1,
+				},
+			},
+			latest: []*event.ExternalResourceInfo{
+				&event.ExternalResourceInfo{
+					ExternalId: "bar",
+					Index:      0,
+				},
+			},
+			expected: []*event.ExternalResourceInfo{
+				&event.ExternalResourceInfo{
+					ExternalId: "bar",
+					Index:      0,
+				},
+				&event.ExternalResourceInfo{
+					ExternalId: "baz",
+					Index:      1,
+				},
+			},
+			name: "add subtask before",
+		},
+		{
+			existing: []*event.ExternalResourceInfo{
+				&event.ExternalResourceInfo{
+					ExternalId: "baz",
+					Index:      1,
 				},
 			},
 			latest: []*event.ExternalResourceInfo{
 				&event.ExternalResourceInfo{
 					ExternalId: "foo",
-				},
-				&event.ExternalResourceInfo{
-					ExternalId: "bar",
+					Index:      2,
 				},
 			},
 			expected: []*event.ExternalResourceInfo{
 				&event.ExternalResourceInfo{
-					ExternalId: "foo",
+					ExternalId: "baz",
+					Index:      1,
 				},
 				&event.ExternalResourceInfo{
-					ExternalId: "bar",
+					ExternalId: "foo",
+					Index:      2,
 				},
 			},
-			name: "append external resource",
+			name: "add subtask after",
+		},
+		{
+			existing: []*event.ExternalResourceInfo{
+				&event.ExternalResourceInfo{
+					ExternalId: "baz",
+					Index:      1,
+				},
+			},
+			latest: []*event.ExternalResourceInfo{
+				&event.ExternalResourceInfo{
+					ExternalId:   "baz",
+					Index:        1,
+					RetryAttempt: 1,
+				},
+			},
+			expected: []*event.ExternalResourceInfo{
+				&event.ExternalResourceInfo{
+					ExternalId: "baz",
+					Index:      1,
+				},
+				&event.ExternalResourceInfo{
+					ExternalId:   "baz",
+					Index:        1,
+					RetryAttempt: 1,
+				},
+			},
+			name: "add subtask retry",
 		},
 		{
 			existing: []*event.ExternalResourceInfo{
@@ -1013,12 +1070,6 @@ func TestMergeExternalResources(t *testing.T) {
 			},
 			latest: []*event.ExternalResourceInfo{
 				&event.ExternalResourceInfo{
-					ExternalId:   "bar",
-					Index:        1,
-					RetryAttempt: 1,
-					Phase:        core.TaskExecution_UNDEFINED,
-				},
-				&event.ExternalResourceInfo{
 					ExternalId:   "baz",
 					Index:        2,
 					RetryAttempt: 0,
@@ -1035,7 +1086,7 @@ func TestMergeExternalResources(t *testing.T) {
 				&event.ExternalResourceInfo{
 					ExternalId:   "bar",
 					Index:        1,
-					RetryAttempt: 1,
+					RetryAttempt: 0,
 					Phase:        core.TaskExecution_UNDEFINED,
 				},
 				&event.ExternalResourceInfo{
@@ -1045,52 +1096,7 @@ func TestMergeExternalResources(t *testing.T) {
 					Phase:        core.TaskExecution_RUNNING,
 				},
 			},
-			name: "update existing with subtasks",
-		},
-		{
-			existing: []*event.ExternalResourceInfo{
-				&event.ExternalResourceInfo{
-					Index: 0,
-				},
-			},
-			latest: []*event.ExternalResourceInfo{
-				&event.ExternalResourceInfo{
-					Index: 1,
-				},
-			},
-			expected: []*event.ExternalResourceInfo{
-				&event.ExternalResourceInfo{
-					Index: 0,
-				},
-				&event.ExternalResourceInfo{
-					Index: 1,
-				},
-			},
-			name: "append subtask",
-		},
-		{
-			existing: []*event.ExternalResourceInfo{
-				&event.ExternalResourceInfo{
-					Index: 0,
-				},
-			},
-			latest: []*event.ExternalResourceInfo{
-				&event.ExternalResourceInfo{
-					Index: 2,
-				},
-			},
-			expected: []*event.ExternalResourceInfo{
-				&event.ExternalResourceInfo{
-					Index: 0,
-				},
-				&event.ExternalResourceInfo{
-					Index: 1,
-				},
-				&event.ExternalResourceInfo{
-					Index: 2,
-				},
-			},
-			name: "append subtask out of order",
+			name: "update subtask",
 		},
 	}
 
@@ -1098,6 +1104,7 @@ func TestMergeExternalResources(t *testing.T) {
 		t.Run(mergeTestCase.name, func(t *testing.T) {
 			actual := mergeExternalResources(mergeTestCase.existing, mergeTestCase.latest)
 			assert.Equal(t, len(mergeTestCase.expected), len(actual))
+			fmt.Printf("%+v - %+v\n", mergeTestCase.expected, actual)
 			for idx, expectedExternalResource := range mergeTestCase.expected {
 				assert.True(t, proto.Equal(expectedExternalResource, actual[idx]))
 			}

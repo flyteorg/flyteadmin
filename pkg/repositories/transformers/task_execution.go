@@ -2,6 +2,7 @@ package transformers
 
 import (
 	"context"
+	"sort"
 	"strconv"
 
 	"github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
@@ -121,6 +122,18 @@ func CreateTaskExecutionModel(ctx context.Context, input CreateTaskExecutionMode
 		Phase:        input.Request.Event.Phase.String(),
 		PhaseVersion: input.Request.Event.PhaseVersion,
 		InputURI:     input.Request.Event.InputUri,
+	}
+
+	metadata := input.Request.Event.Metadata
+	if metadata != nil && len(metadata.ExternalResources) > 1 {
+		sort.Slice(metadata, func(i, j int) bool {
+			a := metadata.ExternalResources[i]
+			b := metadata.ExternalResources[j]
+			if a.GetIndex() == b.GetIndex() {
+				return a.GetRetryAttempt() < b.GetRetryAttempt()
+			}
+			return a.GetIndex() < b.GetIndex()
+		})
 	}
 
 	closure := &admin.TaskExecutionClosure{
@@ -257,6 +270,7 @@ func mergeExternalResource(existing, latest *event.ExternalResourceInfo) *event.
 		existing.ExternalId = latest.ExternalId
 	}
 	// we only update if the index is equal so updating existing.Index is not necessary
+	// TODO - remove RetryAttempt (as part of search key)
 	if latest.RetryAttempt != 0 && existing.RetryAttempt != latest.RetryAttempt {
 		existing.RetryAttempt = latest.RetryAttempt
 	}
@@ -276,36 +290,27 @@ func mergeExternalResources(existing, latest []*event.ExternalResourceInfo) []*e
 		return existing
 	}
 
-	for i, externalResource := range latest {
-		// to ensure we update the correct ExternalResource we identify the resource index based on
-		// one of two categories:
-		// (1) a simple ID of an ExternalResource will only have the ExternalID populated. therefore
-		// we use the index into the event array (ie. i).
-		// (2) a subtask which contains an index, log links, phase, etc. if the index is set
-		// (ie. != 0) or if any of the other fields are set we use the ExternalResource index.
-		//
-		// therefore, if we want to track any fields (other than ExternalID) we need to provide an
-		// index to ensure correctness. additionally, if we only track ExternalID, any additions
-		// need to include all previous ExternalResources.
-		var index int
-		if externalResource.GetIndex() == 0 && externalResource.GetCacheStatus() == 0 && len(externalResource.GetLogs()) == 0 &&
-			externalResource.GetPhase() == 0 && externalResource.GetRetryAttempt() == 0 {
-			index = i
-		} else {
-			index = int(externalResource.GetIndex())
-		}
+	for _, externalResource := range latest {
+		// we use a binary search over the ExternalResource Index and RetryAttempt fields to
+		// determine if a new subtask is being reported or an existing is being updated. it is
+		// important to note that this means anytime more than one ExternalResource is reported
+		// they must set the Index field.
+		index := sort.Search(len(existing), func(i int) bool {
+			if existing[i].GetIndex() == externalResource.GetIndex() {
+				return existing[i].GetRetryAttempt() >= externalResource.GetRetryAttempt()
+			} else {
+				return existing[i].GetIndex() >= externalResource.GetIndex()
+			}	
+		})
 
 		if index >= len(existing) {
-			// if the latest external resources contains an out of order update
-			// (ie. index > len(existing)) then we should append placeholder external resources
-			// that will be updated later
-			for index-1 >= len(existing) {
-				existing = append(existing, &event.ExternalResourceInfo{Index: uint32(len(existing))})
-			}
-
 			existing = append(existing, externalResource)
-		} else {
+		} else if existing[index].GetIndex() == externalResource.GetIndex() && existing[index].GetRetryAttempt() == externalResource.GetRetryAttempt() {
 			existing[index] = mergeExternalResource(existing[index], externalResource)
+		} else {
+			existing = append(existing, &event.ExternalResourceInfo{})
+			copy(existing[index+1:], existing[index:])
+			existing[index] = externalResource
 		}
 	}
 
