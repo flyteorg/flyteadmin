@@ -1,6 +1,6 @@
 module github.com/flyteorg/flyteadmin
 
-go 1.17
+go 1.18
 
 require (
 	cloud.google.com/go/iam v0.1.0
@@ -15,6 +15,7 @@ require (
 	github.com/flyteorg/flyteplugins v0.10.16
 	github.com/flyteorg/flytepropeller v0.16.36
 	github.com/flyteorg/flytestdlib v0.4.17
+	github.com/flyteorg/stow v0.3.1
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-gormigrate/gormigrate/v2 v2.0.0
 	github.com/gogo/protobuf v1.3.2
@@ -25,7 +26,6 @@ require (
 	github.com/googleapis/gax-go/v2 v2.1.1
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/securecookie v1.1.1
-	github.com/graymeta/stow v0.2.7
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
@@ -63,7 +63,6 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v0.21.1 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v0.8.3 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v0.3.0 // indirect
-	github.com/flyteorg/stow v0.3.1 // indirect
 )
 
 require (
@@ -91,7 +90,6 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/felixge/httpsnoop v1.0.1 // indirect
-	github.com/flyteorg/datacatalog v0.3.26
 	github.com/form3tech-oss/jwt-go v3.2.2+incompatible // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/go-logr/logr v0.4.0 // indirect
@@ -160,7 +158,7 @@ require (
 	golang.org/x/sys v0.0.0-20220128215802-99c3d69c2c27 // indirect
 	golang.org/x/term v0.0.0-20210220032956-6a3ed077a48d // indirect
 	golang.org/x/text v0.3.7 // indirect
-	golang.org/x/tools v0.1.9-0.20211228192929-ee1ca4ffc4da // indirect
+	golang.org/x/tools v0.1.10 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/grpc/examples v0.0.0-20210315211313-1e7119b13689 // indirect
