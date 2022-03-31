@@ -2,7 +2,6 @@ package implementations
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -47,35 +46,35 @@ func (p *Publisher) Publish(ctx context.Context, notificationType string, msg pr
 	p.systemMetrics.PublishTotal.Inc()
 	logger.Debugf(ctx, "Publishing the following message [%+v]", msg)
 
-	var executionId string
+	var executionID string
 	var phase string
 	var eventTime time.Time
 
 	switch reflect.TypeOf(msg) {
-	case reflect.TypeOf(admin.WorkflowExecutionEventRequest{}):
+	case reflect.TypeOf(&admin.WorkflowExecutionEventRequest{}):
 		e := msg.(*admin.WorkflowExecutionEventRequest).Event
-		executionId = e.ExecutionId.String()
+		executionID = e.ExecutionId.String()
 		phase = e.Phase.String()
 		eventTime = e.OccurredAt.AsTime()
-	case reflect.TypeOf(admin.TaskExecutionEventRequest{}):
+	case reflect.TypeOf(&admin.TaskExecutionEventRequest{}):
 		e := msg.(*admin.TaskExecutionEventRequest).Event
-		executionId = e.TaskId.String()
+		executionID = e.TaskId.String()
 		phase = e.Phase.String()
 		eventTime = e.OccurredAt.AsTime()
-	case reflect.TypeOf(admin.NodeExecutionEventRequest{}):
+	case reflect.TypeOf(&admin.NodeExecutionEventRequest{}):
 		e := msg.(*admin.NodeExecutionEventRequest).Event
-		executionId = msg.(*admin.NodeExecutionEventRequest).Event.Id.String()
+		executionID = msg.(*admin.NodeExecutionEventRequest).Event.Id.String()
 		phase = e.Phase.String()
 		eventTime = e.OccurredAt.AsTime()
 	default:
-		return errors.New(fmt.Sprintf("Unsupported event types [%+v]", reflect.TypeOf(msg)))
+		return fmt.Errorf("unsupported event types [%+v]", reflect.TypeOf(msg))
 	}
 
 	event := cloudevents.NewEvent()
 	// CloudEvent specification: https://github.com/cloudevents/spec/blob/v1.0/spec.md#required-attributes
 	event.SetType(fmt.Sprintf("%v.%v", cloudEventTypePrefix, notificationType))
 	event.SetSource(cloudEventSource)
-	event.SetID(fmt.Sprintf("%v.%v", executionId, phase))
+	event.SetID(fmt.Sprintf("%v.%v", executionID, phase))
 	event.SetTime(eventTime)
 	event.SetExtension(jsonSchemaURLKey, jsonSchemaURL)
 
