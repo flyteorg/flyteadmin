@@ -5,6 +5,10 @@ import (
 	"testing"
 	"time"
 
+	flyteAdminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
+	"google.golang.org/grpc/codes"
+	"gorm.io/gorm"
+
 	mockScope "github.com/flyteorg/flytestdlib/promutils"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
@@ -147,6 +151,43 @@ func TestGetNodeExecution(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.EqualValues(t, expectedNodeExecution, output)
+}
+
+func TestGetNodeExecutionErr(t *testing.T) {
+	nodeExecutionRepo := NewNodeExecutionRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
+
+	t.Run("not found", func(t *testing.T) {
+		GlobalMock := mocket.Catcher.Reset()
+		GlobalMock.NewMock().WithError(gorm.ErrRecordNotFound)
+
+		_, err := nodeExecutionRepo.Get(context.Background(), interfaces.NodeExecutionResource{
+			NodeExecutionIdentifier: core.NodeExecutionIdentifier{
+				NodeId: "1",
+				ExecutionId: &core.WorkflowExecutionIdentifier{
+					Project: "execution_project",
+					Domain:  "execution_domain",
+					Name:    "execution_name",
+				},
+			},
+		})
+		assert.Equal(t, err.(flyteAdminErrors.FlyteAdminError).Code(), codes.NotFound)
+	})
+	t.Run("other error", func(t *testing.T) {
+		GlobalMock := mocket.Catcher.Reset()
+		GlobalMock.NewMock().WithError(gorm.ErrInvalidData)
+
+		_, err := nodeExecutionRepo.Get(context.Background(), interfaces.NodeExecutionResource{
+			NodeExecutionIdentifier: core.NodeExecutionIdentifier{
+				NodeId: "1",
+				ExecutionId: &core.WorkflowExecutionIdentifier{
+					Project: "execution_project",
+					Domain:  "execution_domain",
+					Name:    "execution_name",
+				},
+			},
+		})
+		assert.Equal(t, err.(flyteAdminErrors.FlyteAdminError).Code(), codes.Unknown)
+	})
 }
 
 func TestListNodeExecutions(t *testing.T) {

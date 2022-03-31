@@ -470,6 +470,30 @@ func TestTransformNodeExecutionModel(t *testing.T) {
 		assert.True(t, nodeExecution.Metadata.IsParentNode)
 		assert.True(t, nodeExecution.Metadata.IsDynamic)
 	})
+	t.Run("transform internal data err", func(t *testing.T) {
+		manager := NodeExecutionManager{
+			db: repository,
+		}
+		_, err := manager.transformNodeExecutionModel(ctx, models.NodeExecution{
+			InternalData: []byte("i'm invalid"),
+		}, nodeExecID)
+		assert.NotNil(t, err)
+		assert.Equal(t, err.(flyteAdminErrors.FlyteAdminError).Code(), codes.Internal)
+	})
+	t.Run("get with children err", func(t *testing.T) {
+		expectedErr := flyteAdminErrors.NewFlyteAdminError(codes.Internal, "foo")
+		repository.NodeExecutionRepo().(*repositoryMocks.MockNodeExecutionRepo).GetWithChildrenFunction =
+			func(ctx context.Context, input interfaces.NodeExecutionResource) (models.NodeExecution, error) {
+				assert.True(t, proto.Equal(nodeExecID, &input.NodeExecutionIdentifier))
+				return models.NodeExecution{}, expectedErr
+			}
+
+		manager := NodeExecutionManager{
+			db: repository,
+		}
+		_, err := manager.transformNodeExecutionModel(ctx, models.NodeExecution{}, nodeExecID)
+		assert.Equal(t, err, expectedErr)
+	})
 }
 
 func TestTransformNodeExecutionModelList(t *testing.T) {

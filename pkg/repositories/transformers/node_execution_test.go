@@ -5,6 +5,9 @@ import (
 	"testing"
 	"time"
 
+	flyteAdminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
+	"google.golang.org/grpc/codes"
+
 	commonMocks "github.com/flyteorg/flyteadmin/pkg/common/mocks"
 	"github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flytestdlib/storage"
@@ -509,5 +512,9 @@ func TestGetNodeExecutionInternalData(t *testing.T) {
 		actualData, err := GetNodeExecutionInternalData(serializedData)
 		assert.NoError(t, err)
 		assert.True(t, proto.Equal(internalData, actualData))
+	})
+	t.Run("invalid internal", func(t *testing.T) {
+		_, err := GetNodeExecutionInternalData([]byte("i'm invalid"))
+		assert.Equal(t, err.(flyteAdminErrors.FlyteAdminError).Code(), codes.Internal)
 	})
 }
