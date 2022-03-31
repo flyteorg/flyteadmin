@@ -12,32 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func initTestConfig() error {
-	pwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	configAccessor := viper.NewAccessor(config.Options{
-		SearchPaths: []string{filepath.Join(pwd, "testdata/clusters_config.yaml")},
-		StrictMode:  false,
-	})
-	return configAccessor.UpdateConfig(context.TODO())
-}
-
-func initTestPostgresConfig() error {
-	pwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	configAccessor := viper.NewAccessor(config.Options{
-		SearchPaths: []string{filepath.Join(pwd, "testdata/postgres_config.yaml")},
-		StrictMode:  false,
-	})
-	return configAccessor.UpdateConfig(context.TODO())
-}
-
 func initConfig(cfg string) error {
 	pwd, err := os.Getwd()
 	if err != nil {
