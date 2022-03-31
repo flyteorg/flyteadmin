@@ -124,9 +124,8 @@ func CreateTaskExecutionModel(ctx context.Context, input CreateTaskExecutionMode
 		InputURI:     input.Request.Event.InputUri,
 	}
 
-	metadata := input.Request.Event.Metadata
-	if metadata != nil && len(metadata.ExternalResources) > 1 {
-		sort.Slice(metadata, func(i, j int) bool {
+	if input.Request.Event.Metadata != nil && len(input.Request.Event.Metadata.ExternalResources) > 1 {
+		sort.Slice(input.Request.Event.Metadata.ExternalResources, func(i, j int) bool {
 			a := metadata.ExternalResources[i]
 			b := metadata.ExternalResources[j]
 			if a.GetIndex() == b.GetIndex() {
