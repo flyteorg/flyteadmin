@@ -269,11 +269,8 @@ func mergeExternalResource(existing, latest *event.ExternalResourceInfo) *event.
 	if latest.ExternalId != "" && existing.ExternalId != latest.ExternalId {
 		existing.ExternalId = latest.ExternalId
 	}
-	// we only update if the index is equal so updating existing.Index is not necessary
-	// TODO - remove RetryAttempt (as part of search key)
-	if latest.RetryAttempt != 0 && existing.RetryAttempt != latest.RetryAttempt {
-		existing.RetryAttempt = latest.RetryAttempt
-	}
+	// note we are not updating existing.Index and existing.RetryAttempt because they are the
+	// search key for our ExternalResource pool.
 	existing.Phase = latest.Phase
 	if latest.CacheStatus != core.CatalogCacheStatus_CACHE_DISABLED && existing.CacheStatus != latest.CacheStatus {
 		existing.CacheStatus = latest.CacheStatus
