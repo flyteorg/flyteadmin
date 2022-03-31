@@ -902,13 +902,11 @@ func TestMergeExternalResource(t *testing.T) {
 			latest: &event.ExternalResourceInfo{
 				ExternalId:   "foo",
 				CacheStatus:  core.CatalogCacheStatus_CACHE_HIT,
-				RetryAttempt: 1,
 				Phase:        core.TaskExecution_RUNNING,
 			},
 			expected: &event.ExternalResourceInfo{
 				ExternalId:   "foo",
 				CacheStatus:  core.CatalogCacheStatus_CACHE_HIT,
-				RetryAttempt: 1,
 				Phase:        core.TaskExecution_RUNNING,
 			},
 			name: "update everything",
@@ -1104,7 +1102,6 @@ func TestMergeExternalResources(t *testing.T) {
 		t.Run(mergeTestCase.name, func(t *testing.T) {
 			actual := mergeExternalResources(mergeTestCase.existing, mergeTestCase.latest)
 			assert.Equal(t, len(mergeTestCase.expected), len(actual))
-			fmt.Printf("%+v - %+v\n", mergeTestCase.expected, actual)
 			for idx, expectedExternalResource := range mergeTestCase.expected {
 				assert.True(t, proto.Equal(expectedExternalResource, actual[idx]))
 			}
