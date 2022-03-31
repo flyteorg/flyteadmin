@@ -245,6 +245,8 @@ func UpdateNodeExecutionModel(
 					"failed to unmarshal node execution metadata with error: %+v", err)
 			}
 		}
+		// Not every event sends IsParent and IsDynamic as an artifact of how propeller handles dynamic nodes.
+		// Only explicitly set the fields, when they're set in the event itself.
 		if request.Event.IsParent {
 			nodeExecutionMetadata.IsParentNode = true
 		}
