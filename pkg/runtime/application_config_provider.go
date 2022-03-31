@@ -79,12 +79,12 @@ type ApplicationConfigurationProvider struct{}
 func (p *ApplicationConfigurationProvider) GetDbConfig() *interfaces.DbConfig {
 	databaseConfig := database.GetConfig()
 	switch {
-	case databaseConfig.Postgres != database.PostgresConfig{}:
-		postgresConfig := interfaces.PostgresConfig(databaseConfig.Postgres)
-		return &interfaces.DbConfig{PostgresConfig: &postgresConfig}
 	case databaseConfig.SQLite != database.SQLiteConfig{}:
 		sqliteConfig := interfaces.SQLiteConfig(databaseConfig.SQLite)
 		return &interfaces.DbConfig{SQLiteConfig: &sqliteConfig}
+	case databaseConfig.Postgres != database.PostgresConfig{}:
+		postgresConfig := interfaces.PostgresConfig(databaseConfig.Postgres)
+		return &interfaces.DbConfig{PostgresConfig: &postgresConfig}
 	default:
 		return &interfaces.DbConfig{}
 	}
