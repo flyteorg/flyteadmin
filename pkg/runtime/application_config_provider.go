@@ -1,15 +1,12 @@
 package runtime
 
 import (
-	"time"
-
-	datacatalogDbConfig "github.com/flyteorg/datacatalog/pkg/repositories/config"
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flytestdlib/config"
+	"github.com/flyteorg/flytestdlib/database"
 )
 
-const database = "database"
 const flyteAdmin = "flyteadmin"
 const scheduler = "scheduler"
 const remoteData = "remoteData"
@@ -17,21 +14,10 @@ const notifications = "notifications"
 const domains = "domains"
 const externalEvents = "externalEvents"
 const metricPort = 10254
-const postgres = "postgres"
 
 const KB = 1024
 const MB = KB * KB
 
-var databaseConfig, err = config.RegisterSection(database, &interfaces.DbConfig{
-	DeprecatedPort:         5432,
-	DeprecatedUser:         postgres,
-	DeprecatedHost:         postgres,
-	DeprecatedDbName:       postgres,
-	DeprecatedExtraOptions: "sslmode=disable",
-	MaxIdleConnections:     10,
-	MaxOpenConnections:     1000,
-	ConnMaxLifeTime:        config.Duration{Duration: time.Hour},
-})
 var flyteAdminConfig = config.MustRegisterSection(flyteAdmin, &interfaces.ApplicationConfig{
 	ProfilerPort:          metricPort,
 	MetricsScope:          "flyte:",
@@ -91,48 +77,17 @@ var externalEventsConfig = config.MustRegisterSection(externalEvents, &interface
 type ApplicationConfigurationProvider struct{}
 
 func (p *ApplicationConfigurationProvider) GetDbConfig() *interfaces.DbConfig {
-	// The error only occurs when using single binary to launch flyte cluster.
-	// The reason is that we try to register "database" section in flyteadmin and datacatalog
-	// Here we will read database config from datacatalog if it exists.
-	if err != nil {
-		databaseSection := config.GetSection(database)
-		datacatalogDatabaseConfig := databaseSection.GetConfig().(*datacatalogDbConfig.DbConfigSection)
-		switch {
-		case len(datacatalogDatabaseConfig.Host) > 0 || len(datacatalogDatabaseConfig.User) > 0 || len(datacatalogDatabaseConfig.DbName) > 0:
-			return &interfaces.DbConfig{
-				DeprecatedPort:     datacatalogDatabaseConfig.Port,
-				DeprecatedUser:     datacatalogDatabaseConfig.User,
-				DeprecatedHost:     datacatalogDatabaseConfig.Host,
-				DeprecatedDbName:   datacatalogDatabaseConfig.DbName,
-				MaxIdleConnections: 10,
-				MaxOpenConnections: 1000,
-				ConnMaxLifeTime:    config.Duration{Duration: time.Hour},
-			}
-		case datacatalogDatabaseConfig.PostgresConfig != nil:
-			return &interfaces.DbConfig{
-				PostgresConfig: &interfaces.PostgresConfig{
-					Host:         datacatalogDatabaseConfig.PostgresConfig.Host,
-					Port:         datacatalogDatabaseConfig.PostgresConfig.Port,
-					DbName:       datacatalogDatabaseConfig.PostgresConfig.DbName,
-					User:         datacatalogDatabaseConfig.PostgresConfig.User,
-					Password:     datacatalogDatabaseConfig.PostgresConfig.Password,
-					PasswordPath: datacatalogDatabaseConfig.PostgresConfig.PasswordPath,
-					ExtraOptions: datacatalogDatabaseConfig.PostgresConfig.ExtraOptions,
-					Debug:        datacatalogDatabaseConfig.PostgresConfig.Debug,
-				},
-			}
-		case datacatalogDatabaseConfig.SQLiteConfig != nil:
-			return &interfaces.DbConfig{
-				SQLiteConfig: &interfaces.SQLiteConfig{
-					File: datacatalogDatabaseConfig.SQLiteConfig.File,
-				},
-			}
-		default:
-			return &interfaces.DbConfig{}
-		}
+	databaseConfig := database.GetConfig()
+	switch {
+	case databaseConfig.Postgres != database.PostgresConfig{}:
+		postgresConfig := interfaces.PostgresConfig(databaseConfig.Postgres)
+		return &interfaces.DbConfig{PostgresConfig: &postgresConfig}
+	case databaseConfig.SQLite != database.SQLiteConfig{}:
+		sqliteConfig := interfaces.SQLiteConfig(databaseConfig.SQLite)
+		return &interfaces.DbConfig{SQLiteConfig: &sqliteConfig}
+	default:
+		return &interfaces.DbConfig{}
 	}
-
-	return databaseConfig.GetConfig().(*interfaces.DbConfig)
 }
 
 func (p *ApplicationConfigurationProvider) GetTopLevelConfig() *interfaces.ApplicationConfig {
