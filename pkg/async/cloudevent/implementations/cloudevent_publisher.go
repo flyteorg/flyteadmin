@@ -35,10 +35,6 @@ type Publisher struct {
 	events        sets.String
 }
 
-func isInstanceOf(objectPtr, typePtr interface{}) bool {
-	return reflect.TypeOf(objectPtr) == reflect.TypeOf(typePtr)
-}
-
 func (p *Publisher) Publish(ctx context.Context, notificationType string, msg proto.Message) error {
 	if !p.shouldPublishEvent(notificationType) {
 		return nil

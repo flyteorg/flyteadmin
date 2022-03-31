@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/NYTimes/gizmo/pubsub/pubsubtest"
+
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/cloudevents/sdk-go/v2/event"
 	"github.com/cloudevents/sdk-go/v2/protocol"
@@ -25,7 +27,7 @@ func (s mockCloudEventClient) Send(ctx context.Context, event event.Event) proto
 }
 
 func TestPubSubSender(t *testing.T) {
-	pubSubSender := PubSubSender{&testCloudEventPublisher}
+	pubSubSender := PubSubSender{&pubsubtest.TestPublisher{}}
 	cloudEvent := cloudevents.NewEvent()
 	err := pubSubSender.Send(context.Background(), "test", cloudEvent)
 	assert.Nil(t, err)
