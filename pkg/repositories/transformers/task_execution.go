@@ -124,8 +124,9 @@ func CreateTaskExecutionModel(ctx context.Context, input CreateTaskExecutionMode
 		InputURI:     input.Request.Event.InputUri,
 	}
 
-	if input.Request.Event.Metadata != nil && len(input.Request.Event.Metadata.ExternalResources) > 1 {
-		sort.Slice(input.Request.Event.Metadata.ExternalResources, func(i, j int) bool {
+	metadata := input.Request.Event.Metadata
+	if metadata != nil && len(metadata.ExternalResources) > 1 {
+		sort.Slice(metadata.ExternalResources, func(i, j int) bool {
 			a := metadata.ExternalResources[i]
 			b := metadata.ExternalResources[j]
 			if a.GetIndex() == b.GetIndex() {
@@ -143,7 +144,7 @@ func CreateTaskExecutionModel(ctx context.Context, input CreateTaskExecutionMode
 		CustomInfo: input.Request.Event.CustomInfo,
 		Reason:     input.Request.Event.Reason,
 		TaskType:   input.Request.Event.TaskType,
-		Metadata:   input.Request.Event.Metadata,
+		Metadata:   metadata,
 	}
 
 	eventPhase := input.Request.Event.Phase
@@ -297,9 +298,8 @@ func mergeExternalResources(existing, latest []*event.ExternalResourceInfo) []*e
 		index := sort.Search(len(existing), func(i int) bool {
 			if existing[i].GetIndex() == externalResource.GetIndex() {
 				return existing[i].GetRetryAttempt() >= externalResource.GetRetryAttempt()
-			} else {
-				return existing[i].GetIndex() >= externalResource.GetIndex()
-			}	
+			}
+			return existing[i].GetIndex() >= externalResource.GetIndex()
 		})
 
 		if index >= len(existing) {
