@@ -5,13 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/flyteorg/flyteadmin/pkg/async/cloudevent"
-
-	"github.com/Shopify/sarama"
-
-	"github.com/cloudevents/sdk-go/protocol/kafka_sarama/v2"
-	cloudevents "github.com/cloudevents/sdk-go/v2"
-
 	"github.com/flyteorg/flyteadmin/pkg/async"
 
 	"github.com/flyteorg/flyteadmin/pkg/async/notifications/implementations"
@@ -233,70 +226,6 @@ func NewEventsPublisher(config runtimeInterfaces.ExternalEventsConfig, scope pro
 	default:
 		logger.Infof(context.Background(),
 			"Using default noop events publisher implementation for config type [%s]", config.Type)
-		return implementations.NewNoopPublish()
-	}
-}
-
-func NewCloudEventsPublisher(config runtimeInterfaces.CloudEventsConfig, scope promutils.Scope) interfaces.Publisher {
-	if !config.Enable {
-		return implementations.NewNoopPublish()
-	}
-	reconnectAttempts := config.ReconnectAttempts
-	reconnectDelay := time.Duration(config.ReconnectDelaySeconds) * time.Second
-	switch config.Type {
-	case common.AWS:
-		snsConfig := gizmoAWS.SNSConfig{
-			Topic: config.EventsPublisherConfig.TopicName,
-		}
-		snsConfig.Region = config.AWSConfig.Region
-
-		var publisher pubsub.Publisher
-		var err error
-		err = async.Retry(reconnectAttempts, reconnectDelay, func() error {
-			publisher, err = gizmoAWS.NewPublisher(snsConfig)
-			return err
-		})
-
-		// Any persistent errors initiating Publisher with Amazon configurations results in a failed start up.
-		if err != nil {
-			panic(err)
-		}
-		return cloudevent.NewCloudEventsPublisher(&cloudevent.PubSubSender{Pub: publisher}, scope, config.EventsPublisherConfig.EventTypes)
-	case common.GCP:
-		pubsubConfig := gizmoGCP.Config{
-			Topic: config.EventsPublisherConfig.TopicName,
-		}
-		pubsubConfig.ProjectID = config.GCPConfig.ProjectID
-		var publisher pubsub.MultiPublisher
-		var err error
-		err = async.Retry(reconnectAttempts, reconnectDelay, func() error {
-			publisher, err = gizmoGCP.NewPublisher(context.TODO(), pubsubConfig)
-			return err
-		})
-
-		if err != nil {
-			panic(err)
-		}
-		return cloudevent.NewCloudEventsPublisher(&cloudevent.PubSubSender{Pub: publisher}, scope, config.EventsPublisherConfig.EventTypes)
-	case cloudevent.Kafka:
-		saramaConfig := sarama.NewConfig()
-		saramaConfig.Version = config.KafkaConfig.Version
-		sender, err := kafka_sarama.NewSender(config.Brokers, saramaConfig, config.EventsPublisherConfig.TopicName)
-		if err != nil {
-			panic(err)
-		}
-		defer sender.Close(context.Background())
-		client, err := cloudevents.NewClient(sender, cloudevents.WithTimeNow(), cloudevents.WithUUIDs())
-		if err != nil {
-			logger.Fatalf(context.Background(), "failed to create client, %v", err)
-			panic(err)
-		}
-		return cloudevent.NewCloudEventsPublisher(&cloudevent.KafkaSender{Client: client}, scope, config.EventsPublisherConfig.EventTypes)
-	case common.Local:
-		fallthrough
-	default:
-		logger.Infof(context.Background(),
-			"Using default noop cloud events publisher implementation for config type [%s]", config.Type)
 		return implementations.NewNoopPublish()
 	}
 }

@@ -150,6 +150,8 @@ type GCPConfig struct {
 
 type KafkaConfig struct {
 	Version sarama.KafkaVersion
+	// kafka broker addresses
+	Brokers []string `json:"brokers"`
 }
 
 // This section holds configuration for the event scheduler used to schedule workflow executions.
@@ -446,8 +448,6 @@ type CloudEventsConfig struct {
 	AWSConfig   AWSConfig   `json:"aws"`
 	GCPConfig   GCPConfig   `json:"gcp"`
 	KafkaConfig KafkaConfig `json:"kafka"`
-	// kafka broker addresses
-	Brokers []string `json:"brokers"`
 	// Publish events to a pubsub tops
 	EventsPublisherConfig EventsPublisherConfig `json:"eventsPublisher"`
 	// Number of times to attempt recreating a notifications processor client should there be any disruptions.

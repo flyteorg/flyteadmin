@@ -7,6 +7,7 @@ import (
 
 	"github.com/flyteorg/flyteadmin/plugins"
 
+	"github.com/flyteorg/flyteadmin/pkg/async/cloudevent"
 	interfaces2 "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
@@ -98,7 +99,7 @@ func NewAdminServer(ctx context.Context, pluginRegistry *plugins.Registry, confi
 	publisher := notifications.NewNotificationsPublisher(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope)
 	processor := notifications.NewNotificationsProcessor(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope)
 	eventPublisher := notifications.NewEventsPublisher(*configuration.ApplicationConfiguration().GetExternalEventsConfig(), adminScope)
-	cloudEventPublisher := notifications.NewCloudEventsPublisher(*configuration.ApplicationConfiguration().GetCloudEventsConfig(), adminScope)
+	cloudEventPublisher := cloudevent.NewCloudEventsPublisher(ctx, *configuration.ApplicationConfiguration().GetCloudEventsConfig(), adminScope)
 	go func() {
 		logger.Info(ctx, "Started processing notifications.")
 		processor.StartProcessing()

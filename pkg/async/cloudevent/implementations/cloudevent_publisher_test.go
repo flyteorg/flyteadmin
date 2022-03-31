@@ -1,9 +1,10 @@
-package cloudevent
+package implementations
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -170,7 +171,7 @@ func TestNewCloudEventsPublisher_EventTypes(t *testing.T) {
 
 						assert.Equal(t, cloudEvent.DataContentType(), cloudevents.ApplicationJSON)
 						assert.Equal(t, cloudEvent.SpecVersion(), cloudevents.VersionV1)
-						assert.Equal(t, cloudEvent.Type(), proto.MessageName(event))
+						assert.Equal(t, cloudEvent.Type(), fmt.Sprintf("%v.%v", cloudEventTypePrefix, proto.MessageName(event)))
 						assert.Equal(t, cloudEvent.Source(), cloudEventSource)
 						assert.Equal(t, cloudEvent.Extensions(), map[string]interface{}{jsonSchemaURLKey: jsonSchemaURL})
 
