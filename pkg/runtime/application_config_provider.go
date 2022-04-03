@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"fmt"
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flytestdlib/config"
@@ -79,14 +80,14 @@ type ApplicationConfigurationProvider struct{}
 func (p *ApplicationConfigurationProvider) GetDbConfig() *interfaces.DbConfig {
 	databaseConfig := database.GetConfig()
 	switch {
-	case databaseConfig.SQLite != database.SQLiteConfig{}:
+	case !databaseConfig.SQLite.IsEmpty():
 		sqliteConfig := interfaces.SQLiteConfig(databaseConfig.SQLite)
 		return &interfaces.DbConfig{SQLiteConfig: &sqliteConfig}
-	case databaseConfig.Postgres != database.PostgresConfig{}:
+	case !databaseConfig.Postgres.IsEmpty():
 		postgresConfig := interfaces.PostgresConfig(databaseConfig.Postgres)
 		return &interfaces.DbConfig{PostgresConfig: &postgresConfig}
 	default:
-		return &interfaces.DbConfig{}
+		panic(fmt.Errorf("database config cannot be empty"))
 	}
 }
 
