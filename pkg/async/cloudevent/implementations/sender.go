@@ -18,12 +18,6 @@ const (
 	Kafka Receiver = "Kafka"
 )
 
-// Sender Defines the interface for sending cloudevents.
-type Sender interface {
-	// Send a cloud event to other services (pub/sub or Kafka)
-	Send(ctx context.Context, notificationType string, event cloudevents.Event) error
-}
-
 // PubSubSender Implementation of Sender
 type PubSubSender struct {
 	Pub pubsub.Publisher

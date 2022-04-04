@@ -28,6 +28,7 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/storage"
 
+	cloudeventInterfaces "github.com/flyteorg/flyteadmin/pkg/async/cloudevent/interfaces"
 	eventWriter "github.com/flyteorg/flyteadmin/pkg/async/events/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/async/notifications"
 	notificationInterfaces "github.com/flyteorg/flyteadmin/pkg/async/notifications/interfaces"
@@ -1679,7 +1680,7 @@ func NewExecutionManager(db repositoryInterfaces.Repository, pluginRegistry *plu
 	storageClient *storage.DataStore, systemScope promutils.Scope, userScope promutils.Scope,
 	publisher notificationInterfaces.Publisher, urlData dataInterfaces.RemoteURLInterface,
 	workflowManager interfaces.WorkflowInterface, namedEntityManager interfaces.NamedEntityInterface,
-	eventPublisher notificationInterfaces.Publisher, cloudEventPublisher notificationInterfaces.Publisher,
+	eventPublisher notificationInterfaces.Publisher, cloudEventPublisher cloudeventInterfaces.Publisher,
 	eventWriter eventWriter.WorkflowExecutionEventWriter) interfaces.ExecutionInterface {
 	queueAllocator := executions.NewQueueAllocator(config, db)
 	systemMetrics := newExecutionSystemMetrics(systemScope)

@@ -34,8 +34,8 @@ func TestPubSubSender(t *testing.T) {
 }
 
 func TestKafkaSender(t *testing.T) {
-	pubSubSender := KafkaSender{mockCloudEventClient{}}
+	kafkaSender := KafkaSender{mockCloudEventClient{}}
 	cloudEvent := cloudevents.NewEvent()
-	err := pubSubSender.Send(context.Background(), "test", cloudEvent)
+	err := kafkaSender.Send(context.Background(), "test", cloudEvent)
 	assert.Nil(t, err)
 }

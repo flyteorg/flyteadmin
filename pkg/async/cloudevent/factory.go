@@ -11,9 +11,9 @@ import (
 	"github.com/cloudevents/sdk-go/protocol/kafka_sarama/v2"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/flyteorg/flyteadmin/pkg/async"
-	implementations2 "github.com/flyteorg/flyteadmin/pkg/async/cloudevent/implementations"
+	cloudEventImplementations "github.com/flyteorg/flyteadmin/pkg/async/cloudevent/implementations"
+	"github.com/flyteorg/flyteadmin/pkg/async/cloudevent/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/async/notifications/implementations"
-	"github.com/flyteorg/flyteadmin/pkg/async/notifications/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flytestdlib/logger"
@@ -44,7 +44,7 @@ func NewCloudEventsPublisher(ctx context.Context, config runtimeInterfaces.Cloud
 		if err != nil {
 			panic(err)
 		}
-		return implementations2.NewCloudEventsPublisher(&implementations2.PubSubSender{Pub: publisher}, scope, config.EventsPublisherConfig.EventTypes)
+		return cloudEventImplementations.NewCloudEventsPublisher(&cloudEventImplementations.PubSubSender{Pub: publisher}, scope, config.EventsPublisherConfig.EventTypes)
 	case common.GCP:
 		pubsubConfig := gizmoGCP.Config{
 			Topic: config.EventsPublisherConfig.TopicName,
@@ -60,8 +60,8 @@ func NewCloudEventsPublisher(ctx context.Context, config runtimeInterfaces.Cloud
 		if err != nil {
 			panic(err)
 		}
-		return implementations2.NewCloudEventsPublisher(&implementations2.PubSubSender{Pub: publisher}, scope, config.EventsPublisherConfig.EventTypes)
-	case implementations2.Kafka:
+		return cloudEventImplementations.NewCloudEventsPublisher(&cloudEventImplementations.PubSubSender{Pub: publisher}, scope, config.EventsPublisherConfig.EventTypes)
+	case cloudEventImplementations.Kafka:
 		saramaConfig := sarama.NewConfig()
 		saramaConfig.Version = config.KafkaConfig.Version
 		sender, err := kafka_sarama.NewSender(config.KafkaConfig.Brokers, saramaConfig, config.EventsPublisherConfig.TopicName)
@@ -74,7 +74,7 @@ func NewCloudEventsPublisher(ctx context.Context, config runtimeInterfaces.Cloud
 			logger.Fatalf(ctx, "failed to create client, %v", err)
 			panic(err)
 		}
-		return implementations2.NewCloudEventsPublisher(&implementations2.KafkaSender{Client: client}, scope, config.EventsPublisherConfig.EventTypes)
+		return cloudEventImplementations.NewCloudEventsPublisher(&cloudEventImplementations.KafkaSender{Client: client}, scope, config.EventsPublisherConfig.EventTypes)
 	case common.Local:
 		fallthrough
 	default:

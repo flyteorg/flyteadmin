@@ -14,7 +14,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/sets"
 
-	"github.com/flyteorg/flyteadmin/pkg/async/notifications/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/async/cloudevent/interfaces"
 
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
@@ -30,7 +30,7 @@ const (
 
 // Publisher This event publisher acts to asynchronously publish workflow execution events.
 type Publisher struct {
-	sender        Sender
+	sender        interfaces.Sender
 	systemMetrics implementations.EventPublisherSystemMetrics
 	events        sets.String
 }
@@ -46,18 +46,18 @@ func (p *Publisher) Publish(ctx context.Context, notificationType string, msg pr
 	var phase string
 	var eventTime time.Time
 
-	switch reflect.TypeOf(msg) {
-	case reflect.TypeOf(&admin.WorkflowExecutionEventRequest{}):
+	switch msg.(type) {
+	case *admin.WorkflowExecutionEventRequest:
 		e := msg.(*admin.WorkflowExecutionEventRequest).Event
 		executionID = e.ExecutionId.String()
 		phase = e.Phase.String()
 		eventTime = e.OccurredAt.AsTime()
-	case reflect.TypeOf(&admin.TaskExecutionEventRequest{}):
+	case *admin.TaskExecutionEventRequest:
 		e := msg.(*admin.TaskExecutionEventRequest).Event
 		executionID = e.TaskId.String()
 		phase = e.Phase.String()
 		eventTime = e.OccurredAt.AsTime()
-	case reflect.TypeOf(&admin.NodeExecutionEventRequest{}):
+	case *admin.NodeExecutionEventRequest:
 		e := msg.(*admin.NodeExecutionEventRequest).Event
 		executionID = msg.(*admin.NodeExecutionEventRequest).Event.Id.String()
 		phase = e.Phase.String()
@@ -93,7 +93,7 @@ func (p *Publisher) shouldPublishEvent(notificationType string) bool {
 	return p.events.Has(notificationType)
 }
 
-func NewCloudEventsPublisher(sender Sender, scope promutils.Scope, eventTypes []string) interfaces.Publisher {
+func NewCloudEventsPublisher(sender interfaces.Sender, scope promutils.Scope, eventTypes []string) interfaces.Publisher {
 	eventSet := sets.NewString()
 
 	for _, event := range eventTypes {
