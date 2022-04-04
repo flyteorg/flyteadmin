@@ -1,14 +1,14 @@
 package runtime
 
 import (
-	"time"
+	"fmt"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flytestdlib/config"
+	"github.com/flyteorg/flytestdlib/database"
 )
 
-const database = "database"
 const flyteAdmin = "flyteadmin"
 const scheduler = "scheduler"
 const remoteData = "remoteData"
@@ -17,21 +17,10 @@ const domains = "domains"
 const externalEvents = "externalEvents"
 const cloudEvents = "cloudEvents"
 const metricPort = 10254
-const postgres = "postgres"
 
 const KB = 1024
 const MB = KB * KB
 
-var databaseConfig = config.MustRegisterSection(database, &interfaces.DbConfig{
-	DeprecatedPort:         5432,
-	DeprecatedUser:         postgres,
-	DeprecatedHost:         postgres,
-	DeprecatedDbName:       postgres,
-	DeprecatedExtraOptions: "sslmode=disable",
-	MaxIdleConnections:     10,
-	MaxOpenConnections:     1000,
-	ConnMaxLifeTime:        config.Duration{Duration: time.Hour},
-})
 var flyteAdminConfig = config.MustRegisterSection(flyteAdmin, &interfaces.ApplicationConfig{
 	ProfilerPort:          metricPort,
 	MetricsScope:          "flyte:",
@@ -95,7 +84,17 @@ var cloudEventsConfig = config.MustRegisterSection(cloudEvents, &interfaces.Clou
 type ApplicationConfigurationProvider struct{}
 
 func (p *ApplicationConfigurationProvider) GetDbConfig() *interfaces.DbConfig {
-	return databaseConfig.GetConfig().(*interfaces.DbConfig)
+	databaseConfig := database.GetConfig()
+	switch {
+	case !databaseConfig.SQLite.IsEmpty():
+		sqliteConfig := interfaces.SQLiteConfig(databaseConfig.SQLite)
+		return &interfaces.DbConfig{SQLiteConfig: &sqliteConfig}
+	case !databaseConfig.Postgres.IsEmpty():
+		postgresConfig := interfaces.PostgresConfig(databaseConfig.Postgres)
+		return &interfaces.DbConfig{PostgresConfig: &postgresConfig}
+	default:
+		panic(fmt.Errorf("database config cannot be empty"))
+	}
 }
 
 func (p *ApplicationConfigurationProvider) GetTopLevelConfig() *interfaces.ApplicationConfig {
