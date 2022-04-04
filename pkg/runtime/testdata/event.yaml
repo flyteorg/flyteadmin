@@ -1,6 +1,7 @@
-enable: true
-type: aws
-aws:
-  region: us-east-1
-eventsPublisher:
-  topicName: topic
+cloudevents:
+  enable: true
+  type: aws
+  aws:
+    region: us-east-1
+  eventsPublisher:
+    topicName: topic
