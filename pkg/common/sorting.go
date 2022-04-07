@@ -13,14 +13,20 @@ const gormAscending = "%s asc"
 
 type SortParameter interface {
 	GetGormOrderExpr() string
+	GetSortKey() string
 }
 
 type sortParamImpl struct {
 	gormOrderExpression string
+	sortKey             string
 }
 
 func (s *sortParamImpl) GetGormOrderExpr() string {
 	return s.gormOrderExpression
+}
+
+func (s *sortParamImpl) GetSortKey() string {
+	return s.sortKey
 }
 
 func NewSortParameter(sort admin.Sort) (SortParameter, error) {
@@ -35,5 +41,6 @@ func NewSortParameter(sort admin.Sort) (SortParameter, error) {
 	}
 	return &sortParamImpl{
 		gormOrderExpression: gormOrderExpression,
+		sortKey:             sort.Key,
 	}, nil
 }

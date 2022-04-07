@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"google.golang.org/grpc/codes"
-
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	adminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/promutils"
+
+	"google.golang.org/grpc/codes"
 	"gorm.io/gorm"
 )
 
@@ -33,12 +33,15 @@ func getSubQueryJoin(db *gorm.DB, tableName string, input interfaces.ListNamedEn
 		Table(tableName).
 		Where(map[string]interface{}{Project: input.Project, Domain: input.Domain}).
 		Limit(input.Limit).
-		Offset(input.Offset).
-		Group(identifierGroupBy)
+		Offset(input.Offset)
 
 	// Apply consistent sort ordering.
 	if input.SortParameter != nil {
+		identifierGroupByWithOrderKey := fmt.Sprintf("%s, %s, %s, %s", Project, Domain, Name, input.SortParameter.GetSortKey())
+		tx = tx.Group(identifierGroupByWithOrderKey)
 		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
+	} else {
+		tx = tx.Group(identifierGroupBy)
 	}
 
 	return db.Joins(fmt.Sprintf(joinString, input.ResourceType), tx)
@@ -191,6 +194,7 @@ func (r *NamedEntityRepo) List(ctx context.Context, input interfaces.ListNamedEn
 	}
 	// Apply sort ordering.
 	if input.SortParameter != nil {
+		tx = tx.Group(input.SortParameter.GetSortKey())
 		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
 	}
 
