@@ -37,6 +37,10 @@ func (s Service) CreateUploadLocation(ctx context.Context, req *service.CreateUp
 		return nil, fmt.Errorf("prjoect and domain are required parameters")
 	}
 
+	if len(req.ContentMd5) == 0 {
+		return nil, fmt.Errorf("content_md5 is a required parameter")
+	}
+
 	if expiresIn := req.ExpiresIn; expiresIn != nil {
 		if !expiresIn.IsValid() {
 			return nil, fmt.Errorf("expiresIn [%v] is invalid", expiresIn)
@@ -60,8 +64,9 @@ func (s Service) CreateUploadLocation(ctx context.Context, req *service.CreateUp
 	}
 
 	resp, err := s.dataStore.CreateSignedURL(ctx, storagePath, storage.SignedURLProperties{
-		Scope:     stow.ClientMethodPut,
-		ExpiresIn: req.ExpiresIn.AsDuration(),
+		Scope:      stow.ClientMethodPut,
+		ExpiresIn:  req.ExpiresIn.AsDuration(),
+		ContentMD5: req.ContentMd5,
 		// TODO: pass max allowed upload size
 	})
 
@@ -85,7 +90,7 @@ func createShardedStorageLocation(ctx context.Context, req *service.CreateUpload
 		keySuffixArr = append(keySuffixArr, cfg.StoragePrefix)
 	}
 
-	keySuffixArr = append(keySuffixArr, req.Project, req.Domain, req.Suffix)
+	keySuffixArr = append(keySuffixArr, req.Project, req.Domain, req.ContentMd5, req.Suffix)
 	prefix, err := shardSelector.GetShardPrefix(ctx, []byte(strings.Join(keySuffixArr, "/")))
 	if err != nil {
 		return "", err
