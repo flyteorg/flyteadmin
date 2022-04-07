@@ -107,8 +107,8 @@ func newGRPCServer(ctx context.Context, pluginRegistry *plugins.Registry, cfg *c
 
 	configuration := runtime2.NewConfigurationProvider()
 	service.RegisterAdminServiceServer(grpcServer, adminservice.NewAdminServer(ctx, pluginRegistry, configuration, cfg.KubeConfig, cfg.Master, dataStorageClient, scope.NewSubScope("admin")))
+	service.RegisterAuthMetadataServiceServer(grpcServer, authCtx.AuthMetadataService())
 	if cfg.Security.UseAuth {
-		service.RegisterAuthMetadataServiceServer(grpcServer, authCtx.AuthMetadataService())
 		service.RegisterIdentityServiceServer(grpcServer, authCtx.IdentityService())
 	}
 
@@ -243,7 +243,7 @@ func serveGatewayInsecure(ctx context.Context, pluginRegistry *plugins.Registry,
 			}
 		}
 
-		oauth2MetadataProvider := authzserver.NewService(authCfg)
+		oauth2MetadataProvider := authzserver.NewService(cfg, authCfg)
 		oidcUserInfoProvider := auth.NewUserInfoProvider()
 
 		authCtx, err = auth.NewAuthenticationContext(ctx, sm, oauth2Provider, oauth2ResourceServer, oauth2MetadataProvider, oidcUserInfoProvider, authCfg)
@@ -346,7 +346,7 @@ func serveGatewaySecure(ctx context.Context, pluginRegistry *plugins.Registry, c
 			}
 		}
 
-		oauth2MetadataProvider := authzserver.NewService(authCfg)
+		oauth2MetadataProvider := authzserver.NewService(cfg, authCfg)
 		oidcUserInfoProvider := auth.NewUserInfoProvider()
 
 		authCtx, err = auth.NewAuthenticationContext(ctx, sm, oauth2Provider, oauth2ResourceServer, oauth2MetadataProvider, oidcUserInfoProvider, authCfg)

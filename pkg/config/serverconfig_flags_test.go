@@ -421,4 +421,18 @@ func TestServerConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_exportedDNS", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := defaultServerConfig.ExportedDNS.String()
+
+			cmdFlags.Set("exportedDNS", testValue)
+			if vString, err := cmdFlags.GetString("exportedDNS"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.ExportedDNS)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 }

@@ -26,6 +26,8 @@ type ServerConfig struct {
 	DeprecatedThirdPartyConfig authConfig.ThirdPartyConfigOptions `json:"thirdPartyConfig" pflag:",Deprecated please use auth.appAuth.thirdPartyConfig instead."`
 
 	DataProxy DataProxyConfig `json:"dataProxy" pflag:",Defines data proxy configuration."`
+
+	ExportedDNS config.URL `json:"exportedDNS" pflag:",Defines the http endpoint the service is accessible at."`
 }
 
 type DataProxyConfig struct {
