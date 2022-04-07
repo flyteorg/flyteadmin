@@ -2,6 +2,7 @@ package dataproxy
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"strings"
 	"time"
@@ -90,7 +91,7 @@ func createShardedStorageLocation(ctx context.Context, req *service.CreateUpload
 		keySuffixArr = append(keySuffixArr, cfg.StoragePrefix)
 	}
 
-	keySuffixArr = append(keySuffixArr, req.Project, req.Domain, req.ContentMd5, req.Suffix)
+	keySuffixArr = append(keySuffixArr, req.Project, req.Domain, base64.StdEncoding.EncodeToString(req.ContentMd5), req.Suffix)
 	prefix, err := shardSelector.GetShardPrefix(ctx, []byte(strings.Join(keySuffixArr, "/")))
 	if err != nil {
 		return "", err

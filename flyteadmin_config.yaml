@@ -121,7 +121,7 @@ storage:
     auth-type: accesskey
     secret-key: miniostorage
     disable-ssl: true
-    endpoint: "http://localhost:9000"
+    endpoint: "http://localhost:30084"
     region: my-region
   signedUrl:
     stowConfigOverride:
