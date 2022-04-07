@@ -178,21 +178,6 @@ func TestListNamedEntity(t *testing.T) {
 
 func TestListNamedEntityTxErrorCases(t *testing.T) {
 	metadataRepo := NewNamedEntityRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
-
-	results := make([]map[string]interface{}, 0)
-	metadata := getMockNamedEntityResponseFromDb(models.NamedEntity{
-		NamedEntityKey: models.NamedEntityKey{
-			ResourceType: resourceType,
-			Project:      project,
-			Domain:       domain,
-			Name:         name,
-		},
-		NamedEntityMetadataFields: models.NamedEntityMetadataFields{
-			Description: description,
-		},
-	})
-	results = append(results, metadata)
-
 	GlobalMock := mocket.Catcher.Reset()
 	GlobalMock.Logging = true
 	mockQuery := GlobalMock.NewMock()
