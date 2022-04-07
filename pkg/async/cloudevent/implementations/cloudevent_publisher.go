@@ -25,7 +25,7 @@ const (
 	cloudEventSource     = "https://github.com/flyteorg/flyteadmin"
 	cloudEventTypePrefix = "com.flyte.resource"
 	jsonSchemaURLKey     = "jsonschemaurl"
-	jsonSchemaURL        = "https://github.com/flyteorg/flyteidl/blob/cloudevent2/jsonschema/workflow_execution.json"
+	jsonSchemaURL        = "https://github.com/flyteorg/flyteidl/blob/v0.24.14/jsonschema/workflow_execution.json"
 )
 
 // Publisher This event publisher acts to asynchronously publish workflow execution events.
