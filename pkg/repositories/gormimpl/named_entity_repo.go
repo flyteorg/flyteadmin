@@ -33,8 +33,8 @@ func getSubQueryJoin(db *gorm.DB, tableName string, input interfaces.ListNamedEn
 		Table(tableName).
 		Where(map[string]interface{}{Project: input.Project, Domain: input.Domain}).
 		Limit(input.Limit).
-		Group(identifierGroupBy).
-		Offset(input.Offset)
+		Offset(input.Offset).
+		Group(identifierGroupBy)
 
 	// Apply consistent sort ordering.
 	if input.SortParameter != nil {
@@ -198,7 +198,7 @@ func (r *NamedEntityRepo) List(ctx context.Context, input interfaces.ListNamedEn
 	var entities []models.NamedEntity
 	timer := r.metrics.ListDuration.Start()
 
-	tx.Select(getSelectForNamedEntity(innerJoinTableAlias, input.ResourceType)).Table(namedEntityMetadataTableName).Group(getGroupByForNamedEntity).Scan(&entities)
+	tx.Distinct(getSelectForNamedEntity(innerJoinTableAlias, input.ResourceType)).Table(namedEntityMetadataTableName).Group(getGroupByForNamedEntity).Scan(&entities)
 
 	timer.Stop()
 

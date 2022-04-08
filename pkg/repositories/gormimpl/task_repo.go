@@ -113,7 +113,7 @@ func (r *TaskRepo) ListTaskIdentifiers(ctx context.Context, input interfaces.Lis
 	// Scan the results into a list of tasks
 	var tasks []models.Task
 	timer := r.metrics.ListIdentifiersDuration.Start()
-	tx.Select([]string{Project, Domain, Name}).Group(identifierGroupBy).Scan(&tasks)
+	tx.Distinct([]string{Project, Domain, Name}).Group(identifierGroupBy).Scan(&tasks)
 	timer.Stop()
 	if tx.Error != nil {
 		return interfaces.TaskCollectionOutput{}, r.errorTransformer.ToFlyteAdminError(tx.Error)

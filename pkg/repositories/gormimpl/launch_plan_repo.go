@@ -166,7 +166,7 @@ func (r *LaunchPlanRepo) ListLaunchPlanIdentifiers(ctx context.Context, input in
 	// Scan the results into a list of launch plans
 	var launchPlans []models.LaunchPlan
 	timer := r.metrics.ListIdentifiersDuration.Start()
-	tx.Select([]string{Project, Domain, Name}).Group(identifierGroupBy).Scan(&launchPlans)
+	tx.Distinct([]string{Project, Domain, Name}).Group(identifierGroupBy).Scan(&launchPlans)
 	timer.Stop()
 	if tx.Error != nil {
 		return interfaces.LaunchPlanCollectionOutput{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
