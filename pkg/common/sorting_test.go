@@ -14,7 +14,6 @@ func TestSortParameter_Ascending(t *testing.T) {
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "name asc", sortParameter.GetGormOrderExpr())
-	assert.Equal(t, "name", sortParameter.GetSortKey())
 }
 
 func TestSortParameter_Descending(t *testing.T) {
@@ -24,5 +23,4 @@ func TestSortParameter_Descending(t *testing.T) {
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "project desc", sortParameter.GetGormOrderExpr())
-	assert.Equal(t, "project", sortParameter.GetSortKey())
 }

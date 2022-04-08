@@ -157,7 +157,7 @@ func TestListNamedEntity(t *testing.T) {
 	mockQuery := GlobalMock.NewMock()
 
 	mockQuery.WithQuery(
-		`SELECT entities.project,entities.domain,entities.name,'2' AS resource_type,named_entity_metadata.description,named_entity_metadata.state FROM "named_entity_metadata" RIGHT JOIN (SELECT project,domain,name FROM "workflows" WHERE "domain" = $1 AND "project" = $2 GROUP BY project, domain, name, name ORDER BY name desc LIMIT 20) AS entities ON named_entity_metadata.resource_type = 2 AND named_entity_metadata.project = entities.project AND named_entity_metadata.domain = entities.domain AND named_entity_metadata.name = entities.name GROUP BY "name",entities.project, entities.domain, entities.name, named_entity_metadata.description, named_entity_metadata.state ORDER BY name desc`).WithReply(results)
+		`SELECT entities.project,entities.domain,entities.name,'2' AS resource_type,named_entity_metadata.description,named_entity_metadata.state FROM "named_entity_metadata" RIGHT JOIN (SELECT project,domain,name FROM "workflows" WHERE "domain" = $1 AND "project" = $2 GROUP BY project, domain, name, created_at ORDER BY name desc LIMIT 20) AS entities ON named_entity_metadata.resource_type = 2 AND named_entity_metadata.project = entities.project AND named_entity_metadata.domain = entities.domain AND named_entity_metadata.name = entities.name GROUP BY entities.project, entities.domain, entities.name, named_entity_metadata.description, named_entity_metadata.state, named_entity_metadata.created_at ORDER BY name desc`).WithReply(results)
 
 	sortParameter, _ := common.NewSortParameter(admin.Sort{
 		Direction: admin.Sort_DESCENDING,
@@ -183,7 +183,7 @@ func TestListNamedEntityTxErrorCases(t *testing.T) {
 	mockQuery := GlobalMock.NewMock()
 
 	mockQuery.WithQuery(
-		`SELECT entities.project,entities.domain,entities.name,'2' AS resource_type,named_entity_metadata.description,named_entity_metadata.state FROM "named_entity_metadata" RIGHT JOIN (SELECT project,domain,name FROM "workflows" WHERE "domain" = $1 AND "project" = $2 GROUP BY project, domain, name, name ORDER BY name desc LIMIT 20) AS entities ON named_entity_metadata.resource_type = 2 AND named_entity_metadata.project = entities.project AND named_entity_metadata.domain = entities.domain AND named_entity_metadata.name = entities.name GROUP BY "name",entities.project, entities.domain, entities.name, named_entity_metadata.description, named_entity_metadata.state ORDER BY name desc`).WithError(fmt.Errorf("failed"))
+		`SELECT entities.project,entities.domain,entities.name,'2' AS resource_type,named_entity_metadata.description,named_entity_metadata.state FROM "named_entity_metadata" RIGHT JOIN (SELECT project,domain,name FROM "workflows" WHERE "domain" = $1 AND "project" = $2 GROUP BY project, domain, name, created_at ORDER BY name desc LIMIT 20) AS entities ON named_entity_metadata.resource_type = 2 AND named_entity_metadata.project = entities.project AND named_entity_metadata.domain = entities.domain AND named_entity_metadata.name = entities.name GROUP BY entities.project, entities.domain, entities.name, named_entity_metadata.description, named_entity_metadata.state, named_entity_metadata.created_at ORDER BY name desc%`).WithError(fmt.Errorf("failed"))
 
 	sortParameter, _ := common.NewSortParameter(admin.Sort{
 		Direction: admin.Sort_DESCENDING,

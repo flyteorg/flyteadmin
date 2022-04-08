@@ -33,16 +33,18 @@ func getSubQueryJoin(db *gorm.DB, tableName string, input interfaces.ListNamedEn
 		Table(tableName).
 		Where(map[string]interface{}{Project: input.Project, Domain: input.Domain}).
 		Limit(input.Limit).
+		Group(identifierGroupBy).
 		Offset(input.Offset)
 
 	// Apply consistent sort ordering.
 	if input.SortParameter != nil {
-		identifierGroupByWithOrderKey := fmt.Sprintf("%s, %s, %s, %s", Project, Domain, Name, input.SortParameter.GetSortKey())
-		tx = tx.Group(identifierGroupByWithOrderKey)
+		//identifierGroupByWithOrderKey := fmt.Sprintf("%s, %s, %s, %s", Project, Domain, Name, input.SortParameter.GetSortKey())
+		//tx = tx.Group(identifierGroupByWithOrderKey)
 		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
-	} else {
-		tx = tx.Group(identifierGroupBy)
 	}
+	//else {
+	//	tx = tx.Group(identifierGroupBy)
+	//}
 
 	return db.Joins(fmt.Sprintf(joinString, input.ResourceType), tx)
 }
@@ -68,10 +70,10 @@ var resourceTypeToMetadataJoin = map[core.ResourceType]string{
 	core.ResourceType_TASK:        leftJoinTaskNameToMetadata,
 }
 
-var getGroupByForNamedEntity = fmt.Sprintf("%s.%s, %s.%s, %s.%s, %s.%s, %s.%s",
+var getGroupByForNamedEntity = fmt.Sprintf("%s.%s, %s.%s, %s.%s, %s.%s, %s.%s, %s.%s",
 	innerJoinTableAlias, Project, innerJoinTableAlias, Domain, innerJoinTableAlias, Name, namedEntityMetadataTableName,
 	Description,
-	namedEntityMetadataTableName, State)
+	namedEntityMetadataTableName, State, namedEntityMetadataTableName, CreatedAt)
 
 func getSelectForNamedEntity(tableName string, resourceType core.ResourceType) []string {
 	return []string{
@@ -194,7 +196,6 @@ func (r *NamedEntityRepo) List(ctx context.Context, input interfaces.ListNamedEn
 	}
 	// Apply sort ordering.
 	if input.SortParameter != nil {
-		tx = tx.Group(input.SortParameter.GetSortKey())
 		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
 	}
 

@@ -19,6 +19,7 @@ const Description = "description"
 const ResourceType = "resource_type"
 const State = "state"
 const ID = "id"
+const CreatedAt = "created_at"
 
 const executionTableName = "executions"
 const namedEntityMetadataTableName = "named_entity_metadata"
@@ -30,7 +31,7 @@ const taskTableName = "tasks"
 const limit = "limit"
 const filters = "filters"
 
-var identifierGroupBy = fmt.Sprintf("%s, %s, %s", Project, Domain, Name)
+var identifierGroupBy = fmt.Sprintf("%s, %s, %s, %s", Project, Domain, Name, CreatedAt)
 
 var entityToTableName = map[common.Entity]string{
 	common.Execution:           "executions",
