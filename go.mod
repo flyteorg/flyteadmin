@@ -11,7 +11,7 @@ require (
 	github.com/benbjohnson/clock v1.1.0
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/evanphx/json-patch v4.9.0+incompatible
-	github.com/flyteorg/flyteidl v0.24.14
+	github.com/flyteorg/flyteidl v0.24.17
 	github.com/flyteorg/flyteplugins v0.10.16
 	github.com/flyteorg/flytepropeller v0.16.36
 	github.com/flyteorg/flytestdlib v0.4.20
@@ -175,5 +175,3 @@ require (
 )
 
 replace github.com/robfig/cron/v3 => github.com/unionai/cron/v3 v3.0.2-0.20210825070134-bfc34418fe84
-
-replace github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v0.24.15-0.20220407162959-f71c0de7995b
