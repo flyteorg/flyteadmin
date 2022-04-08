@@ -37,6 +37,7 @@ type DataProxyUploadConfig struct {
 	MaxExpiresIn          config.Duration   `json:"maxExpiresIn" pflag:",Maximum allowed expiration duration."`
 	DefaultFileNameLength int               `json:"defaultFileNameLength" pflag:",Default length for the generated file name if not provided in the request."`
 	StoragePrefix         string            `json:"storagePrefix" pflag:",Storage prefix to use for all upload requests."`
+	MaxBatchSize          int               `json:"maxBatchSize" pflag:",Maximum allowed batch size for the CreateUploadLocationBatch api."`
 }
 
 type GrpcConfig struct {
