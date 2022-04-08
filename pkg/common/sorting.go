@@ -17,7 +17,6 @@ type SortParameter interface {
 
 type sortParamImpl struct {
 	gormOrderExpression string
-	sortKey             string
 }
 
 func (s *sortParamImpl) GetGormOrderExpr() string {

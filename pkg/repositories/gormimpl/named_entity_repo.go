@@ -38,13 +38,8 @@ func getSubQueryJoin(db *gorm.DB, tableName string, input interfaces.ListNamedEn
 
 	// Apply consistent sort ordering.
 	if input.SortParameter != nil {
-		//identifierGroupByWithOrderKey := fmt.Sprintf("%s, %s, %s, %s", Project, Domain, Name, input.SortParameter.GetSortKey())
-		//tx = tx.Group(identifierGroupByWithOrderKey)
 		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
 	}
-	//else {
-	//	tx = tx.Group(identifierGroupBy)
-	//}
 
 	return db.Joins(fmt.Sprintf(joinString, input.ResourceType), tx)
 }
