@@ -93,7 +93,7 @@ func (s OAuth2MetadataProvider) GetPublicClientConfig(context.Context, *service.
 		RedirectUri:              s.cfg.AppAuth.ThirdParty.FlyteClientConfig.RedirectURI,
 		Scopes:                   s.cfg.AppAuth.ThirdParty.FlyteClientConfig.Scopes,
 		AuthorizationMetadataKey: s.cfg.GrpcAuthorizationHeader,
-		ServiceHttpEndpoint:      s.serverCfg.ServiceHttpEndpoint.String(),
+		ServiceHttpEndpoint:      s.serverCfg.ServiceHTTPEndpoint.String(),
 	}, nil
 }
 

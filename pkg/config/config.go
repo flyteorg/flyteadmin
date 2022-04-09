@@ -27,11 +27,11 @@ type ServerConfig struct {
 
 	DataProxy DataProxyConfig `json:"dataProxy" pflag:",Defines data proxy configuration."`
 
-	// ServiceHttpEndpoint allows specifying the http endpoint this admin instance is accessible on. This is useful
+	// ServiceHTTPEndpoint allows specifying the http endpoint this admin instance is accessible on. This is useful
 	// for when there is no ingress setup or when the service is serving http and grpc over two different ports.
 	// Setting it here allows gRPC clients to retrieve the http endpoint to be able to present it to end-users (e.g.
 	// open up the browser to the workflow overview page)
-	ServiceHttpEndpoint config.URL `json:"serviceHttpEndpoint" pflag:",Defines the http endpoint the service is accessible at."`
+	ServiceHTTPEndpoint config.URL `json:"serviceHttpEndpoint" pflag:",Defines the http endpoint the service is accessible at."`
 }
 
 type DataProxyConfig struct {
