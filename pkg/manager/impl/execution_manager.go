@@ -744,7 +744,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		Cluster:               execInfo.Cluster,
 		InputsURI:             inputsURI,
 		UserInputsURI:         userInputsURI,
-		SecurityContext:       resolvedSecurityCtx,
+		SecurityContext:       executionConfig.GetSecurityContext(),
 	})
 	if err != nil {
 		logger.Infof(ctx, "Failed to create execution model in transformer for id: [%+v] with err: %v",
@@ -982,7 +982,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		Cluster:               execInfo.Cluster,
 		InputsURI:             inputsURI,
 		UserInputsURI:         userInputsURI,
-		SecurityContext:       resolvedSecurityCtx,
+		SecurityContext:       executionConfig.GetSecurityContext(),
 	})
 	if err != nil {
 		logger.Infof(ctx, "Failed to create execution model in transformer for id: [%+v] with err: %v",
