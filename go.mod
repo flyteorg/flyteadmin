@@ -12,23 +12,23 @@ require (
 	github.com/cloudevents/sdk-go/binding/format/protobuf/v2 v2.8.0
 	github.com/cloudevents/sdk-go/v2 v2.8.0
 	github.com/coreos/go-oidc v2.2.1+incompatible
-	github.com/evanphx/json-patch v4.9.0+incompatible
-	github.com/flyteorg/flyteidl v0.24.18
-	github.com/flyteorg/flyteplugins v0.10.16
-	github.com/flyteorg/flytepropeller v0.16.36
-	github.com/flyteorg/flytestdlib v0.4.24-0.20220411232535-c3b5c01d0da2
-	github.com/flyteorg/stow v0.3.4-0.20220412014404-cab99a81f61d
+	github.com/evanphx/json-patch v4.12.0+incompatible
+	github.com/flyteorg/flyteidl v0.24.19
+	github.com/flyteorg/flyteplugins v0.10.24-0.20220413002821-457bf08429ee
+	github.com/flyteorg/flytepropeller v0.16.42-0.20220413003049-014f55f9180b
+	github.com/flyteorg/flytestdlib v0.4.24-0.20220413001941-d1364430a962
+	github.com/flyteorg/stow v0.3.4
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-gormigrate/gormigrate/v2 v2.0.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang-jwt/jwt/v4 v4.2.0
-	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
+	github.com/golang/glog v1.0.0
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.0
 	github.com/googleapis/gax-go/v2 v2.1.1
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/securecookie v1.1.1
-	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
+	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/gtank/cryptopasta v0.0.0-20170601214702-1f550f6f2f69
@@ -55,10 +55,10 @@ require (
 	gorm.io/driver/postgres v1.2.3
 	gorm.io/driver/sqlite v1.1.1
 	gorm.io/gorm v1.22.4
-	k8s.io/api v0.20.4
-	k8s.io/apimachinery v0.20.4
-	k8s.io/client-go v0.20.2
-	sigs.k8s.io/controller-runtime v0.8.3
+	k8s.io/api v0.23.5
+	k8s.io/apimachinery v0.23.5
+	k8s.io/client-go v0.23.5
+	sigs.k8s.io/controller-runtime v0.11.2
 )
 
 require (
@@ -93,7 +93,7 @@ require (
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/felixge/httpsnoop v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
-	github.com/go-logr/logr v0.4.0 // indirect
+	github.com/go-logr/logr v1.2.0 // indirect
 	github.com/go-test/deep v1.0.7 // indirect
 	github.com/goccy/go-json v0.4.8 // indirect
 	github.com/gofrs/uuid v4.2.0+incompatible // indirect
@@ -134,8 +134,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/ncw/swift v1.0.53 // indirect
-	github.com/onsi/ginkgo v1.16.4 // indirect
-	github.com/onsi/gomega v1.17.0 // indirect
 	github.com/ory/go-acc v0.2.6 // indirect
 	github.com/ory/go-convenience v0.1.0 // indirect
 	github.com/ory/viper v1.7.5 // indirect
@@ -164,7 +162,6 @@ require (
 	golang.org/x/tools v0.1.10 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/grpc/examples v0.0.0-20220218222403-011544f72939 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.66.2 // indirect
 	gopkg.in/jcmturner/aescts.v1 v1.0.1 // indirect
@@ -174,7 +171,9 @@ require (
 	gopkg.in/square/go-jose.v2 v2.5.2-0.20210529014059-a5c7eec3c614 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
-	sigs.k8s.io/yaml v1.2.0 // indirect
+	k8s.io/apiextensions-apiserver v0.23.5 // indirect
+	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6 // indirect
+	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
 require (
@@ -182,17 +181,17 @@ require (
 	github.com/Shopify/sarama v1.26.4
 	github.com/bradfitz/gomemcache v0.0.0-20180710155616-bc664df96737 // indirect
 	github.com/cloudevents/sdk-go/protocol/kafka_sarama/v2 v2.8.0
-	github.com/googleapis/gnostic v0.5.1 // indirect
-	github.com/imdario/mergo v0.3.11 // indirect
+	github.com/googleapis/gnostic v0.5.5 // indirect
+	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/pquerna/cachecontrol v0.0.0-20171018203845-0dec1b30a021 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
-	go.uber.org/zap v1.17.0 // indirect
-	k8s.io/klog/v2 v2.8.0 // indirect
-	k8s.io/kube-openapi v0.0.0-20210305164622-f622666832c1 // indirect
-	k8s.io/utils v0.0.0-20210305010621-2afb4311ab10 // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.1.0 // indirect
+	go.uber.org/zap v1.19.1 // indirect
+	k8s.io/klog/v2 v2.30.0 // indirect
+	k8s.io/kube-openapi v0.0.0-20211115234752-e816edb12b65 // indirect
+	k8s.io/utils v0.0.0-20211116205334-6203023598ed // indirect
+	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
 )
 
 replace github.com/robfig/cron/v3 => github.com/unionai/cron/v3 v3.0.2-0.20210825070134-bfc34418fe84
