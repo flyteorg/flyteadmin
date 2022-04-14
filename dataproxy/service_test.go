@@ -2,11 +2,8 @@ package dataproxy
 
 import (
 	"context"
-	"encoding/hex"
-	"fmt"
 	"testing"
 	"time"
-	storageMocks "github.com/flyteorg/flyteadmin/pkg/common/mocks"
 
 	"google.golang.org/protobuf/types/known/durationpb"
 
@@ -74,53 +71,4 @@ func TestCreateUploadLocation(t *testing.T) {
 		})
 		assert.Error(t, err)
 	})
-
-	t.Run("jfkdls", func(t *testing.T) {
-		hexString := "04977c0f4640305dcc9f6fff542c7f09"
-		data, err := hex.DecodeString(hexString)
-		assert.NoError(t, err)
-
-		_, err = s.CreateUploadLocation(context.Background(), &service.CreateUploadLocationRequest{
-			Project:    "hello",
-			Domain:     "world",
-			ExpiresIn:  durationpb.New(0),
-			ContentMd5: data,
-		})
-		fmt.Println(err)
-		assert.Error(t, err)
-	})
 }
-
-func TestCreafteUploadLocation(t *testing.T) {
-	mockClient := storageMocks.GetMockStorageClient()
-	s, err := NewService(config.DataProxyConfig{}, mockClient)
-	assert.NoError(t, err)
-
-	t.Run("jfkdls", func(t *testing.T) {
-		hexString := "04977c0f4640305dcc9f6fff542c7f09"
-		data, err := hex.DecodeString(hexString)
-		assert.NoError(t, err)
-
-
-		_, err = s.CreateUploadLocation(context.Background(), &service.CreateUploadLocationRequest{
-			Project:    "hello",
-			Domain:     "world",
-			ExpiresIn:  durationpb.New(0),
-			ContentMd5: data,
-		})
-		fmt.Println(err)
-		assert.Error(t, err)
-	})
-}
-
-
-//func TestJdls(t *testing.T) {
-//	hexString := "04977c0f4640305dcc9f6fff542c7f09"
-//	data, err := hex.DecodeString(hexString)
-//	assert.NoError(t, err)
-//
-//	md5 := base64.StdEncoding.EncodeToString(data)
-//	urlSafeMd5 := base32.StdEncoding.EncodeToString(data)
-//	fmt.Println(md5)
-//	fmt.Println(urlSafeMd5)
-//}
