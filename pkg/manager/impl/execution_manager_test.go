@@ -4250,11 +4250,14 @@ func TestGetExecutionConfig(t *testing.T) {
 		resourceManager: &resourceManager,
 		config:          applicationConfig,
 	}
+	launchPlan := &admin.LaunchPlan{
+		Spec: &admin.LaunchPlanSpec{},
+	}
 	execConfig, err := executionManager.getExecutionConfig(context.TODO(), &admin.ExecutionCreateRequest{
 		Project: workflowIdentifier.Project,
 		Domain:  workflowIdentifier.Domain,
 		Spec:    &admin.ExecutionSpec{},
-	}, nil)
+	}, launchPlan)
 	assert.NoError(t, err)
 	assert.Equal(t, execConfig.MaxParallelism, int32(100))
 }
