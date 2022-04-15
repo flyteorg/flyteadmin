@@ -24,6 +24,7 @@ type ExecutionParameters struct {
 	Annotations         map[string]string
 	TaskPluginOverrides []*admin.PluginOverride
 	ExecutionConfig     *admin.WorkflowExecutionConfig
+	// Deprecated: Use WorkflowExecutionConfig.SecurityContext.
 	SecurityContext     *core.SecurityContext
 	RecoveryExecution   *core.WorkflowExecutionIdentifier
 	TaskResources       *TaskResources

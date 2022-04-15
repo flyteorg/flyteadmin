@@ -3697,6 +3697,12 @@ func TestCreateSingleTaskExecution(t *testing.T) {
 
 func TestGetExecutionConfigOverrides(t *testing.T) {
 
+	deprecatedAuthRoleK8sServiceAccount := "deprecated auth role service account"
+	deprecatedAuthRoleAssumableIamRole := "deprecated auth role iam"
+
+	launchPlanDeprecatedAuthRoleK8sServiceAccount := "launch plan deprecated auth role service account"
+	launchPlanDeprecatedAuthRoleAssumableIamRole := "launch plan deprecated auth role iam"
+
 	requestLabels := map[string]string{"requestLabelKey": "requestLabelValue"}
 	requestAnnotations := map[string]string{"requestAnnotationKey": "requestAnnotationValue"}
 	requestOutputLocationPrefix := "requestOutputLocationPrefix"
@@ -3754,6 +3760,36 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		}, nil
 	}
 
+	t.Run("request full config with deprecated auth role ", func(t *testing.T) {
+		request := &admin.ExecutionCreateRequest{
+			Project: workflowIdentifier.Project,
+			Domain:  workflowIdentifier.Domain,
+			Spec: &admin.ExecutionSpec{
+				Labels:      &admin.Labels{Values: requestLabels},
+				Annotations: &admin.Annotations{Values: requestAnnotations},
+				RawOutputDataConfig: &admin.RawOutputDataConfig{
+					OutputLocationPrefix: requestOutputLocationPrefix,
+				},
+				MaxParallelism: requestMaxParallelism,
+				AuthRole: &admin.AuthRole{
+					AssumableIamRole:         deprecatedAuthRoleAssumableIamRole,
+					KubernetesServiceAccount: deprecatedAuthRoleK8sServiceAccount,
+				},
+			},
+		}
+		launchPlan := &admin.LaunchPlan{
+			Spec: &admin.LaunchPlanSpec{},
+		}
+		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
+		assert.NoError(t, err)
+		assert.Equal(t, requestMaxParallelism, execConfig.MaxParallelism)
+		assert.Equal(t, deprecatedAuthRoleK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
+		assert.Equal(t, deprecatedAuthRoleAssumableIamRole, execConfig.SecurityContext.RunAs.IamRole)
+		assert.Equal(t, requestOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
+		assert.Equal(t, requestLabels, execConfig.GetLabels().Values)
+		assert.Equal(t, requestAnnotations, execConfig.GetAnnotations().Values)
+	})
+
 	t.Run("request with full config", func(t *testing.T) {
 		request := &admin.ExecutionCreateRequest{
 			Project: workflowIdentifier.Project,
@@ -3772,7 +3808,10 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 				MaxParallelism: requestMaxParallelism,
 			},
 		}
-		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, nil)
+		launchPlan := &admin.LaunchPlan{
+			Spec: &admin.LaunchPlanSpec{},
+		}
+		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
 		assert.NoError(t, err)
 		assert.Equal(t, requestMaxParallelism, execConfig.MaxParallelism)
 		assert.Equal(t, requestK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
@@ -3809,11 +3848,47 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
 		assert.NoError(t, err)
 		assert.Equal(t, requestMaxParallelism, execConfig.MaxParallelism)
-		assert.Nil(t, execConfig.SecurityContext)
+		assert.Equal(t, "", execConfig.SecurityContext.RunAs.K8SServiceAccount)
+		assert.Equal(t, "", execConfig.SecurityContext.RunAs.IamRole)
 		assert.Nil(t, execConfig.Annotations)
 		assert.Equal(t, requestOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, requestLabels, execConfig.GetLabels().Values)
 	})
+	t.Run("request with partial config and lp using deprecated auth role ", func(t *testing.T) {
+		request := &admin.ExecutionCreateRequest{
+			Project: workflowIdentifier.Project,
+			Domain:  workflowIdentifier.Domain,
+			Spec: &admin.ExecutionSpec{
+				Labels: &admin.Labels{Values: requestLabels},
+				RawOutputDataConfig: &admin.RawOutputDataConfig{
+					OutputLocationPrefix: requestOutputLocationPrefix,
+				},
+				MaxParallelism: requestMaxParallelism,
+			},
+		}
+		launchPlan := &admin.LaunchPlan{
+			Spec: &admin.LaunchPlanSpec{
+				Annotations:         &admin.Annotations{Values: launchPlanAnnotations},
+				Labels:              &admin.Labels{Values: launchPlanLabels},
+				RawOutputDataConfig: &admin.RawOutputDataConfig{OutputLocationPrefix: launchPlanOutputLocationPrefix},
+				AuthRole: &admin.AuthRole{
+					AssumableIamRole:         launchPlanDeprecatedAuthRoleAssumableIamRole,
+					KubernetesServiceAccount: launchPlanDeprecatedAuthRoleK8sServiceAccount,
+				},
+				MaxParallelism: launchPlanMaxParallelism,
+			},
+		}
+		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
+		assert.NoError(t, err)
+		assert.Equal(t, requestMaxParallelism, execConfig.MaxParallelism)
+
+		assert.Equal(t, launchPlanDeprecatedAuthRoleK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
+		assert.Equal(t, launchPlanDeprecatedAuthRoleAssumableIamRole, execConfig.SecurityContext.RunAs.IamRole)
+		assert.Nil(t, execConfig.Annotations)
+		assert.Equal(t, requestOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
+		assert.Equal(t, requestLabels, execConfig.GetLabels().Values)
+	})
+
 	t.Run("request with empty security context", func(t *testing.T) {
 		request := &admin.ExecutionCreateRequest{
 			Project: workflowIdentifier.Project,
@@ -3824,6 +3899,43 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 						K8SServiceAccount: "",
 						IamRole:           "",
 					},
+				},
+			},
+		}
+		launchPlan := &admin.LaunchPlan{
+			Spec: &admin.LaunchPlanSpec{
+				Annotations:         &admin.Annotations{Values: launchPlanAnnotations},
+				Labels:              &admin.Labels{Values: launchPlanLabels},
+				RawOutputDataConfig: &admin.RawOutputDataConfig{OutputLocationPrefix: launchPlanOutputLocationPrefix},
+				SecurityContext: &core.SecurityContext{
+					RunAs: &core.Identity{
+						K8SServiceAccount: launchPlanK8sServiceAccount,
+					},
+				},
+				MaxParallelism: launchPlanMaxParallelism,
+			},
+		}
+		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
+		assert.NoError(t, err)
+		assert.Equal(t, launchPlanMaxParallelism, execConfig.MaxParallelism)
+		assert.Equal(t, launchPlanK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
+		assert.Equal(t, launchPlanOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
+		assert.Equal(t, launchPlanLabels, execConfig.GetLabels().Values)
+	})
+	t.Run("request with empty security context and deprecated auth role and lp with security context", func(t *testing.T) {
+		request := &admin.ExecutionCreateRequest{
+			Project: workflowIdentifier.Project,
+			Domain:  workflowIdentifier.Domain,
+			Spec: &admin.ExecutionSpec{
+				SecurityContext: &core.SecurityContext{
+					RunAs: &core.Identity{
+						K8SServiceAccount: "",
+						IamRole:           "",
+					},
+				},
+				AuthRole: &admin.AuthRole{
+					AssumableIamRole:         deprecatedAuthRoleAssumableIamRole,
+					KubernetesServiceAccount: deprecatedAuthRoleK8sServiceAccount,
 				},
 			},
 		}
@@ -3876,6 +3988,35 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.Equal(t, launchPlanLabels, execConfig.GetLabels().Values)
 		assert.Equal(t, launchPlanAnnotations, execConfig.GetAnnotations().Values)
 	})
+	t.Run("request with no config and lp with deprecated field", func(t *testing.T) {
+		request := &admin.ExecutionCreateRequest{
+			Project: workflowIdentifier.Project,
+			Domain:  workflowIdentifier.Domain,
+			Spec:    &admin.ExecutionSpec{},
+		}
+		launchPlan := &admin.LaunchPlan{
+			Spec: &admin.LaunchPlanSpec{
+				Labels:      &admin.Labels{Values: launchPlanLabels},
+				Annotations: &admin.Annotations{Values: launchPlanAnnotations},
+				RawOutputDataConfig: &admin.RawOutputDataConfig{
+					OutputLocationPrefix: launchPlanOutputLocationPrefix,
+				},
+				MaxParallelism: launchPlanMaxParallelism,
+				AuthRole: &admin.AuthRole{
+					AssumableIamRole:         deprecatedAuthRoleAssumableIamRole,
+					KubernetesServiceAccount: deprecatedAuthRoleK8sServiceAccount,
+				},
+			},
+		}
+		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
+		assert.NoError(t, err)
+		assert.Equal(t, launchPlanMaxParallelism, execConfig.MaxParallelism)
+		assert.Equal(t, deprecatedAuthRoleK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
+		assert.Equal(t, deprecatedAuthRoleAssumableIamRole, execConfig.SecurityContext.RunAs.IamRole)
+		assert.Equal(t, launchPlanOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
+		assert.Equal(t, launchPlanLabels, execConfig.GetLabels().Values)
+		assert.Equal(t, launchPlanAnnotations, execConfig.GetAnnotations().Values)
+	})
 	t.Run("launchplan with partial config", func(t *testing.T) {
 		request := &admin.ExecutionCreateRequest{
 			Project: workflowIdentifier.Project,
@@ -3922,44 +4063,26 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.Equal(t, rmLabels, execConfig.GetLabels().Values)
 		assert.Equal(t, rmAnnotations, execConfig.GetAnnotations().Values)
 	})
-	t.Run("matchable resource partial config", func(t *testing.T) {
-		resourceManager.GetResourceFunc = func(ctx context.Context,
-			request managerInterfaces.ResourceRequest) (*managerInterfaces.ResourceResponse, error) {
-			assert.EqualValues(t, request, managerInterfaces.ResourceRequest{
-				Project:      workflowIdentifier.Project,
-				Domain:       workflowIdentifier.Domain,
-				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
-			})
-			return &managerInterfaces.ResourceResponse{
-				Attributes: &admin.MatchingAttributes{
-					Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
-						WorkflowExecutionConfig: &admin.WorkflowExecutionConfig{
-							MaxParallelism: rmMaxParallelism,
-							Annotations:    &admin.Annotations{Values: rmAnnotations},
-							SecurityContext: &core.SecurityContext{
-								RunAs: &core.Identity{
-									K8SServiceAccount: rmK8sServiceAccount,
-								},
-							},
-						},
-					},
-				},
-			}, nil
-		}
+	t.Run("launchplan with no config except deprecated auth role but having matchable attribute", func(t *testing.T) {
 		request := &admin.ExecutionCreateRequest{
 			Project: workflowIdentifier.Project,
 			Domain:  workflowIdentifier.Domain,
 			Spec:    &admin.ExecutionSpec{},
 		}
 		launchPlan := &admin.LaunchPlan{
-			Spec: &admin.LaunchPlanSpec{},
+			Spec: &admin.LaunchPlanSpec{
+				AuthRole: &admin.AuthRole{
+					AssumableIamRole:         deprecatedAuthRoleAssumableIamRole,
+					KubernetesServiceAccount: deprecatedAuthRoleK8sServiceAccount,
+				},
+			},
 		}
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
 		assert.NoError(t, err)
 		assert.Equal(t, rmMaxParallelism, execConfig.MaxParallelism)
 		assert.Equal(t, rmK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
-		assert.Nil(t, execConfig.GetRawOutputDataConfig())
-		assert.Nil(t, execConfig.GetLabels())
+		assert.Equal(t, rmOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
+		assert.Equal(t, rmLabels, execConfig.GetLabels().Values)
 		assert.Equal(t, rmAnnotations, execConfig.GetAnnotations().Values)
 	})
 	t.Run("matchable resource with no config", func(t *testing.T) {
@@ -3982,6 +4105,43 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 			Project: workflowIdentifier.Project,
 			Domain:  workflowIdentifier.Domain,
 			Spec:    &admin.ExecutionSpec{},
+		}
+		launchPlan := &admin.LaunchPlan{
+			Spec: &admin.LaunchPlanSpec{},
+		}
+		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
+		assert.NoError(t, err)
+		assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
+		assert.Equal(t, defaultK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
+		assert.Nil(t, execConfig.GetRawOutputDataConfig())
+		assert.Nil(t, execConfig.GetLabels())
+		assert.Nil(t, execConfig.GetAnnotations())
+	})
+	t.Run("matchable resource with no config but request with deprecated auth field", func(t *testing.T) {
+		resourceManager.GetResourceFunc = func(ctx context.Context,
+			request managerInterfaces.ResourceRequest) (*managerInterfaces.ResourceResponse, error) {
+			assert.EqualValues(t, request, managerInterfaces.ResourceRequest{
+				Project:      workflowIdentifier.Project,
+				Domain:       workflowIdentifier.Domain,
+				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
+			})
+			return &managerInterfaces.ResourceResponse{
+				Attributes: &admin.MatchingAttributes{
+					Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
+						WorkflowExecutionConfig: &admin.WorkflowExecutionConfig{},
+					},
+				},
+			}, nil
+		}
+		request := &admin.ExecutionCreateRequest{
+			Project: workflowIdentifier.Project,
+			Domain:  workflowIdentifier.Domain,
+			Spec: &admin.ExecutionSpec{
+				AuthRole: &admin.AuthRole{
+					AssumableIamRole:         deprecatedAuthRoleAssumableIamRole,
+					KubernetesServiceAccount: deprecatedAuthRoleK8sServiceAccount,
+				},
+			},
 		}
 		launchPlan := &admin.LaunchPlan{
 			Spec: &admin.LaunchPlanSpec{},
