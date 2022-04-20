@@ -54,8 +54,8 @@ import (
 )
 
 const (
-	childContainerQueueKey = "child_queue"
-	errorKindKey           = "error_kind"
+	childContainerQueueKey                  = "child_queue"
+	errorKindKey           contextutils.Key = "error_kind"
 )
 
 // Map of [project] -> map of [domain] -> stop watch
