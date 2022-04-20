@@ -2,6 +2,11 @@ module github.com/flyteorg/flyteadmin
 
 go 1.18
 
+replace (
+	github.com/flyteorg/flyteidl => github.com/MorpheusXAUT/flyteidl v0.24.22-0.20220414153602-81257a627c30
+	github.com/flyteorg/flytepropeller => github.com/MorpheusXAUT/flytepropeller v0.16.48-0.20220421090510-afc31b9b41e8
+)
+
 require (
 	cloud.google.com/go/iam v0.1.0
 	cloud.google.com/go/storage v1.14.0
@@ -13,8 +18,8 @@ require (
 	github.com/cloudevents/sdk-go/v2 v2.8.0
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/evanphx/json-patch v4.9.0+incompatible
-	github.com/flyteorg/flyteidl v0.24.17
-	github.com/flyteorg/flyteplugins v0.10.16
+	github.com/flyteorg/flyteidl v0.24.19
+	github.com/flyteorg/flyteplugins v0.10.24
 	github.com/flyteorg/flytepropeller v0.16.36
 	github.com/flyteorg/flytestdlib v0.4.23
 	github.com/flyteorg/stow v0.3.3
@@ -176,6 +181,7 @@ require (
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	k8s.io/apiextensions-apiserver v0.20.1 // indirect
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
 

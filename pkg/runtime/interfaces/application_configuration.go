@@ -72,6 +72,8 @@ type ApplicationConfig struct {
 	Labels map[string]string `json:"labels,omitempty"`
 	// Annotations to apply to the execution resource.
 	Annotations map[string]string `json:"annotations,omitempty"`
+	// Interruptible indicates whether all tasks should be run as interruptible by default (unless specified otherwise via the execution/workflow/task definition)
+	Interruptible bool `json:"interruptible"`
 
 	// Optional: security context override to apply this execution.
 	// iam_role references the fully qualified name of Identity & Access Management role to impersonate.
@@ -136,6 +138,10 @@ func (a *ApplicationConfig) GetLabels() *admin.Labels {
 	return &admin.Labels{
 		Values: a.Labels,
 	}
+}
+
+func (a *ApplicationConfig) GetInterruptible() bool {
+	return a.Interruptible
 }
 
 // This section holds common config for AWS

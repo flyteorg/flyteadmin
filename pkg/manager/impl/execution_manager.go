@@ -447,6 +447,8 @@ type WorkflowExecutionConfigInterface interface {
 	GetAnnotations() *admin.Annotations
 	// GetLabels Custom labels to be applied to a triggered execution resource.
 	GetLabels() *admin.Labels
+	// GetInterruptible indicates a workflow should be flagged as interruptible for a single execution.
+	GetInterruptible() bool
 }
 
 // Merge into workflowExecConfig from spec and return true if any value has been changed
@@ -483,6 +485,12 @@ func mergeIntoExecConfig(workflowExecConfig *admin.WorkflowExecutionConfig, spec
 		workflowExecConfig.Annotations = spec.GetAnnotations()
 		isChanged = true
 	}
+
+	if !workflowExecConfig.GetInterruptible() && spec.GetInterruptible() {
+		workflowExecConfig.Interruptible = true
+		isChanged = true
+	}
+
 	return isChanged
 }
 
