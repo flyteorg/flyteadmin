@@ -53,10 +53,7 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-const (
-	childContainerQueueKey                  = "child_queue"
-	errorKindKey           contextutils.Key = "error_kind"
-)
+const childContainerQueueKey = "child_queue"
 
 // Map of [project] -> map of [domain] -> stop watch
 type projectDomainScopedStopWatchMap = map[string]map[string]*promutils.StopWatch
@@ -1350,7 +1347,7 @@ func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admi
 			// request.Event is expected to be of type WorkflowExecutionEvent_Error when workflow fails.
 			// if not, log the error and continue
 			if err := request.Event.GetError(); err != nil {
-				ctx = context.WithValue(ctx, errorKindKey, err.Kind.String())
+				ctx = context.WithValue(ctx, common.ErrorKindKey, err.Kind.String())
 			} else {
 				logger.Warning(ctx, "Failed to parse error for FAILED request [%+v]", request)
 			}
