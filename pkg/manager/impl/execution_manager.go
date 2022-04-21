@@ -679,12 +679,16 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		return nil, nil, err
 	}
 
+	resolvedAuthRole := resolveAuthRole(request, launchPlan)
+	resolvedSecurityCtx := resolveSecurityCtx(ctx, executionConfig.GetSecurityContext(), resolvedAuthRole)
+
 	executionParameters := workflowengineInterfaces.ExecutionParameters{
 		Inputs:              request.Inputs,
 		AcceptedAt:          requestedAt,
 		Labels:              labels,
 		Annotations:         annotations,
 		ExecutionConfig:     executionConfig,
+		SecurityContext:     resolvedSecurityCtx,
 		TaskResources:       &platformTaskResources,
 		EventVersion:        m.config.ApplicationConfiguration().GetTopLevelConfig().EventVersion,
 		RoleNameKey:         m.config.ApplicationConfiguration().GetTopLevelConfig().RoleNameKey,
@@ -752,7 +756,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		Cluster:               execInfo.Cluster,
 		InputsURI:             inputsURI,
 		UserInputsURI:         userInputsURI,
-		SecurityContext:       executionConfig.GetSecurityContext(),
+		SecurityContext:       resolvedSecurityCtx,
 	})
 	if err != nil {
 		logger.Infof(ctx, "Failed to create execution model in transformer for id: [%+v] with err: %v",
@@ -785,16 +789,13 @@ func resolveAuthRole(request admin.ExecutionCreateRequest, launchPlan *admin.Lau
 	return &admin.AuthRole{}
 }
 
-func resolveSecurityCtx(ctx context.Context, request admin.ExecutionCreateRequest, launchPlan *admin.LaunchPlan,
+func resolveSecurityCtx(ctx context.Context, executionConfigSecurityCtx *core.SecurityContext,
 	resolvedAuthRole *admin.AuthRole) *core.SecurityContext {
-	// Use security context from the request if its set
-	if request.Spec.SecurityContext != nil {
-		return request.Spec.SecurityContext
-	}
-
-	// Use launchplans security context if its set
-	if launchPlan.Spec.SecurityContext != nil {
-		return launchPlan.Spec.SecurityContext
+	// Use security context from the executionConfigSecurityCtx if its set and non empty or else resolve from authRole
+	if executionConfigSecurityCtx != nil && executionConfigSecurityCtx.RunAs != nil &&
+		(len(executionConfigSecurityCtx.RunAs.K8SServiceAccount) > 0 ||
+			len(executionConfigSecurityCtx.RunAs.IamRole) > 0) {
+		return executionConfigSecurityCtx
 	}
 	logger.Warn(ctx, "Setting security context from auth Role")
 	return &core.SecurityContext{
@@ -916,12 +917,15 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		return nil, nil, err
 	}
 
+	resolvedAuthRole := resolveAuthRole(request, launchPlan)
+	resolvedSecurityCtx := resolveSecurityCtx(ctx, executionConfig.GetSecurityContext(), resolvedAuthRole)
 	executionParameters := workflowengineInterfaces.ExecutionParameters{
 		Inputs:              executionInputs,
 		AcceptedAt:          requestedAt,
 		Labels:              labels,
 		Annotations:         annotations,
 		ExecutionConfig:     executionConfig,
+		SecurityContext:     resolvedSecurityCtx,
 		TaskResources:       &platformTaskResources,
 		EventVersion:        m.config.ApplicationConfiguration().GetTopLevelConfig().EventVersion,
 		RoleNameKey:         m.config.ApplicationConfiguration().GetTopLevelConfig().RoleNameKey,
@@ -990,7 +994,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		Cluster:               execInfo.Cluster,
 		InputsURI:             inputsURI,
 		UserInputsURI:         userInputsURI,
-		SecurityContext:       executionConfig.GetSecurityContext(),
+		SecurityContext:       resolvedSecurityCtx,
 	})
 	if err != nil {
 		logger.Infof(ctx, "Failed to create execution model in transformer for id: [%+v] with err: %v",
@@ -1347,6 +1351,16 @@ func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admi
 			go m.emitScheduledWorkflowMetrics(ctx, executionModel, request.Event.OccurredAt)
 		}
 	} else if common.IsExecutionTerminal(request.Event.Phase) {
+		if request.Event.Phase == core.WorkflowExecution_FAILED {
+			// request.Event is expected to be of type WorkflowExecutionEvent_Error when workflow fails.
+			// if not, log the error and continue
+			if err := request.Event.GetError(); err != nil {
+				ctx = context.WithValue(ctx, common.ErrorKindKey, err.Kind.String())
+			} else {
+				logger.Warning(ctx, "Failed to parse error for FAILED request [%+v]", request)
+			}
+		}
+
 		m.systemMetrics.ActiveExecutions.Dec()
 		m.systemMetrics.ExecutionsTerminated.Inc(contextutils.WithPhase(ctx, request.Event.Phase.String()))
 		go m.emitOverallWorkflowExecutionTime(executionModel, request.Event.OccurredAt)
