@@ -154,7 +154,6 @@ func TestGetInputs(t *testing.T) {
 		assert.True(t, proto.Equal(fullInputs, testLiteralMap))
 		assert.Empty(t, inputURLBlob)
 	})
-
 }
 
 func TestGetOutputs(t *testing.T) {
@@ -231,6 +230,31 @@ func TestGetOutputs(t *testing.T) {
 		assert.True(t, proto.Equal(fullOutputs, testLiteralMap))
 		assert.Empty(t, outputURLBlob)
 	})
+}
+
+func TestGetDeckURI(t *testing.T) {
+	expectedDeckURI := "s3://foo/bar/deck.html"
+	expectedDeckSignURI := "s3://foo/signed/deck.html"
+
+	expectedDeckURLBlob := admin.UrlBlob{
+		Url:   expectedDeckSignURI,
+		Bytes: 1000,
+	}
+
+	mockRemoteURL := urlMocks.NewMockRemoteURL()
+	mockRemoteURL.(*urlMocks.MockRemoteURL).GetCallback = func(ctx context.Context, uri string) (admin.UrlBlob, error) {
+		assert.Equal(t, expectedDeckURI, uri)
+		return expectedDeckURLBlob, nil
+	}
+
+	closure := &admin.NodeExecutionClosure{
+		OutputResult: &admin.NodeExecutionClosure_OutputUri{
+			OutputUri: testOutputsURI,
+		},
+	}
+	deckURI, err := GetDeckURI(context.TODO(), mockRemoteURL, closure)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedDeckSignURI, deckURI)
 }
 
 func TestWorkflowExecutionClosure(t *testing.T) {

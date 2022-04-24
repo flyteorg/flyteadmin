@@ -2,6 +2,7 @@ package util
 
 import (
 	"context"
+	"strings"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	dataInterfaces "github.com/flyteorg/flyteadmin/pkg/data/interfaces"
@@ -11,6 +12,11 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/storage"
 	"github.com/golang/protobuf/proto"
+)
+
+const (
+	outputsFile = "outputs.pb"
+	deckFile    = "deck.html"
 )
 
 func shouldFetchData(config *runtimeInterfaces.RemoteDataConfig, urlBlob admin.UrlBlob) bool {
@@ -122,4 +128,20 @@ func GetOutputs(ctx context.Context, urlData dataInterfaces.RemoteURLInterface,
 	}
 
 	return fullOutputs, &outputsURLBlob, nil
+}
+
+func GetDeckURI(ctx context.Context, urlData dataInterfaces.RemoteURLInterface, closure ExecutionClosure) (string, error) {
+	if closure == nil || len(closure.GetOutputUri()) == 0 {
+		return "", nil
+	}
+
+	outputURI := closure.GetOutputUri()
+	// Both files exist in the same folder
+	deckURI := strings.Replace(outputURI, outputsFile, deckFile, 1)
+
+	deckURLBlob, err := urlData.Get(ctx, deckURI)
+	if err != nil {
+		return "", err
+	}
+	return deckURLBlob.GetUrl(), nil
 }

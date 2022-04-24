@@ -28,6 +28,7 @@ type s3Interface interface {
 // AWS-specific implementation of RemoteURLInterface
 type AWSRemoteURL struct {
 	s3Client        s3Interface
+	presignClient   s3Interface
 	presignDuration time.Duration
 }
 
@@ -70,12 +71,7 @@ func (a *AWSRemoteURL) Get(ctx context.Context, uri string) (admin.UrlBlob, erro
 			codes.Internal, "failed to get object size for %s with %v", uri, err)
 	}
 
-	// The second return argument here is the GetObjectOutput, which we don't use below.
-	req, _ := a.s3Client.GetObjectRequest(&s3.GetObjectInput{
-		Bucket: &s3URI.bucket,
-		Key:    &s3URI.key,
-	})
-	urlStr, err := req.Presign(a.presignDuration)
+	urlStr, err := a.getPresignURL(s3URI)
 	if err != nil {
 		logger.Warning(ctx,
 			"failed to presign url for uri [%s] for %v with err %v", uri, a.presignDuration, err)
@@ -92,14 +88,33 @@ func (a *AWSRemoteURL) Get(ctx context.Context, uri string) (admin.UrlBlob, erro
 	}, nil
 }
 
-func NewAWSRemoteURL(config *aws.Config, presignDuration time.Duration) interfaces.RemoteURLInterface {
+func (a *AWSRemoteURL) getPresignURL(s3URI AWSS3Object) (string, error) {
+	// The second return argument here is the GetObjectOutput, which we don't use below.
+	req, _ := a.presignClient.GetObjectRequest(&s3.GetObjectInput{
+		Bucket: &s3URI.bucket,
+		Key:    &s3URI.key,
+	})
+	return req.Presign(a.presignDuration)
+}
+
+func getS3Client(config *aws.Config) s3Interface {
 	sesh, err := session.NewSession(config)
 	if err != nil {
 		panic(err)
 	}
-	s3Client := s3.New(sesh)
+	return s3.New(sesh)
+}
+
+func NewAWSRemoteURL(config *aws.Config, presignDuration time.Duration) interfaces.RemoteURLInterface {
+	presignConfig := *config
+	endpoint := storage.GetConfig().SignedURL.StowConfigOverride["endpoint"]
+	if len(endpoint) > 0 {
+		presignConfig.WithEndpoint(endpoint)
+	}
+
 	return &AWSRemoteURL{
-		s3Client:        s3Client,
+		s3Client:        getS3Client(config),
+		presignClient:   getS3Client(&presignConfig),
 		presignDuration: presignDuration,
 	}
 }
