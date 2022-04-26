@@ -133,10 +133,10 @@ github.com/Masterminds/semver/v3 v3.1.1 h1:hLg3sBzpNErnxhQtUy/mmLR2I9foDujNK030I
 github.com/Masterminds/semver/v3 v3.1.1/go.mod h1:VPu/7SZ7ePZ3QOrcuXROw5FAcLl4a0cBrbBpGY/8hQs=
 github.com/Microsoft/go-winio v0.4.11/go.mod h1:VhR8bwka0BXejwEJY73c50VrPtXAaKcyvVC4A4RozmA=
 github.com/Microsoft/go-winio v0.4.14/go.mod h1:qXqCSQ3Xa7+6tgxaGTIe4Kpcdsi+P8jBhyzoq1bpyYA=
-github.com/MorpheusXAUT/flyteidl v0.24.22-0.20220414153602-81257a627c30 h1:NvHNJm+IcLBOb5Te3trSs7KJTqLJCMkcLgZ9WmxLQoA=
-github.com/MorpheusXAUT/flyteidl v0.24.22-0.20220414153602-81257a627c30/go.mod h1:vHSugApgS3hRITIafzQDU8DZD/W8wFRfFcgaFU35Dww=
-github.com/MorpheusXAUT/flytepropeller v0.16.48-0.20220421090510-afc31b9b41e8 h1:LXT81FQ5DeKGeid8qDPGg3i05TWtAUoIWwlY23pWWwg=
-github.com/MorpheusXAUT/flytepropeller v0.16.48-0.20220421090510-afc31b9b41e8/go.mod h1:QBC3GoCUY0q4k69vXUBVnJZZ3XxkKHLj8KnmB5zsfF4=
+github.com/MorpheusXAUT/flyteidl v0.24.22-0.20220426074538-c412ba26cf64 h1:iVKLgar06cCYvfbXlRrKbgmr9CEwYAlIFcX1XExwH14=
+github.com/MorpheusXAUT/flyteidl v0.24.22-0.20220426074538-c412ba26cf64/go.mod h1:vHSugApgS3hRITIafzQDU8DZD/W8wFRfFcgaFU35Dww=
+github.com/MorpheusXAUT/flytepropeller v0.16.48-0.20220426084227-48d84e5890de h1:9zo2owuWx47dzWD8Uhxrw3F5Oq5H0JT3YgVnErAhV08=
+github.com/MorpheusXAUT/flytepropeller v0.16.48-0.20220426084227-48d84e5890de/go.mod h1:T0+gG1Nu2v9SqYj1zZ9tERfvqWFHcWACLvXSoRwcUgw=
 github.com/NYTimes/gizmo v1.3.6 h1:K+GRagPdAxojsT1TlTQlMkTeOmgfLxSdvuOhdki7GG0=
 github.com/NYTimes/gizmo v1.3.6/go.mod h1:8S8QVnITA40p/1jGsUMcPI8R9SSKkoKu+8WF13s9Uhw=
 github.com/NYTimes/gziphandler v0.0.0-20170623195520-56545f4a5d46/go.mod h1:3wb06e3pkSAbeQ52E9H9iFoQsEEwGN64994WTCIhntQ=

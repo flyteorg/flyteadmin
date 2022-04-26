@@ -5,6 +5,7 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/config"
+	"github.com/golang/protobuf/ptypes/wrappers"
 
 	"golang.org/x/time/rate"
 )
@@ -140,8 +141,15 @@ func (a *ApplicationConfig) GetLabels() *admin.Labels {
 	}
 }
 
-func (a *ApplicationConfig) GetInterruptible() bool {
-	return a.Interruptible
+func (a *ApplicationConfig) GetInterruptible() *wrappers.BoolValue {
+	// only return interruptible override if set to true as all workflows would be overwritten by the zero value false otherwise
+	if !a.Interruptible {
+		return nil
+	}
+
+	return &wrappers.BoolValue{
+		Value: true,
+	}
 }
 
 // This section holds common config for AWS

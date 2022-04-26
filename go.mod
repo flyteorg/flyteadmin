@@ -2,11 +2,6 @@ module github.com/flyteorg/flyteadmin
 
 go 1.18
 
-replace (
-	github.com/flyteorg/flyteidl => github.com/MorpheusXAUT/flyteidl v0.24.22-0.20220414153602-81257a627c30
-	github.com/flyteorg/flytepropeller => github.com/MorpheusXAUT/flytepropeller v0.16.48-0.20220421090510-afc31b9b41e8
-)
-
 require (
 	cloud.google.com/go/iam v0.1.0
 	cloud.google.com/go/storage v1.14.0
@@ -204,3 +199,7 @@ require (
 )
 
 replace github.com/robfig/cron/v3 => github.com/unionai/cron/v3 v3.0.2-0.20210825070134-bfc34418fe84
+
+replace github.com/flyteorg/flyteidl => github.com/MorpheusXAUT/flyteidl v0.24.22-0.20220426074538-c412ba26cf64
+
+replace github.com/flyteorg/flytepropeller => github.com/MorpheusXAUT/flytepropeller v0.16.48-0.20220426084227-48d84e5890de
