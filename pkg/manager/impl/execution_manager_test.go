@@ -2571,7 +2571,6 @@ func TestExecutionManager_PublishNotifications(t *testing.T) {
 	workflowRequest := admin.WorkflowExecutionEventRequest{
 		Event: &event.WorkflowExecutionEvent{
 			Phase: core.WorkflowExecution_FAILED,
-			// ExecutionId: "1234",
 			OutputResult: &event.WorkflowExecutionEvent_Error{
 				Error: &core.ExecutionError{
 					Code:    "CodeBad",
@@ -2653,7 +2652,6 @@ func TestExecutionManager_PublishNotificationsTransformError(t *testing.T) {
 	workflowRequest := admin.WorkflowExecutionEventRequest{
 		Event: &event.WorkflowExecutionEvent{
 			Phase: core.WorkflowExecution_FAILED,
-			// ExecutionId: "1234",
 			OutputResult: &event.WorkflowExecutionEvent_Error{
 				Error: &core.ExecutionError{
 					Code:    "CodeBad",
@@ -2712,7 +2710,6 @@ func TestExecutionManager_TestExecutionManager_PublishNotificationsTransformErro
 	workflowRequest := admin.WorkflowExecutionEventRequest{
 		Event: &event.WorkflowExecutionEvent{
 			Phase: core.WorkflowExecution_FAILED,
-			// ExecutionId: "1234",
 			OutputResult: &event.WorkflowExecutionEvent_Error{
 				Error: &core.ExecutionError{
 					Code:    "CodeBad",
