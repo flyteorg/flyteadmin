@@ -245,14 +245,16 @@ func TestGetDeckURI(t *testing.T) {
 		assert.Equal(t, expectedDeckURI, uri)
 		return expectedDeckURLBlob, nil
 	}
-
-	closure := &admin.NodeExecutionClosure{
-		OutputResult: &admin.NodeExecutionClosure_OutputUri{
-			OutputUri: testOutputsURI,
-		},
-	}
-	// mockClient := commonMocks.GetMockStorageClient()
+	closure := &admin.NodeExecutionClosure{}
 	deckURI, err := GetDeckURI(context.TODO(), commonMocks.GetMockStorageClient(), closure)
+	assert.NoError(t, err)
+	assert.Equal(t, deckURI, "")
+
+	closure.OutputResult = &admin.NodeExecutionClosure_OutputUri{
+		OutputUri: testOutputsURI,
+	}
+
+	deckURI, err = GetDeckURI(context.TODO(), commonMocks.GetMockStorageClient(), closure)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedDeckURI, deckURI)
 }
