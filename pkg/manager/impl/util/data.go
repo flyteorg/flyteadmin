@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	outputsFile = "outputs.pb"
-	deckFile    = "deck.html"
+	OutputsFile = "outputs.pb"
+	DeckFile    = "deck.html"
 )
 
 func shouldFetchData(config *runtimeInterfaces.RemoteDataConfig, urlBlob admin.UrlBlob) bool {
@@ -141,7 +141,7 @@ func GetDeckURI(ctx context.Context, storageClient *storage.DataStore, closure E
 
 	outputURI := closure.GetOutputUri()
 	// Both files exist in the same folder
-	deckURI := strings.Replace(outputURI, outputsFile, deckFile, 1)
+	deckURI := strings.Replace(outputURI, OutputsFile, DeckFile, 1)
 
 	remoteDataConfig := runtime.NewConfigurationProvider().ApplicationConfiguration().GetRemoteDataConfig()
 	signedURLResponse, err := storageClient.CreateSignedURL(
