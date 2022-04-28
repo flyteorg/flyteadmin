@@ -3,6 +3,10 @@ package util
 import (
 	"context"
 	"strings"
+	"time"
+
+	"github.com/flyteorg/flyteadmin/pkg/runtime"
+	"github.com/flyteorg/stow"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	dataInterfaces "github.com/flyteorg/flyteadmin/pkg/data/interfaces"
@@ -130,7 +134,7 @@ func GetOutputs(ctx context.Context, urlData dataInterfaces.RemoteURLInterface,
 	return fullOutputs, &outputsURLBlob, nil
 }
 
-func GetDeckURI(ctx context.Context, urlData dataInterfaces.RemoteURLInterface, closure ExecutionClosure) (string, error) {
+func GetDeckURI(ctx context.Context, storageClient *storage.DataStore, closure ExecutionClosure) (string, error) {
 	if closure == nil || len(closure.GetOutputUri()) == 0 {
 		return "", nil
 	}
@@ -139,9 +143,17 @@ func GetDeckURI(ctx context.Context, urlData dataInterfaces.RemoteURLInterface, 
 	// Both files exist in the same folder
 	deckURI := strings.Replace(outputURI, outputsFile, deckFile, 1)
 
-	deckURLBlob, err := urlData.Get(ctx, deckURI)
+	remoteDataConfig := runtime.NewConfigurationProvider().ApplicationConfiguration().GetRemoteDataConfig()
+	signedURLResponse, err := storageClient.CreateSignedURL(
+		ctx,
+		storage.DataReference(deckURI),
+		storage.SignedURLProperties{
+			Scope:     stow.ClientMethodGet,
+			ExpiresIn: time.Duration(remoteDataConfig.SignedURL.DurationMinutes) * time.Minute,
+		},
+	)
 	if err != nil {
 		return "", err
 	}
-	return deckURLBlob.GetUrl(), nil
+	return signedURLResponse.URL.String(), nil
 }

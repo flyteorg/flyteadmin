@@ -234,10 +234,9 @@ func TestGetOutputs(t *testing.T) {
 
 func TestGetDeckURI(t *testing.T) {
 	expectedDeckURI := "s3://foo/bar/deck.html"
-	expectedDeckSignURI := "s3://foo/signed/deck.html"
 
 	expectedDeckURLBlob := admin.UrlBlob{
-		Url:   expectedDeckSignURI,
+		Url:   expectedDeckURI,
 		Bytes: 1000,
 	}
 
@@ -252,9 +251,10 @@ func TestGetDeckURI(t *testing.T) {
 			OutputUri: testOutputsURI,
 		},
 	}
-	deckURI, err := GetDeckURI(context.TODO(), mockRemoteURL, closure)
+	// mockClient := commonMocks.GetMockStorageClient()
+	deckURI, err := GetDeckURI(context.TODO(), commonMocks.GetMockStorageClient(), closure)
 	assert.NoError(t, err)
-	assert.Equal(t, expectedDeckSignURI, deckURI)
+	assert.Equal(t, expectedDeckURI, deckURI)
 }
 
 func TestWorkflowExecutionClosure(t *testing.T) {

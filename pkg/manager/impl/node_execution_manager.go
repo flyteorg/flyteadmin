@@ -507,7 +507,7 @@ func (m *NodeExecutionManager) GetNodeExecutionData(
 		return nil, err
 	}
 
-	deckURI, err := util.GetDeckURI(ctx, m.urlData, nodeExecution.Closure)
+	deckURI, err := util.GetDeckURI(ctx, m.storageClient, nodeExecution.Closure)
 	if err != nil {
 		return nil, err
 	}

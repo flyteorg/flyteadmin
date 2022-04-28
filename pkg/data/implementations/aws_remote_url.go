@@ -4,11 +4,12 @@ import (
 	"context"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/session"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/flyteorg/flyteadmin/pkg/data/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/errors"
@@ -28,7 +29,6 @@ type s3Interface interface {
 // AWS-specific implementation of RemoteURLInterface
 type AWSRemoteURL struct {
 	s3Client        s3Interface
-	presignClient   s3Interface
 	presignDuration time.Duration
 }
 
@@ -71,7 +71,12 @@ func (a *AWSRemoteURL) Get(ctx context.Context, uri string) (admin.UrlBlob, erro
 			codes.Internal, "failed to get object size for %s with %v", uri, err)
 	}
 
-	urlStr, err := a.getPresignURL(s3URI)
+	// The second return argument here is the GetObjectOutput, which we don't use below.
+	req, _ := a.s3Client.GetObjectRequest(&s3.GetObjectInput{
+		Bucket: &s3URI.bucket,
+		Key:    &s3URI.key,
+	})
+	urlStr, err := req.Presign(a.presignDuration)
 	if err != nil {
 		logger.Warning(ctx,
 			"failed to presign url for uri [%s] for %v with err %v", uri, a.presignDuration, err)
@@ -88,33 +93,15 @@ func (a *AWSRemoteURL) Get(ctx context.Context, uri string) (admin.UrlBlob, erro
 	}, nil
 }
 
-func (a *AWSRemoteURL) getPresignURL(s3URI AWSS3Object) (string, error) {
-	// The second return argument here is the GetObjectOutput, which we don't use below.
-	req, _ := a.presignClient.GetObjectRequest(&s3.GetObjectInput{
-		Bucket: &s3URI.bucket,
-		Key:    &s3URI.key,
-	})
-	return req.Presign(a.presignDuration)
-}
-
-func getS3Client(config *aws.Config) s3Interface {
+func NewAWSRemoteURL(config *aws.Config, presignDuration time.Duration) interfaces.RemoteURLInterface {
 	sesh, err := session.NewSession(config)
 	if err != nil {
 		panic(err)
 	}
-	return s3.New(sesh)
-}
-
-func NewAWSRemoteURL(config *aws.Config, presignDuration time.Duration) interfaces.RemoteURLInterface {
-	presignConfig := *config
-	endpoint := storage.GetConfig().SignedURL.StowConfigOverride["endpoint"]
-	if len(endpoint) > 0 {
-		presignConfig.WithEndpoint(endpoint)
-	}
+	s3Client := s3.New(sesh)
 
 	return &AWSRemoteURL{
-		s3Client:        getS3Client(config),
-		presignClient:   getS3Client(&presignConfig),
+		s3Client:        s3Client,
 		presignDuration: presignDuration,
 	}
 }
