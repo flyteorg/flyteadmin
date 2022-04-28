@@ -4,12 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/session"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/flyteorg/flyteadmin/pkg/data/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/errors"
@@ -99,7 +98,6 @@ func NewAWSRemoteURL(config *aws.Config, presignDuration time.Duration) interfac
 		panic(err)
 	}
 	s3Client := s3.New(sesh)
-
 	return &AWSRemoteURL{
 		s3Client:        s3Client,
 		presignDuration: presignDuration,

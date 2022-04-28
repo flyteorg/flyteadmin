@@ -1262,7 +1262,7 @@ func TestGetNodeExecutionData(t *testing.T) {
 			marshalled, _ := proto.Marshal(fullInputs)
 			_ = proto.Unmarshal(marshalled, msg)
 			return nil
-		} else if reference.String() == "outputs.pb" {
+		} else if reference.String() == util.OutputsFile {
 			marshalled, _ := proto.Marshal(fullOutputs)
 			_ = proto.Unmarshal(marshalled, msg)
 			return nil
