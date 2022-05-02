@@ -13,9 +13,9 @@ require (
 	github.com/cloudevents/sdk-go/v2 v2.8.0
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/evanphx/json-patch v4.9.0+incompatible
-	github.com/flyteorg/flyteidl v1.0.0
+	github.com/flyteorg/flyteidl v1.1.0
 	github.com/flyteorg/flyteplugins v1.0.0
-	github.com/flyteorg/flytepropeller v1.0.0
+	github.com/flyteorg/flytepropeller v1.1.0
 	github.com/flyteorg/flytestdlib v1.0.0
 	github.com/flyteorg/stow v0.3.3
 	github.com/ghodss/yaml v1.0.0
@@ -199,7 +199,3 @@ require (
 )
 
 replace github.com/robfig/cron/v3 => github.com/unionai/cron/v3 v3.0.2-0.20210825070134-bfc34418fe84
-
-replace github.com/flyteorg/flyteidl => github.com/MorpheusXAUT/flyteidl v0.24.22-0.20220426074538-c412ba26cf64
-
-replace github.com/flyteorg/flytepropeller => github.com/MorpheusXAUT/flytepropeller v0.16.48-0.20220426142632-4fdc51f2f6bb
