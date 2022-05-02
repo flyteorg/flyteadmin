@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/proto"
-	"k8s.io/apimachinery/pkg/util/validation"
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
