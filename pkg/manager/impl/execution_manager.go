@@ -51,6 +51,7 @@ import (
 	"github.com/benbjohnson/clock"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/wrappers"
 )
 
 const childContainerQueueKey = "child_queue"
@@ -447,6 +448,8 @@ type WorkflowExecutionConfigInterface interface {
 	GetAnnotations() *admin.Annotations
 	// GetLabels Custom labels to be applied to a triggered execution resource.
 	GetLabels() *admin.Labels
+	// GetInterruptible indicates a workflow should be flagged as interruptible for a single execution. If omitted, the workflow's default is used.
+	GetInterruptible() *wrappers.BoolValue
 }
 
 // Merge into workflowExecConfig from spec and return true if any value has been changed
@@ -477,6 +480,16 @@ func mergeIntoExecConfig(workflowExecConfig admin.WorkflowExecutionConfig, spec 
 		(spec.GetAnnotations() != nil && len(spec.GetAnnotations().Values) > 0) {
 		workflowExecConfig.Annotations = spec.GetAnnotations()
 	}
+
+	// Override interruptible flag if workflow execution config does not have a value set or the spec sets a different
+	// value that defined as the workflow default. This allows for workflows to have their interruptible setting
+	// explicitly turned on and off for a single execution.
+	if (workflowExecConfig.GetInterruptible() == nil && spec.GetInterruptible() != nil) ||
+		(workflowExecConfig.GetInterruptible() != nil && spec.GetInterruptible() != nil &&
+			workflowExecConfig.GetInterruptible().GetValue() != spec.GetInterruptible().GetValue()) {
+		workflowExecConfig.Interruptible = spec.GetInterruptible()
+	}
+
 	return workflowExecConfig
 }
 
@@ -885,8 +898,8 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		return nil, nil, err
 	}
 	var rawOutputDataConfig *admin.RawOutputDataConfig
-	if requestSpec.RawOutputDataConfig != nil {
-		rawOutputDataConfig = requestSpec.RawOutputDataConfig
+	if executionConfig.RawOutputDataConfig != nil {
+		rawOutputDataConfig = executionConfig.RawOutputDataConfig
 	}
 
 	clusterAssignment, err := m.getClusterAssignment(ctx, &request)
