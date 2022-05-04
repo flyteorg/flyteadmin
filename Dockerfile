@@ -17,14 +17,14 @@ RUN go mod download
 # COPY the rest of the source code
 COPY . /go/src/github.com/flyteorg/flyteadmin/
 
-# This 'linux_compile' target should compile binaries to the /artifacts directory
-# The main entrypoint should be compiled to /artifacts/flyteadmin
-RUN make linux_compile
-
 # Pull GRPC health probe binary for liveness and readiness checks
 RUN GRPC_HEALTH_PROBE_VERSION=v0.4.11 && \
     wget -qO/artifacts/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-amd64 && \
     chmod +x /artifacts/grpc_health_probe
+
+# This 'linux_compile' target should compile binaries to the /artifacts directory
+# The main entrypoint should be compiled to /artifacts/flyteadmin
+RUN make linux_compile
 
 # update the PATH to include the /artifacts directory
 ENV PATH="/artifacts:${PATH}"
