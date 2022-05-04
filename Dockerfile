@@ -17,6 +17,9 @@ RUN go mod download
 # COPY the rest of the source code
 COPY . /go/src/github.com/flyteorg/flyteadmin/
 
+# Create the artifacts directory
+RUN mkdir /artifacts
+
 # Pull GRPC health probe binary for liveness and readiness checks
 RUN GRPC_HEALTH_PROBE_VERSION=v0.4.11 && \
     wget -qO/artifacts/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-amd64 && \
