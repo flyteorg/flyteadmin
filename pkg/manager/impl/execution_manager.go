@@ -6,7 +6,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/flyteorg/flyteadmin/pkg/workflowengine"
+	"github.com/flyteorg/flytestdlib/promutils/labeled"
+
+	"github.com/flyteorg/flyteadmin/plugins"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 
@@ -28,6 +30,7 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/storage"
 
+	cloudeventInterfaces "github.com/flyteorg/flyteadmin/pkg/async/cloudevent/interfaces"
 	eventWriter "github.com/flyteorg/flyteadmin/pkg/async/events/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/async/notifications"
 	notificationInterfaces "github.com/flyteorg/flyteadmin/pkg/async/notifications/interfaces"
@@ -48,6 +51,7 @@ import (
 	"github.com/benbjohnson/clock"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/wrappers"
 )
 
 const childContainerQueueKey = "child_queue"
@@ -59,7 +63,7 @@ type executionSystemMetrics struct {
 	Scope                      promutils.Scope
 	ActiveExecutions           prometheus.Gauge
 	ExecutionsCreated          prometheus.Counter
-	ExecutionsTerminated       prometheus.Counter
+	ExecutionsTerminated       labeled.Counter
 	ExecutionEventsCreated     prometheus.Counter
 	PropellerFailures          prometheus.Counter
 	PublishNotificationError   prometheus.Counter
@@ -95,7 +99,9 @@ type ExecutionManager struct {
 	resourceManager           interfaces.ResourceInterface
 	qualityOfServiceAllocator executions.QualityOfServiceAllocator
 	eventPublisher            notificationInterfaces.Publisher
+	cloudEventPublisher       notificationInterfaces.Publisher
 	dbEventWriter             eventWriter.WorkflowExecutionEventWriter
+	pluginRegistry            *plugins.Registry
 }
 
 func getExecutionContext(ctx context.Context, id *core.WorkflowExecutionIdentifier) context.Context {
@@ -428,41 +434,125 @@ func (m *ExecutionManager) getInheritedExecMetadata(ctx context.Context, request
 	return parentNodeExecutionID, sourceExecutionID, nil
 }
 
+// WorkflowExecutionConfigInterface is used as common interface for capturing the common behavior catering to the needs
+// of fetching the WorkflowExecutionConfig across LaunchPlanSpec, ExecutionCreateRequest
+// MatchableResource_WORKFLOW_EXECUTION_CONFIG and ApplicationConfig
+type WorkflowExecutionConfigInterface interface {
+	// GetMaxParallelism Can be used to control the number of parallel nodes to run within the workflow. This is useful to achieve fairness.
+	GetMaxParallelism() int32
+	// GetRawOutputDataConfig Encapsulates user settings pertaining to offloaded data (i.e. Blobs, Schema, query data, etc.).
+	GetRawOutputDataConfig() *admin.RawOutputDataConfig
+	// GetSecurityContext Indicates security context permissions for executions triggered with this matchable attribute.
+	GetSecurityContext() *core.SecurityContext
+	// GetAnnotations Custom annotations to be applied to a triggered execution resource.
+	GetAnnotations() *admin.Annotations
+	// GetLabels Custom labels to be applied to a triggered execution resource.
+	GetLabels() *admin.Labels
+	// GetInterruptible indicates a workflow should be flagged as interruptible for a single execution. If omitted, the workflow's default is used.
+	GetInterruptible() *wrappers.BoolValue
+}
+
+// Merge into workflowExecConfig from spec and return true if any value has been changed
+func mergeIntoExecConfig(workflowExecConfig admin.WorkflowExecutionConfig, spec WorkflowExecutionConfigInterface) admin.WorkflowExecutionConfig {
+	if workflowExecConfig.GetMaxParallelism() == 0 && spec.GetMaxParallelism() > 0 {
+		workflowExecConfig.MaxParallelism = spec.GetMaxParallelism()
+	}
+
+	if workflowExecConfig.GetSecurityContext() == nil && spec.GetSecurityContext() != nil {
+		if spec.GetSecurityContext().GetRunAs() != nil &&
+			(len(spec.GetSecurityContext().GetRunAs().GetK8SServiceAccount()) > 0 ||
+				len(spec.GetSecurityContext().GetRunAs().GetIamRole()) > 0) {
+			workflowExecConfig.SecurityContext = spec.GetSecurityContext()
+		}
+	}
+	// Launchplan spec has label, annotation and rawOutputDataConfig initialized with empty values.
+	// Hence we do a deep check in the following conditions before assignment
+	if (workflowExecConfig.GetRawOutputDataConfig() == nil ||
+		len(workflowExecConfig.GetRawOutputDataConfig().GetOutputLocationPrefix()) == 0) &&
+		(spec.GetRawOutputDataConfig() != nil && len(spec.GetRawOutputDataConfig().OutputLocationPrefix) > 0) {
+		workflowExecConfig.RawOutputDataConfig = spec.GetRawOutputDataConfig()
+	}
+	if (workflowExecConfig.GetLabels() == nil || len(workflowExecConfig.GetLabels().Values) == 0) &&
+		(spec.GetLabels() != nil && len(spec.GetLabels().Values) > 0) {
+		workflowExecConfig.Labels = spec.GetLabels()
+	}
+	if (workflowExecConfig.GetAnnotations() == nil || len(workflowExecConfig.GetAnnotations().Values) == 0) &&
+		(spec.GetAnnotations() != nil && len(spec.GetAnnotations().Values) > 0) {
+		workflowExecConfig.Annotations = spec.GetAnnotations()
+	}
+
+	// Override interruptible flag if workflow execution config does not have a value set or the spec sets a different
+	// value that defined as the workflow default. This allows for workflows to have their interruptible setting
+	// explicitly turned on and off for a single execution.
+	if (workflowExecConfig.GetInterruptible() == nil && spec.GetInterruptible() != nil) ||
+		(workflowExecConfig.GetInterruptible() != nil && spec.GetInterruptible() != nil &&
+			workflowExecConfig.GetInterruptible().GetValue() != spec.GetInterruptible().GetValue()) {
+		workflowExecConfig.Interruptible = spec.GetInterruptible()
+	}
+
+	return workflowExecConfig
+}
+
 // Produces execution-time attributes for workflow execution.
 // Defaults to overridable execution values set in the execution create request, then looks at the launch plan values
 // (if any) before defaulting to values set in the matchable resource db and further if matchable resources don't
 // exist then defaults to one set in application configuration
 func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admin.ExecutionCreateRequest,
 	launchPlan *admin.LaunchPlan) (*admin.WorkflowExecutionConfig, error) {
-	if request.Spec.MaxParallelism > 0 {
-		return &admin.WorkflowExecutionConfig{
-			MaxParallelism: request.Spec.MaxParallelism,
-		}, nil
+
+	workflowExecConfig := admin.WorkflowExecutionConfig{}
+	// merge the request spec into workflowExecConfig
+	workflowExecConfig = mergeIntoExecConfig(workflowExecConfig, request.Spec)
+
+	var workflowName string
+	if launchPlan != nil && launchPlan.Spec != nil {
+		// merge the launch plan spec into workflowExecConfig
+		workflowExecConfig = mergeIntoExecConfig(workflowExecConfig, launchPlan.Spec)
+		if launchPlan.Spec.WorkflowId != nil {
+			workflowName = launchPlan.Spec.WorkflowId.Name
+		}
 	}
-	if launchPlan != nil && launchPlan.Spec.MaxParallelism > 0 {
-		return &admin.WorkflowExecutionConfig{
-			MaxParallelism: launchPlan.Spec.MaxParallelism,
-		}, nil
+
+	matchableResource, err := util.GetMatchableResource(ctx, m.resourceManager,
+		admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG, request.Project, request.Domain, workflowName)
+	if err != nil {
+		return nil, err
+	}
+
+	if matchableResource != nil && matchableResource.Attributes.GetWorkflowExecutionConfig() != nil {
+		// merge the matchable resource workflow execution config into workflowExecConfig
+		workflowExecConfig = mergeIntoExecConfig(workflowExecConfig,
+			matchableResource.Attributes.GetWorkflowExecutionConfig())
+	}
+	//  merge the application config into workflowExecConfig
+	workflowExecConfig = mergeIntoExecConfig(workflowExecConfig, m.config.ApplicationConfiguration().GetTopLevelConfig())
+	logger.Infof(ctx, "getting the workflow execution config from application configuration")
+	// Defaults to one from the application config
+	return &workflowExecConfig, nil
+}
+
+func (m *ExecutionManager) getClusterAssignment(ctx context.Context, request *admin.ExecutionCreateRequest) (
+	*admin.ClusterAssignment, error) {
+	if request.Spec.ClusterAssignment != nil {
+		return request.Spec.ClusterAssignment, nil
 	}
 
 	resource, err := m.resourceManager.GetResource(ctx, interfaces.ResourceRequest{
 		Project:      request.Project,
 		Domain:       request.Domain,
-		ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
+		ResourceType: admin.MatchableResource_CLUSTER_ASSIGNMENT,
 	})
 	if err != nil {
 		if flyteAdminError, ok := err.(errors.FlyteAdminError); !ok || flyteAdminError.Code() != codes.NotFound {
-			logger.Errorf(ctx, "Failed to get workflow execution config overrides with error: %v", err)
+			logger.Errorf(ctx, "Failed to get cluster assignment overrides with error: %v", err)
 			return nil, err
 		}
 	}
-	if resource != nil && resource.Attributes.GetWorkflowExecutionConfig() != nil {
-		return resource.Attributes.GetWorkflowExecutionConfig(), nil
+	if resource != nil && resource.Attributes.GetClusterAssignment() != nil {
+		return resource.Attributes.GetClusterAssignment(), nil
 	}
-	// Defaults to one from the application config
-	return &admin.WorkflowExecutionConfig{
-		MaxParallelism: m.config.ApplicationConfiguration().GetTopLevelConfig().GetMaxParallelism(),
-	}, nil
+	// Defaults to empty assignment with no selectors
+	return &admin.ClusterAssignment{}, nil
 }
 
 func (m *ExecutionManager) launchSingleTaskExecution(
@@ -555,25 +645,33 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	}
 
 	var labels map[string]string
-	if requestSpec.Labels != nil {
-		labels = requestSpec.Labels.Values
+	if executionConfig.Labels != nil {
+		labels = executionConfig.Labels.Values
 	}
+
 	labels, err = m.addProjectLabels(ctx, request.Project, labels)
 	if err != nil {
 		return nil, nil, err
 	}
+
 	var annotations map[string]string
-	if requestSpec.Annotations != nil {
-		annotations = requestSpec.Annotations.Values
+	if executionConfig.Annotations != nil {
+		annotations = executionConfig.Annotations.Values
 	}
 
-	rawOutputDataConfig := launchPlan.Spec.RawOutputDataConfig
-	if requestSpec.RawOutputDataConfig != nil {
-		rawOutputDataConfig = requestSpec.RawOutputDataConfig
+	var rawOutputDataConfig *admin.RawOutputDataConfig
+	if executionConfig.RawOutputDataConfig != nil {
+		rawOutputDataConfig = executionConfig.RawOutputDataConfig
+	}
+
+	clusterAssignment, err := m.getClusterAssignment(ctx, &request)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	resolvedAuthRole := resolveAuthRole(request, launchPlan)
-	resolvedSecurityCtx := resolveSecurityCtx(ctx, request, launchPlan, resolvedAuthRole)
+	resolvedSecurityCtx := resolveSecurityCtx(ctx, executionConfig.GetSecurityContext(), resolvedAuthRole)
+
 	executionParameters := workflowengineInterfaces.ExecutionParameters{
 		Inputs:              request.Inputs,
 		AcceptedAt:          requestedAt,
@@ -585,6 +683,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		EventVersion:        m.config.ApplicationConfiguration().GetTopLevelConfig().EventVersion,
 		RoleNameKey:         m.config.ApplicationConfiguration().GetTopLevelConfig().RoleNameKey,
 		RawOutputDataConfig: rawOutputDataConfig,
+		ClusterAssignment:   clusterAssignment,
 	}
 
 	overrides, err := m.addPluginOverrides(ctx, &workflowExecutionID, workflowExecutionID.Name, "")
@@ -599,7 +698,8 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		executionParameters.RecoveryExecution = request.Spec.Metadata.ReferenceExecution
 	}
 
-	execInfo, err := workflowengine.GetRegistry().GetExecutor().Execute(ctx, workflowengineInterfaces.ExecutionData{
+	workflowExecutor := plugins.Get[workflowengineInterfaces.WorkflowExecutor](m.pluginRegistry, plugins.PluginIDWorkflowExecutor)
+	execInfo, err := workflowExecutor.Execute(ctx, workflowengineInterfaces.ExecutionData{
 		Namespace:               namespace,
 		ExecutionID:             &workflowExecutionID,
 		ReferenceWorkflowName:   workflow.Id.Name,
@@ -646,6 +746,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		Cluster:               execInfo.Cluster,
 		InputsURI:             inputsURI,
 		UserInputsURI:         userInputsURI,
+		SecurityContext:       resolvedSecurityCtx,
 	})
 	if err != nil {
 		logger.Infof(ctx, "Failed to create execution model in transformer for id: [%+v] with err: %v",
@@ -678,16 +779,13 @@ func resolveAuthRole(request admin.ExecutionCreateRequest, launchPlan *admin.Lau
 	return &admin.AuthRole{}
 }
 
-func resolveSecurityCtx(ctx context.Context, request admin.ExecutionCreateRequest, launchPlan *admin.LaunchPlan,
+func resolveSecurityCtx(ctx context.Context, executionConfigSecurityCtx *core.SecurityContext,
 	resolvedAuthRole *admin.AuthRole) *core.SecurityContext {
-	// Use security context from the request if its set
-	if request.Spec.SecurityContext != nil {
-		return request.Spec.SecurityContext
-	}
-
-	// Use launchplans security context if its set
-	if launchPlan.Spec.SecurityContext != nil {
-		return launchPlan.Spec.SecurityContext
+	// Use security context from the executionConfigSecurityCtx if its set and non empty or else resolve from authRole
+	if executionConfigSecurityCtx != nil && executionConfigSecurityCtx.RunAs != nil &&
+		(len(executionConfigSecurityCtx.RunAs.K8SServiceAccount) > 0 ||
+			len(executionConfigSecurityCtx.RunAs.IamRole) > 0) {
+		return executionConfigSecurityCtx
 	}
 	logger.Warn(ctx, "Setting security context from auth Role")
 	return &core.SecurityContext{
@@ -787,7 +885,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	namespace := common.GetNamespaceName(
 		m.config.NamespaceMappingConfiguration().GetNamespaceTemplate(), workflowExecutionID.Project, workflowExecutionID.Domain)
 
-	labels, err := resolveStringMap(requestSpec.GetLabels(), launchPlan.Spec.Labels, "labels", m.config.RegistrationValidationConfiguration().GetMaxLabelEntries())
+	labels, err := resolveStringMap(executionConfig.GetLabels(), launchPlan.Spec.Labels, "labels", m.config.RegistrationValidationConfiguration().GetMaxLabelEntries())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -795,17 +893,22 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	if err != nil {
 		return nil, nil, err
 	}
-	annotations, err := resolveStringMap(requestSpec.GetAnnotations(), launchPlan.Spec.Annotations, "annotations", m.config.RegistrationValidationConfiguration().GetMaxAnnotationEntries())
+	annotations, err := resolveStringMap(executionConfig.GetAnnotations(), launchPlan.Spec.Annotations, "annotations", m.config.RegistrationValidationConfiguration().GetMaxAnnotationEntries())
 	if err != nil {
 		return nil, nil, err
 	}
-	rawOutputDataConfig := launchPlan.Spec.RawOutputDataConfig
-	if requestSpec.RawOutputDataConfig != nil {
-		rawOutputDataConfig = requestSpec.RawOutputDataConfig
+	var rawOutputDataConfig *admin.RawOutputDataConfig
+	if executionConfig.RawOutputDataConfig != nil {
+		rawOutputDataConfig = executionConfig.RawOutputDataConfig
+	}
+
+	clusterAssignment, err := m.getClusterAssignment(ctx, &request)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	resolvedAuthRole := resolveAuthRole(request, launchPlan)
-	resolvedSecurityCtx := resolveSecurityCtx(ctx, request, launchPlan, resolvedAuthRole)
+	resolvedSecurityCtx := resolveSecurityCtx(ctx, executionConfig.GetSecurityContext(), resolvedAuthRole)
 	executionParameters := workflowengineInterfaces.ExecutionParameters{
 		Inputs:              executionInputs,
 		AcceptedAt:          requestedAt,
@@ -817,6 +920,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		EventVersion:        m.config.ApplicationConfiguration().GetTopLevelConfig().EventVersion,
 		RoleNameKey:         m.config.ApplicationConfiguration().GetTopLevelConfig().RoleNameKey,
 		RawOutputDataConfig: rawOutputDataConfig,
+		ClusterAssignment:   clusterAssignment,
 	}
 
 	overrides, err := m.addPluginOverrides(ctx, &workflowExecutionID, launchPlan.GetSpec().WorkflowId.Name, launchPlan.Id.Name)
@@ -832,7 +936,8 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		executionParameters.RecoveryExecution = request.Spec.Metadata.ReferenceExecution
 	}
 
-	execInfo, err := workflowengine.GetRegistry().GetExecutor().Execute(ctx, workflowengineInterfaces.ExecutionData{
+	workflowExecutor := plugins.Get[workflowengineInterfaces.WorkflowExecutor](m.pluginRegistry, plugins.PluginIDWorkflowExecutor)
+	execInfo, err := workflowExecutor.Execute(ctx, workflowengineInterfaces.ExecutionData{
 		Namespace:               namespace,
 		ExecutionID:             &workflowExecutionID,
 		ReferenceWorkflowName:   workflow.Id.Name,
@@ -879,6 +984,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		Cluster:               execInfo.Cluster,
 		InputsURI:             inputsURI,
 		UserInputsURI:         userInputsURI,
+		SecurityContext:       resolvedSecurityCtx,
 	})
 	if err != nil {
 		logger.Infof(ctx, "Failed to create execution model in transformer for id: [%+v] with err: %v",
@@ -1235,8 +1341,18 @@ func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admi
 			go m.emitScheduledWorkflowMetrics(ctx, executionModel, request.Event.OccurredAt)
 		}
 	} else if common.IsExecutionTerminal(request.Event.Phase) {
+		if request.Event.Phase == core.WorkflowExecution_FAILED {
+			// request.Event is expected to be of type WorkflowExecutionEvent_Error when workflow fails.
+			// if not, log the error and continue
+			if err := request.Event.GetError(); err != nil {
+				ctx = context.WithValue(ctx, common.ErrorKindKey, err.Kind.String())
+			} else {
+				logger.Warning(ctx, "Failed to parse error for FAILED request [%+v]", request)
+			}
+		}
+
 		m.systemMetrics.ActiveExecutions.Dec()
-		m.systemMetrics.ExecutionsTerminated.Inc()
+		m.systemMetrics.ExecutionsTerminated.Inc(contextutils.WithPhase(ctx, request.Event.Phase.String()))
 		go m.emitOverallWorkflowExecutionTime(executionModel, request.Event.OccurredAt)
 		if request.Event.GetOutputData() != nil {
 			m.userMetrics.WorkflowExecutionOutputBytes.Observe(float64(proto.Size(request.Event.GetOutputData())))
@@ -1255,8 +1371,13 @@ func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admi
 		m.systemMetrics.PublishEventError.Inc()
 		logger.Infof(ctx, "error publishing event [%+v] with err: [%v]", request.RequestId, err)
 	}
+	go func() {
+		if err := m.cloudEventPublisher.Publish(ctx, proto.MessageName(&request), &request); err != nil {
+			m.systemMetrics.PublishEventError.Inc()
+			logger.Infof(ctx, "error publishing cloud event [%+v] with err: [%v]", request.RequestId, err)
+		}
+	}()
 
-	m.systemMetrics.ExecutionEventsCreated.Inc()
 	return &admin.WorkflowExecutionEventResponse{}, nil
 }
 
@@ -1529,7 +1650,8 @@ func (m *ExecutionManager) TerminateExecution(
 		return nil, err
 	}
 
-	err = workflowengine.GetRegistry().GetExecutor().Abort(ctx, workflowengineInterfaces.AbortData{
+	workflowExecutor := plugins.Get[workflowengineInterfaces.WorkflowExecutor](m.pluginRegistry, plugins.PluginIDWorkflowExecutor)
+	err = workflowExecutor.Abort(ctx, workflowengineInterfaces.AbortData{
 		Namespace: common.GetNamespaceName(
 			m.config.NamespaceMappingConfiguration().GetNamespaceTemplate(), request.Id.Project, request.Id.Domain),
 
@@ -1550,8 +1672,8 @@ func newExecutionSystemMetrics(scope promutils.Scope) executionSystemMetrics {
 			"overall count of active workflow executions"),
 		ExecutionsCreated: scope.MustNewCounter("executions_created",
 			"overall count of successfully completed CreateExecutionRequests"),
-		ExecutionsTerminated: scope.MustNewCounter("executions_terminated",
-			"overall count of terminated workflow executions"),
+		ExecutionsTerminated: labeled.NewCounter("executions_terminated",
+			"overall count of terminated workflow executions", scope),
 		ExecutionEventsCreated: scope.MustNewCounter("execution_events_created",
 			"overall count of successfully completed WorkflowExecutionEventRequest"),
 		PropellerFailures: scope.MustNewCounter("propeller_failures",
@@ -1573,11 +1695,12 @@ func newExecutionSystemMetrics(scope promutils.Scope) executionSystemMetrics {
 	}
 }
 
-func NewExecutionManager(db repositoryInterfaces.Repository, config runtimeInterfaces.Configuration,
+func NewExecutionManager(db repositoryInterfaces.Repository, pluginRegistry *plugins.Registry, config runtimeInterfaces.Configuration,
 	storageClient *storage.DataStore, systemScope promutils.Scope, userScope promutils.Scope,
 	publisher notificationInterfaces.Publisher, urlData dataInterfaces.RemoteURLInterface,
 	workflowManager interfaces.WorkflowInterface, namedEntityManager interfaces.NamedEntityInterface,
-	eventPublisher notificationInterfaces.Publisher, eventWriter eventWriter.WorkflowExecutionEventWriter) interfaces.ExecutionInterface {
+	eventPublisher notificationInterfaces.Publisher, cloudEventPublisher cloudeventInterfaces.Publisher,
+	eventWriter eventWriter.WorkflowExecutionEventWriter) interfaces.ExecutionInterface {
 	queueAllocator := executions.NewQueueAllocator(config, db)
 	systemMetrics := newExecutionSystemMetrics(systemScope)
 
@@ -1607,7 +1730,9 @@ func NewExecutionManager(db repositoryInterfaces.Repository, config runtimeInter
 		resourceManager:           resourceManager,
 		qualityOfServiceAllocator: executions.NewQualityOfServiceAllocator(config, resourceManager),
 		eventPublisher:            eventPublisher,
+		cloudEventPublisher:       cloudEventPublisher,
 		dbEventWriter:             eventWriter,
+		pluginRegistry:            pluginRegistry,
 	}
 }
 

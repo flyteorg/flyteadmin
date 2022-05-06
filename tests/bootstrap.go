@@ -1,3 +1,4 @@
+//go:build integration
 // +build integration
 
 package tests
@@ -23,7 +24,7 @@ var adminScope = promutils.NewScope("flyteadmin")
 
 func getDbConfig() *runtimeInterfaces.DbConfig {
 	return &runtimeInterfaces.DbConfig{
-		PostgresConfig: runtimeInterfaces.PostgresConfig{
+		PostgresConfig: &runtimeInterfaces.PostgresConfig{
 			Host:   "postgres",
 			Port:   5432,
 			DbName: "postgres",
@@ -34,7 +35,7 @@ func getDbConfig() *runtimeInterfaces.DbConfig {
 
 func getLocalDbConfig() *runtimeInterfaces.DbConfig {
 	return &runtimeInterfaces.DbConfig{
-		PostgresConfig: runtimeInterfaces.PostgresConfig{
+		PostgresConfig: &runtimeInterfaces.PostgresConfig{
 			Host:   "localhost",
 			Port:   5432,
 			DbName: "flyteadmin",

@@ -3,8 +3,14 @@ package adminservice
 import (
 	"context"
 	"fmt"
-	"github.com/flyteorg/flyteadmin/auth"
 	"runtime/debug"
+
+	"github.com/flyteorg/flyteadmin/auth"
+
+	"github.com/flyteorg/flyteadmin/plugins"
+
+	"github.com/flyteorg/flyteadmin/pkg/async/cloudevent"
+	runtimeIfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 
@@ -21,11 +27,8 @@ import (
 	manager "github.com/flyteorg/flyteadmin/pkg/manager/impl"
 	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories"
-	"github.com/flyteorg/flyteadmin/pkg/runtime"
-	"github.com/flyteorg/flyteadmin/pkg/workflowengine"
 	workflowengineImpl "github.com/flyteorg/flyteadmin/pkg/workflowengine/impl"
 	"github.com/flyteorg/flytestdlib/logger"
-	"github.com/flyteorg/flytestdlib/profutils"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/storage"
 	"github.com/golang/protobuf/proto"
@@ -59,11 +62,10 @@ func (m *AdminService) interceptPanic(ctx context.Context, request proto.Message
 
 const defaultRetries = 3
 
-func NewAdminServer(ctx context.Context, kubeConfig, master string) *AdminService {
-	configuration := runtime.NewConfigurationProvider()
+func NewAdminServer(ctx context.Context, pluginRegistry *plugins.Registry, configuration runtimeIfaces.Configuration,
+	kubeConfig, master string, dataStorageClient *storage.DataStore, adminScope promutils.Scope) *AdminService {
 	applicationConfiguration := configuration.ApplicationConfiguration().GetTopLevelConfig()
 
-	adminScope := promutils.NewScope(applicationConfiguration.GetMetricsScope()).NewSubScope("admin")
 	panicCounter := adminScope.MustNewCounter("initialization_panic",
 		"panics encountered initializing the admin service")
 
@@ -84,7 +86,6 @@ func NewAdminServer(ctx context.Context, kubeConfig, master string) *AdminServic
 	dbScope := adminScope.NewSubScope("database")
 	repo := repositories.NewGormRepo(
 		db, errors.NewPostgresErrorTransformer(adminScope.NewSubScope("errors")), dbScope)
-	storeConfig := storage.GetConfig()
 	execCluster := executionCluster.GetExecutionCluster(
 		adminScope.NewSubScope("executor").NewSubScope("cluster"),
 		kubeConfig,
@@ -95,20 +96,15 @@ func NewAdminServer(ctx context.Context, kubeConfig, master string) *AdminServic
 		adminScope.NewSubScope("builder").NewSubScope("flytepropeller"))
 	workflowExecutor := workflowengineImpl.NewK8sWorkflowExecutor(execCluster, workflowBuilder)
 	logger.Info(ctx, "Successfully created a workflow executor engine")
-	workflowengine.GetRegistry().RegisterDefault(workflowExecutor)
+	pluginRegistry.RegisterDefault(plugins.PluginIDWorkflowExecutor, workflowExecutor)
 
 	logger.Warnf(ctx, "**Registering blanket auth server")
-	auth.GetInterceptorProvider().RegisterDefault(auth.BlanketAuthorization)
-
-	dataStorageClient, err := storage.NewDataStore(storeConfig, adminScope.NewSubScope("storage"))
-	if err != nil {
-		logger.Error(ctx, "Failed to initialize storage config")
-		panic(err)
-	}
+	pluginRegistry.RegisterDefault(plugins.PluginIDAuthorizer, auth.BlanketAuthorization)
 
 	publisher := notifications.NewNotificationsPublisher(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope)
 	processor := notifications.NewNotificationsProcessor(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope)
 	eventPublisher := notifications.NewEventsPublisher(*configuration.ApplicationConfiguration().GetExternalEventsConfig(), adminScope)
+	cloudEventPublisher := cloudevent.NewCloudEventsPublisher(ctx, *configuration.ApplicationConfiguration().GetCloudEventsConfig(), adminScope)
 	go func() {
 		logger.Info(ctx, "Started processing notifications.")
 		processor.StartProcessing()
@@ -147,9 +143,9 @@ func NewAdminServer(ctx context.Context, kubeConfig, master string) *AdminServic
 		executionEventWriter.Run()
 	}()
 
-	executionManager := manager.NewExecutionManager(repo, configuration, dataStorageClient,
+	executionManager := manager.NewExecutionManager(repo, pluginRegistry, configuration, dataStorageClient,
 		adminScope.NewSubScope("execution_manager"), adminScope.NewSubScope("user_execution_metrics"),
-		publisher, urlData, workflowManager, namedEntityManager, eventPublisher, executionEventWriter)
+		publisher, urlData, workflowManager, namedEntityManager, eventPublisher, cloudEventPublisher, executionEventWriter)
 	versionManager := manager.NewVersionManager()
 
 	scheduledWorkflowExecutor := workflowScheduler.GetWorkflowExecutor(executionManager, launchPlanManager)
@@ -157,15 +153,6 @@ func NewAdminServer(ctx context.Context, kubeConfig, master string) *AdminServic
 	go func() {
 		logger.Info(ctx, "Starting the scheduled workflow executor")
 		scheduledWorkflowExecutor.Run()
-	}()
-
-	// Serve profiling endpoints.
-	go func() {
-		err := profutils.StartProfilingServerWithDefaultHandlers(
-			ctx, applicationConfiguration.GetProfilerPort(), nil)
-		if err != nil {
-			logger.Panicf(ctx, "Failed to Start profiling and Metrics server. Error, %v", err)
-		}
 	}()
 
 	nodeExecutionEventWriter := eventWriter.NewNodeExecutionEventWriter(repo, applicationConfiguration.GetAsyncEventsBufferSize())

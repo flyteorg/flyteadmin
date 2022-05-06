@@ -4,6 +4,8 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/flyteorg/flytestdlib/promutils/labeled"
+
 	eventWriter "github.com/flyteorg/flyteadmin/pkg/async/events/interfaces"
 
 	notificationInterfaces "github.com/flyteorg/flyteadmin/pkg/async/notifications/interfaces"
@@ -41,7 +43,7 @@ type nodeExecutionMetrics struct {
 	Scope                      promutils.Scope
 	ActiveNodeExecutions       prometheus.Gauge
 	NodeExecutionsCreated      prometheus.Counter
-	NodeExecutionsTerminated   prometheus.Counter
+	NodeExecutionsTerminated   labeled.Counter
 	NodeExecutionEventsCreated prometheus.Counter
 	MissingWorkflowExecution   prometheus.Counter
 	ClosureSizeBytes           prometheus.Summary
@@ -279,7 +281,7 @@ func (m *NodeExecutionManager) CreateNodeEvent(ctx context.Context, request admi
 		m.metrics.ActiveNodeExecutions.Inc()
 	} else if common.IsNodeExecutionTerminal(request.Event.Phase) {
 		m.metrics.ActiveNodeExecutions.Dec()
-		m.metrics.NodeExecutionsTerminated.Inc()
+		m.metrics.NodeExecutionsTerminated.Inc(contextutils.WithPhase(ctx, request.Event.Phase.String()))
 		if request.Event.GetOutputData() != nil {
 			m.metrics.NodeExecutionOutputBytes.Observe(float64(proto.Size(request.Event.GetOutputData())))
 		}
@@ -294,6 +296,51 @@ func (m *NodeExecutionManager) CreateNodeEvent(ctx context.Context, request admi
 	return &admin.NodeExecutionEventResponse{}, nil
 }
 
+// Handles making additional database calls, if necessary, to populate IsParent & IsDynamic data using the historical pattern of
+// preloading child node executions. Otherwise, simply calls transform on the input model.
+func (m *NodeExecutionManager) transformNodeExecutionModel(ctx context.Context, nodeExecutionModel models.NodeExecution,
+	nodeExecutionID *core.NodeExecutionIdentifier) (*admin.NodeExecution, error) {
+	internalData, err := transformers.GetNodeExecutionInternalData(nodeExecutionModel.InternalData)
+	if err != nil {
+		return nil, err
+	}
+	if internalData.EventVersion == 0 {
+		// Issue more expensive query to determine whether this node is a parent and/or dynamic node.
+		nodeExecutionModel, err = m.db.NodeExecutionRepo().GetWithChildren(ctx, repoInterfaces.NodeExecutionResource{
+			NodeExecutionIdentifier: *nodeExecutionID,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	nodeExecution, err := transformers.FromNodeExecutionModel(nodeExecutionModel)
+	if err != nil {
+		logger.Debugf(ctx, "failed to transform node execution model [%+v] to proto with err: %v", nodeExecutionID, err)
+		return nil, err
+	}
+	return nodeExecution, nil
+}
+
+func (m *NodeExecutionManager) transformNodeExecutionModelList(ctx context.Context, nodeExecutionModels []models.NodeExecution) ([]*admin.NodeExecution, error) {
+	nodeExecutions := make([]*admin.NodeExecution, len(nodeExecutionModels))
+	for idx, nodeExecutionModel := range nodeExecutionModels {
+		nodeExecution, err := m.transformNodeExecutionModel(ctx, nodeExecutionModel, &core.NodeExecutionIdentifier{
+			ExecutionId: &core.WorkflowExecutionIdentifier{
+				Project: nodeExecutionModel.Project,
+				Domain:  nodeExecutionModel.Domain,
+				Name:    nodeExecutionModel.Name,
+			},
+			NodeId: nodeExecutionModel.NodeID,
+		})
+		if err != nil {
+			return nil, err
+		}
+		nodeExecutions[idx] = nodeExecution
+	}
+	return nodeExecutions, nil
+}
+
 func (m *NodeExecutionManager) GetNodeExecution(
 	ctx context.Context, request admin.NodeExecutionGetRequest) (*admin.NodeExecution, error) {
 	if err := validation.ValidateNodeExecutionIdentifier(request.Id); err != nil {
@@ -306,9 +353,8 @@ func (m *NodeExecutionManager) GetNodeExecution(
 			request.Id, err)
 		return nil, err
 	}
-	nodeExecution, err := transformers.FromNodeExecutionModel(*nodeExecutionModel)
+	nodeExecution, err := m.transformNodeExecutionModel(ctx, *nodeExecutionModel, request.Id)
 	if err != nil {
-		logger.Debugf(ctx, "failed to transform node execution model [%+v] to proto with err: %v", request.Id, err)
 		return nil, err
 	}
 	return nodeExecution, nil
@@ -353,7 +399,7 @@ func (m *NodeExecutionManager) listNodeExecutions(
 	if len(output.NodeExecutions) == int(limit) {
 		token = strconv.Itoa(offset + len(output.NodeExecutions))
 	}
-	nodeExecutionList, err := transformers.FromNodeExecutionModels(output.NodeExecutions)
+	nodeExecutionList, err := m.transformNodeExecutionModelList(ctx, output.NodeExecutions)
 	if err != nil {
 		logger.Debugf(ctx, "failed to transform node execution models for request with err: %v", err)
 		return nil, err
@@ -500,15 +546,16 @@ func (m *NodeExecutionManager) GetNodeExecutionData(
 
 func NewNodeExecutionManager(db repoInterfaces.Repository, config runtimeInterfaces.Configuration,
 	storagePrefix []string, storageClient *storage.DataStore, scope promutils.Scope, urlData dataInterfaces.RemoteURLInterface,
-	eventPublisher notificationInterfaces.Publisher, eventWriter eventWriter.NodeExecutionEventWriter) interfaces.NodeExecutionInterface {
+	eventPublisher notificationInterfaces.Publisher,
+	eventWriter eventWriter.NodeExecutionEventWriter) interfaces.NodeExecutionInterface {
 	metrics := nodeExecutionMetrics{
 		Scope: scope,
 		ActiveNodeExecutions: scope.MustNewGauge("active_node_executions",
 			"overall count of active node executions"),
 		NodeExecutionsCreated: scope.MustNewCounter("node_executions_created",
 			"overall count of node executions created"),
-		NodeExecutionsTerminated: scope.MustNewCounter("node_executions_terminated",
-			"overall count of terminated node executions"),
+		NodeExecutionsTerminated: labeled.NewCounter("node_executions_terminated",
+			"overall count of terminated node executions", scope),
 		NodeExecutionEventsCreated: scope.MustNewCounter("node_execution_events_created",
 			"overall count of successfully completed NodeExecutionEventRequest"),
 		MissingWorkflowExecution: scope.MustNewCounter("missing_workflow_execution",
@@ -523,9 +570,8 @@ func NewNodeExecutionManager(db repoInterfaces.Repository, config runtimeInterfa
 			"overall count of publish event errors when invoking publish()"),
 	}
 	return &NodeExecutionManager{
-		db:     db,
-		config: config,
-
+		db:             db,
+		config:         config,
 		storagePrefix:  storagePrefix,
 		storageClient:  storageClient,
 		metrics:        metrics,

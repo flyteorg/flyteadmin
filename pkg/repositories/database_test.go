@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"testing"
 	"time"
@@ -15,33 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	gormLogger "gorm.io/gorm/logger"
 )
-
-func TestGetGormLogLevel(t *testing.T) {
-	assert.Equal(t, gormLogger.Error, getGormLogLevel(context.TODO(), &logger.Config{
-		Level: logger.PanicLevel,
-	}))
-	assert.Equal(t, gormLogger.Error, getGormLogLevel(context.TODO(), &logger.Config{
-		Level: logger.FatalLevel,
-	}))
-	assert.Equal(t, gormLogger.Error, getGormLogLevel(context.TODO(), &logger.Config{
-		Level: logger.ErrorLevel,
-	}))
-
-	assert.Equal(t, gormLogger.Warn, getGormLogLevel(context.TODO(), &logger.Config{
-		Level: logger.WarnLevel,
-	}))
-
-	assert.Equal(t, gormLogger.Info, getGormLogLevel(context.TODO(), &logger.Config{
-		Level: logger.InfoLevel,
-	}))
-	assert.Equal(t, gormLogger.Info, getGormLogLevel(context.TODO(), &logger.Config{
-		Level: logger.DebugLevel,
-	}))
-
-	assert.Equal(t, gormLogger.Error, getGormLogLevel(context.TODO(), nil))
-}
 
 func TestResolvePassword(t *testing.T) {
 	password := "123abc"
@@ -58,7 +33,7 @@ func TestResolvePassword(t *testing.T) {
 }
 
 func TestGetPostgresDsn(t *testing.T) {
-	pgConfig := runtimeInterfaces.PostgresConfig{
+	pgConfig := &runtimeInterfaces.PostgresConfig{
 		Host:         "localhost",
 		Port:         5432,
 		DbName:       "postgres",
@@ -141,5 +116,27 @@ func TestSetupDbConnectionPool(t *testing.T) {
 		}
 		err := setupDbConnectionPool(gormDb, dbConfig)
 		assert.NotNil(t, err)
+	})
+}
+
+func TestGetDB(t *testing.T) {
+	ctx := context.TODO()
+
+	t.Run("missing DB Config", func(t *testing.T) {
+		_, err := GetDB(ctx, &runtimeInterfaces.DbConfig{}, &logger.Config{})
+		assert.Error(t, err)
+	})
+
+	t.Run("sqlite config", func(t *testing.T) {
+		dbFile := path.Join(t.TempDir(), "admin.db")
+		db, err := GetDB(ctx, &runtimeInterfaces.DbConfig{
+			SQLiteConfig: &runtimeInterfaces.SQLiteConfig{
+				File: dbFile,
+			},
+		}, &logger.Config{})
+		assert.NoError(t, err)
+		assert.NotNil(t, db)
+		assert.FileExists(t, dbFile)
+		assert.Equal(t, "sqlite", db.Name())
 	})
 }

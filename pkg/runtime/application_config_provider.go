@@ -1,36 +1,26 @@
 package runtime
 
 import (
-	"time"
+	"fmt"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flytestdlib/config"
+	"github.com/flyteorg/flytestdlib/database"
 )
 
-const database = "database"
 const flyteAdmin = "flyteadmin"
 const scheduler = "scheduler"
 const remoteData = "remoteData"
 const notifications = "notifications"
 const domains = "domains"
 const externalEvents = "externalEvents"
+const cloudEvents = "cloudEvents"
 const metricPort = 10254
-const postgres = "postgres"
 
 const KB = 1024
 const MB = KB * KB
 
-var databaseConfig = config.MustRegisterSection(database, &interfaces.DbConfig{
-	DeprecatedPort:         5432,
-	DeprecatedUser:         postgres,
-	DeprecatedHost:         postgres,
-	DeprecatedDbName:       postgres,
-	DeprecatedExtraOptions: "sslmode=disable",
-	MaxIdleConnections:     10,
-	MaxOpenConnections:     1000,
-	ConnMaxLifeTime:        config.Duration{Duration: time.Hour},
-})
 var flyteAdminConfig = config.MustRegisterSection(flyteAdmin, &interfaces.ApplicationConfig{
 	ProfilerPort:          metricPort,
 	MetricsScope:          "flyte:",
@@ -38,6 +28,7 @@ var flyteAdminConfig = config.MustRegisterSection(flyteAdmin, &interfaces.Applic
 	EventVersion:          2,
 	AsyncEventsBufferSize: 100,
 	MaxParallelism:        25,
+	K8SServiceAccount:     "default",
 })
 
 var schedulerConfig = config.MustRegisterSection(scheduler, &interfaces.SchedulerConfig{
@@ -85,11 +76,25 @@ var externalEventsConfig = config.MustRegisterSection(externalEvents, &interface
 	Type: common.Local,
 })
 
+var cloudEventsConfig = config.MustRegisterSection(cloudEvents, &interfaces.CloudEventsConfig{
+	Type: common.Local,
+})
+
 // Implementation of an interfaces.ApplicationConfiguration
 type ApplicationConfigurationProvider struct{}
 
 func (p *ApplicationConfigurationProvider) GetDbConfig() *interfaces.DbConfig {
-	return databaseConfig.GetConfig().(*interfaces.DbConfig)
+	databaseConfig := database.GetConfig()
+	switch {
+	case !databaseConfig.SQLite.IsEmpty():
+		sqliteConfig := interfaces.SQLiteConfig(databaseConfig.SQLite)
+		return &interfaces.DbConfig{SQLiteConfig: &sqliteConfig}
+	case !databaseConfig.Postgres.IsEmpty():
+		postgresConfig := interfaces.PostgresConfig(databaseConfig.Postgres)
+		return &interfaces.DbConfig{PostgresConfig: &postgresConfig}
+	default:
+		panic(fmt.Errorf("database config cannot be empty"))
+	}
 }
 
 func (p *ApplicationConfigurationProvider) GetTopLevelConfig() *interfaces.ApplicationConfig {
@@ -114,6 +119,10 @@ func (p *ApplicationConfigurationProvider) GetDomainsConfig() *interfaces.Domain
 
 func (p *ApplicationConfigurationProvider) GetExternalEventsConfig() *interfaces.ExternalEventsConfig {
 	return externalEventsConfig.GetConfig().(*interfaces.ExternalEventsConfig)
+}
+
+func (p *ApplicationConfigurationProvider) GetCloudEventsConfig() *interfaces.CloudEventsConfig {
+	return cloudEventsConfig.GetConfig().(*interfaces.CloudEventsConfig)
 }
 
 func NewApplicationConfigurationProvider() interfaces.ApplicationConfiguration {

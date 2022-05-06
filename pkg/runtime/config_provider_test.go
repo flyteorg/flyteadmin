@@ -12,21 +12,21 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func initTestConfig() error {
+func initConfig(cfg string) error {
 	pwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
 
 	configAccessor := viper.NewAccessor(config.Options{
-		SearchPaths: []string{filepath.Join(pwd, "testdata/clusters_config.yaml")},
+		SearchPaths: []string{filepath.Join(pwd, cfg)},
 		StrictMode:  false,
 	})
 	return configAccessor.UpdateConfig(context.TODO())
 }
 
 func TestClusterConfig(t *testing.T) {
-	err := initTestConfig()
+	err := initConfig("testdata/clusters_config.yaml")
 	assert.NoError(t, err)
 
 	configProvider := NewConfigurationProvider()
@@ -48,4 +48,37 @@ func TestClusterConfig(t *testing.T) {
 	assert.True(t, clusters[1].Enabled)
 
 	assert.Equal(t, "file_path", clusters[1].Auth.Type)
+}
+
+func TestGetCloudEventsConfig(t *testing.T) {
+	err := initConfig("testdata/event.yaml")
+	assert.NoError(t, err)
+	configProvider := NewConfigurationProvider()
+	cloudEventsConfig := configProvider.ApplicationConfiguration().GetCloudEventsConfig()
+	assert.Equal(t, true, cloudEventsConfig.Enable)
+	assert.Equal(t, "aws", cloudEventsConfig.Type)
+	assert.Equal(t, "us-east-1", cloudEventsConfig.AWSConfig.Region)
+	assert.Equal(t, "topic", cloudEventsConfig.EventsPublisherConfig.TopicName)
+}
+
+func TestPostgresConfig(t *testing.T) {
+	err := initConfig("testdata/postgres_config.yaml")
+	assert.NoError(t, err)
+
+	configProvider := NewConfigurationProvider()
+	dbConfig := configProvider.ApplicationConfiguration().GetDbConfig()
+	assert.Equal(t, 5432, dbConfig.PostgresConfig.Port)
+	assert.Equal(t, "postgres", dbConfig.PostgresConfig.Host)
+	assert.Equal(t, "postgres", dbConfig.PostgresConfig.User)
+	assert.Equal(t, "postgres", dbConfig.PostgresConfig.DbName)
+	assert.Equal(t, "sslmode=disable", dbConfig.PostgresConfig.ExtraOptions)
+}
+
+func TestSqliteConfig(t *testing.T) {
+	err := initConfig("testdata/sqlite_config.yaml")
+	assert.NoError(t, err)
+
+	configProvider := NewConfigurationProvider()
+	dbConfig := configProvider.ApplicationConfiguration().GetDbConfig()
+	assert.Equal(t, "admin.db", dbConfig.SQLiteConfig.File)
 }
