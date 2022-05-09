@@ -155,7 +155,7 @@ func createPostgresDbIfNotExists(ctx context.Context, gormConfig *gorm.Config, p
 	return gorm.Open(dialector, gormConfig)
 }
 
-func setupDbConnectionPool(gormDb *gorm.DB, dbConfig *runtimeInterfaces.DbConfig) error {
+func setupDbConnectionPool(ctx context.Context, gormDb *gorm.DB, dbConfig *runtimeInterfaces.DbConfig) error {
 	genericDb, err := gormDb.DB()
 	if err != nil {
 		return err
@@ -163,5 +163,6 @@ func setupDbConnectionPool(gormDb *gorm.DB, dbConfig *runtimeInterfaces.DbConfig
 	genericDb.SetConnMaxLifetime(dbConfig.ConnMaxLifeTime.Duration)
 	genericDb.SetMaxIdleConns(dbConfig.MaxIdleConnections)
 	genericDb.SetMaxOpenConns(dbConfig.MaxOpenConnections)
+	logger.Infof(ctx, "Set connection pool values to [%+v]", genericDb.Stats())
 	return nil
 }
