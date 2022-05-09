@@ -105,7 +105,7 @@ func GetDB(ctx context.Context, dbConfig *runtimeInterfaces.DbConfig, logConfig 
 	}
 
 	// Setup connection pool settings
-	return gormDb, setupDbConnectionPool(gormDb, dbConfig)
+	return gormDb, setupDbConnectionPool(ctx, gormDb, dbConfig)
 }
 
 // Creates DB if it doesn't exist for the passed in config
