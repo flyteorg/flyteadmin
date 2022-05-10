@@ -160,6 +160,7 @@ func setupDbConnectionPool(ctx context.Context, gormDb *gorm.DB, dbConfig *runti
 	if err != nil {
 		return err
 	}
+	logger.Infof(ctx, "Using database config [%+v] to set connection settings", dbConfig)
 	genericDb.SetConnMaxLifetime(dbConfig.ConnMaxLifeTime.Duration)
 	genericDb.SetMaxIdleConns(dbConfig.MaxIdleConnections)
 	genericDb.SetMaxOpenConns(dbConfig.MaxOpenConnections)
