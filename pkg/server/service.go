@@ -21,6 +21,7 @@ import (
 	"github.com/flyteorg/flyteadmin/auth/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/config"
+	"github.com/flyteorg/flyteadmin/pkg/rpc"
 	"github.com/flyteorg/flyteadmin/pkg/rpc/adminservice"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/secretmanager"
@@ -119,6 +120,8 @@ func newGRPCServer(ctx context.Context, pluginRegistry *plugins.Registry, cfg *c
 
 	pluginRegistry.RegisterDefault(plugins.PluginIDDataProxy, dataProxySvc)
 	service.RegisterDataProxyServiceServer(grpcServer, plugins.Get[service.DataProxyServiceServer](pluginRegistry, plugins.PluginIDDataProxy))
+
+	service.RegisterSignalServiceServer(grpcServer, rpc.NewSignalServer(ctx, scope.NewSubScope("admin")))
 
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus("flyteadmin", grpc_health_v1.HealthCheckResponse_SERVING)
