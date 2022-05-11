@@ -1,13 +1,14 @@
 package impl
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/flyteorg/flytestdlib/contextutils"
 
+	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 	repoInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
-	//"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
@@ -16,7 +17,7 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 	//"github.com/prometheus/client_golang/prometheus"
-	//"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/codes"
 )
 
 type signalMetrics struct {
@@ -42,26 +43,8 @@ func (s *SignalManager) CreateSignal(
 	/*if err := validation.ValidateWorkflow(ctx, request, w.db, w.config.ApplicationConfiguration()); err != nil {
 		return nil, err
 	}*/
+
 	ctx = getSignalContext(ctx, request.Id)
-
-	// TODO hamersaw - Assert that a matching signal doesn't already exist before creating the signal.
-	/*existingMatchingWorkflow, err := util.GetWorkflowModel(ctx, w.db, *request.Id)
-	// Check that no identical or conflicting workflows exist.
-	if err == nil {
-		// A workflow's structure is uniquely defined by its collection of nodes.
-		if bytes.Equal(workflowDigest, existingMatchingWorkflow.Digest) {
-			return nil, errors.NewFlyteAdminErrorf(
-				codes.AlreadyExists, "identical workflow already exists with id %v", request.Id)
-		}
-		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
-			"workflow with different structure already exists with id %v", request.Id)
-	} else if flyteAdminError, ok := err.(errors.FlyteAdminError); !ok || flyteAdminError.Code() != codes.NotFound {
-		logger.Debugf(ctx, "Failed to get workflow for comparison in CreateWorkflow with ID [%+v] with err %v",
-			request.Id, err)
-		return nil, err
-	}*/
-
-	// Save the signal to the database.
 	signalModel, err := transformers.CreateSignalModel(request)
 	if err != nil {
 		logger.Errorf(ctx,
@@ -69,6 +52,24 @@ func (s *SignalManager) CreateSignal(
 			request, err)
 		return nil, err
 	}
+
+	// Assert that a matching signal doesn't already exist before creating the signal.
+	existingSignalModel, err := s.db.SignalRepo().Get(ctx, repoInterfaces.GetSignalInput{*request.Id});
+	if err == nil {
+		// A signals structure is uniquely defined by its value.
+		if bytes.Equal(signalModel.Value, existingSignalModel.Value) {
+			return nil, errors.NewFlyteAdminErrorf(
+				codes.AlreadyExists, "identical signal already exists with id %v", request.Id)
+		}
+		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
+			"signal with different value already exists with id %v", request.Id)
+	} else if flyteAdminError, ok := err.(errors.FlyteAdminError); !ok || flyteAdminError.Code() != codes.NotFound {
+		logger.Debugf(ctx, "Failed to get signal for comparison in CreateSignal with ID [%+v] with err %v",
+			request.Id, err)
+		return nil, err
+	}
+
+	// Save the signal to the database.
 	if err = s.db.SignalRepo().Create(ctx, signalModel); err != nil {
 		logger.Infof(ctx, "Failed to create signal model [%+v] with err %v", request.Id, err)
 		return nil, err
@@ -83,14 +84,19 @@ func (s *SignalManager) GetSignal(ctx context.Context, request admin.SignalGetRe
 		return nil, err
 	}*/
 	ctx = getSignalContext(ctx, request.Id)
-	// TODO hamersaw - impelemnt getSignal from SignalRepo
-	/*signal, err := util.GetSignal(ctx, w.db, w.storageClient, *request.Id)
+	signalModel, err := s.db.SignalRepo().Get(ctx, repoInterfaces.GetSignalInput{*request.Id});
 	if err != nil {
-		logger.Infof(ctx, "Failed to get workflow with id [%+v] with err %v", request.Id, err)
+		// TODO hamersaw - do we want to log this? are we really failing or does it just not exist yet?
+		logger.Infof(ctx, "Failed to get signal model [%+v] with err %v", request.Id, err)
 		return nil, err
 	}
-	return workflow, nil*/
-	return &admin.Signal{}, nil
+	signal, err := transformers.FromSignalModel(signalModel)
+	if err != nil {
+		logger.Errorf(ctx,
+			"Failed to transform signal model [%+v] with err: %v", signalModel, err)
+		return nil, err
+	}
+	return &signal, nil
 }
 
 func NewSignalManager(

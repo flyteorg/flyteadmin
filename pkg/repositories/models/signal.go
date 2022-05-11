@@ -10,6 +10,6 @@ type SignalKey struct {
 type Signal struct {
 	BaseModel
 	SignalKey
-	// TODO hamersaw - marshall / unmarhsall core.Literal
+	// TODO hamersaw - document
 	Value []byte
 }

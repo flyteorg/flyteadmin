@@ -390,6 +390,16 @@ var Migrations = []*gormigrate.Migration{
 			return tx.Model(&models.Execution{}).Migrator().DropIndex(&models.Execution{}, "idx_executions_created_at")
 		},
 	},
+	// Create signals table.
+	{
+		ID: "2022-04-11-signals",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&models.Signal{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Migrator().DropTable("signals")
+		},
+	},
 }
 
 func alterTableColumnType(db *sql.DB, columnName, columnType string) error {
