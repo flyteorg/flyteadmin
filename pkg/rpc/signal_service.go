@@ -5,8 +5,14 @@ import (
 	"fmt"
 	"runtime/debug"
 
+	"github.com/flyteorg/flyteadmin/pkg/repositories"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
+	manager "github.com/flyteorg/flyteadmin/pkg/manager/impl"
+	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/rpc/adminservice/util"
+	runtimeIfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 
 	"github.com/flyteorg/flytestdlib/logger"
@@ -15,6 +21,9 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"github.com/prometheus/client_golang/prometheus"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type signalMetrics struct {
@@ -27,10 +36,11 @@ type signalMetrics struct {
 
 type SignalService struct {
 	service.UnimplementedSignalServiceServer
-	metrics signalMetrics
+	signalManager interfaces.SignalInterface
+	metrics       signalMetrics
 }
 
-func NewSignalServer(ctx context.Context, adminScope promutils.Scope) *SignalService {
+func NewSignalServer(ctx context.Context, configuration runtimeIfaces.Configuration, adminScope promutils.Scope) *SignalService {
 	panicCounter := adminScope.MustNewCounter("initialization_panic",
 		"panics encountered initializing the admin service")
 
@@ -41,7 +51,7 @@ func NewSignalServer(ctx context.Context, adminScope promutils.Scope) *SignalSer
 		}
 	}()
 
-	/*databaseConfig := configuration.ApplicationConfiguration().GetDbConfig()
+	databaseConfig := configuration.ApplicationConfiguration().GetDbConfig()
 	logConfig := logger.GetConfig()
 
 	db, err := repositories.GetDB(ctx, databaseConfig, logConfig)
@@ -51,15 +61,12 @@ func NewSignalServer(ctx context.Context, adminScope promutils.Scope) *SignalSer
 	dbScope := adminScope.NewSubScope("database")
 	repo := repositories.NewGormRepo(
 		db, errors.NewPostgresErrorTransformer(adminScope.NewSubScope("errors")), dbScope)
-	execCluster := executionCluster.GetExecutionCluster(
-		adminScope.NewSubScope("executor").NewSubScope("cluster"),
-		kubeConfig,
-		master,
-		configuration,
-		repo)*/
+
+	signalManager := manager.NewSignalManager(repo, adminScope.NewSubScope("signal_manager"))
 
 	logger.Info(ctx, "Initializing a new SignalService")
 	return &SignalService{
+		signalManager: signalManager,
 		metrics: signalMetrics{
 			scope: adminScope,
 			panicCounter: adminScope.MustNewCounter("handler_panic",
@@ -79,4 +86,40 @@ func (s *SignalService) interceptPanic(ctx context.Context, request proto.Messag
 
 	s.metrics.panicCounter.Inc()
 	logger.Fatalf(ctx, "panic-ed for request: [%+v] with err: %v with Stack: %v", request, err, string(debug.Stack()))
+}
+
+func (s *SignalService) CreateSignal(
+	ctx context.Context, request *admin.SignalCreateRequest) (*admin.SignalCreateResponse, error) {
+	defer s.interceptPanic(ctx, request)
+	if request == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Incorrect request, nil requests not allowed")
+	}
+	var response *admin.SignalCreateResponse
+	var err error
+	s.metrics.create.Time(func() {
+		response, err = s.signalManager.CreateSignal(ctx, *request)
+	})
+	if err != nil {
+		return nil, util.TransformAndRecordError(err, &s.metrics.create)
+	}
+	s.metrics.create.Success()
+	return response, nil
+}
+
+func (s *SignalService) GetSignal(
+	ctx context.Context, request *admin.SignalGetRequest) (*admin.Signal, error) {
+	defer s.interceptPanic(ctx, request)
+	if request == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Incorrect request, nil requests not allowed")
+	}
+	var response *admin.Signal
+	var err error
+	s.metrics.get.Time(func() {
+		response, err = s.signalManager.GetSignal(ctx, *request)
+	})
+	if err != nil {
+		return nil, util.TransformAndRecordError(err, &s.metrics.get)
+	}
+	s.metrics.get.Success()
+	return response, nil
 }
