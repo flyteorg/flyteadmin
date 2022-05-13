@@ -88,16 +88,16 @@ func (s *SignalService) interceptPanic(ctx context.Context, request proto.Messag
 	logger.Fatalf(ctx, "panic-ed for request: [%+v] with err: %v with Stack: %v", request, err, string(debug.Stack()))
 }
 
-func (s *SignalService) CreateSignal(
-	ctx context.Context, request *admin.SignalCreateRequest) (*admin.SignalCreateResponse, error) {
+func (s *SignalService) GetOrCreateSignal(
+	ctx context.Context, request *admin.SignalGetOrCreateRequest) (*admin.Signal, error) {
 	defer s.interceptPanic(ctx, request)
 	if request == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Incorrect request, nil requests not allowed")
 	}
-	var response *admin.SignalCreateResponse
+	var response *admin.Signal
 	var err error
 	s.metrics.create.Time(func() {
-		response, err = s.signalManager.CreateSignal(ctx, *request)
+		response, err = s.signalManager.GetOrCreateSignal(ctx, *request)
 	})
 	if err != nil {
 		return nil, util.TransformAndRecordError(err, &s.metrics.create)
@@ -106,16 +106,16 @@ func (s *SignalService) CreateSignal(
 	return response, nil
 }
 
-func (s *SignalService) GetSignal(
-	ctx context.Context, request *admin.SignalGetRequest) (*admin.Signal, error) {
+func (s *SignalService) SetSignal(
+	ctx context.Context, request *admin.SignalSetRequest) (*admin.SignalSetResponse, error) {
 	defer s.interceptPanic(ctx, request)
 	if request == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Incorrect request, nil requests not allowed")
 	}
-	var response *admin.Signal
+	var response *admin.SignalSetResponse
 	var err error
 	s.metrics.get.Time(func() {
-		response, err = s.signalManager.GetSignal(ctx, *request)
+		response, err = s.signalManager.SetSignal(ctx, *request)
 	})
 	if err != nil {
 		return nil, util.TransformAndRecordError(err, &s.metrics.get)

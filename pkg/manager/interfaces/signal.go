@@ -8,6 +8,6 @@ import (
 
 // Interface for managing Flyte Signals
 type SignalInterface interface {
-	CreateSignal(ctx context.Context, request admin.SignalCreateRequest) (*admin.SignalCreateResponse, error)
-	GetSignal(ctx context.Context, request admin.SignalGetRequest) (*admin.Signal, error)
+	GetOrCreateSignal(ctx context.Context, request admin.SignalGetOrCreateRequest) (*admin.Signal, error)
+	SetSignal(ctx context.Context, request admin.SignalSetRequest) (*admin.SignalSetResponse, error)
 }

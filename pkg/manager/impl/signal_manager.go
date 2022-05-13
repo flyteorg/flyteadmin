@@ -1,12 +1,12 @@
 package impl
 
 import (
-	"bytes"
+	//"bytes"
 	"context"
 
 	"github.com/flyteorg/flytestdlib/contextutils"
 
-	"github.com/flyteorg/flyteadmin/pkg/errors"
+	//"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 	repoInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
@@ -17,7 +17,8 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 	//"github.com/prometheus/client_golang/prometheus"
-	"google.golang.org/grpc/codes"
+	//"google.golang.org/grpc/codes"
+	//"google.golang.org/grpc/status"
 )
 
 type signalMetrics struct {
@@ -36,67 +37,52 @@ func getSignalContext(ctx context.Context, identifier *core.SignalIdentifier) co
 	// TODO hamersaw - add identifier.SignalId
 }
 
-func (s *SignalManager) CreateSignal(
-	ctx context.Context,
-	request admin.SignalCreateRequest) (*admin.SignalCreateResponse, error) {
-	// TODO hamersaw - add validation to check the signal type
-	/*if err := validation.ValidateWorkflow(ctx, request, w.db, w.config.ApplicationConfiguration()); err != nil {
-		return nil, err
-	}*/
-
-	ctx = getSignalContext(ctx, request.Id)
-	signalModel, err := transformers.CreateSignalModel(request)
-	if err != nil {
-		logger.Errorf(ctx,
-			"Failed to transform signal model for request [%+v] with err: %v",
-			request, err)
-		return nil, err
-	}
-
-	// Assert that a matching signal doesn't already exist before creating the signal.
-	existingSignalModel, err := s.db.SignalRepo().Get(ctx, repoInterfaces.GetSignalInput{*request.Id});
-	if err == nil {
-		// A signals structure is uniquely defined by its value.
-		if bytes.Equal(signalModel.Value, existingSignalModel.Value) {
-			return nil, errors.NewFlyteAdminErrorf(
-				codes.AlreadyExists, "identical signal already exists with id %v", request.Id)
-		}
-		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
-			"signal with different value already exists with id %v", request.Id)
-	} else if flyteAdminError, ok := err.(errors.FlyteAdminError); !ok || flyteAdminError.Code() != codes.NotFound {
-		logger.Debugf(ctx, "Failed to get signal for comparison in CreateSignal with ID [%+v] with err %v",
-			request.Id, err)
-		return nil, err
-	}
-
-	// Save the signal to the database.
-	if err = s.db.SignalRepo().Create(ctx, signalModel); err != nil {
-		logger.Infof(ctx, "Failed to create signal model [%+v] with err %v", request.Id, err)
-		return nil, err
-	}
-	return &admin.SignalCreateResponse{}, nil
-}
-
-func (s *SignalManager) GetSignal(ctx context.Context, request admin.SignalGetRequest) (*admin.Signal, error) {
+func (s *SignalManager) GetOrCreateSignal(ctx context.Context, request admin.SignalGetOrCreateRequest) (*admin.Signal, error) {
 	// TODO hamersaw - validate signal
 	/*if err := validation.ValidateIdentifier(request.Id, common.Workflow); err != nil {
 		logger.Debugf(ctx, "invalid identifier [%+v]: %v", request.Id, err)
 		return nil, err
 	}*/
+
 	ctx = getSignalContext(ctx, request.Id)
-	signalModel, err := s.db.SignalRepo().Get(ctx, repoInterfaces.GetSignalInput{*request.Id});
+	signalModel, err := transformers.CreateSignalModel(*request.Id, request.Type, nil)
 	if err != nil {
-		// TODO hamersaw - do we want to log this? are we really failing or does it just not exist yet?
-		logger.Infof(ctx, "Failed to get signal model [%+v] with err %v", request.Id, err)
+		logger.Errorf(ctx, "Failed to transform signal with id [%+v] and type [+%v] with err: %v", request.Id, request.Type, err)
 		return nil, err
 	}
+
+	err = s.db.SignalRepo().GetOrCreate(ctx, &signalModel);
+	if err != nil {
+		return nil, err
+	}
+
 	signal, err := transformers.FromSignalModel(signalModel)
 	if err != nil {
-		logger.Errorf(ctx,
-			"Failed to transform signal model [%+v] with err: %v", signalModel, err)
+		logger.Errorf(ctx, "Failed to transform signal model [%+v] with err: %v", signalModel, err)
 		return nil, err
 	}
+
 	return &signal, nil
+}
+
+func (s *SignalManager) SetSignal(ctx context.Context, request admin.SignalSetRequest) (*admin.SignalSetResponse, error) {
+	// TODO hamersaw - add validation to check the signal type
+	/*if err := validation.ValidateWorkflow(ctx, request, w.db, w.config.ApplicationConfiguration()); err != nil {
+		return nil, err
+	}*/
+
+	signalModel, err := transformers.CreateSignalModel(*request.Id, nil, request.Value)
+	if err != nil {
+		logger.Errorf(ctx, "Failed to transform signal with id [%+v] and value [+%v] with err: %v", request.Id, request.Value, err)
+		return nil, err
+	}
+
+	err = s.db.SignalRepo().Update(ctx, signalModel);
+	if err != nil {
+		return nil, err
+	}
+
+	return &admin.SignalSetResponse{}, nil
 }
 
 func NewSignalManager(

@@ -2,7 +2,7 @@ package gormimpl
 
 import (
 	"context"
-	"errors"
+	//"errors"
 
 	flyteAdminDbErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
@@ -11,6 +11,7 @@ import (
 	"github.com/flyteorg/flytestdlib/promutils"
 
 	"gorm.io/gorm"
+	//"gorm.io/gorm/clause"
 )
 
 // Implementation of SignalRepoInterface.
@@ -20,9 +21,9 @@ type SignalRepo struct {
 	metrics          gormMetrics
 }
 
-func (s *SignalRepo) Create(ctx context.Context, input models.Signal) error {
+func (s *SignalRepo) GetOrCreate(ctx context.Context, input *models.Signal) error {
 	timer := s.metrics.CreateDuration.Start()
-	tx := s.db.Omit("id").Create(&input)
+	tx := s.db.FirstOrCreate(&input, input)
 	timer.Stop()
 	if tx.Error != nil {
 		return s.errorTransformer.ToFlyteAdminError(tx.Error)
@@ -30,27 +31,14 @@ func (s *SignalRepo) Create(ctx context.Context, input models.Signal) error {
 	return nil
 }
 
-func (s *SignalRepo) Get(ctx context.Context, input interfaces.GetSignalInput) (models.Signal, error) {
-	var signal models.Signal
+func (s *SignalRepo) Update(ctx context.Context, signal models.Signal) error {
 	timer := s.metrics.GetDuration.Start()
-	tx := s.db.Where(&models.Signal{
-		SignalKey: models.SignalKey{
-			ExecutionKey: models.ExecutionKey{
-				Project: input.SignalID.ExecutionId.Project,
-				Domain:  input.SignalID.ExecutionId.Domain,
-				Name:    input.SignalID.ExecutionId.Name,
-			},
-			SignalID: input.SignalID.SignalId,
-		},
-	}).Take(&signal)
+	updateTx := s.db.Model(&signal).Omit("type").Updates(signal)
 	timer.Stop()
-	if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
-		return models.Signal{}, flyteAdminDbErrors.GetMissingEntityError("SIGNAL", &input.SignalID)
+	if updateTx.Error != nil {
+		return s.errorTransformer.ToFlyteAdminError(updateTx.Error)
 	}
-	if tx.Error != nil {
-		return models.Signal{}, s.errorTransformer.ToFlyteAdminError(tx.Error)
-	}
-	return signal, nil
+	return nil
 }
 
 // Returns an instance of SignalRepoInterface

@@ -12,30 +12,53 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-func CreateSignalModel(request admin.SignalCreateRequest) (models.Signal, error) {
-	valueBytes, err := proto.Marshal(request.Value)
-	if err != nil {
-		return models.Signal{}, errors.NewFlyteAdminError(codes.Internal, "Failed to serialize signal value")
+func CreateSignalModel(id core.SignalIdentifier, signalType *core.LiteralType, value *core.Literal) (models.Signal, error) {
+	var typeBytes []byte
+	var err error
+	if signalType != nil {
+		typeBytes, err = proto.Marshal(signalType)
+		if err != nil {
+			return models.Signal{}, errors.NewFlyteAdminError(codes.Internal, "Failed to serialize signal type")
+		}
+	}
+
+	var valueBytes []byte
+	if value != nil {
+		valueBytes, err = proto.Marshal(value)
+		if err != nil {
+			return models.Signal{}, errors.NewFlyteAdminError(codes.Internal, "Failed to serialize signal value")
+		}
 	}
 
 	return models.Signal{
 		SignalKey: models.SignalKey{
 			ExecutionKey: models.ExecutionKey{
-				Project: request.Id.ExecutionId.Project,
-				Domain:  request.Id.ExecutionId.Domain,
-				Name:    request.Id.ExecutionId.Name,
+				Project: id.ExecutionId.Project,
+				Domain:  id.ExecutionId.Domain,
+				Name:    id.ExecutionId.Name,
 			},
-			SignalID: request.Id.SignalId,
+			SignalID: id.SignalId,
 		},
+		Type:  typeBytes,
 		Value: valueBytes,
 	}, nil
 }
 
 func FromSignalModel(signalModel models.Signal) (admin.Signal, error) {
-	valueDeserialized := &core.Literal{}
-	err := proto.Unmarshal(signalModel.Value, valueDeserialized)
-	if err != nil {
-		return admin.Signal{}, errors.NewFlyteAdminError(codes.Internal, "failed to unmarshal signal value")
+	var typeDeserialized core.LiteralType
+	if len(signalModel.Type) > 0 {
+		err := proto.Unmarshal(signalModel.Type, &typeDeserialized)
+		if err != nil {
+			return admin.Signal{}, errors.NewFlyteAdminError(codes.Internal, "failed to unmarshal signal type")
+		}
+	}
+
+	var valueDeserialized core.Literal
+	if len(signalModel.Value) > 0 {
+		err := proto.Unmarshal(signalModel.Value, &valueDeserialized)
+		if err != nil {
+			return admin.Signal{}, errors.NewFlyteAdminError(codes.Internal, "failed to unmarshal signal value")
+		}
 	}
 
 	return admin.Signal{
@@ -47,6 +70,7 @@ func FromSignalModel(signalModel models.Signal) (admin.Signal, error) {
 			},
 			SignalId: signalModel.SignalKey.SignalID,
 		},
-		Value: valueDeserialized,
+		Type:  &typeDeserialized,
+		Value: &valueDeserialized,
 	}, nil
 }

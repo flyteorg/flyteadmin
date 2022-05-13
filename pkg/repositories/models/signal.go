@@ -10,6 +10,6 @@ type SignalKey struct {
 type Signal struct {
 	BaseModel
 	SignalKey
-	// TODO hamersaw - document
+	Type []byte
 	Value []byte
 }
