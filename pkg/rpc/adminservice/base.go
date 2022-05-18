@@ -101,7 +101,7 @@ func NewAdminServer(ctx context.Context, pluginRegistry *plugins.Registry, confi
 	pluginRegistry.RegisterDefault(plugins.PluginIDWorkflowExecutor, workflowExecutor)
 
 	logger.Infof(ctx, "Registering default middleware with blanket auth validation")
-	pluginRegistry.RegisterDefault(plugins.PluginIDMiddleware, grpcmiddleware.ChainUnaryServer(auth.BlanketAuthorization))
+	pluginRegistry.RegisterDefault(plugins.PluginIDUnaryServiceMiddleware, grpcmiddleware.ChainUnaryServer(auth.BlanketAuthorization))
 
 	publisher := notifications.NewNotificationsPublisher(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope)
 	processor := notifications.NewNotificationsProcessor(*configuration.ApplicationConfiguration().GetNotificationsConfig(), adminScope)
