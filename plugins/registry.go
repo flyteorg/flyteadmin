@@ -11,7 +11,7 @@ type PluginID = string
 const (
 	PluginIDWorkflowExecutor PluginID = "WorkflowExecutor"
 	PluginIDDataProxy        PluginID = "DataProxy"
-	PluginIDAuthorizer       PluginID = "Authorizer"
+	PluginIDMiddleware       PluginID = "Middleware"
 )
 
 type AtomicRegistry struct {
