@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -21,4 +22,3 @@ func BlanketAuthorization(ctx context.Context, req interface{}, _ *grpc.UnarySer
 
 	return handler(ctx, req)
 }
-
