@@ -111,7 +111,7 @@ func GRPCGetIdentityFromIDToken(ctx context.Context, clientID string, provider *
 	}
 
 	meta := metautils.ExtractIncoming(ctx)
-	userInfoDecoded := DecodeFromBase64(meta.Get(UserInfoMDKey))
+	userInfoDecoded, _ := DecodeFromBase64(meta.Get(UserInfoMDKey))
 	userInfo := &service.UserInfoResponse{}
 	if len(userInfoDecoded) > 0 {
 		err = json.Unmarshal(userInfoDecoded, userInfo)

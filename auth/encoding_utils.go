@@ -13,10 +13,10 @@ func EncodeBase64(raw []byte) string {
 }
 
 // DecodeFromBase64 returns the original encoded bytes and logs warning in case of error
-func DecodeFromBase64(encodedData string) []byte {
+func DecodeFromBase64(encodedData string) ([]byte, error) {
 	decodedData, err := base64.StdEncoding.DecodeString(encodedData)
 	if err != nil {
 		logger.Warnf(context.TODO(), "Unable to decode %v due to %v", encodedData, err)
 	}
-	return decodedData
+	return decodedData, err
 }
