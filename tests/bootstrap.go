@@ -9,8 +9,6 @@ import (
 	"github.com/flyteorg/flytestdlib/database"
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories"
-	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
-
 	"gorm.io/gorm"
 
 	"github.com/flyteorg/flytestdlib/logger"
@@ -34,9 +32,9 @@ func getDbConfig() *database.DbConfig {
 	}
 }
 
-func getLocalDbConfig() *runtimeInterfaces.DbConfig {
-	return &runtimeInterfaces.DbConfig{
-		PostgresConfig: &runtimeInterfaces.PostgresConfig{
+func getLocalDbConfig() *database.DbConfig {
+	return &database.DbConfig{
+		Postgres: database.PostgresConfig{
 			Host:   "localhost",
 			Port:   5432,
 			DbName: "flyteadmin",
@@ -73,7 +71,7 @@ func truncateAllTablesForTestingOnly() {
 	TruncateSchedulableEntities := fmt.Sprintf("TRUNCATE TABLE schedulable_entities;")
 	TruncateSchedulableEntitiesSnapshots := fmt.Sprintf("TRUNCATE TABLE schedule_entities_snapshots;")
 	ctx := context.Background()
-	db, err := repositories.GetDB(ctx, getDbConfig(), getLoggerConfig())
+	db, err := repositories.GetDB(ctx, getLocalDbConfig(), getLoggerConfig())
 	if err != nil {
 		logger.Fatal(ctx, "Failed to open DB connection due to %v", err)
 	}
