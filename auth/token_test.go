@@ -30,3 +30,7 @@ func TestExpiredToken(t *testing.T) {
 	t.Log(err.Error())
 	assert.True(t, strings.Contains(err.Error(), "token is expired"))
 }
+
+func TestGRPCGetIdentityFromIDToken(t *testing.T) {
+
+}
