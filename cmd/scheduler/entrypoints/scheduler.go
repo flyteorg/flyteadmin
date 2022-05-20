@@ -28,3 +28,7 @@ var schedulerRunCmd = &cobra.Command{
 		return scheduler.StartScheduler(ctx)
 	},
 }
+
+func init() {
+	RootCmd.AddCommand(schedulerRunCmd)
+}
