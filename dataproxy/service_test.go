@@ -7,9 +7,6 @@ import (
 
 	"google.golang.org/protobuf/types/known/durationpb"
 
-	"github.com/flyteorg/flytestdlib/contextutils"
-	"github.com/flyteorg/flytestdlib/promutils/labeled"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
@@ -30,7 +27,7 @@ func TestNewService(t *testing.T) {
 }
 
 func init() {
-	labeled.SetMetricKeys(contextutils.DomainKey)
+	//labeled.SetMetricKeys(contextutils.DomainKey)
 }
 
 func Test_createShardedStorageLocation(t *testing.T) {

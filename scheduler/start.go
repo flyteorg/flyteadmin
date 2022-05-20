@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"runtime/debug"
 
+	"github.com/flyteorg/flyteadmin/pkg/server"
+
 	"github.com/flyteorg/flyteadmin/pkg/repositories"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/runtime"
@@ -17,6 +19,7 @@ import (
 func StartScheduler(ctx context.Context) error {
 	configuration := runtime.NewConfigurationProvider()
 	applicationConfiguration := configuration.ApplicationConfiguration().GetTopLevelConfig()
+	server.SetMetricKeys(applicationConfiguration)
 
 	// Define the schedulerScope for prometheus metrics
 	schedulerScope := promutils.NewScope(applicationConfiguration.MetricsScope).NewSubScope("flytescheduler")
