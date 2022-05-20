@@ -64,8 +64,10 @@ func SetMetricKeys(appConfig *runtimeIfaces.ApplicationConfig) {
 		key := contextutils.Key(keyName)
 		keys = append(keys, key)
 	}
-	logger.Warningf(context.TODO(), "setting metrics keys to %+v", keys)
-	labeled.SetMetricKeys(keys...)
+	logger.Infof(context.TODO(), "setting metrics keys to %+v", keys)
+	if len(keys) > 0 {
+		labeled.SetMetricKeys(keys...)
+	}
 }
 
 // Creates a new gRPC Server with all the configuration

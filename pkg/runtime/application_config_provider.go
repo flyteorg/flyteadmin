@@ -21,9 +21,12 @@ const KB = 1024
 const MB = KB * KB
 
 var flyteAdminConfig = config.MustRegisterSection(flyteAdmin, &interfaces.ApplicationConfig{
-	ProfilerPort:          metricPort,
-	MetricsScope:          "flyte:",
-	MetricKeys:            []string{contextutils.ProjectKey.String(), contextutils.DomainKey.String()},
+	ProfilerPort: metricPort,
+	MetricsScope: "flyte:",
+	MetricKeys: []string{contextutils.ProjectKey.String(), contextutils.DomainKey.String(),
+		contextutils.WorkflowIDKey.String(), contextutils.TaskIDKey.String(), contextutils.PhaseKey.String(),
+		contextutils.TaskTypeKey.String(), common.RuntimeTypeKey.String(), common.RuntimeVersionKey.String(),
+		contextutils.AppNameKey.String()},
 	MetadataStoragePrefix: []string{"metadata", "admin"},
 	EventVersion:          2,
 	AsyncEventsBufferSize: 100,
