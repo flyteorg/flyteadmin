@@ -2,6 +2,7 @@ package entrypoints
 
 import (
 	"context"
+	"github.com/flyteorg/flyteadmin/pkg/server"
 
 	"github.com/flyteorg/flyteadmin/pkg/runtime"
 	"github.com/flyteorg/flyteadmin/scheduler"
@@ -25,6 +26,11 @@ var schedulerRunCmd = &cobra.Command{
 				logger.Panicf(ctx, "Failed to Start profiling and Metrics server. Error, %v", err)
 			}
 		}()
+
+		configuration := runtime.NewConfigurationProvider()
+		applicationConfiguration := configuration.ApplicationConfiguration().GetTopLevelConfig()
+		server.SetMetricKeys(applicationConfiguration)
+
 		return scheduler.StartScheduler(ctx)
 	},
 }

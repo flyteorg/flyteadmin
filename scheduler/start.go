@@ -19,7 +19,6 @@ import (
 func StartScheduler(ctx context.Context) error {
 	configuration := runtime.NewConfigurationProvider()
 	applicationConfiguration := configuration.ApplicationConfiguration().GetTopLevelConfig()
-	server.SetMetricKeys(applicationConfiguration)
 
 	// Define the schedulerScope for prometheus metrics
 	schedulerScope := promutils.NewScope(applicationConfiguration.MetricsScope).NewSubScope("flytescheduler")
