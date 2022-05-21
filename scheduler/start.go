@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"runtime/debug"
 
-	"github.com/flyteorg/flyteadmin/pkg/server"
-
 	"github.com/flyteorg/flyteadmin/pkg/repositories"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/runtime"
