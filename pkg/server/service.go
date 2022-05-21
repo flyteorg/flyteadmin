@@ -48,7 +48,6 @@ var defaultCorsHeaders = []string{"Content-Type"}
 func Serve(ctx context.Context, pluginRegistry *plugins.Registry, additionalHandlers map[string]func(http.ResponseWriter, *http.Request)) error {
 	serverConfig := config.GetConfig()
 	configuration := runtime2.NewConfigurationProvider()
-	SetMetricKeys(configuration.ApplicationConfiguration().GetTopLevelConfig())
 	adminScope := promutils.NewScope(configuration.ApplicationConfiguration().GetTopLevelConfig().GetMetricsScope()).NewSubScope("admin")
 
 	if serverConfig.Security.Secure {

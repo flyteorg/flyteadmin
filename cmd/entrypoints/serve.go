@@ -10,6 +10,8 @@ import (
 	_ "net/http/pprof" // Required to serve application.
 
 	"github.com/flyteorg/flyteadmin/pkg/server"
+
+	"github.com/flyteorg/flyteadmin/pkg/runtime"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/spf13/cobra"
 
@@ -33,6 +35,9 @@ var serveCmd = &cobra.Command{
 				logger.Panicf(ctx, "Failed to Start profiling and Metrics server. Error, %v", err)
 			}
 		}()
+
+		configuration := runtime.NewConfigurationProvider()
+		server.SetMetricKeys(configuration.ApplicationConfiguration().GetTopLevelConfig())
 
 		return server.Serve(ctx, pluginRegistryStore.Load(), nil)
 	},
