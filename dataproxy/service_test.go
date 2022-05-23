@@ -72,3 +72,26 @@ func TestCreateUploadLocation(t *testing.T) {
 		assert.Error(t, err)
 	})
 }
+
+func TestCreateDownloadLocation(t *testing.T) {
+	dataStore, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
+	assert.NoError(t, err)
+	s, err := NewService(config.DataProxyConfig{}, dataStore)
+	assert.NoError(t, err)
+
+	t.Run("Invalid expiry", func(t *testing.T) {
+		_, err = s.CreateDownloadLocation(context.Background(), &service.CreateDownloadLocationRequest{
+			NativeUrl: "s3://bucket/key",
+			ExpiresIn: durationpb.New(-time.Hour),
+		})
+		assert.Error(t, err)
+	})
+
+	t.Run("valid config", func(t *testing.T) {
+		_, err = s.CreateDownloadLocation(context.Background(), &service.CreateDownloadLocationRequest{
+			NativeUrl: "s3://bucket/key",
+			ExpiresIn: durationpb.New(time.Hour),
+		})
+		assert.Error(t, err)
+	})
+}

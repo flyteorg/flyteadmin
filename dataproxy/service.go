@@ -86,6 +86,37 @@ func (s Service) CreateUploadLocation(ctx context.Context, req *service.CreateUp
 	}, nil
 }
 
+// CreateDownloadLocation creates a temporary signed url to allow callers to download content.
+func (s Service) CreateDownloadLocation(ctx context.Context, req *service.CreateDownloadLocationRequest) (
+	*service.CreateDownloadLocationResponse, error) {
+	if expiresIn := req.ExpiresIn; expiresIn != nil {
+		if !expiresIn.IsValid() {
+			return nil, fmt.Errorf("expiresIn [%v] is invalid", expiresIn)
+		}
+
+		if expiresIn.AsDuration() > s.cfg.Upload.MaxExpiresIn.Duration {
+			return nil, fmt.Errorf("expiresIn [%v] cannot exceed max allowed expiration [%v]",
+				expiresIn.AsDuration().String(), s.cfg.Upload.MaxExpiresIn.String())
+		}
+	} else {
+		req.ExpiresIn = durationpb.New(s.cfg.Upload.MaxExpiresIn.Duration)
+	}
+
+	resp, err := s.dataStore.CreateSignedURL(ctx, storage.DataReference(req.NativeUrl), storage.SignedURLProperties{
+		Scope:     stow.ClientMethodGet,
+		ExpiresIn: req.ExpiresIn.AsDuration(),
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create a signed url. Error: %w", err)
+	}
+
+	return &service.CreateDownloadLocationResponse{
+		SignedUrl: resp.URL.String(),
+		ExpiresAt: timestamppb.New(time.Now().Add(req.ExpiresIn.AsDuration())),
+	}, nil
+}
+
 // createShardedStorageLocation creates a location in storage destination to maximize read/write performance in most
 // block stores. The final location should look something like: s3://<my bucket>/<shard length>/<file name>
 func createShardedStorageLocation(ctx context.Context, shardSelector ioutils.ShardSelector, store *storage.DataStore,

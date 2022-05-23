@@ -507,7 +507,6 @@ func (m *NodeExecutionManager) GetNodeExecutionData(
 		return nil, err
 	}
 
-	deckURI, err := util.GetDeckURI(ctx, m.storageClient, nodeExecution.Closure)
 	if err != nil {
 		return nil, err
 	}
@@ -517,7 +516,7 @@ func (m *NodeExecutionManager) GetNodeExecutionData(
 		Outputs:     outputURLBlob,
 		FullInputs:  inputs,
 		FullOutputs: outputs,
-		DeckUri:     deckURI,
+		DeckUri:     nodeExecution.Closure.DeckUri,
 	}
 
 	if len(nodeExecutionModel.DynamicWorkflowRemoteClosureReference) > 0 {

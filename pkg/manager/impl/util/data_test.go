@@ -232,33 +232,6 @@ func TestGetOutputs(t *testing.T) {
 	})
 }
 
-func TestGetDeckURI(t *testing.T) {
-	expectedDeckURI := "s3://foo/bar/deck.html"
-
-	expectedDeckURLBlob := admin.UrlBlob{
-		Url:   expectedDeckURI,
-		Bytes: 1000,
-	}
-
-	mockRemoteURL := urlMocks.NewMockRemoteURL()
-	mockRemoteURL.(*urlMocks.MockRemoteURL).GetCallback = func(ctx context.Context, uri string) (admin.UrlBlob, error) {
-		assert.Equal(t, expectedDeckURI, uri)
-		return expectedDeckURLBlob, nil
-	}
-	closure := &admin.NodeExecutionClosure{}
-	deckURI, err := GetDeckURI(context.TODO(), commonMocks.GetMockStorageClient(), closure)
-	assert.NoError(t, err)
-	assert.Equal(t, deckURI, "")
-
-	closure.OutputResult = &admin.NodeExecutionClosure_OutputUri{
-		OutputUri: testOutputsURI,
-	}
-
-	deckURI, err = GetDeckURI(context.TODO(), commonMocks.GetMockStorageClient(), closure)
-	assert.NoError(t, err)
-	assert.Equal(t, expectedDeckURI, deckURI)
-}
-
 func TestWorkflowExecutionClosure(t *testing.T) {
 	t.Run("outputs offloaded", func(t *testing.T) {
 		workflowExecutionClosure := admin.ExecutionClosure{
