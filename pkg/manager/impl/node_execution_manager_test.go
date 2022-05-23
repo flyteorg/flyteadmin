@@ -1196,6 +1196,7 @@ func TestGetNodeExecutionData(t *testing.T) {
 		OutputResult: &admin.NodeExecutionClosure_OutputUri{
 			OutputUri: util.OutputsFile,
 		},
+		DeckUri: util.DeckFile,
 	}
 	dynamicWorkflowClosureRef := "s3://my-s3-bucket/foo/bar/dynamic.pb"
 
