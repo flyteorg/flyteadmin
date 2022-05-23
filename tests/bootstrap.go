@@ -1,3 +1,4 @@
+//go:build integration
 // +build integration
 
 package tests
@@ -6,9 +7,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/flyteorg/flyteadmin/pkg/repositories"
-	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	"github.com/flyteorg/flytestdlib/database"
 
+	"github.com/flyteorg/flyteadmin/pkg/repositories"
 	"gorm.io/gorm"
 
 	"github.com/flyteorg/flytestdlib/logger"
@@ -21,9 +22,9 @@ const insertExecutionQueryStr = `INSERT INTO "executions" ` +
 
 var adminScope = promutils.NewScope("flyteadmin")
 
-func getDbConfig() *runtimeInterfaces.DbConfig {
-	return &runtimeInterfaces.DbConfig{
-		PostgresConfig: &runtimeInterfaces.PostgresConfig{
+func getDbConfig() *database.DbConfig {
+	return &database.DbConfig{
+		Postgres: database.PostgresConfig{
 			Host:   "postgres",
 			Port:   5432,
 			DbName: "postgres",
@@ -32,9 +33,9 @@ func getDbConfig() *runtimeInterfaces.DbConfig {
 	}
 }
 
-func getLocalDbConfig() *runtimeInterfaces.DbConfig {
-	return &runtimeInterfaces.DbConfig{
-		PostgresConfig: &runtimeInterfaces.PostgresConfig{
+func getLocalDbConfig() *database.DbConfig {
+	return &database.DbConfig{
+		Postgres: database.PostgresConfig{
 			Host:   "localhost",
 			Port:   5432,
 			DbName: "flyteadmin",

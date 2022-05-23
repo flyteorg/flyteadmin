@@ -27,6 +27,7 @@ func addPermissions(securityCtx *core.SecurityContext, roleNameKey string, flyte
 	if securityCtx == nil || securityCtx.RunAs == nil {
 		return
 	}
+	flyteWf.SecurityContext = *securityCtx
 	if len(securityCtx.RunAs.IamRole) > 0 {
 		if flyteWf.Annotations == nil {
 			flyteWf.Annotations = map[string]string{}
@@ -56,6 +57,10 @@ func addExecutionOverrides(taskPluginOverrides []*admin.PluginOverride,
 	}
 	if workflowExecutionConfig != nil {
 		executionConfig.MaxParallelism = uint32(workflowExecutionConfig.MaxParallelism)
+		if workflowExecutionConfig.GetInterruptible() != nil {
+			interruptible := workflowExecutionConfig.GetInterruptible().GetValue()
+			executionConfig.Interruptible = &interruptible
+		}
 	}
 	if taskResources != nil {
 		var requests = v1alpha1.TaskResourceSpec{}
