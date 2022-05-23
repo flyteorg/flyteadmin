@@ -89,17 +89,22 @@ func (s Service) CreateUploadLocation(ctx context.Context, req *service.CreateUp
 // CreateDownloadLocation creates a temporary signed url to allow callers to download content.
 func (s Service) CreateDownloadLocation(ctx context.Context, req *service.CreateDownloadLocationRequest) (
 	*service.CreateDownloadLocationResponse, error) {
+
 	if expiresIn := req.ExpiresIn; expiresIn != nil {
 		if !expiresIn.IsValid() {
+			fmt.Println("hello hello")
 			return nil, fmt.Errorf("expiresIn [%v] is invalid", expiresIn)
 		}
 
-		if expiresIn.AsDuration() > s.cfg.Upload.MaxExpiresIn.Duration {
+		if expiresIn.AsDuration() < 0 {
+			return nil, fmt.Errorf("expiresIn [%v] should not less than 0",
+				expiresIn.AsDuration().String())
+		} else if expiresIn.AsDuration() > s.cfg.Download.MaxExpiresIn.Duration {
 			return nil, fmt.Errorf("expiresIn [%v] cannot exceed max allowed expiration [%v]",
-				expiresIn.AsDuration().String(), s.cfg.Upload.MaxExpiresIn.String())
+				expiresIn.AsDuration().String(), s.cfg.Download.MaxExpiresIn.String())
 		}
 	} else {
-		req.ExpiresIn = durationpb.New(s.cfg.Upload.MaxExpiresIn.Duration)
+		req.ExpiresIn = durationpb.New(s.cfg.Download.MaxExpiresIn.Duration)
 	}
 
 	resp, err := s.dataStore.CreateSignedURL(ctx, storage.DataReference(req.NativeUrl), storage.SignedURLProperties{

@@ -2,6 +2,8 @@ package dataproxy
 
 import (
 	"context"
+	commonMocks "github.com/flyteorg/flyteadmin/pkg/common/mocks"
+	stdlibConfig "github.com/flyteorg/flytestdlib/config"
 	"testing"
 	"time"
 
@@ -74,9 +76,8 @@ func TestCreateUploadLocation(t *testing.T) {
 }
 
 func TestCreateDownloadLocation(t *testing.T) {
-	dataStore, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
-	assert.NoError(t, err)
-	s, err := NewService(config.DataProxyConfig{}, dataStore)
+	dataStore := commonMocks.GetMockStorageClient()
+	s, err := NewService(config.DataProxyConfig{Download: config.DataProxyDownloadConfig{MaxExpiresIn: stdlibConfig.Duration{Duration: time.Hour}}}, dataStore)
 	assert.NoError(t, err)
 
 	t.Run("Invalid expiry", func(t *testing.T) {
@@ -92,6 +93,13 @@ func TestCreateDownloadLocation(t *testing.T) {
 			NativeUrl: "s3://bucket/key",
 			ExpiresIn: durationpb.New(time.Hour),
 		})
-		assert.Error(t, err)
+		assert.NoError(t, err)
+	})
+
+	t.Run("use default ExpiresIn", func(t *testing.T) {
+		_, err = s.CreateDownloadLocation(context.Background(), &service.CreateDownloadLocationRequest{
+			NativeUrl: "s3://bucket/key",
+		})
+		assert.NoError(t, err)
 	})
 }

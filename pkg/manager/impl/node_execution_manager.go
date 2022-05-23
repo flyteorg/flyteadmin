@@ -507,10 +507,6 @@ func (m *NodeExecutionManager) GetNodeExecutionData(
 		return nil, err
 	}
 
-	if err != nil {
-		return nil, err
-	}
-
 	response := &admin.NodeExecutionGetDataResponse{
 		Inputs:      inputURLBlob,
 		Outputs:     outputURLBlob,

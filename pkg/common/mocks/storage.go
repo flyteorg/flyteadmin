@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/url"
 	"strings"
 
 	"github.com/flyteorg/flytestdlib/storage"
@@ -44,7 +45,11 @@ func (t *TestDataStore) GetBaseContainerFQN(ctx context.Context) storage.DataRef
 }
 
 func (t *TestDataStore) CreateSignedURL(ctx context.Context, reference storage.DataReference, properties storage.SignedURLProperties) (storage.SignedURLResponse, error) {
-	return storage.SignedURLResponse{}, fmt.Errorf("unsupported")
+	signedUrl, err := url.Parse(reference.String())
+	if err != nil {
+		return storage.SignedURLResponse{}, err
+	}
+	return storage.SignedURLResponse{URL: *signedUrl}, nil
 }
 
 // Retrieves a byte array from the Blob store or an error
