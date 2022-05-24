@@ -2,10 +2,11 @@ package dataproxy
 
 import (
 	"context"
-	commonMocks "github.com/flyteorg/flyteadmin/pkg/common/mocks"
-	stdlibConfig "github.com/flyteorg/flytestdlib/config"
 	"testing"
 	"time"
+
+	commonMocks "github.com/flyteorg/flyteadmin/pkg/common/mocks"
+	stdlibConfig "github.com/flyteorg/flytestdlib/config"
 
 	"google.golang.org/protobuf/types/known/durationpb"
 
