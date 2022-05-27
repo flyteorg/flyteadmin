@@ -2,9 +2,9 @@ package implementations
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/golang/protobuf/jsonpb"
 	"testing"
 	"time"
 
@@ -174,9 +174,9 @@ func TestNewCloudEventsPublisher_EventTypes(t *testing.T) {
 						assert.Equal(t, cloudEvent.Source(), cloudEventSource)
 						assert.Equal(t, cloudEvent.Extensions(), map[string]interface{}{jsonSchemaURLKey: jsonSchemaURL})
 
-						e, err := json.Marshal(event)
+						e, err := (&jsonpb.Marshaler{}).MarshalToString(event)
 						assert.Nil(t, err)
-						assert.Equal(t, cloudEvent.Data(), e)
+						assert.Equal(t, string(cloudEvent.Data()), e)
 						cnt++
 					}
 				}
