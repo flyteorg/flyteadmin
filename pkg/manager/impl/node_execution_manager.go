@@ -512,7 +512,6 @@ func (m *NodeExecutionManager) GetNodeExecutionData(
 		Outputs:     outputURLBlob,
 		FullInputs:  inputs,
 		FullOutputs: outputs,
-		DeckUri:     nodeExecution.Closure.DeckUri,
 	}
 
 	if len(nodeExecutionModel.DynamicWorkflowRemoteClosureReference) > 0 {
