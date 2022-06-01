@@ -92,7 +92,6 @@ func (s Service) CreateDownloadLocation(ctx context.Context, req *service.Create
 
 	if expiresIn := req.ExpiresIn; expiresIn != nil {
 		if !expiresIn.IsValid() {
-			fmt.Println("hello hello")
 			return nil, fmt.Errorf("expiresIn [%v] is invalid", expiresIn)
 		}
 
