@@ -1288,7 +1288,6 @@ func TestGetNodeExecutionData(t *testing.T) {
 			Url:   "outputs",
 			Bytes: 200,
 		},
-		DeckUri:     util.DeckFile,
 		FullInputs:  fullInputs,
 		FullOutputs: fullOutputs,
 		DynamicWorkflow: &admin.DynamicWorkflowNodeMetadata{
