@@ -88,7 +88,7 @@ func (c CookieManager) SetUserInfoCookie(ctx context.Context, request *http.Requ
 
 	var cookieDomain string
 	if c.coverSubDomains {
-		cookieDomain = request.URL.Hostname()
+		cookieDomain = fmt.Sprintf(".%s", request.URL.Hostname())
 	}
 	userInfoCookie, err := NewSecureCookie(userInfoCookieName, string(raw), c.hashKey, c.blockKey, cookieDomain, c.sameSite)
 	if err != nil {
@@ -130,7 +130,7 @@ func (c CookieManager) RetrieveAuthCodeRequest(ctx context.Context, request *htt
 func (c CookieManager) SetAuthCodeCookie(ctx context.Context, request *http.Request, writer http.ResponseWriter, authRequestURL string) error {
 	var cookieDomain string
 	if c.coverSubDomains {
-		cookieDomain = request.URL.Hostname()
+		cookieDomain = fmt.Sprintf(".%s", request.URL.Hostname())
 	}
 	authCodeCookie, err := NewSecureCookie(authCodeCookieName, authRequestURL, c.hashKey, c.blockKey, cookieDomain, c.sameSite)
 	if err != nil {
@@ -151,7 +151,7 @@ func (c CookieManager) SetTokenCookies(ctx context.Context, request *http.Reques
 
 	var cookieDomain string
 	if c.coverSubDomains {
-		cookieDomain = request.Host
+		cookieDomain = fmt.Sprintf(".%s", request.URL.Hostname())
 	}
 	atCookie, err := NewSecureCookie(accessTokenCookieName, token.AccessToken, c.hashKey, c.blockKey, cookieDomain, c.sameSite)
 	if err != nil {
@@ -160,10 +160,6 @@ func (c CookieManager) SetTokenCookies(ctx context.Context, request *http.Reques
 	}
 
 	http.SetCookie(writer, &atCookie)
-
-	if c.coverSubDomains {
-		cookieDomain = request.URL.Hostname()
-	}
 
 	if idTokenRaw, converted := token.Extra(idTokenExtra).(string); converted {
 		idCookie, err := NewSecureCookie(idTokenCookieName, idTokenRaw, c.hashKey, c.blockKey, cookieDomain, c.sameSite)

@@ -75,8 +75,8 @@ var (
 				},
 			},
 			CookieSetting: &CookieSettings{
-				CoverSubdomains: true,
-				SameSite:        http.SameSiteLaxMode,
+				CoverSubdomains: false,
+				SameSite:        http.SameSiteDefaultMode,
 			},
 		},
 		AppAuth: OAuth2Options{
