@@ -91,7 +91,7 @@ func (s Service) CreateUploadLocation(ctx context.Context, req *service.CreateUp
 func (s Service) CreateDownloadLocation(ctx context.Context, req *service.CreateDownloadLocationRequest) (
 	*service.CreateDownloadLocationResponse, error) {
 
-	if err := s.validateRequest(req); err != nil {
+	if err := s.validateCreateDownloadLocationRequest(req); err != nil {
 		return nil, err
 	}
 
@@ -110,7 +110,7 @@ func (s Service) CreateDownloadLocation(ctx context.Context, req *service.Create
 	}, nil
 }
 
-func (s Service) validateRequest(req *service.CreateDownloadLocationRequest) error {
+func (s Service) validateCreateDownloadLocationRequest(req *service.CreateDownloadLocationRequest) error {
 	if expiresIn := req.ExpiresIn; expiresIn != nil {
 		if !expiresIn.IsValid() {
 			return fmt.Errorf("expiresIn [%v] is invalid", expiresIn)
