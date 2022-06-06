@@ -1,6 +1,7 @@
 package config
 
 import (
+	"net/http"
 	"net/url"
 	"time"
 
@@ -72,6 +73,10 @@ var (
 					"openid",
 					"profile",
 				},
+			},
+			CookieSetting: &CookieSettings{
+				CoverSubdomains: true,
+				SameSite:        http.SameSiteLaxMode,
 			},
 		},
 		AppAuth: OAuth2Options{
@@ -212,8 +217,14 @@ type UserAuthConfig struct {
 	// Possibly add basicAuth & SAML/p support.
 
 	// Secret names, defaults are set in DefaultConfig variable above but are possible to override through configs.
-	CookieHashKeySecretName  string `json:"cookieHashKeySecretName" pflag:",OPTIONAL: Secret name to use for cookie hash key."`
-	CookieBlockKeySecretName string `json:"cookieBlockKeySecretName" pflag:",OPTIONAL: Secret name to use for cookie block key."`
+	CookieHashKeySecretName  string          `json:"cookieHashKeySecretName" pflag:",OPTIONAL: Secret name to use for cookie hash key."`
+	CookieBlockKeySecretName string          `json:"cookieBlockKeySecretName" pflag:",OPTIONAL: Secret name to use for cookie block key."`
+	CookieSetting            *CookieSettings `json:"cookieSetting" pflag:", settings used by cookies created for user auth"`
+}
+
+type CookieSettings struct {
+	SameSite        http.SameSite `json:"sameSite" pflag:",OPTIONAL: Allows you to declare if your cookie should be restricted to a first-party or same-site context."`
+	CoverSubdomains bool          `json:"coverSubDomains" pflag:",OPTIONAL: Allow subdomain access to the created cookies by setting the domain attribute."`
 }
 
 type OpenIDOptions struct {
