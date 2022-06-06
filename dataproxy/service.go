@@ -5,6 +5,7 @@ import (
 	"encoding/base32"
 	"encoding/base64"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -90,20 +91,8 @@ func (s Service) CreateUploadLocation(ctx context.Context, req *service.CreateUp
 func (s Service) CreateDownloadLocation(ctx context.Context, req *service.CreateDownloadLocationRequest) (
 	*service.CreateDownloadLocationResponse, error) {
 
-	if expiresIn := req.ExpiresIn; expiresIn != nil {
-		if !expiresIn.IsValid() {
-			return nil, fmt.Errorf("expiresIn [%v] is invalid", expiresIn)
-		}
-
-		if expiresIn.AsDuration() < 0 {
-			return nil, fmt.Errorf("expiresIn [%v] should not less than 0",
-				expiresIn.AsDuration().String())
-		} else if expiresIn.AsDuration() > s.cfg.Download.MaxExpiresIn.Duration {
-			return nil, fmt.Errorf("expiresIn [%v] cannot exceed max allowed expiration [%v]",
-				expiresIn.AsDuration().String(), s.cfg.Download.MaxExpiresIn.String())
-		}
-	} else {
-		req.ExpiresIn = durationpb.New(s.cfg.Download.MaxExpiresIn.Duration)
+	if err := s.validateRequest(req); err != nil {
+		return nil, err
 	}
 
 	resp, err := s.dataStore.CreateSignedURL(ctx, storage.DataReference(req.NativeUrl), storage.SignedURLProperties{
@@ -119,6 +108,31 @@ func (s Service) CreateDownloadLocation(ctx context.Context, req *service.Create
 		SignedUrl: resp.URL.String(),
 		ExpiresAt: timestamppb.New(time.Now().Add(req.ExpiresIn.AsDuration())),
 	}, nil
+}
+
+func (s Service) validateRequest(req *service.CreateDownloadLocationRequest) error {
+	if expiresIn := req.ExpiresIn; expiresIn != nil {
+		if !expiresIn.IsValid() {
+			return fmt.Errorf("expiresIn [%v] is invalid", expiresIn)
+		}
+
+		if expiresIn.AsDuration() < 0 {
+			return fmt.Errorf("expiresIn [%v] should not less than 0",
+				expiresIn.AsDuration().String())
+		} else if expiresIn.AsDuration() > s.cfg.Download.MaxExpiresIn.Duration {
+			return fmt.Errorf("expiresIn [%v] cannot exceed max allowed expiration [%v]",
+				expiresIn.AsDuration().String(), s.cfg.Download.MaxExpiresIn.String())
+		}
+	} else {
+		req.ExpiresIn = durationpb.New(s.cfg.Download.MaxExpiresIn.Duration)
+	}
+
+	if _, err := url.Parse(req.NativeUrl); err != nil {
+		return fmt.Errorf("failed to parse native_url [%v]",
+			req.NativeUrl)
+	}
+
+	return nil
 }
 
 // createShardedStorageLocation creates a location in storage destination to maximize read/write performance in most

@@ -103,4 +103,11 @@ func TestCreateDownloadLocation(t *testing.T) {
 		})
 		assert.NoError(t, err)
 	})
+
+	t.Run("invalid URL", func(t *testing.T) {
+		_, err = s.CreateDownloadLocation(context.Background(), &service.CreateDownloadLocationRequest{
+			NativeUrl: "bucket/key",
+		})
+		assert.NoError(t, err)
+	})
 }
