@@ -86,11 +86,7 @@ func (c CookieManager) SetUserInfoCookie(ctx context.Context, request *http.Requ
 		return fmt.Errorf("failed to marshal user info to store in a cookie. Error: %w", err)
 	}
 
-	var cookieDomain string
-	if c.coverSubDomains {
-		cookieDomain = fmt.Sprintf(".%s", request.URL.Hostname())
-	}
-	userInfoCookie, err := NewSecureCookie(userInfoCookieName, string(raw), c.hashKey, c.blockKey, cookieDomain, c.sameSite)
+	userInfoCookie, err := NewSecureCookie(userInfoCookieName, string(raw), c.hashKey, c.blockKey, c.getCookieDomain(request), c.sameSite)
 	if err != nil {
 		logger.Errorf(ctx, "Error generating encrypted user info cookie %s", err)
 		return err
@@ -128,11 +124,7 @@ func (c CookieManager) RetrieveAuthCodeRequest(ctx context.Context, request *htt
 }
 
 func (c CookieManager) SetAuthCodeCookie(ctx context.Context, request *http.Request, writer http.ResponseWriter, authRequestURL string) error {
-	var cookieDomain string
-	if c.coverSubDomains {
-		cookieDomain = fmt.Sprintf(".%s", request.URL.Hostname())
-	}
-	authCodeCookie, err := NewSecureCookie(authCodeCookieName, authRequestURL, c.hashKey, c.blockKey, cookieDomain, c.sameSite)
+	authCodeCookie, err := NewSecureCookie(authCodeCookieName, authRequestURL, c.hashKey, c.blockKey, c.getCookieDomain(request), c.sameSite)
 	if err != nil {
 		logger.Errorf(ctx, "Error generating encrypted accesstoken cookie %s", err)
 		return err
@@ -149,11 +141,7 @@ func (c CookieManager) SetTokenCookies(ctx context.Context, request *http.Reques
 		return errors.Errorf(ErrTokenNil, "Attempting to set cookies with nil token")
 	}
 
-	var cookieDomain string
-	if c.coverSubDomains {
-		cookieDomain = fmt.Sprintf(".%s", request.URL.Hostname())
-	}
-	atCookie, err := NewSecureCookie(accessTokenCookieName, token.AccessToken, c.hashKey, c.blockKey, cookieDomain, c.sameSite)
+	atCookie, err := NewSecureCookie(accessTokenCookieName, token.AccessToken, c.hashKey, c.blockKey, c.getCookieDomain(request), c.sameSite)
 	if err != nil {
 		logger.Errorf(ctx, "Error generating encrypted accesstoken cookie %s", err)
 		return err
@@ -162,7 +150,7 @@ func (c CookieManager) SetTokenCookies(ctx context.Context, request *http.Reques
 	http.SetCookie(writer, &atCookie)
 
 	if idTokenRaw, converted := token.Extra(idTokenExtra).(string); converted {
-		idCookie, err := NewSecureCookie(idTokenCookieName, idTokenRaw, c.hashKey, c.blockKey, cookieDomain, c.sameSite)
+		idCookie, err := NewSecureCookie(idTokenCookieName, idTokenRaw, c.hashKey, c.blockKey, c.getCookieDomain(request), c.sameSite)
 		if err != nil {
 			logger.Errorf(ctx, "Error generating encrypted id token cookie %s", err)
 			return err
@@ -210,4 +198,11 @@ func getLogoutRefreshCookie() *http.Cookie {
 func (c CookieManager) DeleteCookies(ctx context.Context, writer http.ResponseWriter) {
 	http.SetCookie(writer, getLogoutAccessCookie())
 	http.SetCookie(writer, getLogoutRefreshCookie())
+}
+
+func (c CookieManager) getCookieDomain(request *http.Request) string {
+	if !c.coverSubDomains {
+		return ""
+	}
+	return fmt.Sprintf(".%s", request.URL.Hostname())
 }
