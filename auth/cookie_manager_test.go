@@ -121,3 +121,50 @@ func TestCookieManager_DeleteCookies(t *testing.T) {
 	assert.True(t, time.Now().After(cookies[0].Expires))
 	assert.True(t, time.Now().After(cookies[1].Expires))
 }
+
+func TestGetHTTPSameSitePolicy(t *testing.T) {
+	ctx := context.Background()
+
+	// These were generated for unit testing only.
+	hashKeyEncoded := "wG4pE1ccdw/pHZ2ml8wrD5VJkOtLPmBpWbKHmezWXktGaFbRoAhXidWs8OpbA3y7N8vyZhz1B1E37+tShWC7gA" //nolint:goconst
+	blockKeyEncoded := "afyABVgGOvWJFxVyOvCWCupoTn6BkNl4SOHmahho16Q"                                           //nolint:goconst
+	cookieSetting := config.CookieSettings{
+		SameSitePolicy:    config.SameSiteDefaultMode,
+		DomainMatchPolicy: config.DomainMatchSubdomains,
+	}
+
+	manager, err := NewCookieManager(ctx, hashKeyEncoded, blockKeyEncoded, cookieSetting)
+	assert.NoError(t, err)
+	assert.Equal(t, http.SameSiteDefaultMode, manager.getHTTPSameSitePolicy())
+
+	manager.sameSitePolicy = config.SameSiteLaxMode
+	assert.Equal(t, http.SameSiteLaxMode, manager.getHTTPSameSitePolicy())
+
+	manager.sameSitePolicy = config.SameSiteStrictMode
+	assert.Equal(t, http.SameSiteStrictMode, manager.getHTTPSameSitePolicy())
+
+	manager.sameSitePolicy = config.SameSiteNoneMode
+	assert.Equal(t, http.SameSiteNoneMode, manager.getHTTPSameSitePolicy())
+}
+
+func TestGetCookieDomain(t *testing.T) {
+	ctx := context.Background()
+
+	// These were generated for unit testing only.
+	hashKeyEncoded := "wG4pE1ccdw/pHZ2ml8wrD5VJkOtLPmBpWbKHmezWXktGaFbRoAhXidWs8OpbA3y7N8vyZhz1B1E37+tShWC7gA" //nolint:goconst
+	blockKeyEncoded := "afyABVgGOvWJFxVyOvCWCupoTn6BkNl4SOHmahho16Q"                                           //nolint:goconst
+	cookieSetting := config.CookieSettings{
+		SameSitePolicy:    config.SameSiteDefaultMode,
+		DomainMatchPolicy: config.DomainMatchSubdomains,
+	}
+
+	req, err := http.NewRequest("GET", "http://localhost/api/v1/projects", nil)
+	assert.NoError(t, err)
+
+	manager, err := NewCookieManager(ctx, hashKeyEncoded, blockKeyEncoded, cookieSetting)
+	assert.NoError(t, err)
+	assert.Equal(t, ".localhost", manager.getCookieDomain(req))
+
+	manager.domainMatchPolicy = config.DomainMatchExact
+	assert.Equal(t, "", manager.getCookieDomain(req))
+}
