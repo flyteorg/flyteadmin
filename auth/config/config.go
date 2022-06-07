@@ -1,7 +1,6 @@
 package config
 
 import (
-	"net/http"
 	"net/url"
 	"time"
 
@@ -74,9 +73,9 @@ var (
 					"profile",
 				},
 			},
-			CookieSetting: &CookieSettings{
-				CoverSubdomains: false,
-				SameSite:        http.SameSiteDefaultMode,
+			CookieSetting: CookieSettings{
+				DomainMatchPolicy: DomainMatchExact,
+				SameSitePolicy:    SameSiteDefaultMode,
 			},
 		},
 		AppAuth: OAuth2Options{
@@ -217,14 +216,32 @@ type UserAuthConfig struct {
 	// Possibly add basicAuth & SAML/p support.
 
 	// Secret names, defaults are set in DefaultConfig variable above but are possible to override through configs.
-	CookieHashKeySecretName  string          `json:"cookieHashKeySecretName" pflag:",OPTIONAL: Secret name to use for cookie hash key."`
-	CookieBlockKeySecretName string          `json:"cookieBlockKeySecretName" pflag:",OPTIONAL: Secret name to use for cookie block key."`
-	CookieSetting            *CookieSettings `json:"cookieSetting" pflag:", settings used by cookies created for user auth"`
+	CookieHashKeySecretName  string         `json:"cookieHashKeySecretName" pflag:",OPTIONAL: Secret name to use for cookie hash key."`
+	CookieBlockKeySecretName string         `json:"cookieBlockKeySecretName" pflag:",OPTIONAL: Secret name to use for cookie block key."`
+	CookieSetting            CookieSettings `json:"cookieSetting" pflag:", settings used by cookies created for user auth"`
 }
 
+//go:generate enumer --type=DomainMatch --trimprefix=DomainMatch -json
+type DomainMatch int
+
+const (
+	DomainMatchExact DomainMatch = iota
+	DomainMatchSubdomains
+)
+
+//go:generate enumer --type=SameSite --trimprefix=SameSite -json
+type SameSite int
+
+const (
+	SameSiteDefaultMode SameSite = iota
+	SameSiteLaxMode
+	SameSiteStrictMode
+	SameSiteNoneMode
+)
+
 type CookieSettings struct {
-	SameSite        http.SameSite `json:"sameSite" pflag:",OPTIONAL: Allows you to declare if your cookie should be restricted to a first-party or same-site context."`
-	CoverSubdomains bool          `json:"coverSubDomains" pflag:",OPTIONAL: Allow subdomain access to the created cookies by setting the domain attribute."`
+	SameSitePolicy    SameSite    `json:"sameSitePolicy" pflag:",OPTIONAL: Allows you to declare if your cookie should be restricted to a first-party or same-site context.Wrapper around http.SameSite."`
+	DomainMatchPolicy DomainMatch `json:"domainMatchPolicy" pflag:",OPTIONAL: Allow subdomain access to the created cookies by setting the domain attribute or do an exact match on domain."`
 }
 
 type OpenIDOptions struct {

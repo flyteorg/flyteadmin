@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flyteorg/flyteadmin/auth/config"
+
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/oauth2"
 )
@@ -17,8 +19,11 @@ func TestCookieManager_SetTokenCookies(t *testing.T) {
 	// These were generated for unit testing only.
 	hashKeyEncoded := "wG4pE1ccdw/pHZ2ml8wrD5VJkOtLPmBpWbKHmezWXktGaFbRoAhXidWs8OpbA3y7N8vyZhz1B1E37+tShWC7gA" //nolint:goconst
 	blockKeyEncoded := "afyABVgGOvWJFxVyOvCWCupoTn6BkNl4SOHmahho16Q"                                           //nolint:goconst
-
-	manager, err := NewCookieManager(ctx, hashKeyEncoded, blockKeyEncoded)
+	cookieSetting := config.CookieSettings{
+		SameSitePolicy:    config.SameSiteDefaultMode,
+		DomainMatchPolicy: config.DomainMatchSubdomains,
+	}
+	manager, err := NewCookieManager(ctx, hashKeyEncoded, blockKeyEncoded, cookieSetting)
 	assert.NoError(t, err)
 
 	token := &oauth2.Token{
@@ -31,7 +36,9 @@ func TestCookieManager_SetTokenCookies(t *testing.T) {
 	})
 
 	w := httptest.NewRecorder()
-	err = manager.SetTokenCookies(ctx, w, token)
+	req, err := http.NewRequest("GET", "/api/v1/projects", nil)
+	assert.NoError(t, err)
+	err = manager.SetTokenCookies(ctx, req, w, token)
 	assert.NoError(t, err)
 	fmt.Println(w.Header().Get("Set-Cookie"))
 	c := w.Result().Cookies()
@@ -46,7 +53,12 @@ func TestCookieManager_RetrieveTokenValues(t *testing.T) {
 	hashKeyEncoded := "wG4pE1ccdw/pHZ2ml8wrD5VJkOtLPmBpWbKHmezWXktGaFbRoAhXidWs8OpbA3y7N8vyZhz1B1E37+tShWC7gA" //nolint:goconst
 	blockKeyEncoded := "afyABVgGOvWJFxVyOvCWCupoTn6BkNl4SOHmahho16Q"                                           //nolint:goconst
 
-	manager, err := NewCookieManager(ctx, hashKeyEncoded, blockKeyEncoded)
+	cookieSetting := config.CookieSettings{
+		SameSitePolicy:    config.SameSiteDefaultMode,
+		DomainMatchPolicy: config.DomainMatchSubdomains,
+	}
+
+	manager, err := NewCookieManager(ctx, hashKeyEncoded, blockKeyEncoded, cookieSetting)
 	assert.NoError(t, err)
 
 	token := &oauth2.Token{
@@ -59,11 +71,13 @@ func TestCookieManager_RetrieveTokenValues(t *testing.T) {
 	})
 
 	w := httptest.NewRecorder()
-	err = manager.SetTokenCookies(ctx, w, token)
+	req, err := http.NewRequest("GET", "/api/v1/projects", nil)
+	assert.NoError(t, err)
+	err = manager.SetTokenCookies(ctx, req, w, token)
 	assert.NoError(t, err)
 
 	cookies := w.Result().Cookies()
-	req, err := http.NewRequest("GET", "/api/v1/projects", nil)
+	req, err = http.NewRequest("GET", "/api/v1/projects", nil)
 	assert.NoError(t, err)
 	for _, c := range cookies {
 		req.AddCookie(c)
@@ -92,8 +106,12 @@ func TestCookieManager_DeleteCookies(t *testing.T) {
 	// These were generated for unit testing only.
 	hashKeyEncoded := "wG4pE1ccdw/pHZ2ml8wrD5VJkOtLPmBpWbKHmezWXktGaFbRoAhXidWs8OpbA3y7N8vyZhz1B1E37+tShWC7gA" //nolint:goconst
 	blockKeyEncoded := "afyABVgGOvWJFxVyOvCWCupoTn6BkNl4SOHmahho16Q"                                           //nolint:goconst
+	cookieSetting := config.CookieSettings{
+		SameSitePolicy:    config.SameSiteDefaultMode,
+		DomainMatchPolicy: config.DomainMatchSubdomains,
+	}
 
-	manager, err := NewCookieManager(ctx, hashKeyEncoded, blockKeyEncoded)
+	manager, err := NewCookieManager(ctx, hashKeyEncoded, blockKeyEncoded, cookieSetting)
 	assert.NoError(t, err)
 
 	w := httptest.NewRecorder()
