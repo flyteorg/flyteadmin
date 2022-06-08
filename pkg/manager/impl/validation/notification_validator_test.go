@@ -1,21 +1,22 @@
 package validation
 
 import (
+	"testing"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"testing"
 )
 
 var recipients = []string{"foo@example.com"}
 
 func TestValidateRecipientsEmail(t *testing.T) {
-	t.Run("valid emails", func(t *testing.T){
+	t.Run("valid emails", func(t *testing.T) {
 		assert.NoError(t, validateRecipientsEmail(recipients))
 	})
-	t.Run("invalid recipients", func(t *testing.T){
+	t.Run("invalid recipients", func(t *testing.T) {
 		err := validateRecipientsEmail(nil)
 		s, ok := status.FromError(err)
 		assert.True(t, ok)
@@ -33,7 +34,7 @@ func TestValidateNotifications(t *testing.T) {
 	phases := []core.WorkflowExecution_Phase{
 		core.WorkflowExecution_FAILED,
 	}
-	t.Run("email type", func(t *testing.T){
+	t.Run("email type", func(t *testing.T) {
 		err := validateNotifications([]*admin.Notification{
 			{
 				Type: &admin.Notification_Email{
@@ -46,7 +47,7 @@ func TestValidateNotifications(t *testing.T) {
 		})
 		assert.NoError(t, err)
 	})
-	t.Run("slack type", func(t *testing.T){
+	t.Run("slack type", func(t *testing.T) {
 		err := validateNotifications([]*admin.Notification{
 			{
 				Type: &admin.Notification_Slack{
@@ -59,7 +60,7 @@ func TestValidateNotifications(t *testing.T) {
 		})
 		assert.NoError(t, err)
 	})
-	t.Run("pagerduty type", func(t *testing.T){
+	t.Run("pagerduty type", func(t *testing.T) {
 		err := validateNotifications([]*admin.Notification{
 			{
 				Type: &admin.Notification_PagerDuty{
@@ -72,7 +73,7 @@ func TestValidateNotifications(t *testing.T) {
 		})
 		assert.NoError(t, err)
 	})
-	t.Run("invalid recipients", func(t *testing.T){
+	t.Run("invalid recipients", func(t *testing.T) {
 		err := validateNotifications([]*admin.Notification{
 			{
 				Type: &admin.Notification_PagerDuty{
@@ -86,7 +87,7 @@ func TestValidateNotifications(t *testing.T) {
 		assert.True(t, ok)
 		assert.Equal(t, codes.InvalidArgument, s.Code())
 	})
-	t.Run("invalid phases", func(t *testing.T){
+	t.Run("invalid phases", func(t *testing.T) {
 		err := validateNotifications([]*admin.Notification{
 			{
 				Type: &admin.Notification_PagerDuty{
