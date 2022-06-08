@@ -124,10 +124,7 @@ func TestValidateNotifications(t *testing.T) {
 				Phases: phases,
 			},
 		})
-
-		s, ok := status.FromError(err)
-		assert.True(t, ok)
-		assert.Equal(t, codes.InvalidArgument, s.Code())
+		assertInvalidArgument(t, err)
 	})
 	t.Run("invalid phases", func(t *testing.T) {
 		err := validateNotifications([]*admin.Notification{
@@ -142,9 +139,6 @@ func TestValidateNotifications(t *testing.T) {
 				},
 			},
 		})
-
-		s, ok := status.FromError(err)
-		assert.True(t, ok)
-		assert.Equal(t, codes.InvalidArgument, s.Code())
+		assertInvalidArgument(t, err)
 	})
 }
