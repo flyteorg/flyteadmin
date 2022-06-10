@@ -10,6 +10,6 @@ type SignalKey struct {
 type Signal struct {
 	BaseModel
 	SignalKey
-	Type []byte
+	Type []byte `gorm:"not null"`
 	Value []byte
 }

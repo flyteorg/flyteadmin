@@ -9,11 +9,11 @@ import (
 
 // Defines the interface for interacting with signal models.
 type SignalRepoInterface interface {
-	// Inserts a signal model into the database store.
+	// GetOrCreate inserts a signal model into the database store or returns one if it already exists.
 	GetOrCreate(ctx context.Context, input *models.Signal) error
-	// Returns a matching signal if it exists.
-	//Get(ctx context.Context, input GetSignalInput) (models.Signal, error)
-	// Updates a signal model in the database store.
+	// List a matching signal if it exists.
+	List(ctx context.Context, input models.Signal) ([]*models.Signal, error)
+	// Update updates the signal value in the database store.
 	Update(ctx context.Context, input models.Signal) error
 }
 

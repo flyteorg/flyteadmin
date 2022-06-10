@@ -45,7 +45,12 @@ func (s *SignalManager) GetOrCreateSignal(ctx context.Context, request admin.Sig
 	}*/
 
 	ctx = getSignalContext(ctx, request.Id)
-	signalModel, err := transformers.CreateSignalModel(*request.Id, request.Type, nil)
+	signalModel, err := transformers.CreateSignalModel(
+		admin.Signal{
+			Id:   request.Id,
+			Type: request.Type,
+		},
+	)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to transform signal with id [%+v] and type [+%v] with err: %v", request.Id, request.Type, err)
 		return nil, err
@@ -65,13 +70,47 @@ func (s *SignalManager) GetOrCreateSignal(ctx context.Context, request admin.Sig
 	return &signal, nil
 }
 
+func (s *SignalManager) ListSignals(ctx context.Context, request admin.SignalListRequest) ([]*admin.Signal, error) {
+	// TODO hamersaw - validate signal
+	/*if err := validation.ValidateIdentifier(request.Id, common.Workflow); err != nil {
+		logger.Debugf(ctx, "invalid identifier [%+v]: %v", request.Id, err)
+		return nil, err
+	}*/
+
+	/*ctx = getSignalContext(ctx, request.Id)
+	signalModel, err := transformers.CreateSignalModel(*request.Id, request.Type, nil)
+	if err != nil {
+		logger.Errorf(ctx, "Failed to transform signal with id [%+v] and type [+%v] with err: %v", request.Id, request.Type, err)
+		return nil, err
+	}
+
+	err = s.db.SignalRepo().GetOrCreate(ctx, &signalModel);
+	if err != nil {
+		return nil, err
+	}
+
+	signal, err := transformers.FromSignalModel(signalModel)
+	if err != nil {
+		logger.Errorf(ctx, "Failed to transform signal model [%+v] with err: %v", signalModel, err)
+		return nil, err
+	}
+
+	return &signal, nil*/
+	return nil, nil
+}
+
 func (s *SignalManager) SetSignal(ctx context.Context, request admin.SignalSetRequest) (*admin.SignalSetResponse, error) {
 	// TODO hamersaw - add validation to check the signal type
 	/*if err := validation.ValidateWorkflow(ctx, request, w.db, w.config.ApplicationConfiguration()); err != nil {
 		return nil, err
 	}*/
 
-	signalModel, err := transformers.CreateSignalModel(*request.Id, nil, request.Value)
+	signalModel, err := transformers.CreateSignalModel(
+		admin.Signal{
+			Id:    request.Id,
+			Value: request.Value,
+		},
+	)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to transform signal with id [%+v] and value [+%v] with err: %v", request.Id, request.Value, err)
 		return nil, err

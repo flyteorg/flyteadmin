@@ -2,7 +2,6 @@ package gormimpl
 
 import (
 	"context"
-	//"errors"
 
 	flyteAdminDbErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
@@ -11,16 +10,16 @@ import (
 	"github.com/flyteorg/flytestdlib/promutils"
 
 	"gorm.io/gorm"
-	//"gorm.io/gorm/clause"
 )
 
-// Implementation of SignalRepoInterface.
+// SignalRepo is an implementation of SignalRepoInterface.
 type SignalRepo struct {
 	db               *gorm.DB
 	errorTransformer flyteAdminDbErrors.ErrorTransformer
 	metrics          gormMetrics
 }
 
+// GetOrCreate returns a signal if it already exists, if not it creates a new one given the input
 func (s *SignalRepo) GetOrCreate(ctx context.Context, input *models.Signal) error {
 	timer := s.metrics.CreateDuration.Start()
 	tx := s.db.FirstOrCreate(&input, input)
@@ -31,9 +30,22 @@ func (s *SignalRepo) GetOrCreate(ctx context.Context, input *models.Signal) erro
 	return nil
 }
 
-func (s *SignalRepo) Update(ctx context.Context, signal models.Signal) error {
+// List fetches all signals that match the provided input
+func (s *SignalRepo) List(ctx context.Context, input models.Signal) ([]*models.Signal, error) {
+	var signals []*models.Signal
+	timer := s.metrics.ListDuration.Start()
+	tx := s.db.Where(&input).Find(&signals)
+	timer.Stop()
+	if tx.Error != nil {
+		return nil, s.errorTransformer.ToFlyteAdminError(tx.Error)
+	}
+	return signals, nil
+}
+
+// Update sets the value field on the specified signal model
+func (s *SignalRepo) Update(ctx context.Context, input models.Signal) error {
 	timer := s.metrics.GetDuration.Start()
-	updateTx := s.db.Model(&signal).Omit("type").Updates(signal)
+	updateTx := s.db.Model(&input).Select("value").Updates(input)
 	timer.Stop()
 	if updateTx.Error != nil {
 		return s.errorTransformer.ToFlyteAdminError(updateTx.Error)
