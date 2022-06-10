@@ -35,6 +35,9 @@ const (
 
 	// #nosec
 	userInfoCookieName = "flyte_user_info"
+
+	// #nosec
+	tokenClaimsCookieName = "flyte_claims"
 )
 
 const (
