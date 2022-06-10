@@ -511,19 +511,6 @@ func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admi
 		if launchPlan.Spec.WorkflowId != nil {
 			workflowName = launchPlan.Spec.WorkflowId.Name
 		}
-		// Backward compatibility changes to get security context from auth role.
-		// Older authRole in the launchplan spec or execution request need to be resolved and converted to newer security context.
-		// This portion of the code makes sure if newer way of setting security context is empty i.e
-		// K8sServiceAccount and  IamRole is empty then get the values from the deprecated fields.
-		// The older authRole values in launchplan spec or execution request take precedence here over the newer fields
-		// being set in matchable attributes.
-		resolvedAuthRole := resolveAuthRole(request, launchPlan)
-		resolvedSecurityCtx := resolveSecurityCtx(ctx, workflowExecConfig.GetSecurityContext(), resolvedAuthRole)
-		if workflowExecConfig.GetSecurityContext() == nil &&
-			(len(resolvedSecurityCtx.GetRunAs().GetK8SServiceAccount()) > 0 ||
-				len(resolvedSecurityCtx.GetRunAs().GetIamRole()) > 0) {
-			workflowExecConfig.SecurityContext = resolvedSecurityCtx
-		}
 	}
 
 	matchableResource, err := util.GetMatchableResource(ctx, m.resourceManager,
@@ -538,7 +525,18 @@ func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admi
 			matchableResource.Attributes.GetWorkflowExecutionConfig())
 	}
 
-	//  merge the application config into workflowExecConfig
+	// Backward compatibility changes to get security context from auth role.
+	// Older authRole or auth fields in the launchplan spec or execution request need to be used over application defaults.
+	// This portion of the code makes sure if newer way of setting security context is empty i.e
+	// K8sServiceAccount and  IamRole is empty then get the values from the deprecated fields.
+	resolvedAuthRole := resolveAuthRole(request, launchPlan)
+	resolvedSecurityCtx := resolveSecurityCtx(ctx, workflowExecConfig.GetSecurityContext(), resolvedAuthRole)
+	if workflowExecConfig.GetSecurityContext() == nil &&
+		(len(resolvedSecurityCtx.GetRunAs().GetK8SServiceAccount()) > 0 ||
+			len(resolvedSecurityCtx.GetRunAs().GetIamRole()) > 0) {
+		workflowExecConfig.SecurityContext = resolvedSecurityCtx
+	}
+	//  merge the application config into workflowExecConfig. If even the deprecated fields are not set
 	workflowExecConfig = mergeIntoExecConfig(workflowExecConfig, m.config.ApplicationConfiguration().GetTopLevelConfig())
 	logger.Infof(ctx, "getting the workflow execution config from application configuration")
 	// Defaults to one from the application config
@@ -772,6 +770,10 @@ func resolveAuthRole(request *admin.ExecutionCreateRequest, launchPlan *admin.La
 		return request.Spec.AuthRole
 	}
 
+	if launchPlan == nil || launchPlan.Spec == nil {
+		return &admin.AuthRole{}
+	}
+
 	// Set role permissions based on launch plan Auth values.
 	// The branched-ness of this check is due to the presence numerous deprecated fields
 	if launchPlan.Spec.GetAuthRole() != nil {
@@ -786,6 +788,7 @@ func resolveAuthRole(request *admin.ExecutionCreateRequest, launchPlan *admin.La
 			AssumableIamRole: launchPlan.GetSpec().GetRole(),
 		}
 	}
+
 	return &admin.AuthRole{}
 }
 
