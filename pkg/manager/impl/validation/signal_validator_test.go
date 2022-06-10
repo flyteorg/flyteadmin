@@ -6,7 +6,6 @@ import (
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	repositoryMocks "github.com/flyteorg/flyteadmin/pkg/repositories/mocks"
-	//runtimeMocks "github.com/flyteorg/flyteadmin/pkg/runtime/mocks"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -14,23 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
     "github.com/golang/protobuf/proto"
-
-	/*"context"
-	"encoding/json"
-	"errors"
-	"testing"
-
-	"google.golang.org/protobuf/types/known/structpb"
-
-	corev1 "k8s.io/api/core/v1"
-
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"k8s.io/apimachinery/pkg/api/resource"
-
-	"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
-	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
-	runtimeMocks "github.com/flyteorg/flyteadmin/pkg/runtime/mocks"
-	"github.com/stretchr/testify/assert"*/
 )
 
 func TestValidateSignalGetOrCreateRequest(t *testing.T) {

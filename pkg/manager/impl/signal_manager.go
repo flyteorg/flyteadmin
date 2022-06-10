@@ -1,12 +1,10 @@
 package impl
 
 import (
-	//"bytes"
 	"context"
 
 	"github.com/flyteorg/flytestdlib/contextutils"
 
-	//"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/validation"
 	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 	repoInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
@@ -34,8 +32,8 @@ type SignalManager struct {
 
 func getSignalContext(ctx context.Context, identifier *core.SignalIdentifier) context.Context {
 	ctx = contextutils.WithProjectDomain(ctx, identifier.ExecutionId.Project, identifier.ExecutionId.Domain)
-	return contextutils.WithWorkflowID(ctx, identifier.ExecutionId.Name)
-	// TODO hamersaw - add identifier.SignalId
+	ctx = contextutils.WithWorkflowID(ctx, identifier.ExecutionId.Name)
+	return context.WithValue(ctx, "signal_id", identifier.SignalId)
 }
 
 func (s *SignalManager) GetOrCreateSignal(ctx context.Context, request admin.SignalGetOrCreateRequest) (*admin.Signal, error) {

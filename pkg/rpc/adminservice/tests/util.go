@@ -15,6 +15,7 @@ type NewMockAdminServerInput struct {
 	taskManager          *mocks.MockTaskManager
 	workflowManager      *mocks.MockWorkflowManager
 	taskExecutionManager *mocks.MockTaskExecutionManager
+	signalManager        *mocks.MockSignalManager
 }
 
 func NewMockAdminServer(input NewMockAdminServerInput) *adminservice.AdminService {
@@ -28,6 +29,7 @@ func NewMockAdminServer(input NewMockAdminServerInput) *adminservice.AdminServic
 		ResourceManager:      input.resourceManager,
 		WorkflowManager:      input.workflowManager,
 		TaskExecutionManager: input.taskExecutionManager,
+		SignalManager:        input.signalManager,
 		Metrics:              adminservice.InitMetrics(testScope),
 	}
 }
