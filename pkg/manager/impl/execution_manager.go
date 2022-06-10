@@ -512,6 +512,11 @@ func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admi
 			workflowName = launchPlan.Spec.WorkflowId.Name
 		}
 		// Backward compatibility changes to get security context from auth role.
+		// Older authRole in the launchplan spec or execution request need to be resolved and converted to newer security context.
+		// This portion of the code makes sure if newer way of setting security context is empty i.e
+		// K8sServiceAccount and  IamRole is empty then get the values from the deprecated fields.
+		// The older authRole values in launchplan spec or execution request take precedence here over the newer fields
+		// being set in matchable attributes.
 		resolvedAuthRole := resolveAuthRole(request, launchPlan)
 		resolvedSecurityCtx := resolveSecurityCtx(ctx, workflowExecConfig.GetSecurityContext(), resolvedAuthRole)
 		if workflowExecConfig.GetSecurityContext() == nil &&
