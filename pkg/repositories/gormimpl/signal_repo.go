@@ -3,11 +3,14 @@ package gormimpl
 import (
 	"context"
 
+	adminerrors "github.com/flyteorg/flyteadmin/pkg/errors"
 	flyteAdminDbErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 
 	"github.com/flyteorg/flytestdlib/promutils"
+
+	"google.golang.org/grpc/codes"
 
 	"gorm.io/gorm"
 )
@@ -31,8 +34,8 @@ func (s *SignalRepo) GetOrCreate(ctx context.Context, input *models.Signal) erro
 }
 
 // List fetches all signals that match the provided input
-func (s *SignalRepo) List(ctx context.Context, input models.Signal) ([]*models.Signal, error) {
-	var signals []*models.Signal
+func (s *SignalRepo) List(ctx context.Context, input models.Signal) ([]models.Signal, error) {
+	var signals []models.Signal
 	timer := s.metrics.ListDuration.Start()
 	tx := s.db.Where(&input).Find(&signals)
 	timer.Stop()
@@ -45,10 +48,13 @@ func (s *SignalRepo) List(ctx context.Context, input models.Signal) ([]*models.S
 // Update sets the value field on the specified signal model
 func (s *SignalRepo) Update(ctx context.Context, input models.Signal) error {
 	timer := s.metrics.GetDuration.Start()
-	updateTx := s.db.Model(&input).Select("value").Updates(input)
+	tx := s.db.Model(&input).Select("value").Updates(input)
 	timer.Stop()
-	if updateTx.Error != nil {
-		return s.errorTransformer.ToFlyteAdminError(updateTx.Error)
+	if tx.Error != nil {
+		return s.errorTransformer.ToFlyteAdminError(tx.Error)
+	}
+	if tx.RowsAffected == 0 {
+		return adminerrors.NewFlyteAdminError(codes.NotFound, "signal does not exist")
 	}
 	return nil
 }
