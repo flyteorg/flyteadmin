@@ -8,14 +8,27 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 )
 
+type GetSignalFunc func(input models.SignalKey) (models.Signal, error)
 type GetOrCreateSignalFunc func(input *models.Signal) error
-type ListSignalsFunc func(input models.Signal) ([]*models.Signal, error)
-type UpdateSignalFunc func(input models.Signal) error
+type ListSignalsFunc func(input interfaces.ListResourceInput) ([]models.Signal, error)
+type UpdateSignalFunc func(input models.SignalKey, value []byte) error
 
 type MockSignalRepo struct {
+	getFunction         GetSignalFunc
 	getOrCreateFunction GetOrCreateSignalFunc
 	listFunction        ListSignalsFunc
 	updateFunction      UpdateSignalFunc
+}
+
+func (r *MockSignalRepo) Get(ctx context.Context, input models.SignalKey) (models.Signal, error) {
+	if r.getFunction != nil {
+		return r.getFunction(input)
+	}
+	return models.Signal{}, nil
+}
+
+func (r *MockSignalRepo) SetGetCallback(getFunction GetSignalFunc) {
+	r.getFunction = getFunction
 }
 
 func (r *MockSignalRepo) GetOrCreate(ctx context.Context, input *models.Signal) error {
@@ -29,7 +42,7 @@ func (r *MockSignalRepo) SetGetOrCreateCallback(getOrCreateFunction GetOrCreateS
 	r.getOrCreateFunction = getOrCreateFunction
 }
 
-func (r *MockSignalRepo) List(ctx context.Context, input models.Signal) ([]*models.Signal, error) {
+func (r *MockSignalRepo) List(ctx context.Context, input interfaces.ListResourceInput) ([]models.Signal, error) {
 	if r.listFunction != nil {
 		return r.listFunction(input)
 	}
@@ -40,9 +53,9 @@ func (r *MockSignalRepo) SetListCallback(listFunction ListSignalsFunc) {
 	r.listFunction = listFunction
 }
 
-func (r *MockSignalRepo) Update(ctx context.Context, input models.Signal) error {
+func (r *MockSignalRepo) Update(ctx context.Context, input models.SignalKey, value []byte) error {
 	if r.updateFunction != nil {
-		return r.updateFunction(input)
+		return r.updateFunction(input, value)
 	}
 	return nil
 }

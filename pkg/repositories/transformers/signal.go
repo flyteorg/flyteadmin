@@ -12,30 +12,30 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-func CreateSignalModel(signal admin.Signal) (models.Signal, error) {
+func CreateSignalModel(signalId *core.SignalIdentifier, signalType *core.LiteralType, signalValue *core.Literal) (models.Signal, error) {
 	signalModel := models.Signal{}
-	if signal.Id != nil {
+	if signalId != nil {
 		signalKey := &signalModel.SignalKey
-		if signal.Id.ExecutionId != nil {
+		if signalId.ExecutionId != nil {
 			executionKey := &signalKey.ExecutionKey
-			if signal.Id.ExecutionId.Project != "" {
-				executionKey.Project = signal.Id.ExecutionId.Project
+			if signalId.ExecutionId.Project != "" {
+				executionKey.Project = signalId.ExecutionId.Project
 			}
-			if signal.Id.ExecutionId.Domain != "" {
-				executionKey.Domain = signal.Id.ExecutionId.Domain
+			if signalId.ExecutionId.Domain != "" {
+				executionKey.Domain = signalId.ExecutionId.Domain
 			}
-			if signal.Id.ExecutionId.Name != "" {
-				executionKey.Name = signal.Id.ExecutionId.Name
+			if signalId.ExecutionId.Name != "" {
+				executionKey.Name = signalId.ExecutionId.Name
 			}
 		}
 
-		if signal.Id.SignalId != "" {
-			signalKey.SignalID = signal.Id.SignalId
+		if signalId.SignalId != "" {
+			signalKey.SignalID = signalId.SignalId
 		}
 	}
 
-	if signal.Type != nil {
-		typeBytes, err := proto.Marshal(signal.Type)
+	if signalType != nil {
+		typeBytes, err := proto.Marshal(signalType)
 		if err != nil {
 			return models.Signal{}, errors.NewFlyteAdminError(codes.Internal, "Failed to serialize signal type")
 		}
@@ -43,8 +43,8 @@ func CreateSignalModel(signal admin.Signal) (models.Signal, error) {
 		signalModel.Type = typeBytes
 	}
 
-	if signal.Value != nil {
-		valueBytes, err := proto.Marshal(signal.Value)
+	if signalValue != nil {
+		valueBytes, err := proto.Marshal(signalValue)
 		if err != nil {
 			return models.Signal{}, errors.NewFlyteAdminError(codes.Internal, "Failed to serialize signal value")
 		}

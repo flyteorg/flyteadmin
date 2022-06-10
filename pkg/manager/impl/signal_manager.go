@@ -7,6 +7,7 @@ import (
 	"github.com/flyteorg/flytestdlib/contextutils"
 
 	//"github.com/flyteorg/flyteadmin/pkg/errors"
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/validation"
 	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 	repoInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
@@ -38,19 +39,13 @@ func getSignalContext(ctx context.Context, identifier *core.SignalIdentifier) co
 }
 
 func (s *SignalManager) GetOrCreateSignal(ctx context.Context, request admin.SignalGetOrCreateRequest) (*admin.Signal, error) {
-	// TODO hamersaw - validate signal
-	/*if err := validation.ValidateIdentifier(request.Id, common.Workflow); err != nil {
-		logger.Debugf(ctx, "invalid identifier [%+v]: %v", request.Id, err)
+	if err := validation.ValidateSignalGetOrCreateRequest(ctx, request); err != nil {
+		logger.Debugf(ctx, "invalid request [%+v]: %v", request, err)
 		return nil, err
-	}*/
+	}
 
 	ctx = getSignalContext(ctx, request.Id)
-	signalModel, err := transformers.CreateSignalModel(
-		admin.Signal{
-			Id:   request.Id,
-			Type: request.Type,
-		},
-	)
+	signalModel, err := transformers.CreateSignalModel(request.Id, request.Type, nil)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to transform signal with id [%+v] and type [+%v] with err: %v", request.Id, request.Type, err)
 		return nil, err
@@ -100,23 +95,17 @@ func (s *SignalManager) ListSignals(ctx context.Context, request admin.SignalLis
 }
 
 func (s *SignalManager) SetSignal(ctx context.Context, request admin.SignalSetRequest) (*admin.SignalSetResponse, error) {
-	// TODO hamersaw - add validation to check the signal type
-	/*if err := validation.ValidateWorkflow(ctx, request, w.db, w.config.ApplicationConfiguration()); err != nil {
+	if err := validation.ValidateSignalSetRequest(ctx, s.db, request); err != nil {
 		return nil, err
-	}*/
+	}
 
-	signalModel, err := transformers.CreateSignalModel(
-		admin.Signal{
-			Id:    request.Id,
-			Value: request.Value,
-		},
-	)
+	signalModel, err := transformers.CreateSignalModel(request.Id, nil, request.Value)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to transform signal with id [%+v] and value [+%v] with err: %v", request.Id, request.Value, err)
 		return nil, err
 	}
 
-	err = s.db.SignalRepo().Update(ctx, signalModel);
+	err = s.db.SignalRepo().Update(ctx, signalModel.SignalKey, signalModel.Value);
 	if err != nil {
 		return nil, err
 	}

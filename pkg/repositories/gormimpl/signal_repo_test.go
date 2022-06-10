@@ -46,6 +46,37 @@ func toSignalMap(signalModel models.Signal) map[string]interface{} {
 	return signal
 }
 
+func TestGetSignal(t *testing.T) {
+	ctx := context.Background()
+
+	signalRepo := NewSignalRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
+
+	GlobalMock := mocket.Catcher.Reset()
+	GlobalMock.Logging = true
+
+	mockSelectQuery := GlobalMock.NewMock()
+	mockSelectQuery.WithQuery(
+		`SELECT * FROM "signals" WHERE "signals"."execution_project" = $1 AND "signals"."execution_domain" = $2 AND "signals"."execution_name" = $3 AND "signals"."signal_id" = $4 LIMIT 1`)
+
+	// retrieve non-existant signalModel
+	lookupSignalModel, err := signalRepo.Get(ctx, signalModel.SignalKey)
+	assert.Error(t, err)
+	assert.Empty(t, lookupSignalModel)
+
+	assert.True(t, mockSelectQuery.Triggered)
+	mockSelectQuery.Triggered = false // reset to false for second call
+
+	// retrieve existant signalModel
+	signalModels := []map[string]interface{}{toSignalMap(*signalModel)}
+	mockSelectQuery.WithReply(signalModels)
+
+	lookupSignalModel, err = signalRepo.Get(ctx, signalModel.SignalKey)
+	assert.NoError(t, err)
+	assert.True(t, reflect.DeepEqual(*signalModel, lookupSignalModel))
+
+	assert.True(t, mockSelectQuery.Triggered)
+}
+
 func TestGetOrCreateSignal(t *testing.T) {
 	ctx := context.Background()
 
@@ -121,7 +152,7 @@ func TestUpdateSignal(t *testing.T) {
 	mockUpdateQuery.WithQuery(
 		`UPDATE "signals" SET "updated_at"=$1,"value"=$2 WHERE "execution_project" = $3 AND "execution_domain" = $4 AND "execution_name" = $5 AND "signal_id" = $6`).WithRowsNum(0)
 
-	err := signalRepo.Update(ctx, *signalModel)
+	err := signalRepo.Update(ctx, signalModel.SignalKey, signalModel.Value)
 	assert.Error(t, err)
 
 	assert.True(t, mockUpdateQuery.Triggered)
@@ -130,7 +161,7 @@ func TestUpdateSignal(t *testing.T) {
 	// update signalModel exists
 	mockUpdateQuery.WithRowsNum(1)
 
-	err = signalRepo.Update(ctx, *signalModel)
+	err = signalRepo.Update(ctx, signalModel.SignalKey, signalModel.Value)
 	assert.NoError(t, err)
 
 	assert.True(t, mockUpdateQuery.Triggered)
