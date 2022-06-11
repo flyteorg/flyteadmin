@@ -130,8 +130,12 @@ func IdentityContextFromIDTokenToken(ctx context.Context, tokenStr, clientID str
 	if err != nil {
 		return nil, err
 	}
+	var claims map[string]interface{}
+	if err := idToken.Claims(claims); err != nil {
+		logger.Infof(ctx, "No claims set for id token, err: %v", err)
+	}
 
 	// TODO: Document why automatically specify "all" scope
 	return NewIdentityContext(idToken.Audience[0], idToken.Subject, "", idToken.IssuedAt,
-		sets.NewString(ScopeAll), userInfo, make(map[string]interface{})), nil
+		sets.NewString(ScopeAll), userInfo, claims), nil
 }
