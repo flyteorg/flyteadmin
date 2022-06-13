@@ -41,8 +41,8 @@ func (s *SignalManager) GetOrCreateSignal(ctx context.Context, request admin.Sig
 		logger.Debugf(ctx, "invalid request [%+v]: %v", request, err)
 		return nil, err
 	}
-
 	ctx = getSignalContext(ctx, request.Id)
+
 	signalModel, err := transformers.CreateSignalModel(request.Id, request.Type, nil)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to transform signal with id [%+v] and type [+%v] with err: %v", request.Id, request.Type, err)
@@ -96,6 +96,7 @@ func (s *SignalManager) SetSignal(ctx context.Context, request admin.SignalSetRe
 	if err := validation.ValidateSignalSetRequest(ctx, s.db, request); err != nil {
 		return nil, err
 	}
+	ctx = getSignalContext(ctx, request.Id)
 
 	signalModel, err := transformers.CreateSignalModel(request.Id, nil, request.Value)
 	if err != nil {

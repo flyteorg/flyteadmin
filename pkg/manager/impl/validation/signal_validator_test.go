@@ -2,6 +2,7 @@ package validation
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
@@ -173,6 +174,40 @@ func TestValidateSignalUpdateRequest(t *testing.T) {
 		assert.EqualError(t, ValidateSignalSetRequest(ctx, repo, request), "missing value")
 	})
 
+	t.Run("MissingSignal", func(t *testing.T) {
+		repo := repositoryMocks.NewMockRepository()
+		repo.SignalRepo().(*repositoryMocks.MockSignalRepo).SetGetCallback(
+			func(input models.SignalKey) (models.Signal, error) {
+				return models.Signal{}, errors.New("foo")
+			})
+
+		request := admin.SignalSetRequest{
+			Id: &core.SignalIdentifier{
+				ExecutionId: &core.WorkflowExecutionIdentifier{
+					Project: "project",
+					Domain:  "domain",
+					Name:    "name",
+				},
+				SignalId: "signal",
+			},
+			Value: &core.Literal{
+				Value: &core.Literal_Scalar{
+					Scalar: &core.Scalar{
+						Value: &core.Scalar_Primitive{
+							Primitive: &core.Primitive{
+								Value: &core.Primitive_Boolean{
+									Boolean: false,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		assert.EqualError(t, ValidateSignalSetRequest(ctx, repo, request),
+			"failed to validate that signal [{{project domain name} signal}] exists, err: [foo]")
+	})
+
 	t.Run("InvalidType", func(t *testing.T) {
 		integerType := &core.LiteralType{
 			Type: &core.LiteralType_Simple{
@@ -183,12 +218,12 @@ func TestValidateSignalUpdateRequest(t *testing.T) {
 
 		repo := repositoryMocks.NewMockRepository()
 		repo.SignalRepo().(*repositoryMocks.MockSignalRepo).SetGetCallback(
-		func(input models.SignalKey) (models.Signal, error) {
-			return models.Signal{
-				SignalKey: input,
-				Type:      typeBytes,
-			}, nil
-		})
+			func(input models.SignalKey) (models.Signal, error) {
+				return models.Signal{
+					SignalKey: input,
+					Type:      typeBytes,
+				}, nil
+			})
 
 		request := admin.SignalSetRequest{
 			Id: &core.SignalIdentifier{
