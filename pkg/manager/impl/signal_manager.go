@@ -15,14 +15,12 @@ import (
 
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
-	//"github.com/prometheus/client_golang/prometheus"
-	//"google.golang.org/grpc/codes"
-	//"google.golang.org/grpc/status"
+	"github.com/flyteorg/flytestdlib/promutils/labeled"
 )
 
 type signalMetrics struct {
 	Scope promutils.Scope
-	// TODO hamersaw - add some signal metrics
+	Set   labeled.Counter
 }
 
 type SignalManager struct {
@@ -109,6 +107,7 @@ func (s *SignalManager) SetSignal(ctx context.Context, request admin.SignalSetRe
 		return nil, err
 	}
 
+	s.metrics.Set.Inc(ctx)
 	return &admin.SignalSetResponse{}, nil
 }
 
@@ -117,6 +116,7 @@ func NewSignalManager(
 	scope promutils.Scope) interfaces.SignalInterface {
 	metrics := signalMetrics{
 		Scope: scope,
+		Set:   labeled.NewCounter("num_set", "count of set signals", scope),
 	}
 
 	return &SignalManager{
