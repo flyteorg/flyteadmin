@@ -44,7 +44,6 @@ type AdminService struct {
 	ResourceManager      interfaces.ResourceInterface
 	NamedEntityManager   interfaces.NamedEntityInterface
 	VersionManager       interfaces.VersionInterface
-	SignalManager        interfaces.SignalInterface
 	Metrics              AdminMetrics
 }
 

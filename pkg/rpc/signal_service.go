@@ -34,6 +34,17 @@ type signalMetrics struct {
 	get    util.RequestMetrics
 }
 
+func NewSignalMetrics(scope promutils.Scope) signalMetrics {
+	return signalMetrics{
+		scope: scope,
+		panicCounter: scope.MustNewCounter("handler_panic",
+			"panics encountered while handling requests to the admin service"),
+		create: util.NewRequestMetrics(scope, "create_signal"),
+		get:    util.NewRequestMetrics(scope, "get_signal"),
+	}
+}
+
+
 type SignalService struct {
 	service.UnimplementedSignalServiceServer
 	signalManager interfaces.SignalInterface
@@ -67,13 +78,7 @@ func NewSignalServer(ctx context.Context, configuration runtimeIfaces.Configurat
 	logger.Info(ctx, "Initializing a new SignalService")
 	return &SignalService{
 		signalManager: signalManager,
-		metrics: signalMetrics{
-			scope: adminScope,
-			panicCounter: adminScope.MustNewCounter("handler_panic",
-				"panics encountered while handling requests to the admin service"),
-			create: util.NewRequestMetrics(adminScope, "create_signal"),
-			get:    util.NewRequestMetrics(adminScope, "get_signal"),
-		},
+		metrics:       NewSignalMetrics(adminScope),
 	}
 }
 
