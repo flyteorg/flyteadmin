@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/flyteorg/flytestdlib/logger"
 	"io/ioutil"
 	"mime"
 	"net/http"
@@ -37,6 +38,7 @@ func (r ResourceServer) ValidateAccessToken(ctx context.Context, expectedAudienc
 	if err = json.Unmarshal(raw, &claimsRaw); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal user info claim into UserInfo type. Error: %w", err)
 	}
+	logger.Infof(ctx, "Claims raw when validating access token: %+v", claimsRaw)
 
 	return verifyClaims(sets.NewString(append(r.allowedAudience, expectedAudience)...), claimsRaw)
 }

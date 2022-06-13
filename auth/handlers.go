@@ -239,6 +239,7 @@ func GetAuthenticationInterceptor(authCtx interfaces.AuthenticationContext) func
 		fromHTTP := metautils.ExtractIncoming(ctx).Get(FromHTTPKey)
 		isFromHTTP := fromHTTP == FromHTTPVal
 
+		logger.Infof(ctx, "Attempting to get identity from access token")
 		identityContext, err := GRPCGetIdentityFromAccessToken(ctx, authCtx)
 		if err == nil {
 			return SetContextForIdentity(ctx, identityContext), nil
