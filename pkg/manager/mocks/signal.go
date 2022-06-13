@@ -7,7 +7,7 @@ import (
 )
 
 type GetOrCreateSignalFunc func(ctx context.Context, request admin.SignalGetOrCreateRequest) (*admin.Signal, error)
-type ListSignalsFunc func(ctx context.Context, request admin.SignalListRequest) ([]*admin.Signal, error)
+type ListSignalsFunc func(ctx context.Context, request admin.SignalListRequest) (*admin.SignalList, error)
 type SetSignalFunc func(ctx context.Context, request admin.SignalSetRequest) (*admin.SignalSetResponse, error)
 
 type MockSignalManager struct {
@@ -35,7 +35,7 @@ func (r *MockSignalManager) SetListCallback(listFunction ListSignalsFunc) {
 
 func (r *MockSignalManager) ListSignals(
 	ctx context.Context,
-	request admin.SignalListRequest) ([]*admin.Signal, error) {
+	request admin.SignalListRequest) (*admin.SignalList, error) {
 	if r.listSignalsFunc != nil {
 		return r.listSignalsFunc(ctx, request)
 	}

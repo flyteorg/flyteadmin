@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	repositoryMocks "github.com/flyteorg/flyteadmin/pkg/repositories/mocks"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
@@ -91,6 +92,79 @@ func TestGetOrCreateSignal(t *testing.T) {
 		}
 
 		_, err := signalManager.GetOrCreateSignal(context.Background(), request)
+		assert.Error(t, err)
+	})
+}
+
+func TestListSignals(t *testing.T) {
+	mockRepository := repositoryMocks.NewMockRepository()
+
+	signalModel, err := transformers.CreateSignalModel(signalId, signalType, nil)
+	assert.NoError(t, err)
+
+	t.Run("Happy", func(t *testing.T) {
+		mockRepository.SignalRepo().(*repositoryMocks.MockSignalRepo).SetListCallback(
+			func (input interfaces.ListResourceInput) ([]models.Signal, error) {
+				return []models.Signal{signalModel}, nil
+			})
+
+		signalManager := NewSignalManager(mockRepository, mockScope.NewTestScope())
+		request := admin.SignalListRequest{
+			WorkflowExecutionId: &core.WorkflowExecutionIdentifier{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			},
+			Limit: 20,
+		}
+
+		response, err := signalManager.ListSignals(context.Background(), request)
+		assert.NoError(t, err)
+
+		assert.True(t, proto.Equal(
+			&admin.SignalList{
+				Signals: []*admin.Signal{
+					&admin.Signal{
+						Id: signalId,
+						Type: signalType,
+					},
+				},
+			},
+			response,
+		))
+	})
+
+	t.Run("ValidationError", func(t *testing.T) {
+		signalManager := NewSignalManager(mockRepository, mockScope.NewTestScope())
+		request := admin.SignalListRequest{
+			WorkflowExecutionId: &core.WorkflowExecutionIdentifier{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			},
+		}
+
+		_, err := signalManager.ListSignals(context.Background(), request)
+		assert.Error(t, err)
+	})
+
+	t.Run("DBError", func(t *testing.T) {
+		mockRepository.SignalRepo().(*repositoryMocks.MockSignalRepo).SetListCallback(
+			func (input interfaces.ListResourceInput) ([]models.Signal, error) {
+				return nil, errors.New("foo")
+			})
+
+		signalManager := NewSignalManager(mockRepository, mockScope.NewTestScope())
+		request := admin.SignalListRequest{
+			WorkflowExecutionId: &core.WorkflowExecutionIdentifier{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			},
+			Limit: 20,
+		}
+
+		_, err := signalManager.ListSignals(context.Background(), request)
 		assert.Error(t, err)
 	})
 }

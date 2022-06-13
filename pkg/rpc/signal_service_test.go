@@ -64,6 +64,56 @@ func TestGetOrCreateSignal(t *testing.T) {
 	})
 }
 
+func TestListSignals(t *testing.T) {
+	ctx := context.Background()
+	mockSignalManager := mocks.MockSignalManager{}
+
+	t.Run("Happy", func(t *testing.T) {
+		mockSignalManager.SetListCallback(
+			func(ctx context.Context, request admin.SignalListRequest) (*admin.SignalList, error) {
+				return &admin.SignalList{}, nil
+			},
+		)
+
+		testScope := mockScope.NewTestScope()
+		mockServer := &SignalService{
+			signalManager: &mockSignalManager,
+			metrics:       NewSignalMetrics(testScope),
+		}
+
+		_, err := mockServer.ListSignals(ctx, &admin.SignalListRequest{})
+		assert.NoError(t, err)
+	})
+
+	t.Run("NilRequestError", func(t *testing.T) {
+		testScope := mockScope.NewTestScope()
+		mockServer := &SignalService{
+			signalManager: &mockSignalManager,
+			metrics:       NewSignalMetrics(testScope),
+		}
+
+		_, err := mockServer.ListSignals(ctx, nil)
+		assert.Error(t, err)
+	})
+
+	t.Run("ManagerError", func(t *testing.T) {
+		mockSignalManager.SetListCallback(
+			func(ctx context.Context, request admin.SignalListRequest) (*admin.SignalList, error) {
+				return nil, errors.New("foo")
+			},
+		)
+
+		testScope := mockScope.NewTestScope()
+		mockServer := &SignalService{
+			signalManager: &mockSignalManager,
+			metrics:       NewSignalMetrics(testScope),
+		}
+
+		_, err := mockServer.ListSignals(ctx, &admin.SignalListRequest{})
+		assert.Error(t, err)
+	})
+}
+
 func TestSetSignal(t *testing.T) {
 	ctx := context.Background()
 	mockSignalManager := mocks.MockSignalManager{}

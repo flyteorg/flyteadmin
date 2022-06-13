@@ -5,7 +5,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 
 	mockScope "github.com/flyteorg/flytestdlib/promutils"
@@ -116,8 +118,7 @@ func TestGetOrCreateSignal(t *testing.T) {
 	assert.False(t, mockInsertQuery.Triggered)
 }
 
-// TODO - fix list
-/*func TestListSignals(t *testing.T) {
+func TestListSignals(t *testing.T) {
 	ctx := context.Background()
 
 	signalRepo := NewSignalRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
@@ -125,19 +126,25 @@ func TestGetOrCreateSignal(t *testing.T) {
 	GlobalMock := mocket.Catcher.Reset()
 	GlobalMock.Logging = true
 
-	// list signalModels
+	// read all signal models
 	signalModels := []map[string]interface{}{toSignalMap(*signalModel)}
 	mockSelectQuery := GlobalMock.NewMock()
 	mockSelectQuery.WithQuery(
-		//`SELECT * FROM "signals" WHERE "signals"."execution_project" = $1 AND "signals"."execution_domain" = $2 AND "signals"."execution_name" = $3 AND "signals"."signal_id" = $4 AND "signals"."type" = $5 AND "signals"."value" = $6`).WithReply(signalModels)
-		`SELECT * FROM "signals" WHERE "signals"."created_at" = $1 AND "signals"."updated_at" = $2 AND "signals"."execution_project" = $3 AND "signals"."execution_domain" = $4 AND "signals"."execution_name" = $5 AND "signals"."signal_id" = $6 AND "signals"."type" = $7 AND "signals"."value" = $8`).WithReply(signalModels)
+		`SELECT * FROM "signals" WHERE project = $1 AND domain = $2 AND name = $3 LIMIT 20`).WithReply(signalModels)
 
-	signals, err := signalRepo.List(ctx, *signalModel)
+	signals, err := signalRepo.List(ctx, interfaces.ListResourceInput{
+		InlineFilters: []common.InlineFilter{
+			getEqualityFilter(common.Signal, "project", project),
+			getEqualityFilter(common.Signal, "domain", domain),
+			getEqualityFilter(common.Signal, "name", name),
+		},
+		Limit: 20,
+	})
 	assert.NoError(t, err)
 
 	assert.True(t, reflect.DeepEqual([]models.Signal{*signalModel}, signals))
 	assert.True(t, mockSelectQuery.Triggered)
-}*/
+}
 
 func TestUpdateSignal(t *testing.T) {
 	ctx := context.Background()
