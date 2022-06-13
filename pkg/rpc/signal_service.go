@@ -111,6 +111,24 @@ func (s *SignalService) GetOrCreateSignal(
 	return response, nil
 }
 
+func (s *SignalService) ListSignals(
+	ctx context.Context, request *admin.SignalListRequest) (*admin.SignalList, error) {
+	defer s.interceptPanic(ctx, request)
+	if request == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Incorrect request, nil requests not allowed")
+	}
+	var response *admin.SignalList
+	var err error
+	s.metrics.get.Time(func() {
+		response, err = s.signalManager.ListSignals(ctx, *request)
+	})
+	if err != nil {
+		return nil, util.TransformAndRecordError(err, &s.metrics.get)
+	}
+	s.metrics.get.Success()
+	return response, nil
+}
+
 func (s *SignalService) SetSignal(
 	ctx context.Context, request *admin.SignalSetRequest) (*admin.SignalSetResponse, error) {
 	defer s.interceptPanic(ctx, request)

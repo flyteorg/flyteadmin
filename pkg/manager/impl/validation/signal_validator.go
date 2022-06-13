@@ -41,6 +41,16 @@ func ValidateSignalIdentifier(identifier core.SignalIdentifier) error {
 	return ValidateWorkflowExecutionIdentifier(identifier.ExecutionId)
 }
 
+func ValidateSignalListRequest(request admin.SignalListRequest) error {
+	if err := ValidateWorkflowExecutionIdentifier(request.WorkflowExecutionId); err != nil {
+		return shared.GetMissingArgumentError(shared.ExecutionID)
+	}
+	if err := ValidateLimit(request.Limit); err != nil {
+		return err
+	}
+	return nil
+}
+
 func ValidateSignalSetRequest(ctx context.Context, db repositoryInterfaces.Repository, request admin.SignalSetRequest) error {
 	if request.Id == nil {
 		return shared.GetMissingArgumentError("id")

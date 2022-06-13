@@ -53,16 +53,30 @@ func (s *SignalRepo) GetOrCreate(ctx context.Context, input *models.Signal) erro
 
 // List fetches all signals that match the provided input
 func (s *SignalRepo) List(ctx context.Context, input interfaces.ListResourceInput) ([]models.Signal, error) {
-	// TODO - implement list
-	/*var signals []models.Signal
+	// First validate input.
+	if err := ValidateListInput(input); err != nil {
+		return nil, err
+	}
+	var signals []models.Signal
+	tx := s.db.Limit(input.Limit).Offset(input.Offset)
+
+	// Apply filters
+	tx, err := applyFilters(tx, input.InlineFilters, input.MapFilters)
+	if err != nil {
+		return nil, err
+	}
+	// Apply sort ordering.
+	if input.SortParameter != nil {
+		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
+	}
 	timer := s.metrics.ListDuration.Start()
-	tx := s.db.Where(&input).Find(&signals)
+	tx.Find(&signals)
 	timer.Stop()
 	if tx.Error != nil {
 		return nil, s.errorTransformer.ToFlyteAdminError(tx.Error)
 	}
-	return signals, nil*/
-	return nil, nil
+
+	return signals, nil
 }
 
 // Update sets the value field on the specified signal model

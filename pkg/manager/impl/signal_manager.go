@@ -2,9 +2,13 @@ package impl
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/flyteorg/flytestdlib/contextutils"
 
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteadmin/pkg/errors"
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/util"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/validation"
 	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 	repoInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
@@ -16,6 +20,8 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
+
+    "google.golang.org/grpc/codes"
 )
 
 type signalMetrics struct {
@@ -61,33 +67,61 @@ func (s *SignalManager) GetOrCreateSignal(ctx context.Context, request admin.Sig
 	return &signal, nil
 }
 
-func (s *SignalManager) ListSignals(ctx context.Context, request admin.SignalListRequest) ([]*admin.Signal, error) {
-	// TODO hamersaw - validate signal
-	/*if err := validation.ValidateIdentifier(request.Id, common.Workflow); err != nil {
-		logger.Debugf(ctx, "invalid identifier [%+v]: %v", request.Id, err)
-		return nil, err
-	}*/
-
-	/*ctx = getSignalContext(ctx, request.Id)
-	signalModel, err := transformers.CreateSignalModel(*request.Id, request.Type, nil)
-	if err != nil {
-		logger.Errorf(ctx, "Failed to transform signal with id [%+v] and type [+%v] with err: %v", request.Id, request.Type, err)
+func (s *SignalManager) ListSignals(ctx context.Context, request admin.SignalListRequest) (*admin.SignalList, error) {
+	if err := validation.ValidateSignalListRequest(request); err != nil {
+		logger.Debugf(ctx, "ListSignals request [%+v] is invalid: %v", request, err)
 		return nil, err
 	}
+	ctx = getExecutionContext(ctx, request.WorkflowExecutionId)
 
-	err = s.db.SignalRepo().GetOrCreate(ctx, &signalModel);
+	identifierFilters, err := util.GetWorkflowExecutionIdentifierFilters(ctx, *request.WorkflowExecutionId)
 	if err != nil {
 		return nil, err
 	}
 
-	signal, err := transformers.FromSignalModel(signalModel)
+	filters, err := util.AddRequestFilters(request.Filters, common.Signal, identifierFilters)
 	if err != nil {
-		logger.Errorf(ctx, "Failed to transform signal model [%+v] with err: %v", signalModel, err)
+		return nil, err
+	}
+	var sortParameter common.SortParameter
+	if request.SortBy != nil {
+		sortParameter, err = common.NewSortParameter(*request.SortBy)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	offset, err := validation.ValidateToken(request.Token)
+	if err != nil {
+		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
+			"invalid pagination token %s for ListSignals", request.Token)
+	}
+
+	signalModelList, err := s.db.SignalRepo().List(ctx, repoInterfaces.ListResourceInput{
+		InlineFilters: filters,
+		Offset:        offset,
+		Limit:         int(request.Limit),
+		SortParameter: sortParameter,
+	})
+	if err != nil {
+		logger.Debugf(ctx, "Failed to list signals with request [%+v] with err %v",
+			request, err)
 		return nil, err
 	}
 
-	return &signal, nil*/
-	return nil, nil
+	signalList, err := transformers.FromSignalModels(signalModelList)
+	if err != nil {
+		logger.Debugf(ctx, "failed to transform signal models for request [%+v] with err: %v", request, err)
+		return nil, err
+	}
+	var token string
+	if len(signalList) == int(request.Limit) {
+		token = strconv.Itoa(offset + len(signalList))
+	}
+	return &admin.SignalList{
+		Signals: signalList,
+		Token:   token,
+	}, nil
 }
 
 func (s *SignalManager) SetSignal(ctx context.Context, request admin.SignalSetRequest) (*admin.SignalSetResponse, error) {
