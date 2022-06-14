@@ -12,25 +12,25 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-func CreateSignalModel(signalId *core.SignalIdentifier, signalType *core.LiteralType, signalValue *core.Literal) (models.Signal, error) {
+func CreateSignalModel(signalID *core.SignalIdentifier, signalType *core.LiteralType, signalValue *core.Literal) (models.Signal, error) {
 	signalModel := models.Signal{}
-	if signalId != nil {
+	if signalID != nil {
 		signalKey := &signalModel.SignalKey
-		if signalId.ExecutionId != nil {
+		if signalID.ExecutionId != nil {
 			executionKey := &signalKey.ExecutionKey
-			if signalId.ExecutionId.Project != "" {
-				executionKey.Project = signalId.ExecutionId.Project
+			if signalID.ExecutionId.Project != "" {
+				executionKey.Project = signalID.ExecutionId.Project
 			}
-			if signalId.ExecutionId.Domain != "" {
-				executionKey.Domain = signalId.ExecutionId.Domain
+			if signalID.ExecutionId.Domain != "" {
+				executionKey.Domain = signalID.ExecutionId.Domain
 			}
-			if signalId.ExecutionId.Name != "" {
-				executionKey.Name = signalId.ExecutionId.Name
+			if signalID.ExecutionId.Name != "" {
+				executionKey.Name = signalID.ExecutionId.Name
 			}
 		}
 
-		if signalId.SignalId != "" {
-			signalKey.SignalID = signalId.SignalId
+		if signalID.SignalId != "" {
+			signalKey.SignalID = signalID.SignalId
 		}
 	}
 
@@ -72,32 +72,32 @@ func initWorkflowExecutionIdentifier(id *core.WorkflowExecutionIdentifier) *core
 func FromSignalModel(signalModel models.Signal) (admin.Signal, error) {
 	signal := admin.Signal{}
 
-	var executionId *core.WorkflowExecutionIdentifier
+	var executionID *core.WorkflowExecutionIdentifier
 	if signalModel.SignalKey.ExecutionKey.Project != "" {
-		executionId = initWorkflowExecutionIdentifier(executionId)
-		executionId.Project = signalModel.SignalKey.ExecutionKey.Project
+		executionID = initWorkflowExecutionIdentifier(executionID)
+		executionID.Project = signalModel.SignalKey.ExecutionKey.Project
 	}
 	if signalModel.SignalKey.ExecutionKey.Domain != "" {
-		executionId = initWorkflowExecutionIdentifier(executionId)
-		executionId.Domain = signalModel.SignalKey.ExecutionKey.Domain
+		executionID = initWorkflowExecutionIdentifier(executionID)
+		executionID.Domain = signalModel.SignalKey.ExecutionKey.Domain
 	}
 	if signalModel.SignalKey.ExecutionKey.Name != "" {
-		executionId = initWorkflowExecutionIdentifier(executionId)
-		executionId.Name = signalModel.SignalKey.ExecutionKey.Name
+		executionID = initWorkflowExecutionIdentifier(executionID)
+		executionID.Name = signalModel.SignalKey.ExecutionKey.Name
 	}
 
-	var signalId *core.SignalIdentifier
-	if executionId != nil {
-		signalId = initSignalIdentifier(signalId)
-		signalId.ExecutionId = executionId
+	var signalID *core.SignalIdentifier
+	if executionID != nil {
+		signalID = initSignalIdentifier(signalID)
+		signalID.ExecutionId = executionID
 	}
 	if signalModel.SignalKey.SignalID != "" {
-		signalId = initSignalIdentifier(signalId)
-		signalId.SignalId = signalModel.SignalKey.SignalID
+		signalID = initSignalIdentifier(signalID)
+		signalID.SignalId = signalModel.SignalKey.SignalID
 	}
 
-	if signalId != nil {
-		signal.Id = signalId
+	if signalID != nil {
+		signal.Id = signalID
 	}
 
 	if len(signalModel.Type) > 0 {

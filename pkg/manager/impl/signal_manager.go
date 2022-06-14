@@ -21,7 +21,7 @@ import (
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 
-    "google.golang.org/grpc/codes"
+	"google.golang.org/grpc/codes"
 )
 
 type signalMetrics struct {
@@ -53,7 +53,7 @@ func (s *SignalManager) GetOrCreateSignal(ctx context.Context, request admin.Sig
 		return nil, err
 	}
 
-	err = s.db.SignalRepo().GetOrCreate(ctx, &signalModel);
+	err = s.db.SignalRepo().GetOrCreate(ctx, &signalModel)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func (s *SignalManager) SetSignal(ctx context.Context, request admin.SignalSetRe
 		return nil, err
 	}
 
-	err = s.db.SignalRepo().Update(ctx, signalModel.SignalKey, signalModel.Value);
+	err = s.db.SignalRepo().Update(ctx, signalModel.SignalKey, signalModel.Value)
 	if err != nil {
 		return nil, err
 	}

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"runtime/debug"
 
-	"github.com/flyteorg/flyteadmin/pkg/repositories"
-	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	manager "github.com/flyteorg/flyteadmin/pkg/manager/impl"
 	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/repositories"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/rpc/adminservice/util"
 	runtimeIfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 
@@ -43,7 +43,6 @@ func NewSignalMetrics(scope promutils.Scope) signalMetrics {
 		get:    util.NewRequestMetrics(scope, "get_signal"),
 	}
 }
-
 
 type SignalService struct {
 	service.UnimplementedSignalServiceServer

@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
-	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	repositoryMocks "github.com/flyteorg/flyteadmin/pkg/repositories/mocks"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	signalId = &core.SignalIdentifier{
+	signalID = &core.SignalIdentifier{
 		ExecutionId: &core.WorkflowExecutionIdentifier{
 			Project: "project",
 			Domain:  "domain",
@@ -57,7 +57,7 @@ func TestGetOrCreateSignal(t *testing.T) {
 	t.Run("Happy", func(t *testing.T) {
 		signalManager := NewSignalManager(mockRepository, mockScope.NewTestScope())
 		request := admin.SignalGetOrCreateRequest{
-			Id: signalId,
+			Id:   signalID,
 			Type: signalType,
 		}
 
@@ -65,7 +65,7 @@ func TestGetOrCreateSignal(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.True(t, proto.Equal(&admin.Signal{
-			Id: signalId,
+			Id:   signalID,
 			Type: signalType,
 		}, response))
 	})
@@ -87,7 +87,7 @@ func TestGetOrCreateSignal(t *testing.T) {
 
 		signalManager := NewSignalManager(mockRepository, mockScope.NewTestScope())
 		request := admin.SignalGetOrCreateRequest{
-			Id: signalId,
+			Id:   signalID,
 			Type: signalType,
 		}
 
@@ -99,7 +99,7 @@ func TestGetOrCreateSignal(t *testing.T) {
 func TestListSignals(t *testing.T) {
 	mockRepository := repositoryMocks.NewMockRepository()
 
-	signalModel, err := transformers.CreateSignalModel(signalId, signalType, nil)
+	signalModel, err := transformers.CreateSignalModel(signalID, signalType, nil)
 	assert.NoError(t, err)
 
 	t.Run("Happy", func(t *testing.T) {
@@ -125,7 +125,7 @@ func TestListSignals(t *testing.T) {
 			&admin.SignalList{
 				Signals: []*admin.Signal{
 					&admin.Signal{
-						Id: signalId,
+						Id:   signalID,
 						Type: signalType,
 					},
 				},
@@ -172,7 +172,7 @@ func TestListSignals(t *testing.T) {
 func TestSetSignal(t *testing.T) {
 	mockRepository := repositoryMocks.NewMockRepository()
 	
-	signalModel, err := transformers.CreateSignalModel(signalId, signalType, nil)
+	signalModel, err := transformers.CreateSignalModel(signalID, signalType, nil)
 	assert.NoError(t, err)
 
 	t.Run("Happy", func(t *testing.T) {
@@ -182,7 +182,7 @@ func TestSetSignal(t *testing.T) {
 
 		signalManager := NewSignalManager(mockRepository, mockScope.NewTestScope())
 		request := admin.SignalSetRequest{
-			Id:    signalId,
+			Id:    signalID,
 			Value: signalValue,
 		}
 
@@ -209,7 +209,7 @@ func TestSetSignal(t *testing.T) {
 
 		signalManager := NewSignalManager(mockRepository, mockScope.NewTestScope())
 		request := admin.SignalSetRequest{
-			Id:    signalId,
+			Id:    signalID,
 			Value: signalValue,
 		}
 
@@ -227,7 +227,7 @@ func TestSetSignal(t *testing.T) {
 
 		signalManager := NewSignalManager(mockRepository, mockScope.NewTestScope())
 		request := admin.SignalSetRequest{
-			Id:    signalId,
+			Id:    signalID,
 			Value: signalValue,
 		}
 

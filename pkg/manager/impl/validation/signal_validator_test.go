@@ -5,15 +5,15 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	repositoryMocks "github.com/flyteorg/flyteadmin/pkg/repositories/mocks"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/golang/protobuf/proto"
 
-    "github.com/golang/protobuf/proto"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestValidateSignalGetOrCreateRequest(t *testing.T) {
@@ -85,8 +85,8 @@ func TestValidateSignalGetOrCreateRequest(t *testing.T) {
 		request := admin.SignalGetOrCreateRequest{
 			Id: &core.SignalIdentifier{
 				ExecutionId: &core.WorkflowExecutionIdentifier{
-					Domain:  "domain",
-					Name:    "name",
+					Domain: "domain",
+					Name:   "name",
 				},
 				SignalId: "signal",
 			},

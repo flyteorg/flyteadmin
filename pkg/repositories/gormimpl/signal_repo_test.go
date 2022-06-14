@@ -60,7 +60,7 @@ func TestGetSignal(t *testing.T) {
 	mockSelectQuery.WithQuery(
 		`SELECT * FROM "signals" WHERE "signals"."execution_project" = $1 AND "signals"."execution_domain" = $2 AND "signals"."execution_name" = $3 AND "signals"."signal_id" = $4 LIMIT 1`)
 
-	// retrieve non-existant signalModel
+	// retrieve non-existent signalModel
 	lookupSignalModel, err := signalRepo.Get(ctx, signalModel.SignalKey)
 	assert.Error(t, err)
 	assert.Empty(t, lookupSignalModel)
@@ -68,7 +68,7 @@ func TestGetSignal(t *testing.T) {
 	assert.True(t, mockSelectQuery.Triggered)
 	mockSelectQuery.Triggered = false // reset to false for second call
 
-	// retrieve existant signalModel
+	// retrieve existent signalModel
 	signalModels := []map[string]interface{}{toSignalMap(*signalModel)}
 	mockSelectQuery.WithReply(signalModels)
 

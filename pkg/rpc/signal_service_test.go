@@ -135,7 +135,6 @@ func TestSetSignal(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-
 	t.Run("NilRequestError", func(t *testing.T) {
 		testScope := mockScope.NewTestScope()
 		mockServer := &SignalService{

@@ -36,14 +36,14 @@ var (
 
 	signalKey = models.SignalKey{
 		ExecutionKey: models.ExecutionKey{
-			Project:  "project",
-			Domain:   "domain",
-			Name:     "name",
+			Project: "project",
+			Domain:  "domain",
+			Name:    "name",
 		},
 		SignalID: "signal",
 	}
 
-	signalId = core.SignalIdentifier{
+	signalID = core.SignalIdentifier{
 		ExecutionId: &core.WorkflowExecutionIdentifier{
 			Project: "project",
 			Domain:  "domain",
@@ -75,7 +75,7 @@ func TestCreateSignalModel(t *testing.T) {
 				Value:     booleanValueBytes,
 			},
 			proto: admin.Signal{
-				Id:    &signalId,
+				Id:    &signalID,
 				Type:  &booleanType,
 				Value: &booleanValue,
 			},
@@ -114,7 +114,7 @@ func TestFromSignalModel(t *testing.T) {
 				Value:     booleanValueBytes,
 			},
 			proto: admin.Signal{
-				Id:    &signalId,
+				Id:    &signalID,
 				Type:  &booleanType,
 				Value: &booleanValue,
 			},
@@ -147,7 +147,7 @@ func TestFromSignalModels(t *testing.T) {
 	signals := []admin.Signal{
 		admin.Signal{},
 		admin.Signal{
-			Id:    &signalId,
+			Id:    &signalID,
 			Type:  &booleanType,
 			Value: &booleanValue,
 		},
