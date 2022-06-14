@@ -13,10 +13,10 @@ require (
 	github.com/cloudevents/sdk-go/v2 v2.8.0
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/evanphx/json-patch v4.9.0+incompatible
-	github.com/flyteorg/flyteidl v1.0.0
+	github.com/flyteorg/flyteidl v1.1.4
 	github.com/flyteorg/flyteplugins v1.0.0
-	github.com/flyteorg/flytepropeller v1.0.0
-	github.com/flyteorg/flytestdlib v1.0.0
+	github.com/flyteorg/flytepropeller v1.1.3
+	github.com/flyteorg/flytestdlib v1.0.3
 	github.com/flyteorg/stow v0.3.5
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-gormigrate/gormigrate/v2 v2.0.0
@@ -158,6 +158,7 @@ require (
 	github.com/subosito/gotenv v1.2.0 // indirect
 	go.opencensus.io v0.23.0 // indirect
 	golang.org/x/crypto v0.0.0-20220427172511-eb4f295cb31f // indirect
+	golang.org/x/exp v0.0.0-20220428152302-39d4317da171 // indirect
 	golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20220422013727-9388b58f7150 // indirect

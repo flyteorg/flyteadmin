@@ -1,10 +1,13 @@
 package implementations
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"reflect"
 	"time"
+
+	"github.com/golang/protobuf/jsonpb"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 
@@ -46,20 +49,20 @@ func (p *Publisher) Publish(ctx context.Context, notificationType string, msg pr
 	var phase string
 	var eventTime time.Time
 
-	switch msg.(type) {
+	switch msgType := msg.(type) {
 	case *admin.WorkflowExecutionEventRequest:
-		e := msg.(*admin.WorkflowExecutionEventRequest).Event
+		e := msgType.Event
 		executionID = e.ExecutionId.String()
 		phase = e.Phase.String()
 		eventTime = e.OccurredAt.AsTime()
 	case *admin.TaskExecutionEventRequest:
-		e := msg.(*admin.TaskExecutionEventRequest).Event
+		e := msgType.Event
 		executionID = e.TaskId.String()
 		phase = e.Phase.String()
 		eventTime = e.OccurredAt.AsTime()
 	case *admin.NodeExecutionEventRequest:
-		e := msg.(*admin.NodeExecutionEventRequest).Event
-		executionID = msg.(*admin.NodeExecutionEventRequest).Event.Id.String()
+		e := msgType.Event
+		executionID = msgType.Event.Id.String()
 		phase = e.Phase.String()
 		eventTime = e.OccurredAt.AsTime()
 	default:
@@ -74,7 +77,18 @@ func (p *Publisher) Publish(ctx context.Context, notificationType string, msg pr
 	event.SetTime(eventTime)
 	event.SetExtension(jsonSchemaURLKey, jsonSchemaURL)
 
-	if err := event.SetData(cloudevents.ApplicationJSON, &msg); err != nil {
+	// Explicitly jsonpb marshal the proto. Otherwise, event.SetData will use json.Marshal which doesn't work well
+	// with proto oneof fields.
+	marshaler := jsonpb.Marshaler{}
+	buf := bytes.NewBuffer([]byte{})
+	err := marshaler.Marshal(buf, msg)
+	if err != nil {
+		p.systemMetrics.PublishError.Inc()
+		logger.Errorf(ctx, "Failed to jsonpb marshal [%v] with error: %v", msg, err)
+		return fmt.Errorf("failed to jsonpb marshal [%v] with error: %w", msg, err)
+	}
+
+	if err := event.SetData(cloudevents.ApplicationJSON, buf.Bytes()); err != nil {
 		p.systemMetrics.PublishError.Inc()
 		logger.Errorf(ctx, "Failed to encode message [%v] with error: %v", msg, err)
 		return err
