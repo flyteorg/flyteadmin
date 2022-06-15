@@ -70,7 +70,6 @@ func ParseIDTokenAndValidate(ctx context.Context, clientID, rawIDToken string, p
 
 		return idToken, flyteErr
 	}
-
 	return idToken, nil
 }
 
@@ -133,6 +132,8 @@ func IdentityContextFromIDTokenToken(ctx context.Context, tokenStr, clientID str
 	var claims map[string]interface{}
 	if err := idToken.Claims(claims); err != nil {
 		logger.Infof(ctx, "No claims set for id token, err: %v", err)
+	} else {
+		logger.Infof(ctx, "Claims from id token [%+v]", claims)
 	}
 
 	// TODO: Document why automatically specify "all" scope
