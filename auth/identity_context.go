@@ -27,7 +27,7 @@ type IdentityContext struct {
 	userInfo        *service.UserInfoResponse
 	// Set to pointer just to keep this struct go-simple to support equal operator
 	scopes *sets.String
-	// Raw JWT token from the IDP
+	// Raw JWT token from the IDP. Set to a pointer to support the equal operator for this struct.
 	claims *claimsType
 }
 

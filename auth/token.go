@@ -131,9 +131,7 @@ func IdentityContextFromIDTokenToken(ctx context.Context, tokenStr, clientID str
 	}
 	var claims map[string]interface{}
 	if err := idToken.Claims(&claims); err != nil {
-		logger.Infof(ctx, "No claims set for id token, err: %v", err)
-	} else {
-		logger.Infof(ctx, "Claims from id token [%+v]", claims)
+		logger.Infof(ctx, "Failed to unmarshal claims from id token, err: %v", err)
 	}
 
 	// TODO: Document why automatically specify "all" scope
