@@ -130,7 +130,7 @@ func IdentityContextFromIDTokenToken(ctx context.Context, tokenStr, clientID str
 		return nil, err
 	}
 	var claims map[string]interface{}
-	if err := idToken.Claims(claims); err != nil {
+	if err := idToken.Claims(&claims); err != nil {
 		logger.Infof(ctx, "No claims set for id token, err: %v", err)
 	} else {
 		logger.Infof(ctx, "Claims from id token [%+v]", claims)
