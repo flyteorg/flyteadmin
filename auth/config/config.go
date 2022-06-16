@@ -74,7 +74,7 @@ var (
 				},
 			},
 			CookieSetting: CookieSettings{
-				Domain:         "default",
+				Domain:         "",
 				SameSitePolicy: SameSiteDefaultMode,
 			},
 		},
