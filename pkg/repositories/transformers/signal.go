@@ -18,18 +18,18 @@ func CreateSignalModel(signalID *core.SignalIdentifier, signalType *core.Literal
 		signalKey := &signalModel.SignalKey
 		if signalID.ExecutionId != nil {
 			executionKey := &signalKey.ExecutionKey
-			if signalID.ExecutionId.Project != "" {
+			if len(signalID.ExecutionId.Project) > 0 {
 				executionKey.Project = signalID.ExecutionId.Project
 			}
-			if signalID.ExecutionId.Domain != "" {
+			if len(signalID.ExecutionId.Domain) > 0 {
 				executionKey.Domain = signalID.ExecutionId.Domain
 			}
-			if signalID.ExecutionId.Name != "" {
+			if len(signalID.ExecutionId.Name) > 0 {
 				executionKey.Name = signalID.ExecutionId.Name
 			}
 		}
 
-		if signalID.SignalId != "" {
+		if len(signalID.SignalId) > 0 {
 			signalKey.SignalID = signalID.SignalId
 		}
 	}
@@ -73,15 +73,15 @@ func FromSignalModel(signalModel models.Signal) (admin.Signal, error) {
 	signal := admin.Signal{}
 
 	var executionID *core.WorkflowExecutionIdentifier
-	if signalModel.SignalKey.ExecutionKey.Project != "" {
+	if len(signalModel.SignalKey.ExecutionKey.Project) > 0 {
 		executionID = initWorkflowExecutionIdentifier(executionID)
 		executionID.Project = signalModel.SignalKey.ExecutionKey.Project
 	}
-	if signalModel.SignalKey.ExecutionKey.Domain != "" {
+	if len(signalModel.SignalKey.ExecutionKey.Domain) > 0 {
 		executionID = initWorkflowExecutionIdentifier(executionID)
 		executionID.Domain = signalModel.SignalKey.ExecutionKey.Domain
 	}
-	if signalModel.SignalKey.ExecutionKey.Name != "" {
+	if len(signalModel.SignalKey.ExecutionKey.Name) > 0 {
 		executionID = initWorkflowExecutionIdentifier(executionID)
 		executionID.Name = signalModel.SignalKey.ExecutionKey.Name
 	}
@@ -91,7 +91,7 @@ func FromSignalModel(signalModel models.Signal) (admin.Signal, error) {
 		signalID = initSignalIdentifier(signalID)
 		signalID.ExecutionId = executionID
 	}
-	if signalModel.SignalKey.SignalID != "" {
+	if len(signalModel.SignalKey.SignalID) > 0 {
 		signalID = initSignalIdentifier(signalID)
 		signalID.SignalId = signalModel.SignalKey.SignalID
 	}
