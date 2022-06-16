@@ -8,7 +8,7 @@ import (
 )
 
 func TestGetClaims(t *testing.T) {
-	noClaims := make(map[string]interface{})
+	noClaims := map[string]interface{}(nil)
 	noClaimsCtx := NewIdentityContext("", "", "", time.Now(), nil, nil, nil)
 	assert.EqualValues(t, noClaims, noClaimsCtx.Claims())
 
