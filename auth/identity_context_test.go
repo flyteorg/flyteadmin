@@ -8,8 +8,9 @@ import (
 )
 
 func TestGetClaims(t *testing.T) {
+	noClaims := make(map[string]interface{})
 	noClaimsCtx := NewIdentityContext("", "", "", time.Now(), nil, nil, nil)
-	assert.Empty(t, noClaimsCtx.Claims())
+	assert.EqualValues(t, noClaims, noClaimsCtx.Claims())
 
 	claims := map[string]interface{}{
 		"groups":    []string{"g1", "g2"},
