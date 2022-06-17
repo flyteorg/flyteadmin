@@ -37,7 +37,7 @@ type SignalManager struct {
 func getSignalContext(ctx context.Context, identifier *core.SignalIdentifier) context.Context {
 	ctx = contextutils.WithProjectDomain(ctx, identifier.ExecutionId.Project, identifier.ExecutionId.Domain)
 	ctx = contextutils.WithWorkflowID(ctx, identifier.ExecutionId.Name)
-	return context.WithValue(ctx, "signal_id", identifier.SignalId)
+	return contextutils.WithSignalID(ctx, identifier.SignalId)
 }
 
 func (s *SignalManager) GetOrCreateSignal(ctx context.Context, request admin.SignalGetOrCreateRequest) (*admin.Signal, error) {

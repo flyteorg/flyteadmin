@@ -26,7 +26,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type signalMetrics struct {
+type SignalMetrics struct {
 	scope        promutils.Scope
 	panicCounter prometheus.Counter
 
@@ -34,8 +34,8 @@ type signalMetrics struct {
 	get    util.RequestMetrics
 }
 
-func NewSignalMetrics(scope promutils.Scope) signalMetrics {
-	return signalMetrics{
+func NewSignalMetrics(scope promutils.Scope) SignalMetrics {
+	return SignalMetrics{
 		scope: scope,
 		panicCounter: scope.MustNewCounter("handler_panic",
 			"panics encountered while handling requests to the admin service"),
@@ -47,7 +47,7 @@ func NewSignalMetrics(scope promutils.Scope) signalMetrics {
 type SignalService struct {
 	service.UnimplementedSignalServiceServer
 	signalManager interfaces.SignalInterface
-	metrics       signalMetrics
+	metrics       SignalMetrics
 }
 
 func NewSignalServer(ctx context.Context, configuration runtimeIfaces.Configuration, adminScope promutils.Scope) *SignalService {

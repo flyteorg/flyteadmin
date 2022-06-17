@@ -57,18 +57,18 @@ func TestCreateSignalModel(t *testing.T) {
 	booleanTypeBytes, _ := proto.Marshal(&booleanType)
 	booleanValueBytes, _ := proto.Marshal(&booleanValue)
 
-	tests := []struct{
+	tests := []struct {
 		name  string
 		model models.Signal
 		proto admin.Signal
 	}{
 		{
-			name: "empty",
+			name:  "Empty",
 			model: models.Signal{},
 			proto: admin.Signal{},
 		},
 		{
-			name: "full",
+			name: "Full",
 			model: models.Signal{
 				SignalKey: signalKey,
 				Type:      booleanTypeBytes,
@@ -96,18 +96,18 @@ func TestFromSignalModel(t *testing.T) {
 	booleanTypeBytes, _ := proto.Marshal(&booleanType)
 	booleanValueBytes, _ := proto.Marshal(&booleanValue)
 
-	tests := []struct{
+	tests := []struct {
 		name  string
 		model models.Signal
 		proto admin.Signal
 	}{
 		{
-			name: "Empty",
+			name:  "Empty",
 			model: models.Signal{},
 			proto: admin.Signal{},
 		},
 		{
-			name: "full",
+			name: "Full",
 			model: models.Signal{
 				SignalKey: signalKey,
 				Type:      booleanTypeBytes,
@@ -144,9 +144,9 @@ func TestFromSignalModels(t *testing.T) {
 		},
 	}
 
-	signals := []admin.Signal{
-		admin.Signal{},
-		admin.Signal{
+	signals := []*admin.Signal{
+		&admin.Signal{},
+		&admin.Signal{
 			Id:    &signalID,
 			Type:  &booleanType,
 			Value: &booleanValue,
@@ -158,6 +158,6 @@ func TestFromSignalModels(t *testing.T) {
 
 	assert.Len(t, s, len(signals))
 	for idx, signal := range signals {
-		assert.True(t, proto.Equal(&signal, s[idx]))
+		assert.True(t, proto.Equal(signal, s[idx]))
 	}
 }

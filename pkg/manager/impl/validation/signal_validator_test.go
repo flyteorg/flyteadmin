@@ -162,11 +162,11 @@ func TestValidateSignalUpdateRequest(t *testing.T) {
 	repo := repositoryMocks.NewMockRepository()
 	repo.SignalRepo().(*repositoryMocks.SignalRepoInterface).
 		OnGetMatch(mock.Anything, mock.Anything).Return(
-			models.Signal{
-				Type:      typeBytes,
-			},
-			nil,
-		)
+		models.Signal{
+			Type: typeBytes,
+		},
+		nil,
+	)
 
 	t.Run("Happy", func(t *testing.T) {
 		request := admin.SignalSetRequest{
@@ -212,9 +212,7 @@ func TestValidateSignalUpdateRequest(t *testing.T) {
 	t.Run("MissingSignal", func(t *testing.T) {
 		repo := repositoryMocks.NewMockRepository()
 		repo.SignalRepo().(*repositoryMocks.SignalRepoInterface).
-			OnGetMatch(mock.Anything, mock.Anything).Return(
-				models.Signal{}, errors.New("foo"),
-			)
+			OnGetMatch(mock.Anything, mock.Anything).Return(models.Signal{}, errors.New("foo"))
 
 		request := admin.SignalSetRequest{
 			Id: &core.SignalIdentifier{
@@ -254,11 +252,11 @@ func TestValidateSignalUpdateRequest(t *testing.T) {
 		repo := repositoryMocks.NewMockRepository()
 		repo.SignalRepo().(*repositoryMocks.SignalRepoInterface).
 			OnGetMatch(mock.Anything, mock.Anything).Return(
-				models.Signal{
-					Type:      typeBytes,
-				},
-				nil,
-			)
+			models.Signal{
+				Type: typeBytes,
+			},
+			nil,
+		)
 
 		request := admin.SignalSetRequest{
 			Id: &core.SignalIdentifier{
