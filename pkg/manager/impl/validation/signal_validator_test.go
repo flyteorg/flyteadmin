@@ -114,7 +114,39 @@ func TestValidateSignalGetOrCreateRequest(t *testing.T) {
 	})
 }
 
-// TODO - TestValidateSignalListRequest
+func TestValidateSignalListrequest(t *testing.T) {
+	ctx := context.TODO()
+
+	t.Run("Happy", func(t *testing.T) {
+		request := admin.SignalListRequest{
+			WorkflowExecutionId: &core.WorkflowExecutionIdentifier{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			},
+			Limit: 20,
+		}
+		assert.NoError(t, ValidateSignalListRequest(ctx, request))
+	})
+
+	t.Run("MissingWorkflowExecutionIdentifier", func(t *testing.T) {
+		request := admin.SignalListRequest{
+			Limit: 20,
+		}
+		assert.EqualError(t, ValidateSignalListRequest(ctx, request), "missing execution_id")
+	})
+
+	t.Run("MissingLimit", func(t *testing.T) {
+		request := admin.SignalListRequest{
+			WorkflowExecutionId: &core.WorkflowExecutionIdentifier{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			},
+		}
+		assert.EqualError(t, ValidateSignalListRequest(ctx, request), "invalid value for limit")
+	})
+}
 
 func TestValidateSignalUpdateRequest(t *testing.T) {
 	ctx := context.TODO()

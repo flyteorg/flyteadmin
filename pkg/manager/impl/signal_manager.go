@@ -68,7 +68,7 @@ func (s *SignalManager) GetOrCreateSignal(ctx context.Context, request admin.Sig
 }
 
 func (s *SignalManager) ListSignals(ctx context.Context, request admin.SignalListRequest) (*admin.SignalList, error) {
-	if err := validation.ValidateSignalListRequest(request); err != nil {
+	if err := validation.ValidateSignalListRequest(ctx, request); err != nil {
 		logger.Debugf(ctx, "ListSignals request [%+v] is invalid: %v", request, err)
 		return nil, err
 	}

@@ -41,7 +41,7 @@ func ValidateSignalIdentifier(identifier core.SignalIdentifier) error {
 	return ValidateWorkflowExecutionIdentifier(identifier.ExecutionId)
 }
 
-func ValidateSignalListRequest(request admin.SignalListRequest) error {
+func ValidateSignalListRequest(ctx context.Context, request admin.SignalListRequest) error {
 	if err := ValidateWorkflowExecutionIdentifier(request.WorkflowExecutionId); err != nil {
 		return shared.GetMissingArgumentError(shared.ExecutionID)
 	}
