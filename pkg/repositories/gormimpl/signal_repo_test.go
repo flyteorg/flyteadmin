@@ -34,6 +34,8 @@ var (
 
 func toSignalMap(signalModel models.Signal) map[string]interface{} {
 	signal := make(map[string]interface{})
+	signal["created_at"] = signalModel.CreatedAt
+	signal["updated_at"] = signalModel.UpdatedAt
 	signal["execution_project"] = signalModel.Project
 	signal["execution_domain"] = signalModel.Domain
 	signal["execution_name"] = signalModel.Name

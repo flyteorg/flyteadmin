@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	repositoryMocks "github.com/flyteorg/flyteadmin/pkg/repositories/mocks"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
@@ -18,6 +17,7 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 var (
@@ -52,9 +52,10 @@ var (
 )
 
 func TestGetOrCreateSignal(t *testing.T) {
-	mockRepository := repositoryMocks.NewMockRepository()
-
 	t.Run("Happy", func(t *testing.T) {
+		mockRepository := repositoryMocks.NewMockRepository()
+		mockRepository.SignalRepo().(*repositoryMocks.SignalRepoInterface).OnGetOrCreateMatch(mock.Anything, mock.Anything).Return(nil)
+
 		signalManager := NewSignalManager(mockRepository, mockScope.NewTestScope())
 		request := admin.SignalGetOrCreateRequest{
 			Id:   signalID,
@@ -71,6 +72,7 @@ func TestGetOrCreateSignal(t *testing.T) {
 	})
 
 	t.Run("ValidationError", func(t *testing.T) {
+		mockRepository := repositoryMocks.NewMockRepository()
 		signalManager := NewSignalManager(mockRepository, mockScope.NewTestScope())
 		request := admin.SignalGetOrCreateRequest{
 			Type: signalType,
@@ -81,9 +83,8 @@ func TestGetOrCreateSignal(t *testing.T) {
 	})
 
 	t.Run("DBError", func(t *testing.T) {
-		mockRepository.SignalRepo().(*repositoryMocks.MockSignalRepo).SetGetOrCreateCallback(func(input *models.Signal) error {
-			return errors.New("foo")
-		})
+		mockRepository := repositoryMocks.NewMockRepository()
+		mockRepository.SignalRepo().(*repositoryMocks.SignalRepoInterface).OnGetOrCreateMatch(mock.Anything, mock.Anything).Return(errors.New("foo"))
 
 		signalManager := NewSignalManager(mockRepository, mockScope.NewTestScope())
 		request := admin.SignalGetOrCreateRequest{
@@ -97,16 +98,16 @@ func TestGetOrCreateSignal(t *testing.T) {
 }
 
 func TestListSignals(t *testing.T) {
-	mockRepository := repositoryMocks.NewMockRepository()
-
 	signalModel, err := transformers.CreateSignalModel(signalID, signalType, nil)
 	assert.NoError(t, err)
 
 	t.Run("Happy", func(t *testing.T) {
-		mockRepository.SignalRepo().(*repositoryMocks.MockSignalRepo).SetListCallback(
-			func (input interfaces.ListResourceInput) ([]models.Signal, error) {
-				return []models.Signal{signalModel}, nil
-			})
+		mockRepository := repositoryMocks.NewMockRepository()
+		mockRepository.SignalRepo().(*repositoryMocks.SignalRepoInterface).
+			OnListMatch(mock.Anything, mock.Anything).Return(
+				[]models.Signal{signalModel},
+				nil,
+			)
 
 		signalManager := NewSignalManager(mockRepository, mockScope.NewTestScope())
 		request := admin.SignalListRequest{
@@ -135,6 +136,7 @@ func TestListSignals(t *testing.T) {
 	})
 
 	t.Run("ValidationError", func(t *testing.T) {
+		mockRepository := repositoryMocks.NewMockRepository()
 		signalManager := NewSignalManager(mockRepository, mockScope.NewTestScope())
 		request := admin.SignalListRequest{
 			WorkflowExecutionId: &core.WorkflowExecutionIdentifier{
@@ -149,10 +151,12 @@ func TestListSignals(t *testing.T) {
 	})
 
 	t.Run("DBError", func(t *testing.T) {
-		mockRepository.SignalRepo().(*repositoryMocks.MockSignalRepo).SetListCallback(
-			func (input interfaces.ListResourceInput) ([]models.Signal, error) {
-				return nil, errors.New("foo")
-			})
+		mockRepository := repositoryMocks.NewMockRepository()
+		mockRepository.SignalRepo().(*repositoryMocks.SignalRepoInterface).
+			OnListMatch(mock.Anything, mock.Anything).Return(
+				nil,
+				errors.New("foo"),
+			)
 
 		signalManager := NewSignalManager(mockRepository, mockScope.NewTestScope())
 		request := admin.SignalListRequest{
@@ -170,15 +174,20 @@ func TestListSignals(t *testing.T) {
 }
 
 func TestSetSignal(t *testing.T) {
-	mockRepository := repositoryMocks.NewMockRepository()
-	
 	signalModel, err := transformers.CreateSignalModel(signalID, signalType, nil)
 	assert.NoError(t, err)
 
 	t.Run("Happy", func(t *testing.T) {
-		mockRepository.SignalRepo().(*repositoryMocks.MockSignalRepo).SetGetCallback(func(input models.SignalKey) (models.Signal, error) {
-			return signalModel, nil
-		})
+		mockRepository := repositoryMocks.NewMockRepository()
+		mockRepository.SignalRepo().(*repositoryMocks.SignalRepoInterface).
+			OnGetMatch(mock.Anything, mock.Anything, mock.Anything).Return(
+				signalModel,
+				nil,
+			)
+		mockRepository.SignalRepo().(*repositoryMocks.SignalRepoInterface).
+			OnUpdateMatch(mock.Anything, mock.Anything, mock.Anything).Return(
+				nil,
+			)
 
 		signalManager := NewSignalManager(mockRepository, mockScope.NewTestScope())
 		request := admin.SignalSetRequest{
@@ -193,6 +202,7 @@ func TestSetSignal(t *testing.T) {
 	})
 
 	t.Run("ValidationError", func(t *testing.T) {
+		mockRepository := repositoryMocks.NewMockRepository()
 		signalManager := NewSignalManager(mockRepository, mockScope.NewTestScope())
 		request := admin.SignalSetRequest{
 			Value: signalValue,
@@ -203,9 +213,12 @@ func TestSetSignal(t *testing.T) {
 	})
 
 	t.Run("DBGetError", func(t *testing.T) {
-		mockRepository.SignalRepo().(*repositoryMocks.MockSignalRepo).SetGetCallback(func(input models.SignalKey) (models.Signal, error) {
-			return models.Signal{}, errors.New("foo")
-		})
+		mockRepository := repositoryMocks.NewMockRepository()
+		mockRepository.SignalRepo().(*repositoryMocks.SignalRepoInterface).
+			OnGetMatch(mock.Anything, mock.Anything).Return(
+				models.Signal{},
+				errors.New("foo"),
+			)
 
 		signalManager := NewSignalManager(mockRepository, mockScope.NewTestScope())
 		request := admin.SignalSetRequest{
@@ -218,12 +231,16 @@ func TestSetSignal(t *testing.T) {
 	})
 
 	t.Run("DBUpdateError", func(t *testing.T) {
-		mockRepository.SignalRepo().(*repositoryMocks.MockSignalRepo).SetGetCallback(func(input models.SignalKey) (models.Signal, error) {
-			return signalModel, nil
-		})
-		mockRepository.SignalRepo().(*repositoryMocks.MockSignalRepo).SetUpdateCallback(func(input models.SignalKey, value []byte) error {
-			return errors.New("foo")
-		})
+		mockRepository := repositoryMocks.NewMockRepository()
+		mockRepository.SignalRepo().(*repositoryMocks.SignalRepoInterface).
+			OnGetMatch(mock.Anything, mock.Anything).Return(
+				signalModel,
+				nil,
+			)
+		mockRepository.SignalRepo().(*repositoryMocks.SignalRepoInterface).
+			OnUpdateMatch(mock.Anything, mock.Anything, mock.Anything).Return(
+				errors.New("foo"),
+			)
 
 		signalManager := NewSignalManager(mockRepository, mockScope.NewTestScope())
 		request := admin.SignalSetRequest{

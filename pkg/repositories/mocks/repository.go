@@ -99,6 +99,6 @@ func NewMockRepository() interfaces.Repository {
 		NodeExecutionEventRepoIface:   &NodeExecutionEventRepoInterface{},
 		schedulableEntityRepo:         &sMocks.SchedulableEntityRepoInterface{},
 		schedulableEntitySnapshotRepo: &sMocks.ScheduleEntitiesSnapShotRepoInterface{},
-		signalRepo:                    NewMockSignalRepo(),
+		signalRepo:                    &SignalRepoInterface{},
 	}
 }

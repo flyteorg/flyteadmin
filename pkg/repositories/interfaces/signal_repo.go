@@ -7,6 +7,8 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 )
 
+//go:generate mockery -name=SignalRepoInterface -output=../mocks -case=underscore
+
 // Defines the interface for interacting with signal models.
 type SignalRepoInterface interface {
 	// Get retrieves a signal model from the database store.

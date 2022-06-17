@@ -14,6 +14,7 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestValidateSignalGetOrCreateRequest(t *testing.T) {
@@ -159,13 +160,13 @@ func TestValidateSignalUpdateRequest(t *testing.T) {
 	typeBytes, _ := proto.Marshal(booleanType)
 
 	repo := repositoryMocks.NewMockRepository()
-	repo.SignalRepo().(*repositoryMocks.MockSignalRepo).SetGetCallback(
-		func(input models.SignalKey) (models.Signal, error) {
-			return models.Signal{
-				SignalKey: input,
+	repo.SignalRepo().(*repositoryMocks.SignalRepoInterface).
+		OnGetMatch(mock.Anything, mock.Anything).Return(
+			models.Signal{
 				Type:      typeBytes,
-			}, nil
-		})
+			},
+			nil,
+		)
 
 	t.Run("Happy", func(t *testing.T) {
 		request := admin.SignalSetRequest{
@@ -210,10 +211,10 @@ func TestValidateSignalUpdateRequest(t *testing.T) {
 
 	t.Run("MissingSignal", func(t *testing.T) {
 		repo := repositoryMocks.NewMockRepository()
-		repo.SignalRepo().(*repositoryMocks.MockSignalRepo).SetGetCallback(
-			func(input models.SignalKey) (models.Signal, error) {
-				return models.Signal{}, errors.New("foo")
-			})
+		repo.SignalRepo().(*repositoryMocks.SignalRepoInterface).
+			OnGetMatch(mock.Anything, mock.Anything).Return(
+				models.Signal{}, errors.New("foo"),
+			)
 
 		request := admin.SignalSetRequest{
 			Id: &core.SignalIdentifier{
@@ -251,13 +252,13 @@ func TestValidateSignalUpdateRequest(t *testing.T) {
 		typeBytes, _ := proto.Marshal(integerType)
 
 		repo := repositoryMocks.NewMockRepository()
-		repo.SignalRepo().(*repositoryMocks.MockSignalRepo).SetGetCallback(
-			func(input models.SignalKey) (models.Signal, error) {
-				return models.Signal{
-					SignalKey: input,
+		repo.SignalRepo().(*repositoryMocks.SignalRepoInterface).
+			OnGetMatch(mock.Anything, mock.Anything).Return(
+				models.Signal{
 					Type:      typeBytes,
-				}, nil
-			})
+				},
+				nil,
+			)
 
 		request := admin.SignalSetRequest{
 			Id: &core.SignalIdentifier{
