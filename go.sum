@@ -379,8 +379,8 @@ github.com/fatih/structs v1.1.0/go.mod h1:9NiDSp5zOcgEDl+j00MP/WkGVPOlPRLejGD8Ga
 github.com/fatih/structtag v1.2.0/go.mod h1:mBJUNpUnHmRKrKlQQlmCrh5PuhftFbNv8Ys4/aAZl94=
 github.com/felixge/httpsnoop v1.0.1 h1:lvB5Jl89CsZtGIWuTcDM1E/vkVs49/Ml7JJe07l8SPQ=
 github.com/felixge/httpsnoop v1.0.1/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
-github.com/flyteorg/flyteidl v1.1.7-0.20220613222236-10be031da8f3 h1:xhCdSzVOLsaAuoZDIEALWCO674HxoQ5Kdu3hUZN8R7w=
-github.com/flyteorg/flyteidl v1.1.7-0.20220613222236-10be031da8f3/go.mod h1:f1tvw5CDjqmrzNxKpRYr6BdAhHL8f7Wp1Duxl0ZOV4g=
+github.com/flyteorg/flyteidl v1.1.7-0.20220622133927-fcce430e5bf2 h1:tIpwvkOqb8+rYoW19EEP9zbLiASpdL2MV+3Ju8czDv8=
+github.com/flyteorg/flyteidl v1.1.7-0.20220622133927-fcce430e5bf2/go.mod h1:f1tvw5CDjqmrzNxKpRYr6BdAhHL8f7Wp1Duxl0ZOV4g=
 github.com/flyteorg/flyteplugins v1.0.0 h1:77hUJjiIxBmQ9rd3+cXjSGnzOVAFrSzCd59aIaYFB/8=
 github.com/flyteorg/flyteplugins v1.0.0/go.mod h1:4Cpn+9RfanIieTTh2XsuL6zPYXtsR5UDe8YaEmXONT4=
 github.com/flyteorg/flytepropeller v1.1.13-0.20220614235242-f4e99dff843b h1:EIsisV5ZqMEtfXIhp8HWCfsN/VHCTpMIHwZZKP8xP/0=
