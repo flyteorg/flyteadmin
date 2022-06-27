@@ -289,7 +289,7 @@ func FromNodeExecutionModel(nodeExecutionModel models.NodeExecution) (*admin.Nod
 		}
 	}
 
-	return &admin.NodeExecution{
+	nodeExecModel := &admin.NodeExecution{
 		Id: &core.NodeExecutionIdentifier{
 			NodeId: nodeExecutionModel.NodeID,
 			ExecutionId: &core.WorkflowExecutionIdentifier{
@@ -301,7 +301,10 @@ func FromNodeExecutionModel(nodeExecutionModel models.NodeExecution) (*admin.Nod
 		InputUri: nodeExecutionModel.InputURI,
 		Closure:  &closure,
 		Metadata: &nodeExecutionMetadata,
-	}, nil
+	}
+
+	logger.Infof(context.TODO(), "Transformed node execution model [%+v] with metadata [%+v]", nodeExecModel, nodeExecutionMetadata)
+	return nodeExecModel, nil
 }
 
 func GetNodeExecutionInternalData(internalData []byte) (*genModel.NodeExecutionInternalData, error) {
