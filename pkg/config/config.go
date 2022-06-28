@@ -26,16 +26,15 @@ type ServerConfig struct {
 	DeprecatedThirdPartyConfig authConfig.ThirdPartyConfigOptions `json:"thirdPartyConfig" pflag:",Deprecated please use auth.appAuth.thirdPartyConfig instead."`
 
 	DataProxy DataProxyConfig `json:"dataProxy" pflag:",Defines data proxy configuration."`
-
-	// ServiceHTTPEndpoint allows specifying the http endpoint this admin instance is accessible on. This is useful
-	// for when there is no ingress setup or when the service is serving http and grpc over two different ports.
-	// Setting it here allows gRPC clients to retrieve the http endpoint to be able to present it to end-users (e.g.
-	// open up the browser to the workflow overview page)
-	ServiceHTTPEndpoint config.URL `json:"serviceHttpEndpoint" pflag:",Defines the http endpoint the service is accessible at."`
 }
 
 type DataProxyConfig struct {
-	Upload DataProxyUploadConfig `json:"upload" pflag:",Defines data proxy upload configuration."`
+	Upload   DataProxyUploadConfig   `json:"upload" pflag:",Defines data proxy upload configuration."`
+	Download DataProxyDownloadConfig `json:"download" pflag:",Defines data proxy download configuration."`
+}
+
+type DataProxyDownloadConfig struct {
+	MaxExpiresIn config.Duration `json:"maxExpiresIn" pflag:",Maximum allowed expiration duration."`
 }
 
 type DataProxyUploadConfig struct {
@@ -91,6 +90,9 @@ var defaultServerConfig = &ServerConfig{
 			MaxSize:               resource.MustParse("6Mi"),
 			MaxExpiresIn:          config.Duration{Duration: time.Hour},
 			DefaultFileNameLength: 20,
+		},
+		Download: DataProxyDownloadConfig{
+			MaxExpiresIn: config.Duration{Duration: time.Hour},
 		},
 	},
 }

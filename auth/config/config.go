@@ -73,6 +73,10 @@ var (
 					"profile",
 				},
 			},
+			CookieSetting: CookieSettings{
+				Domain:         "",
+				SameSitePolicy: SameSiteDefaultMode,
+			},
 		},
 		AppAuth: OAuth2Options{
 			AuthServerType: AuthorizationServerTypeSelf,
@@ -212,8 +216,24 @@ type UserAuthConfig struct {
 	// Possibly add basicAuth & SAML/p support.
 
 	// Secret names, defaults are set in DefaultConfig variable above but are possible to override through configs.
-	CookieHashKeySecretName  string `json:"cookieHashKeySecretName" pflag:",OPTIONAL: Secret name to use for cookie hash key."`
-	CookieBlockKeySecretName string `json:"cookieBlockKeySecretName" pflag:",OPTIONAL: Secret name to use for cookie block key."`
+	CookieHashKeySecretName  string         `json:"cookieHashKeySecretName" pflag:",OPTIONAL: Secret name to use for cookie hash key."`
+	CookieBlockKeySecretName string         `json:"cookieBlockKeySecretName" pflag:",OPTIONAL: Secret name to use for cookie block key."`
+	CookieSetting            CookieSettings `json:"cookieSetting" pflag:", settings used by cookies created for user auth"`
+}
+
+//go:generate enumer --type=SameSite --trimprefix=SameSite -json
+type SameSite int
+
+const (
+	SameSiteDefaultMode SameSite = iota
+	SameSiteLaxMode
+	SameSiteStrictMode
+	SameSiteNoneMode
+)
+
+type CookieSettings struct {
+	SameSitePolicy SameSite `json:"sameSitePolicy" pflag:",OPTIONAL: Allows you to declare if your cookie should be restricted to a first-party or same-site context.Wrapper around http.SameSite."`
+	Domain         string   `json:"domain" pflag:",OPTIONAL: Allows you to set the domain attribute on the auth cookies."`
 }
 
 type OpenIDOptions struct {

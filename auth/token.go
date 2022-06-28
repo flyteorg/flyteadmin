@@ -70,7 +70,6 @@ func ParseIDTokenAndValidate(ctx context.Context, clientID, rawIDToken string, p
 
 		return idToken, flyteErr
 	}
-
 	return idToken, nil
 }
 
@@ -111,10 +110,10 @@ func GRPCGetIdentityFromIDToken(ctx context.Context, clientID string, provider *
 	}
 
 	meta := metautils.ExtractIncoming(ctx)
-	userInfoStr := meta.Get(UserInfoMDKey)
+	userInfoDecoded := meta.Get(UserInfoMDKey)
 	userInfo := &service.UserInfoResponse{}
-	if len(userInfoStr) > 0 {
-		err = json.Unmarshal([]byte(userInfoStr), userInfo)
+	if len(userInfoDecoded) > 0 {
+		err = json.Unmarshal([]byte(userInfoDecoded), userInfo)
 		if err != nil {
 			logger.Infof(ctx, "Could not unmarshal user info from metadata %v", err)
 		}
@@ -130,8 +129,12 @@ func IdentityContextFromIDTokenToken(ctx context.Context, tokenStr, clientID str
 	if err != nil {
 		return nil, err
 	}
+	var claims map[string]interface{}
+	if err := idToken.Claims(&claims); err != nil {
+		logger.Infof(ctx, "Failed to unmarshal claims from id token, err: %v", err)
+	}
 
 	// TODO: Document why automatically specify "all" scope
 	return NewIdentityContext(idToken.Audience[0], idToken.Subject, "", idToken.IssuedAt,
-		sets.NewString(ScopeAll), userInfo), nil
+		sets.NewString(ScopeAll), userInfo, claims), nil
 }

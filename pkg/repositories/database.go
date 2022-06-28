@@ -2,64 +2,24 @@ package repositories
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
-	"reflect"
 	"strings"
-	"time"
 
-	repoErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
+	"github.com/flyteorg/flytestdlib/database"
+
 	"gorm.io/driver/sqlite"
 
-	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/jackc/pgconn"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	gormLogger "gorm.io/gorm/logger"
 )
 
 const pqInvalidDBCode = "3D000"
 const defaultDB = "postgres"
-
-// getGormLogLevel converts between the flytestdlib configured log level to the equivalent gorm log level.
-func getGormLogger(ctx context.Context, logConfig *logger.Config) gormLogger.Interface {
-	logConfigLevel := logger.ErrorLevel
-	if logConfig != nil {
-		logConfigLevel = logConfig.Level
-	} else {
-		logger.Debugf(ctx, "No log config block found, setting gorm db log level to: error")
-	}
-	var logLevel gormLogger.LogLevel
-	ignoreRecordNotFoundError := true
-	switch logConfigLevel {
-	case logger.PanicLevel:
-		fallthrough
-	case logger.FatalLevel:
-		fallthrough
-	case logger.ErrorLevel:
-		logLevel = gormLogger.Error
-	case logger.WarnLevel:
-		logLevel = gormLogger.Warn
-	case logger.InfoLevel:
-		fallthrough
-	case logger.DebugLevel:
-		logLevel = gormLogger.Info
-		ignoreRecordNotFoundError = false
-	default:
-		logLevel = gormLogger.Silent
-	}
-	// Copied from gormLogger.Default initialization. The gormLogger interface only allows modifying the LogLevel
-	// and not IgnoreRecordNotFoundError.
-	return gormLogger.New(log.New(os.Stdout, "\r\n", log.LstdFlags), gormLogger.Config{
-		SlowThreshold:             200 * time.Millisecond,
-		LogLevel:                  logLevel,
-		IgnoreRecordNotFoundError: ignoreRecordNotFoundError,
-		Colorful:                  true,
-	})
-}
 
 // Resolves a password value from either a user-provided inline value or a filepath whose contents contain a password.
 func resolvePassword(ctx context.Context, passwordVal, passwordPath string) string {
@@ -82,7 +42,7 @@ func resolvePassword(ctx context.Context, passwordVal, passwordPath string) stri
 }
 
 // Produces the DSN (data source name) for opening a postgres db connection.
-func getPostgresDsn(ctx context.Context, pgConfig *runtimeInterfaces.PostgresConfig) string {
+func getPostgresDsn(ctx context.Context, pgConfig database.PostgresConfig) string {
 	password := resolvePassword(ctx, pgConfig.Password, pgConfig.PasswordPath)
 	if len(password) == 0 {
 		// The password-less case is included for development environments.
@@ -95,13 +55,13 @@ func getPostgresDsn(ctx context.Context, pgConfig *runtimeInterfaces.PostgresCon
 
 // GetDB uses the dbConfig to create gorm DB object. If the db doesn't exist for the dbConfig then a new one is created
 // using the default db for the provider. eg : postgres has default dbName as postgres
-func GetDB(ctx context.Context, dbConfig *runtimeInterfaces.DbConfig, logConfig *logger.Config) (
+func GetDB(ctx context.Context, dbConfig *database.DbConfig, logConfig *logger.Config) (
 	*gorm.DB, error) {
 	if dbConfig == nil {
 		panic("Cannot initialize database repository from empty db config")
 	}
 	gormConfig := &gorm.Config{
-		Logger:                                   getGormLogger(ctx, logConfig),
+		Logger:                                   database.GetGormLogger(ctx, logConfig),
 		DisableForeignKeyConstraintWhenMigrating: !dbConfig.EnableForeignKeyConstraintWhenMigrating,
 	}
 
@@ -109,22 +69,22 @@ func GetDB(ctx context.Context, dbConfig *runtimeInterfaces.DbConfig, logConfig 
 	var err error
 
 	switch {
-	case dbConfig.SQLiteConfig != nil:
-		if dbConfig.SQLiteConfig.File == "" {
+	case !(dbConfig.SQLite.IsEmpty()):
+		if dbConfig.SQLite.File == "" {
 			return nil, fmt.Errorf("illegal sqlite database configuration. `file` is a required parameter and should be a path")
 		}
-		gormDb, err = gorm.Open(sqlite.Open(dbConfig.SQLiteConfig.File), gormConfig)
+		gormDb, err = gorm.Open(sqlite.Open(dbConfig.SQLite.File), gormConfig)
 		if err != nil {
 			return nil, err
 		}
-	case dbConfig.PostgresConfig != nil && (len(dbConfig.PostgresConfig.Host) > 0 || len(dbConfig.PostgresConfig.User) > 0 || len(dbConfig.PostgresConfig.DbName) > 0):
-		gormDb, err = createPostgresDbIfNotExists(ctx, gormConfig, dbConfig.PostgresConfig)
+	case !(dbConfig.Postgres.IsEmpty()):
+		gormDb, err = createPostgresDbIfNotExists(ctx, gormConfig, dbConfig.Postgres)
 		if err != nil {
 			return nil, err
 		}
 
 	case len(dbConfig.DeprecatedHost) > 0 || len(dbConfig.DeprecatedUser) > 0 || len(dbConfig.DeprecatedDbName) > 0:
-		pgConfig := &runtimeInterfaces.PostgresConfig{
+		pgConfig := database.PostgresConfig{
 			Host:         dbConfig.DeprecatedHost,
 			Port:         dbConfig.DeprecatedPort,
 			DbName:       dbConfig.DeprecatedDbName,
@@ -143,11 +103,11 @@ func GetDB(ctx context.Context, dbConfig *runtimeInterfaces.DbConfig, logConfig 
 	}
 
 	// Setup connection pool settings
-	return gormDb, setupDbConnectionPool(gormDb, dbConfig)
+	return gormDb, setupDbConnectionPool(ctx, gormDb, dbConfig)
 }
 
 // Creates DB if it doesn't exist for the passed in config
-func createPostgresDbIfNotExists(ctx context.Context, gormConfig *gorm.Config, pgConfig *runtimeInterfaces.PostgresConfig) (*gorm.DB, error) {
+func createPostgresDbIfNotExists(ctx context.Context, gormConfig *gorm.Config, pgConfig database.PostgresConfig) (*gorm.DB, error) {
 
 	dialector := postgres.Open(getPostgresDsn(ctx, pgConfig))
 	gormDb, err := gorm.Open(dialector, gormConfig)
@@ -155,15 +115,7 @@ func createPostgresDbIfNotExists(ctx context.Context, gormConfig *gorm.Config, p
 		return gormDb, nil
 	}
 
-	// Check if its invalid db code error
-	cErr, ok := err.(repoErrors.ConnectError)
-	if !ok {
-		logger.Errorf(ctx, "Failed to cast error of type: %v, err: %v", reflect.TypeOf(err),
-			err)
-		return nil, err
-	}
-	pqError := cErr.Unwrap().(*pgconn.PgError)
-	if pqError.Code != pqInvalidDBCode {
+	if !isInvalidDBPgError(err) {
 		return nil, err
 	}
 
@@ -193,7 +145,18 @@ func createPostgresDbIfNotExists(ctx context.Context, gormConfig *gorm.Config, p
 	return gorm.Open(dialector, gormConfig)
 }
 
-func setupDbConnectionPool(gormDb *gorm.DB, dbConfig *runtimeInterfaces.DbConfig) error {
+func isInvalidDBPgError(err error) bool {
+	pgErr := &pgconn.PgError{}
+	if !errors.As(err, &pgErr) {
+		// err chain does not contain a pgconn.PgError
+		return false
+	}
+
+	// pgconn.PgError found in chain and set to pgErr
+	return pgErr.Code == pqInvalidDBCode
+}
+
+func setupDbConnectionPool(ctx context.Context, gormDb *gorm.DB, dbConfig *database.DbConfig) error {
 	genericDb, err := gormDb.DB()
 	if err != nil {
 		return err
@@ -201,5 +164,6 @@ func setupDbConnectionPool(gormDb *gorm.DB, dbConfig *runtimeInterfaces.DbConfig
 	genericDb.SetConnMaxLifetime(dbConfig.ConnMaxLifeTime.Duration)
 	genericDb.SetMaxIdleConns(dbConfig.MaxIdleConnections)
 	genericDb.SetMaxOpenConns(dbConfig.MaxOpenConnections)
+	logger.Infof(ctx, "Set connection pool values to [%+v]", genericDb.Stats())
 	return nil
 }

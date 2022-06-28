@@ -2,7 +2,6 @@ package transformers
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"strings"
 	"testing"
@@ -68,6 +67,11 @@ func TestCreateExecutionModel(t *testing.T) {
 	}
 
 	cluster := "cluster"
+	securityCtx := &core.SecurityContext{
+		RunAs: &core.Identity{
+			IamRole: "iam_role",
+		},
+	}
 	execution, err := CreateExecutionModel(CreateExecutionModelInput{
 		WorkflowExecutionID: core.WorkflowExecutionIdentifier{
 			Project: "project",
@@ -83,6 +87,7 @@ func TestCreateExecutionModel(t *testing.T) {
 		ParentNodeExecutionID: nodeID,
 		SourceExecutionID:     sourceID,
 		Cluster:               cluster,
+		SecurityContext:       securityCtx,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, "project", execution.Project)
@@ -100,6 +105,7 @@ func TestCreateExecutionModel(t *testing.T) {
 	expectedSpec.Metadata.SystemMetadata = &admin.SystemMetadata{
 		ExecutionCluster: cluster,
 	}
+	expectedSpec.SecurityContext = securityCtx
 	expectedSpecBytes, _ := proto.Marshal(expectedSpec)
 	assert.Equal(t, expectedSpecBytes, execution.Spec)
 	assert.Equal(t, execution.User, principal)
@@ -451,7 +457,7 @@ func TestSetExecutionAborted(t *testing.T) {
 	var actualClosure admin.ExecutionClosure
 	err = proto.Unmarshal(existingModel.Closure, &actualClosure)
 	if err != nil {
-		t.Fatal(fmt.Sprintf("Failed to marshal execution closure: %v", err))
+		t.Fatalf("Failed to marshal execution closure: %v", err)
 	}
 	assert.True(t, proto.Equal(&admin.ExecutionClosure{
 		OutputResult: &admin.ExecutionClosure_AbortMetadata{

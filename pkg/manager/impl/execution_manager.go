@@ -51,6 +51,7 @@ import (
 	"github.com/benbjohnson/clock"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/wrappers"
 )
 
 const childContainerQueueKey = "child_queue"
@@ -447,14 +448,14 @@ type WorkflowExecutionConfigInterface interface {
 	GetAnnotations() *admin.Annotations
 	// GetLabels Custom labels to be applied to a triggered execution resource.
 	GetLabels() *admin.Labels
+	// GetInterruptible indicates a workflow should be flagged as interruptible for a single execution. If omitted, the workflow's default is used.
+	GetInterruptible() *wrappers.BoolValue
 }
 
 // Merge into workflowExecConfig from spec and return true if any value has been changed
-func mergeIntoExecConfig(workflowExecConfig *admin.WorkflowExecutionConfig, spec WorkflowExecutionConfigInterface) bool {
-	isChanged := false
+func mergeIntoExecConfig(workflowExecConfig admin.WorkflowExecutionConfig, spec WorkflowExecutionConfigInterface) admin.WorkflowExecutionConfig {
 	if workflowExecConfig.GetMaxParallelism() == 0 && spec.GetMaxParallelism() > 0 {
 		workflowExecConfig.MaxParallelism = spec.GetMaxParallelism()
-		isChanged = true
 	}
 
 	if workflowExecConfig.GetSecurityContext() == nil && spec.GetSecurityContext() != nil {
@@ -462,7 +463,6 @@ func mergeIntoExecConfig(workflowExecConfig *admin.WorkflowExecutionConfig, spec
 			(len(spec.GetSecurityContext().GetRunAs().GetK8SServiceAccount()) > 0 ||
 				len(spec.GetSecurityContext().GetRunAs().GetIamRole()) > 0) {
 			workflowExecConfig.SecurityContext = spec.GetSecurityContext()
-			isChanged = true
 		}
 	}
 	// Launchplan spec has label, annotation and rawOutputDataConfig initialized with empty values.
@@ -471,19 +471,26 @@ func mergeIntoExecConfig(workflowExecConfig *admin.WorkflowExecutionConfig, spec
 		len(workflowExecConfig.GetRawOutputDataConfig().GetOutputLocationPrefix()) == 0) &&
 		(spec.GetRawOutputDataConfig() != nil && len(spec.GetRawOutputDataConfig().OutputLocationPrefix) > 0) {
 		workflowExecConfig.RawOutputDataConfig = spec.GetRawOutputDataConfig()
-		isChanged = true
 	}
 	if (workflowExecConfig.GetLabels() == nil || len(workflowExecConfig.GetLabels().Values) == 0) &&
 		(spec.GetLabels() != nil && len(spec.GetLabels().Values) > 0) {
 		workflowExecConfig.Labels = spec.GetLabels()
-		isChanged = true
 	}
 	if (workflowExecConfig.GetAnnotations() == nil || len(workflowExecConfig.GetAnnotations().Values) == 0) &&
 		(spec.GetAnnotations() != nil && len(spec.GetAnnotations().Values) > 0) {
 		workflowExecConfig.Annotations = spec.GetAnnotations()
-		isChanged = true
 	}
-	return isChanged
+
+	// Override interruptible flag if workflow execution config does not have a value set or the spec sets a different
+	// value that defined as the workflow default. This allows for workflows to have their interruptible setting
+	// explicitly turned on and off for a single execution.
+	if (workflowExecConfig.GetInterruptible() == nil && spec.GetInterruptible() != nil) ||
+		(workflowExecConfig.GetInterruptible() != nil && spec.GetInterruptible() != nil &&
+			workflowExecConfig.GetInterruptible().GetValue() != spec.GetInterruptible().GetValue()) {
+		workflowExecConfig.Interruptible = spec.GetInterruptible()
+	}
+
+	return workflowExecConfig
 }
 
 // Produces execution-time attributes for workflow execution.
@@ -493,18 +500,14 @@ func mergeIntoExecConfig(workflowExecConfig *admin.WorkflowExecutionConfig, spec
 func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admin.ExecutionCreateRequest,
 	launchPlan *admin.LaunchPlan) (*admin.WorkflowExecutionConfig, error) {
 
-	workflowExecConfig := &admin.WorkflowExecutionConfig{}
+	workflowExecConfig := admin.WorkflowExecutionConfig{}
 	// merge the request spec into workflowExecConfig
-	if isChanged := mergeIntoExecConfig(workflowExecConfig, request.Spec); isChanged {
-		return workflowExecConfig, nil
-	}
+	workflowExecConfig = mergeIntoExecConfig(workflowExecConfig, request.Spec)
 
 	var workflowName string
 	if launchPlan != nil && launchPlan.Spec != nil {
 		// merge the launch plan spec into workflowExecConfig
-		if isChanged := mergeIntoExecConfig(workflowExecConfig, launchPlan.Spec); isChanged {
-			return workflowExecConfig, nil
-		}
+		workflowExecConfig = mergeIntoExecConfig(workflowExecConfig, launchPlan.Spec)
 		if launchPlan.Spec.WorkflowId != nil {
 			workflowName = launchPlan.Spec.WorkflowId.Name
 		}
@@ -518,15 +521,26 @@ func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admi
 
 	if matchableResource != nil && matchableResource.Attributes.GetWorkflowExecutionConfig() != nil {
 		// merge the matchable resource workflow execution config into workflowExecConfig
-		if isChanged := mergeIntoExecConfig(workflowExecConfig,
-			matchableResource.Attributes.GetWorkflowExecutionConfig()); isChanged {
-			return workflowExecConfig, nil
-		}
+		workflowExecConfig = mergeIntoExecConfig(workflowExecConfig,
+			matchableResource.Attributes.GetWorkflowExecutionConfig())
 	}
-	//  merge the application config into workflowExecConfig
-	mergeIntoExecConfig(workflowExecConfig, m.config.ApplicationConfiguration().GetTopLevelConfig())
+
+	// Backward compatibility changes to get security context from auth role.
+	// Older authRole or auth fields in the launchplan spec or execution request need to be used over application defaults.
+	// This portion of the code makes sure if newer way of setting security context is empty i.e
+	// K8sServiceAccount and  IamRole is empty then get the values from the deprecated fields.
+	resolvedAuthRole := resolveAuthRole(request, launchPlan)
+	resolvedSecurityCtx := resolveSecurityCtx(ctx, workflowExecConfig.GetSecurityContext(), resolvedAuthRole)
+	if workflowExecConfig.GetSecurityContext() == nil &&
+		(len(resolvedSecurityCtx.GetRunAs().GetK8SServiceAccount()) > 0 ||
+			len(resolvedSecurityCtx.GetRunAs().GetIamRole()) > 0) {
+		workflowExecConfig.SecurityContext = resolvedSecurityCtx
+	}
+	//  merge the application config into workflowExecConfig. If even the deprecated fields are not set
+	workflowExecConfig = mergeIntoExecConfig(workflowExecConfig, m.config.ApplicationConfiguration().GetTopLevelConfig())
+	logger.Infof(ctx, "getting the workflow execution config from application configuration")
 	// Defaults to one from the application config
-	return workflowExecConfig, nil
+	return &workflowExecConfig, nil
 }
 
 func (m *ExecutionManager) getClusterAssignment(ctx context.Context, request *admin.ExecutionCreateRequest) (
@@ -667,15 +681,12 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		return nil, nil, err
 	}
 
-	resolvedAuthRole := resolveAuthRole(request, launchPlan)
-	resolvedSecurityCtx := resolveSecurityCtx(ctx, request, launchPlan, resolvedAuthRole)
 	executionParameters := workflowengineInterfaces.ExecutionParameters{
 		Inputs:              request.Inputs,
 		AcceptedAt:          requestedAt,
 		Labels:              labels,
 		Annotations:         annotations,
 		ExecutionConfig:     executionConfig,
-		SecurityContext:     resolvedSecurityCtx,
 		TaskResources:       &platformTaskResources,
 		EventVersion:        m.config.ApplicationConfiguration().GetTopLevelConfig().EventVersion,
 		RoleNameKey:         m.config.ApplicationConfiguration().GetTopLevelConfig().RoleNameKey,
@@ -743,6 +754,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		Cluster:               execInfo.Cluster,
 		InputsURI:             inputsURI,
 		UserInputsURI:         userInputsURI,
+		SecurityContext:       executionConfig.SecurityContext,
 	})
 	if err != nil {
 		logger.Infof(ctx, "Failed to create execution model in transformer for id: [%+v] with err: %v",
@@ -753,9 +765,13 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	return ctx, executionModel, nil
 }
 
-func resolveAuthRole(request admin.ExecutionCreateRequest, launchPlan *admin.LaunchPlan) *admin.AuthRole {
+func resolveAuthRole(request *admin.ExecutionCreateRequest, launchPlan *admin.LaunchPlan) *admin.AuthRole {
 	if request.Spec.AuthRole != nil {
 		return request.Spec.AuthRole
+	}
+
+	if launchPlan == nil || launchPlan.Spec == nil {
+		return &admin.AuthRole{}
 	}
 
 	// Set role permissions based on launch plan Auth values.
@@ -772,19 +788,17 @@ func resolveAuthRole(request admin.ExecutionCreateRequest, launchPlan *admin.Lau
 			AssumableIamRole: launchPlan.GetSpec().GetRole(),
 		}
 	}
+
 	return &admin.AuthRole{}
 }
 
-func resolveSecurityCtx(ctx context.Context, request admin.ExecutionCreateRequest, launchPlan *admin.LaunchPlan,
+func resolveSecurityCtx(ctx context.Context, executionConfigSecurityCtx *core.SecurityContext,
 	resolvedAuthRole *admin.AuthRole) *core.SecurityContext {
-	// Use security context from the request if its set
-	if request.Spec.SecurityContext != nil {
-		return request.Spec.SecurityContext
-	}
-
-	// Use launchplans security context if its set
-	if launchPlan.Spec.SecurityContext != nil {
-		return launchPlan.Spec.SecurityContext
+	// Use security context from the executionConfigSecurityCtx if its set and non empty or else resolve from authRole
+	if executionConfigSecurityCtx != nil && executionConfigSecurityCtx.RunAs != nil &&
+		(len(executionConfigSecurityCtx.RunAs.K8SServiceAccount) > 0 ||
+			len(executionConfigSecurityCtx.RunAs.IamRole) > 0) {
+		return executionConfigSecurityCtx
 	}
 	logger.Warn(ctx, "Setting security context from auth Role")
 	return &core.SecurityContext{
@@ -897,8 +911,8 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		return nil, nil, err
 	}
 	var rawOutputDataConfig *admin.RawOutputDataConfig
-	if requestSpec.RawOutputDataConfig != nil {
-		rawOutputDataConfig = requestSpec.RawOutputDataConfig
+	if executionConfig.RawOutputDataConfig != nil {
+		rawOutputDataConfig = executionConfig.RawOutputDataConfig
 	}
 
 	clusterAssignment, err := m.getClusterAssignment(ctx, &request)
@@ -906,15 +920,12 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		return nil, nil, err
 	}
 
-	resolvedAuthRole := resolveAuthRole(request, launchPlan)
-	resolvedSecurityCtx := resolveSecurityCtx(ctx, request, launchPlan, resolvedAuthRole)
 	executionParameters := workflowengineInterfaces.ExecutionParameters{
 		Inputs:              executionInputs,
 		AcceptedAt:          requestedAt,
 		Labels:              labels,
 		Annotations:         annotations,
 		ExecutionConfig:     executionConfig,
-		SecurityContext:     resolvedSecurityCtx,
 		TaskResources:       &platformTaskResources,
 		EventVersion:        m.config.ApplicationConfiguration().GetTopLevelConfig().EventVersion,
 		RoleNameKey:         m.config.ApplicationConfiguration().GetTopLevelConfig().RoleNameKey,
@@ -983,6 +994,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		Cluster:               execInfo.Cluster,
 		InputsURI:             inputsURI,
 		UserInputsURI:         userInputsURI,
+		SecurityContext:       executionConfig.SecurityContext,
 	})
 	if err != nil {
 		logger.Infof(ctx, "Failed to create execution model in transformer for id: [%+v] with err: %v",
@@ -1339,6 +1351,16 @@ func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admi
 			go m.emitScheduledWorkflowMetrics(ctx, executionModel, request.Event.OccurredAt)
 		}
 	} else if common.IsExecutionTerminal(request.Event.Phase) {
+		if request.Event.Phase == core.WorkflowExecution_FAILED {
+			// request.Event is expected to be of type WorkflowExecutionEvent_Error when workflow fails.
+			// if not, log the error and continue
+			if err := request.Event.GetError(); err != nil {
+				ctx = context.WithValue(ctx, common.ErrorKindKey, err.Kind.String())
+			} else {
+				logger.Warning(ctx, "Failed to parse error for FAILED request [%+v]", request)
+			}
+		}
+
 		m.systemMetrics.ActiveExecutions.Dec()
 		m.systemMetrics.ExecutionsTerminated.Inc(contextutils.WithPhase(ctx, request.Event.Phase.String()))
 		go m.emitOverallWorkflowExecutionTime(executionModel, request.Event.OccurredAt)
@@ -1355,10 +1377,12 @@ func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admi
 			return nil, err
 		}
 	}
+
 	if err := m.eventPublisher.Publish(ctx, proto.MessageName(&request), &request); err != nil {
 		m.systemMetrics.PublishEventError.Inc()
 		logger.Infof(ctx, "error publishing event [%+v] with err: [%v]", request.RequestId, err)
 	}
+
 	go func() {
 		if err := m.cloudEventPublisher.Publish(ctx, proto.MessageName(&request), &request); err != nil {
 			m.systemMetrics.PublishEventError.Inc()

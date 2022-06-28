@@ -1,11 +1,10 @@
 package runtime
 
 import (
-	"fmt"
-
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flytestdlib/config"
+	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/database"
 )
 
@@ -22,8 +21,12 @@ const KB = 1024
 const MB = KB * KB
 
 var flyteAdminConfig = config.MustRegisterSection(flyteAdmin, &interfaces.ApplicationConfig{
-	ProfilerPort:          metricPort,
-	MetricsScope:          "flyte:",
+	ProfilerPort: metricPort,
+	MetricsScope: "flyte:",
+	MetricKeys: []string{contextutils.ProjectKey.String(), contextutils.DomainKey.String(),
+		contextutils.WorkflowIDKey.String(), contextutils.TaskIDKey.String(), contextutils.PhaseKey.String(),
+		contextutils.TaskTypeKey.String(), common.RuntimeTypeKey.String(), common.RuntimeVersionKey.String(),
+		contextutils.AppNameKey.String()},
 	MetadataStoragePrefix: []string{"metadata", "admin"},
 	EventVersion:          2,
 	AsyncEventsBufferSize: 100,
@@ -83,18 +86,8 @@ var cloudEventsConfig = config.MustRegisterSection(cloudEvents, &interfaces.Clou
 // Implementation of an interfaces.ApplicationConfiguration
 type ApplicationConfigurationProvider struct{}
 
-func (p *ApplicationConfigurationProvider) GetDbConfig() *interfaces.DbConfig {
-	databaseConfig := database.GetConfig()
-	switch {
-	case !databaseConfig.SQLite.IsEmpty():
-		sqliteConfig := interfaces.SQLiteConfig(databaseConfig.SQLite)
-		return &interfaces.DbConfig{SQLiteConfig: &sqliteConfig}
-	case !databaseConfig.Postgres.IsEmpty():
-		postgresConfig := interfaces.PostgresConfig(databaseConfig.Postgres)
-		return &interfaces.DbConfig{PostgresConfig: &postgresConfig}
-	default:
-		panic(fmt.Errorf("database config cannot be empty"))
-	}
+func (p *ApplicationConfigurationProvider) GetDbConfig() *database.DbConfig {
+	return database.GetConfig()
 }
 
 func (p *ApplicationConfigurationProvider) GetTopLevelConfig() *interfaces.ApplicationConfig {

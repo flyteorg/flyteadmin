@@ -9,6 +9,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
+//go:generate mockery -name=CookieHandler -output=mocks/ -case=underscore
+
 type CookieHandler interface {
 	SetTokenCookies(ctx context.Context, writer http.ResponseWriter, token *oauth2.Token) error
 	RetrieveTokenValues(ctx context.Context, request *http.Request) (idToken, accessToken, refreshToken string, err error)

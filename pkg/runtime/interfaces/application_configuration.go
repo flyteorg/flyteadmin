@@ -5,6 +5,8 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/config"
+	"github.com/flyteorg/flytestdlib/database"
+	"github.com/golang/protobuf/ptypes/wrappers"
 
 	"golang.org/x/time/rate"
 )
@@ -55,6 +57,8 @@ type ApplicationConfig struct {
 	RoleNameKey string `json:"roleNameKey"`
 	// Top-level name applied to all metrics emitted by the application.
 	MetricsScope string `json:"metricsScope"`
+	// Metrics labels applied to prometheus metrics emitted by the service
+	MetricKeys []string `json:"metricsKeys"`
 	// Determines which port the profiling server used for admin monitoring and application debugging uses.
 	ProfilerPort int `json:"profilerPort"`
 	// This defines the nested path on the configured external storage provider where workflow closures are remotely
@@ -72,6 +76,8 @@ type ApplicationConfig struct {
 	Labels map[string]string `json:"labels,omitempty"`
 	// Annotations to apply to the execution resource.
 	Annotations map[string]string `json:"annotations,omitempty"`
+	// Interruptible indicates whether all tasks should be run as interruptible by default (unless specified otherwise via the execution/workflow/task definition)
+	Interruptible bool `json:"interruptible"`
 
 	// Optional: security context override to apply this execution.
 	// iam_role references the fully qualified name of Identity & Access Management role to impersonate.
@@ -135,6 +141,17 @@ func (a *ApplicationConfig) GetAnnotations() *admin.Annotations {
 func (a *ApplicationConfig) GetLabels() *admin.Labels {
 	return &admin.Labels{
 		Values: a.Labels,
+	}
+}
+
+func (a *ApplicationConfig) GetInterruptible() *wrappers.BoolValue {
+	// only return interruptible override if set to true as all workflows would be overwritten by the zero value false otherwise
+	if !a.Interruptible {
+		return nil
+	}
+
+	return &wrappers.BoolValue{
+		Value: true,
 	}
 }
 
@@ -486,7 +503,7 @@ type DomainsConfig = []Domain
 
 // Defines the interface to return top-level config structs necessary to start up a flyteadmin application.
 type ApplicationConfiguration interface {
-	GetDbConfig() *DbConfig
+	GetDbConfig() *database.DbConfig
 	GetTopLevelConfig() *ApplicationConfig
 	GetSchedulerConfig() *SchedulerConfig
 	GetRemoteDataConfig() *RemoteDataConfig

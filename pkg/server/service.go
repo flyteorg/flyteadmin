@@ -8,6 +8,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/flyteorg/flytestdlib/contextutils"
+	"github.com/flyteorg/flytestdlib/promutils/labeled"
+
 	runtime2 "github.com/flyteorg/flyteadmin/pkg/runtime"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/storage"
@@ -22,6 +25,7 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/config"
 	"github.com/flyteorg/flyteadmin/pkg/rpc/adminservice"
+	runtimeIfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/secretmanager"
 	"github.com/flyteorg/flytestdlib/logger"
@@ -32,12 +36,10 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
-	"google.golang.org/grpc/status"
 )
 
 var defaultCorsHeaders = []string{"Content-Type"}
@@ -55,34 +57,36 @@ func Serve(ctx context.Context, pluginRegistry *plugins.Registry, additionalHand
 	return serveGatewayInsecure(ctx, pluginRegistry, serverConfig, authConfig.GetConfig(), storage.GetConfig(), additionalHandlers, adminScope)
 }
 
-func blanketAuthorization(ctx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (
-	resp interface{}, err error) {
-
-	identityContext := auth.IdentityContextFromContext(ctx)
-	if identityContext.IsEmpty() {
-		return handler(ctx, req)
+func SetMetricKeys(appConfig *runtimeIfaces.ApplicationConfig) {
+	var keys = make([]contextutils.Key, 0, len(appConfig.MetricKeys))
+	for _, keyName := range appConfig.MetricKeys {
+		key := contextutils.Key(keyName)
+		keys = append(keys, key)
 	}
-
-	if !identityContext.Scopes().Has(auth.ScopeAll) {
-		return nil, status.Errorf(codes.Unauthenticated, "authenticated user doesn't have required scope")
+	logger.Infof(context.TODO(), "setting metrics keys to %+v", keys)
+	if len(keys) > 0 {
+		labeled.SetMetricKeys(keys...)
 	}
-
-	return handler(ctx, req)
 }
 
 // Creates a new gRPC Server with all the configuration
 func newGRPCServer(ctx context.Context, pluginRegistry *plugins.Registry, cfg *config.ServerConfig,
-	storageCfg *storage.Config, authCfg *authConfig.Config, authCtx interfaces.AuthenticationContext,
+	storageCfg *storage.Config, authCtx interfaces.AuthenticationContext,
 	scope promutils.Scope, opts ...grpc.ServerOption) (*grpc.Server, error) {
+
+	logger.Infof(ctx, "Registering default middleware with blanket auth validation")
+	pluginRegistry.RegisterDefault(plugins.PluginIDUnaryServiceMiddleware, grpcmiddleware.ChainUnaryServer(auth.BlanketAuthorization))
+
 	// Not yet implemented for streaming
 	var chainedUnaryInterceptors grpc.UnaryServerInterceptor
 	if cfg.Security.UseAuth {
 		logger.Infof(ctx, "Creating gRPC server with authentication")
+		middlewareInterceptors := plugins.Get[grpc.UnaryServerInterceptor](pluginRegistry, plugins.PluginIDUnaryServiceMiddleware)
 		chainedUnaryInterceptors = grpcmiddleware.ChainUnaryServer(grpcprometheus.UnaryServerInterceptor,
 			auth.GetAuthenticationCustomMetadataInterceptor(authCtx),
 			grpcauth.UnaryServerInterceptor(auth.GetAuthenticationInterceptor(authCtx)),
 			auth.AuthenticationLoggingInterceptor,
-			blanketAuthorization,
+			middlewareInterceptors,
 		)
 	} else {
 		logger.Infof(ctx, "Creating gRPC server without authentication")
@@ -107,8 +111,8 @@ func newGRPCServer(ctx context.Context, pluginRegistry *plugins.Registry, cfg *c
 
 	configuration := runtime2.NewConfigurationProvider()
 	service.RegisterAdminServiceServer(grpcServer, adminservice.NewAdminServer(ctx, pluginRegistry, configuration, cfg.KubeConfig, cfg.Master, dataStorageClient, scope.NewSubScope("admin")))
-	service.RegisterAuthMetadataServiceServer(grpcServer, authzserver.NewService(cfg, authCfg))
 	if cfg.Security.UseAuth {
+		service.RegisterAuthMetadataServiceServer(grpcServer, authCtx.AuthMetadataService())
 		service.RegisterIdentityServiceServer(grpcServer, authCtx.IdentityService())
 	}
 
@@ -206,6 +210,11 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, _ *authConfig.
 		return nil, errors.Wrap(err, "error registering identity service")
 	}
 
+	err = service.RegisterDataProxyServiceHandlerFromEndpoint(ctx, gwmux, grpcAddress, grpcConnectionOpts)
+	if err != nil {
+		return nil, errors.Wrap(err, "error registering data proxy service")
+	}
+
 	mux.Handle("/", gwmux)
 
 	return mux, nil
@@ -243,7 +252,7 @@ func serveGatewayInsecure(ctx context.Context, pluginRegistry *plugins.Registry,
 			}
 		}
 
-		oauth2MetadataProvider := authzserver.NewService(cfg, authCfg)
+		oauth2MetadataProvider := authzserver.NewService(authCfg)
 		oidcUserInfoProvider := auth.NewUserInfoProvider()
 
 		authCtx, err = auth.NewAuthenticationContext(ctx, sm, oauth2Provider, oauth2ResourceServer, oauth2MetadataProvider, oidcUserInfoProvider, authCfg)
@@ -253,7 +262,7 @@ func serveGatewayInsecure(ctx context.Context, pluginRegistry *plugins.Registry,
 		}
 	}
 
-	grpcServer, err := newGRPCServer(ctx, pluginRegistry, cfg, storageConfig, authCfg, authCtx, scope)
+	grpcServer, err := newGRPCServer(ctx, pluginRegistry, cfg, storageConfig, authCtx, scope)
 	if err != nil {
 		return fmt.Errorf("failed to create a newGRPCServer. Error: %w", err)
 	}
@@ -346,7 +355,7 @@ func serveGatewaySecure(ctx context.Context, pluginRegistry *plugins.Registry, c
 			}
 		}
 
-		oauth2MetadataProvider := authzserver.NewService(cfg, authCfg)
+		oauth2MetadataProvider := authzserver.NewService(authCfg)
 		oidcUserInfoProvider := auth.NewUserInfoProvider()
 
 		authCtx, err = auth.NewAuthenticationContext(ctx, sm, oauth2Provider, oauth2ResourceServer, oauth2MetadataProvider, oidcUserInfoProvider, authCfg)
@@ -356,7 +365,7 @@ func serveGatewaySecure(ctx context.Context, pluginRegistry *plugins.Registry, c
 		}
 	}
 
-	grpcServer, err := newGRPCServer(ctx, pluginRegistry, cfg, storageCfg, authCfg, authCtx, scope, grpc.Creds(credentials.NewServerTLSFromCert(cert)))
+	grpcServer, err := newGRPCServer(ctx, pluginRegistry, cfg, storageCfg, authCtx, scope, grpc.Creds(credentials.NewServerTLSFromCert(cert)))
 	if err != nil {
 		return fmt.Errorf("failed to create a newGRPCServer. Error: %w", err)
 	}
