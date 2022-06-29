@@ -14,7 +14,7 @@ import (
 var (
 	tables = []string{"execution_events", "executions", "launch_plans", "named_entity_metadata",
 		"node_execution_events", "node_executions", "projects", "resources", "schedulable_entities",
-		"schedule_entities_snapshots", "task_executions", "tasks", "workflows"}
+		"schedule_entities_snapshots", "task_executions", "tasks", "workflows", "description_entity"}
 )
 
 var Migrations = []*gormigrate.Migration{
@@ -388,6 +388,16 @@ var Migrations = []*gormigrate.Migration{
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return tx.Model(&models.Execution{}).Migrator().DropIndex(&models.Execution{}, "idx_executions_created_at")
+		},
+	},
+
+	{
+		ID: "2022-06-29-description-entity",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&models.DescriptionEntity{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Migrator().DropTable("description_entity")
 		},
 	},
 }

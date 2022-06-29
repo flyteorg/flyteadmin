@@ -95,6 +95,13 @@ type workflowEndpointMetrics struct {
 	listIds util.RequestMetrics
 }
 
+type descriptionEntityEndpointMetrics struct {
+	scope promutils.Scope
+
+	create util.RequestMetrics
+	get    util.RequestMetrics
+}
+
 type AdminMetrics struct {
 	Scope        promutils.Scope
 	PanicCounter prometheus.Counter
@@ -111,6 +118,7 @@ type AdminMetrics struct {
 	taskEndpointMetrics                    taskEndpointMetrics
 	taskExecutionEndpointMetrics           taskExecutionEndpointMetrics
 	workflowEndpointMetrics                workflowEndpointMetrics
+	descriptionEntityMetrics               descriptionEntityEndpointMetrics
 }
 
 func InitMetrics(adminScope promutils.Scope) AdminMetrics {

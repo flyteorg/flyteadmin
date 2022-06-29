@@ -190,6 +190,16 @@ func ValidateNamedEntityIdentifierListRequest(request admin.NamedEntityIdentifie
 	return nil
 }
 
+func ValidateDescriptionEntityGetRequest(request admin.ObjectGetRequest) error {
+	if err := ValidateResourceType(request.Id.ResourceType); err != nil {
+		return err
+	}
+	if err := ValidateIdentifierFieldsSet(request.Id); err != nil {
+		return err
+	}
+	return nil
+}
+
 func validateLiteralMap(inputMap *core.LiteralMap, fieldName string) error {
 	if inputMap != nil && len(inputMap.Literals) > 0 {
 		for name, fixedInput := range inputMap.Literals {

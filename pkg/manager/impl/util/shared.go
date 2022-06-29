@@ -138,6 +138,31 @@ func GetNamedEntity(
 	return &metadata, nil
 }
 
+func GetDescriptionEntityModel(
+	ctx context.Context, repo repoInterfaces.Repository, identifier core.Identifier) (models.DescriptionEntity, error) {
+	descriptionEntityModel, err := (repo).DescriptionEntityRepo().Get(ctx, models.DescriptionEntityKey{
+		ResourceType: identifier.ResourceType,
+		Project:      identifier.Project,
+		Domain:       identifier.Domain,
+		Name:         identifier.Name,
+		Version:      identifier.Version,
+	})
+	if err != nil {
+		return models.DescriptionEntity{}, err
+	}
+	return descriptionEntityModel, nil
+}
+
+func GetDescriptionEntity(
+	ctx context.Context, repo repoInterfaces.Repository, identifier core.Identifier) (*admin.DescriptionEntity, error) {
+	descriptionEntityModel, err := GetDescriptionEntityModel(ctx, repo, identifier)
+	if err != nil {
+		return nil, err
+	}
+	descriptionEntity := transformers.FromDescriptionEntityModel(descriptionEntityModel)
+	return &descriptionEntity, nil
+}
+
 // Returns the set of filters necessary to query launch plan models to find the active version of a launch plan
 func GetActiveLaunchPlanVersionFilters(project, domain, name string) ([]common.InlineFilter, error) {
 	projectFilter, err := common.NewSingleValueFilter(common.LaunchPlan, common.Equal, shared.Project, project)
