@@ -490,6 +490,12 @@ func mergeIntoExecConfig(workflowExecConfig admin.WorkflowExecutionConfig, spec 
 		workflowExecConfig.Interruptible = spec.GetInterruptible()
 	}
 
+	// Explicitly set the security context if its nil since downstream we expect this settings to be available
+	if workflowExecConfig.GetSecurityContext() == nil {
+		workflowExecConfig.SecurityContext = &core.SecurityContext{
+			RunAs: &core.Identity{},
+		}
+	}
 	return workflowExecConfig
 }
 
