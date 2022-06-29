@@ -21,7 +21,6 @@ const State = "state"
 const ID = "id"
 
 const executionTableName = "executions"
-const descriptionEntityTableName = "description_entity"
 const namedEntityMetadataTableName = "named_entity_metadata"
 const nodeExecutionTableName = "node_executions"
 const nodeExecutionEventTableName = "node_event_executions"

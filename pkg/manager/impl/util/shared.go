@@ -159,8 +159,11 @@ func GetDescriptionEntity(
 	if err != nil {
 		return nil, err
 	}
-	descriptionEntity := transformers.FromDescriptionEntityModel(descriptionEntityModel)
-	return &descriptionEntity, nil
+	descriptionEntity, err := transformers.FromDescriptionEntityModel(descriptionEntityModel)
+	if err != nil {
+		return nil, err
+	}
+	return descriptionEntity, nil
 }
 
 // Returns the set of filters necessary to query launch plan models to find the active version of a launch plan

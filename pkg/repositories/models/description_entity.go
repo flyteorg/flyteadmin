@@ -24,11 +24,11 @@ type DescriptionEntity struct {
 	// Hash of the Description entity
 	Digest []byte
 
-	ShortDescription string `valid:"length(0|255)"`
+	ShortDescription string
 
-	Tags string `valid:"length(0|255)"`
+	LongDescription []byte
 
-	Labels string `valid:"length(0|255)"`
+	Labels []byte
 
 	SourceCode
 }
