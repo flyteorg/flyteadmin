@@ -132,7 +132,7 @@ func PrepareFlyteWorkflow(data interfaces.ExecutionData, flyteWorkflow *v1alpha1
 	if flyteWorkflow.WorkflowMeta == nil {
 		flyteWorkflow.WorkflowMeta = &v1alpha1.WorkflowMeta{}
 	}
-	flyteWorkflow.WorkflowMeta.EventVersion = v1alpha1.EventVersion(data.ExecutionParameters.EventVersion)
+	flyteWorkflow.WorkflowMeta.EventVersion = v1alpha1.EventVersion2
 	addExecutionOverrides(data.ExecutionParameters.TaskPluginOverrides, data.ExecutionParameters.ExecutionConfig,
 		data.ExecutionParameters.RecoveryExecution, data.ExecutionParameters.TaskResources, flyteWorkflow)
 

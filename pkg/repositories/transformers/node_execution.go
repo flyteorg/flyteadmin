@@ -280,10 +280,15 @@ func FromNodeExecutionModel(nodeExecutionModel models.NodeExecution) (*admin.Nod
 	}
 	// TODO: delete this block and references to preloading child node executions no earlier than Q3 2022
 	// This is required for historical reasons because propeller did not always send IsParent or IsDynamic in events.
+	ctx := context.TODO()
+	logger.Infof(ctx, "Initiating historical check for is parent and is dynamic for node [%+v]", nodeExecutionModel.NodeExecutionKey)
 	if !(nodeExecutionMetadata.IsParentNode || nodeExecutionMetadata.IsDynamic) {
+		logger.Infof(ctx, "Proceeding with historical check for is parent and is dynamic for node [%+v]", nodeExecutionModel.NodeExecutionKey)
 		if len(nodeExecutionModel.ChildNodeExecutions) > 0 {
+			logger.Infof(ctx, "len(nodeExecutionModel.ChildNodeExecutions): %d, setting IsParent", len(nodeExecutionModel.ChildNodeExecutions))
 			nodeExecutionMetadata.IsParentNode = true
 			if len(nodeExecutionModel.DynamicWorkflowRemoteClosureReference) > 0 {
+				logger.Infof(ctx, "len(nodeExecutionModel.DynamicWorkflowRemoteClosureReference) > 0, setting IsDynamic")
 				nodeExecutionMetadata.IsDynamic = true
 			}
 		}
