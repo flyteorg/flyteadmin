@@ -12,11 +12,11 @@ require (
 	github.com/cloudevents/sdk-go/binding/format/protobuf/v2 v2.8.0
 	github.com/cloudevents/sdk-go/v2 v2.8.0
 	github.com/coreos/go-oidc v2.2.1+incompatible
-	github.com/evanphx/json-patch v4.9.0+incompatible
-	github.com/flyteorg/flyteidl v1.1.5
-	github.com/flyteorg/flyteplugins v1.0.0
-	github.com/flyteorg/flytepropeller v1.1.13
-	github.com/flyteorg/flytestdlib v1.0.4
+	github.com/evanphx/json-patch v4.12.0+incompatible
+	github.com/flyteorg/flyteidl v1.1.8-0.20220628045429-5aaea4ba607a
+	github.com/flyteorg/flyteplugins v1.0.6-0.20220628045641-61c0f6b70f9a
+	github.com/flyteorg/flytepropeller v1.1.15-0.20220628050342-33a4e71e9d27
+	github.com/flyteorg/flytestdlib v1.0.5-0.20220628044039-2918e6121725
 	github.com/flyteorg/stow v0.3.5
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-gormigrate/gormigrate/v2 v2.0.0
@@ -28,22 +28,22 @@ require (
 	github.com/googleapis/gax-go/v2 v2.3.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/securecookie v1.1.1
-	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
+	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/gtank/cryptopasta v0.0.0-20170601214702-1f550f6f2f69
 	github.com/jackc/pgconn v1.10.1
 	github.com/lestrrat-go/jwx v1.1.6
-	github.com/magiconair/properties v1.8.5
+	github.com/magiconair/properties v1.8.6
 	github.com/mitchellh/mapstructure v1.4.3
-	github.com/ory/fosite v0.39.0
-	github.com/ory/x v0.0.162
+	github.com/ory/fosite v0.42.2
+	github.com/ory/x v0.0.214
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.10.0
+	github.com/prometheus/client_golang v1.12.1
 	github.com/prometheus/client_model v0.2.0
 	github.com/robfig/cron/v3 v3.0.0
 	github.com/sendgrid/sendgrid-go v3.10.0+incompatible
-	github.com/spf13/cobra v1.3.0
+	github.com/spf13/cobra v1.4.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.1
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5
@@ -87,7 +87,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v3 v3.0.0 // indirect
 	github.com/dgraph-io/ristretto v0.0.3 // indirect
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/eapache/go-resiliency v1.2.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
@@ -136,24 +135,23 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/ncw/swift v1.0.53 // indirect
-	github.com/onsi/ginkgo v1.16.4 // indirect
-	github.com/onsi/gomega v1.17.0 // indirect
-	github.com/ory/go-acc v0.2.5 // indirect
+	github.com/ory/go-acc v0.2.6 // indirect
 	github.com/ory/go-convenience v0.1.0 // indirect
 	github.com/ory/viper v1.7.5 // indirect
 	github.com/pborman/uuid v1.2.0 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
+	github.com/pelletier/go-toml/v2 v2.0.0-beta.8 // indirect
 	github.com/pierrec/lz4 v2.5.2+incompatible // indirect
 	github.com/pkg/browser v0.0.0-20210115035449-ce105d075bb4 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/prometheus/procfs v0.6.0 // indirect
+	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0 // indirect
 	github.com/sendgrid/rest v2.6.8+incompatible // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
-	github.com/spf13/afero v1.6.0 // indirect
+	github.com/spf13/afero v1.8.2 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
-	github.com/spf13/viper v1.10.1 // indirect
+	github.com/spf13/viper v1.11.0 // indirect
 	github.com/stretchr/objx v0.3.0 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
 	go.opencensus.io v0.23.0 // indirect
@@ -167,18 +165,18 @@ require (
 	golang.org/x/tools v0.1.10 // indirect
 	golang.org/x/xerrors v0.0.0-20220411194840-2f41105eb62f // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/grpc/examples v0.0.0-20220218222403-011544f72939 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-	gopkg.in/ini.v1 v1.66.2 // indirect
+	gopkg.in/ini.v1 v1.66.4 // indirect
 	gopkg.in/jcmturner/aescts.v1 v1.0.1 // indirect
 	gopkg.in/jcmturner/dnsutils.v1 v1.0.1 // indirect
 	gopkg.in/jcmturner/gokrb5.v7 v7.5.0 // indirect
 	gopkg.in/jcmturner/rpc.v1 v1.1.0 // indirect
-	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
+	gopkg.in/square/go-jose.v2 v2.5.2-0.20210529014059-a5c7eec3c614 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
-	k8s.io/apiextensions-apiserver v0.20.1 // indirect
-	sigs.k8s.io/yaml v1.2.0 // indirect
+	k8s.io/apiextensions-apiserver v0.20.2 // indirect
+	k8s.io/klog/v2 v2.5.0 // indirect
+	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
 require (
@@ -186,17 +184,16 @@ require (
 	github.com/Shopify/sarama v1.26.4
 	github.com/bradfitz/gomemcache v0.0.0-20180710155616-bc664df96737 // indirect
 	github.com/cloudevents/sdk-go/protocol/kafka_sarama/v2 v2.8.0
-	github.com/googleapis/gnostic v0.5.1 // indirect
-	github.com/imdario/mergo v0.3.11 // indirect
+	github.com/googleapis/gnostic v0.5.5 // indirect
+	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/pquerna/cachecontrol v0.0.0-20171018203845-0dec1b30a021 // indirect
-	github.com/prometheus/common v0.18.0 // indirect
+	github.com/prometheus/common v0.32.1 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
-	go.uber.org/zap v1.17.0 // indirect
-	k8s.io/klog/v2 v2.8.0 // indirect
-	k8s.io/kube-openapi v0.0.0-20210305164622-f622666832c1 // indirect
-	k8s.io/utils v0.0.0-20210305010621-2afb4311ab10 // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.1.0 // indirect
+	go.uber.org/zap v1.19.1 // indirect
+	k8s.io/kube-openapi v0.0.0-20211115234752-e816edb12b65 // indirect
+	k8s.io/utils v0.0.0-20211116205334-6203023598ed // indirect
+	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
 )
 
 replace github.com/robfig/cron/v3 => github.com/unionai/cron/v3 v3.0.2-0.20210825070134-bfc34418fe84
