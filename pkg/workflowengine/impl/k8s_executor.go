@@ -2,6 +2,8 @@ package impl
 
 import (
 	"context"
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	"github.com/flyteorg/flytestdlib/storage"
 
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/executioncluster"
@@ -22,6 +24,7 @@ const defaultIdentifier = "DefaultK8sExecutor"
 type K8sWorkflowExecutor struct {
 	executionCluster execClusterInterfaces.ClusterInterface
 	workflowBuilder  interfaces.FlyteWorkflowBuilder
+	storageClient    *storage.DataStore
 }
 
 func (e K8sWorkflowExecutor) ID() string {
@@ -37,6 +40,11 @@ func (e K8sWorkflowExecutor) Execute(ctx context.Context, data interfaces.Execut
 		return interfaces.ExecutionResponse{}, err
 	}
 	err = PrepareFlyteWorkflow(data, flyteWf)
+	if err != nil {
+		return interfaces.ExecutionResponse{}, err
+	}
+
+	err = common.OffloadCrd(ctx, e.storageClient, flyteWf)
 	if err != nil {
 		return interfaces.ExecutionResponse{}, err
 	}
@@ -81,11 +89,11 @@ func (e K8sWorkflowExecutor) Abort(ctx context.Context, data interfaces.AbortDat
 	return nil
 }
 
-func NewK8sWorkflowExecutor(executionCluster execClusterInterfaces.ClusterInterface,
-	workflowBuilder interfaces.FlyteWorkflowBuilder) *K8sWorkflowExecutor {
+func NewK8sWorkflowExecutor(executionCluster execClusterInterfaces.ClusterInterface, workflowBuilder interfaces.FlyteWorkflowBuilder, client *storage.DataStore) *K8sWorkflowExecutor {
 
 	return &K8sWorkflowExecutor{
 		executionCluster: executionCluster,
 		workflowBuilder:  workflowBuilder,
+		storageClient:    client,
 	}
 }
