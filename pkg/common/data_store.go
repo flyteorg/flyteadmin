@@ -10,6 +10,7 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/static"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytestdlib/storage"
 	errrs "github.com/pkg/errors"
@@ -54,27 +55,18 @@ func isRetryableError(err error) bool {
 }
 
 func OffloadCrd(ctx context.Context, storageClient *storage.DataStore, flyteWf *v1alpha1.FlyteWorkflow) error {
-	reference, err := store(ctx, storageClient, flyteWf.WorkflowSpec, nestedKeys(flyteWf.GetExecutionID(), shared.CrdWorkflowSpec)...)
+	parts := static.WorkflowStaticExecutionObj{
+		WorkflowSpec: flyteWf.WorkflowSpec,
+		SubWorkflows: flyteWf.SubWorkflows,
+		Tasks:        flyteWf.Tasks,
+	}
+
+	reference, err := store(ctx, storageClient, parts, nestedKeys(flyteWf.GetExecutionID(), shared.CrdParts)...)
 	if err != nil {
 		return err
 	}
-	flyteWf.WorkflowSpecDataReference = reference
 
-	if len(flyteWf.SubWorkflows) > 0 {
-		reference, err := store(ctx, storageClient, flyteWf.SubWorkflows, nestedKeys(flyteWf.GetExecutionID(), shared.CrdSubWorkflows)...)
-		if err != nil {
-			return err
-		}
-		flyteWf.SubWorkflowsDataReference = reference
-	}
-
-	if len(flyteWf.Tasks) > 0 {
-		reference, err = store(ctx, storageClient, flyteWf.Tasks, nestedKeys(flyteWf.GetExecutionID(), shared.CrdTasks)...)
-		if err != nil {
-			return err
-		}
-		flyteWf.TasksDataReference = reference
-	}
+	flyteWf.WorkflowStaticExecutionObj = reference
 	return nil
 }
 
