@@ -33,9 +33,7 @@ const (
 	Attributes            = "attributes"
 	MatchingAttributes    = "matching_attributes"
 	// Parent of a node execution in the node executions table
-	ParentID        = "parent_id"
-	Crd             = "crd"
-	CrdWorkflowSpec = "workflowspec.json"
-	CrdSubWorkflows = "subworkflows.json"
-	CrdTasks        = "tasks.json"
+	ParentID = "parent_id"
+	Crd      = "crd"
+	CrdParts = "crdparts.json"
 )
