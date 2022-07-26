@@ -22,9 +22,10 @@ const defaultIdentifier = "DefaultK8sExecutor"
 // K8sWorkflowExecutor directly creates and delete Flyte workflow execution CRD objects using the configured execution
 // cluster interface.
 type K8sWorkflowExecutor struct {
-	executionCluster execClusterInterfaces.ClusterInterface
-	workflowBuilder  interfaces.FlyteWorkflowBuilder
-	storageClient    *storage.DataStore
+	executionCluster    execClusterInterfaces.ClusterInterface
+	workflowBuilder     interfaces.FlyteWorkflowBuilder
+	storageClient       *storage.DataStore
+	offloadCrdToStorage bool
 }
 
 func (e K8sWorkflowExecutor) ID() string {
@@ -44,9 +45,11 @@ func (e K8sWorkflowExecutor) Execute(ctx context.Context, data interfaces.Execut
 		return interfaces.ExecutionResponse{}, err
 	}
 
-	err = common.OffloadCrd(ctx, e.storageClient, flyteWf)
-	if err != nil {
-		return interfaces.ExecutionResponse{}, err
+	if e.offloadCrdToStorage {
+		err = common.OffloadCrd(ctx, e.storageClient, flyteWf)
+		if err != nil {
+			return interfaces.ExecutionResponse{}, err
+		}
 	}
 
 	executionTargetSpec := executioncluster.ExecutionTargetSpec{
@@ -89,11 +92,12 @@ func (e K8sWorkflowExecutor) Abort(ctx context.Context, data interfaces.AbortDat
 	return nil
 }
 
-func NewK8sWorkflowExecutor(executionCluster execClusterInterfaces.ClusterInterface, workflowBuilder interfaces.FlyteWorkflowBuilder, client *storage.DataStore) *K8sWorkflowExecutor {
+func NewK8sWorkflowExecutor(executionCluster execClusterInterfaces.ClusterInterface, workflowBuilder interfaces.FlyteWorkflowBuilder, client *storage.DataStore, offloadCrdToStorage bool) *K8sWorkflowExecutor {
 
 	return &K8sWorkflowExecutor{
-		executionCluster: executionCluster,
-		workflowBuilder:  workflowBuilder,
-		storageClient:    client,
+		executionCluster:    executionCluster,
+		workflowBuilder:     workflowBuilder,
+		storageClient:       client,
+		offloadCrdToStorage: offloadCrdToStorage,
 	}
 }
