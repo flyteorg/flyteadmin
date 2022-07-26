@@ -67,6 +67,9 @@ func OffloadCrd(ctx context.Context, storageClient *storage.DataStore, flyteWf *
 	}
 
 	flyteWf.WorkflowStaticExecutionObj = reference
+	flyteWf.WorkflowSpec = nil
+	flyteWf.SubWorkflows = nil
+	flyteWf.Tasks = nil
 	return nil
 }
 
