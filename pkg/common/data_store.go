@@ -10,7 +10,6 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/static"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytestdlib/storage"
 	errrs "github.com/pkg/errors"
@@ -55,7 +54,7 @@ func isRetryableError(err error) bool {
 }
 
 func OffloadCrd(ctx context.Context, storageClient *storage.DataStore, flyteWf *v1alpha1.FlyteWorkflow) error {
-	parts := static.WorkflowStaticExecutionObj{
+	parts := v1alpha1.StaticWorkflowData{
 		WorkflowSpec: flyteWf.WorkflowSpec,
 		SubWorkflows: flyteWf.SubWorkflows,
 		Tasks:        flyteWf.Tasks,
@@ -66,7 +65,7 @@ func OffloadCrd(ctx context.Context, storageClient *storage.DataStore, flyteWf *
 		return err
 	}
 
-	flyteWf.WorkflowStaticExecutionObj = reference
+	flyteWf.OffloadDataReference = reference
 	flyteWf.WorkflowSpec = nil
 	flyteWf.SubWorkflows = nil
 	flyteWf.Tasks = nil
