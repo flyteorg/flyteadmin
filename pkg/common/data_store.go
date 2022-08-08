@@ -1,16 +1,13 @@
 package common
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/flyteorg/flyteadmin/pkg/async"
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/static"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytestdlib/storage"
 	errrs "github.com/pkg/errors"
@@ -54,19 +51,13 @@ func isRetryableError(err error) bool {
 	return false
 }
 
-func OffloadCrd(ctx context.Context, storageClient *storage.DataStore, flyteWf *v1alpha1.FlyteWorkflow) error {
-	parts := static.WorkflowStaticExecutionObj{
-		WorkflowSpec: flyteWf.WorkflowSpec,
-		SubWorkflows: flyteWf.SubWorkflows,
-		Tasks:        flyteWf.Tasks,
-	}
-
-	reference, err := store(ctx, storageClient, parts, nestedKeys(flyteWf.GetExecutionID(), shared.CrdParts)...)
+func OffloadWorkflowClosure(ctx context.Context, storageClient *storage.DataStore, flyteWf *v1alpha1.FlyteWorkflow, workflowClosure *core.CompiledWorkflowClosure, executionId v1alpha1.ExecutionID) error {
+	reference, err := store(ctx, storageClient, workflowClosure, nestedKeys(executionId, shared.WorkflowClosure)...)
 	if err != nil {
 		return err
 	}
 
-	flyteWf.WorkflowStaticExecutionObj = reference
+	flyteWf.WorkflowClosureDataReference = reference
 	flyteWf.WorkflowSpec = nil
 	flyteWf.SubWorkflows = nil
 	flyteWf.Tasks = nil
@@ -74,23 +65,24 @@ func OffloadCrd(ctx context.Context, storageClient *storage.DataStore, flyteWf *
 }
 
 func nestedKeys(execID v1alpha1.ExecutionID, filename string) []string {
-	return []string{shared.Metadata, execID.GetProject(), execID.Domain, execID.Name, shared.Crd, filename}
+	return []string{shared.Metadata, execID.GetProject(), execID.Domain, execID.Name, filename}
 }
 
-func store(ctx context.Context, storageClient *storage.DataStore, dataObj any, nestedKeys ...string) (storage.DataReference, error) {
-	data, err := json.Marshal(dataObj)
-	if err != nil {
-		return "", err
-	}
+func store(ctx context.Context, storageClient *storage.DataStore, workflowClosure *core.CompiledWorkflowClosure, nestedKeys ...string) (storage.DataReference, error) {
+
 	base := storageClient.GetBaseContainerFQN(ctx)
-	reference, err := storageClient.ConstructReference(ctx, base, nestedKeys...)
-	if err != nil {
-		return "", err
-	}
-	err = storageClient.WriteRaw(ctx, reference, int64(len(data)), storage.Options{}, bytes.NewReader(data))
+	remoteClosureDataRef, err := storageClient.ConstructReference(ctx, base, nestedKeys...)
 	if err != nil {
 		return "", err
 	}
 
-	return reference, nil
+	if err != nil {
+		return "", err
+	}
+	err = storageClient.WriteProtobuf(ctx, remoteClosureDataRef, storage.Options{}, workflowClosure)
+	if err != nil {
+		return "", err
+	}
+
+	return remoteClosureDataRef, nil
 }

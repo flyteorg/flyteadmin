@@ -33,7 +33,6 @@ const (
 	Attributes            = "attributes"
 	MatchingAttributes    = "matching_attributes"
 	// Parent of a node execution in the node executions table
-	ParentID = "parent_id"
-	Crd      = "crd"
-	CrdParts = "crdparts.json"
+	ParentID        = "parent_id"
+	WorkflowClosure = "workflow_closure"
 )
