@@ -92,7 +92,7 @@ func NewAdminServer(ctx context.Context, pluginRegistry *plugins.Registry, confi
 		repo)
 	workflowBuilder := workflowengineImpl.NewFlyteWorkflowBuilder(
 		adminScope.NewSubScope("builder").NewSubScope("flytepropeller"))
-	workflowExecutor := workflowengineImpl.NewK8sWorkflowExecutor(execCluster, workflowBuilder, dataStorageClient, applicationConfiguration.OffloadCrdToStorage)
+	workflowExecutor := workflowengineImpl.NewK8sWorkflowExecutor(execCluster, workflowBuilder, dataStorageClient, applicationConfiguration.OffloadWorkflowClosureToStorage)
 	logger.Info(ctx, "Successfully created a workflow executor engine")
 	pluginRegistry.RegisterDefault(plugins.PluginIDWorkflowExecutor, workflowExecutor)
 

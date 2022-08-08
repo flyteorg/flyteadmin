@@ -60,7 +60,7 @@ flyteadmin:
   metadataStoragePrefix:
     - "metadata"
     - "admin"
-  offloadCrdToStorage: false
+  offloadWorkflowClosureToStorage: false
 database:
   postgres:
     port: 5432
