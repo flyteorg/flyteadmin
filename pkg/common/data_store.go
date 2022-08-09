@@ -51,8 +51,8 @@ func isRetryableError(err error) bool {
 	return false
 }
 
-func OffloadWorkflowClosure(ctx context.Context, storageClient *storage.DataStore, flyteWf *v1alpha1.FlyteWorkflow, workflowClosure *core.CompiledWorkflowClosure, executionId v1alpha1.ExecutionID) error {
-	reference, err := store(ctx, storageClient, workflowClosure, nestedKeys(executionId, shared.WorkflowClosure)...)
+func OffloadWorkflowClosure(ctx context.Context, storageClient *storage.DataStore, flyteWf *v1alpha1.FlyteWorkflow, workflowClosure *core.CompiledWorkflowClosure, executionID v1alpha1.ExecutionID) error {
+	reference, err := store(ctx, storageClient, workflowClosure, nestedKeys(executionID, shared.WorkflowClosure)...)
 	if err != nil {
 		return err
 	}
