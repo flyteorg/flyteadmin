@@ -9,6 +9,8 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/executioncluster"
 	execClusterInterfaces "github.com/flyteorg/flyteadmin/pkg/executioncluster/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
+	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
 	"github.com/flyteorg/flytestdlib/logger"
 	"google.golang.org/grpc/codes"
@@ -23,10 +25,10 @@ const defaultIdentifier = "DefaultK8sExecutor"
 // K8sWorkflowExecutor directly creates and delete Flyte workflow execution CRD objects using the configured execution
 // cluster interface.
 type K8sWorkflowExecutor struct {
-	executionCluster                execClusterInterfaces.ClusterInterface
-	workflowBuilder                 interfaces.FlyteWorkflowBuilder
-	storageClient                   *storage.DataStore
-	offloadWorkflowClosureToStorage bool
+	config           runtimeInterfaces.Configuration
+	executionCluster execClusterInterfaces.ClusterInterface
+	workflowBuilder  interfaces.FlyteWorkflowBuilder
+	storageClient    *storage.DataStore
 }
 
 func (e K8sWorkflowExecutor) ID() string {
@@ -45,11 +47,21 @@ func (e K8sWorkflowExecutor) Execute(ctx context.Context, data interfaces.Execut
 		return interfaces.ExecutionResponse{}, err
 	}
 
-	if e.offloadWorkflowClosureToStorage {
-		err = common.OffloadWorkflowClosure(ctx, e.storageClient, flyteWf, data.WorkflowClosure, flyteWf.ExecutionID)
+	if e.config.ApplicationConfiguration().GetTopLevelConfig().OffloadWorkflowClosureToStorage {
+		// if offloading workflow closure is enabled we write the proto using the storage client
+		// and remove the fields from the FlyteWorkflow CRD. The are read from the storage client
+		// and repopulated during execution to reduce the CRD size.
+		execID := flyteWf.ExecutionID
+		reference, err := common.OffloadProto(ctx, e.storageClient, data.WorkflowClosure,
+			execID.GetProject(), execID.Domain, execID.Name, shared.WorkflowClosure)
 		if err != nil {
 			return interfaces.ExecutionResponse{}, err
 		}
+
+		flyteWf.WorkflowClosureDataReference = reference
+		flyteWf.WorkflowSpec = nil
+		flyteWf.SubWorkflows = nil
+		flyteWf.Tasks = nil
 	}
 
 	executionTargetSpec := executioncluster.ExecutionTargetSpec{
@@ -92,12 +104,12 @@ func (e K8sWorkflowExecutor) Abort(ctx context.Context, data interfaces.AbortDat
 	return nil
 }
 
-func NewK8sWorkflowExecutor(executionCluster execClusterInterfaces.ClusterInterface, workflowBuilder interfaces.FlyteWorkflowBuilder, client *storage.DataStore, offloadWorkflowClosureToStorage bool) *K8sWorkflowExecutor {
+func NewK8sWorkflowExecutor(config runtimeInterfaces.Configuration, executionCluster execClusterInterfaces.ClusterInterface, workflowBuilder interfaces.FlyteWorkflowBuilder, client *storage.DataStore) *K8sWorkflowExecutor {
 
 	return &K8sWorkflowExecutor{
-		executionCluster:                executionCluster,
-		workflowBuilder:                 workflowBuilder,
-		storageClient:                   client,
-		offloadWorkflowClosureToStorage: offloadWorkflowClosureToStorage,
+		config:           config,
+		executionCluster: executionCluster,
+		workflowBuilder:  workflowBuilder,
+		storageClient:    client,
 	}
 }
