@@ -8,7 +8,6 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	//"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytestdlib/storage"
 	"github.com/golang/protobuf/proto"
 	errrs "github.com/pkg/errors"
@@ -55,39 +54,3 @@ func isRetryableError(err error) bool {
 	}
 	return false
 }
-
-/*func OffloadWorkflowClosure(ctx context.Context, storageClient *storage.DataStore, flyteWf *v1alpha1.FlyteWorkflow, workflowClosure *core.CompiledWorkflowClosure, executionID v1alpha1.ExecutionID) error {
-	reference, err := store(ctx, storageClient, workflowClosure, nestedKeys(executionID, shared.WorkflowClosure)...)
-	if err != nil {
-		return err
-	}
-
-	flyteWf.WorkflowClosureDataReference = reference
-	flyteWf.WorkflowSpec = nil
-	flyteWf.SubWorkflows = nil
-	flyteWf.Tasks = nil
-	return nil
-}
-
-func nestedKeys(execID v1alpha1.ExecutionID, filename string) []string {
-	return []string{shared.Metadata, execID.GetProject(), execID.Domain, execID.Name, filename}
-}
-
-func store(ctx context.Context, storageClient *storage.DataStore, workflowClosure *core.CompiledWorkflowClosure, nestedKeys ...string) (storage.DataReference, error) {
-
-	base := storageClient.GetBaseContainerFQN(ctx)
-	remoteClosureDataRef, err := storageClient.ConstructReference(ctx, base, nestedKeys...)
-	if err != nil {
-		return "", err
-	}
-
-	if err != nil {
-		return "", err
-	}
-	err = storageClient.WriteProtobuf(ctx, remoteClosureDataRef, storage.Options{}, workflowClosure)
-	if err != nil {
-		return "", err
-	}
-
-	return remoteClosureDataRef, nil
-}*/
