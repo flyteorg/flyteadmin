@@ -49,8 +49,8 @@ func (e K8sWorkflowExecutor) Execute(ctx context.Context, data interfaces.Execut
 
 	if e.config.ApplicationConfiguration().GetTopLevelConfig().OffloadWorkflowClosureToStorage {
 		// if offloading workflow closure is enabled we write the proto using the storage client
-		// and remove the fields from the FlyteWorkflow CRD. The are read from the storage client
-		// and repopulated during execution to reduce the CRD size.
+		// and remove the fields from the FlyteWorkflow CRD. They are read from the storage client
+		// and temporarily repopulated during execution to reduce the CRD size.
 		execID := flyteWf.ExecutionID
 		reference, err := common.OffloadProto(ctx, e.storageClient, data.WorkflowClosure,
 			execID.GetProject(), execID.Domain, execID.Name, shared.WorkflowClosure)
