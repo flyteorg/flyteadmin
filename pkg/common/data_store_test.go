@@ -67,7 +67,7 @@ func TestOffloadLiteralMap_StorageFailure(t *testing.T) {
 	assert.Equal(t, err.(errors.FlyteAdminError).Code(), codes.Internal)
 }
 
-func TestOffloadLiteralMap_RetryOn409(t *testing.T) {
+func TestOffloadProto_RetryOn409(t *testing.T) {
 	mockStorage := commonMocks.GetMockStorageClient()
 	retries := 0
 	mockStorage.ComposedProtobufStore.(*commonMocks.TestDataStore).WriteProtobufCb = func(ctx context.Context, reference storage.DataReference, opts storage.Options, msg proto.Message) error {
@@ -76,7 +76,7 @@ func TestOffloadLiteralMap_RetryOn409(t *testing.T) {
 		return errs.Wrapf(&googleapi.Error{Code: 409}, "Failed to write data [%vb] to path [%v].", 10, "size")
 	}
 	expectedRetries := 2
-	_, err := OffloadLiteralMapWithRetryDelayAndAttempts(context.TODO(), mockStorage, literalMap, time.Millisecond, expectedRetries, "nested", "key")
+	_, err := OffloadProtoWithRetryDelayAndAttempts(context.TODO(), mockStorage, literalMap, time.Millisecond, expectedRetries, "nested", "key")
 	assert.EqualValues(t, retries, expectedRetries+1)
 	assert.Equal(t, err.(errors.FlyteAdminError).Code(), codes.Internal)
 }
