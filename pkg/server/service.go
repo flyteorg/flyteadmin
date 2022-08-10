@@ -401,6 +401,7 @@ func serveGatewaySecure(ctx context.Context, pluginRegistry *plugins.Registry, c
 			Certificates: []tls.Certificate{*cert},
 			NextProtos:   []string{"h2"},
 		},
+		ReadHeaderTimeout: 0,
 	}
 
 	err = srv.Serve(tls.NewListener(conn, srv.TLSConfig))
