@@ -8,6 +8,8 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/executioncluster"
 	execClusterIfaces "github.com/flyteorg/flyteadmin/pkg/executioncluster/interfaces"
 	clusterMock "github.com/flyteorg/flyteadmin/pkg/executioncluster/mocks"
+	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	runtimeMocks "github.com/flyteorg/flyteadmin/pkg/runtime/mocks"
 	"github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/workflowengine/mocks"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
@@ -132,6 +134,13 @@ func TestExecute(t *testing.T) {
 		assert.Equal(t, namespace, ns)
 		return &fakeFlyteWorkflow
 	}
+
+	mockApplicationConfig := runtimeMocks.MockApplicationProvider{}
+	mockApplicationConfig.SetTopLevelConfig(runtimeInterfaces.ApplicationConfig{
+		OffloadWorkflowClosureToStorage: false,
+	})
+	mockRuntime := runtimeMocks.NewMockConfigurationProvider(&mockApplicationConfig, nil, nil, nil, nil, nil)
+
 	mockBuilder := mocks.FlyteWorkflowBuilder{}
 	workflowClosure := core.CompiledWorkflowClosure{
 		Primary: &core.CompiledWorkflow{
@@ -153,6 +162,7 @@ func TestExecute(t *testing.T) {
 		return proto.Equal(executionID, execID)
 	}), namespace).Return(flyteWf, nil)
 	executor := K8sWorkflowExecutor{
+		config:           mockRuntime,
 		workflowBuilder:  &mockBuilder,
 		executionCluster: getFakeExecutionCluster(),
 	}
@@ -188,9 +198,17 @@ func TestExecute_AlreadyExists(t *testing.T) {
 		assert.Equal(t, namespace, ns)
 		return &fakeFlyteWorkflow
 	}
+
+	mockApplicationConfig := runtimeMocks.MockApplicationProvider{}
+	mockApplicationConfig.SetTopLevelConfig(runtimeInterfaces.ApplicationConfig{
+		OffloadWorkflowClosureToStorage: false,
+	})
+	mockRuntime := runtimeMocks.NewMockConfigurationProvider(&mockApplicationConfig, nil, nil, nil, nil, nil)
+
 	mockBuilder := mocks.FlyteWorkflowBuilder{}
 	mockBuilder.OnBuildMatch(mock.Anything, mock.Anything, mock.Anything, namespace).Return(flyteWf, nil)
 	executor := K8sWorkflowExecutor{
+		config:           mockRuntime,
 		workflowBuilder:  &mockBuilder,
 		executionCluster: getFakeExecutionCluster(),
 	}
@@ -224,9 +242,17 @@ func TestExecute_MiscError(t *testing.T) {
 		assert.Equal(t, namespace, ns)
 		return &fakeFlyteWorkflow
 	}
+
+	mockApplicationConfig := runtimeMocks.MockApplicationProvider{}
+	mockApplicationConfig.SetTopLevelConfig(runtimeInterfaces.ApplicationConfig{
+		OffloadWorkflowClosureToStorage: false,
+	})
+	mockRuntime := runtimeMocks.NewMockConfigurationProvider(&mockApplicationConfig, nil, nil, nil, nil, nil)
+
 	mockBuilder := mocks.FlyteWorkflowBuilder{}
 	mockBuilder.OnBuildMatch(mock.Anything, mock.Anything, mock.Anything, namespace).Return(flyteWf, nil)
 	executor := K8sWorkflowExecutor{
+		config:           mockRuntime,
 		workflowBuilder:  &mockBuilder,
 		executionCluster: getFakeExecutionCluster(),
 	}
