@@ -98,13 +98,10 @@ def executions_finished(executions_by_wfgroup: Dict[str, List[FlyteWorkflowExecu
     return True
 
 def sync_executions(remote: FlyteRemote, executions_by_wfgroup: Dict[str, List[FlyteWorkflowExecution]]):
-    try:
-        for executions in executions_by_wfgroup.values():
-            for execution in executions:
-                print(f"About to sync execution_id={execution.id.name}")
-                remote.sync(execution)
-    except:
-        print("COUNT THIS!")
+    for executions in executions_by_wfgroup.values():
+        for execution in executions:
+            print(f"About to sync execution_id={execution.id.name}")
+            remote.sync(execution)
 
 
 def report_executions(executions_by_wfgroup: Dict[str, List[FlyteWorkflowExecution]]):
