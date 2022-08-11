@@ -52,7 +52,7 @@ FLYTESNACKS_WORKFLOW_GROUPS: Mapping[str, List[Tuple[str, dict]]] = {
         # ("core.type_system.enums.enum_wf", {"c": "red"}),
         ("core.type_system.schema.df_wf", {"a": 42}),
         ("core.type_system.typed_schema.wf", {}),
-        #("my.imperative.workflow.example", {"in1": "hello", "in2": "foo"}),
+        ("my.imperative.workflow.example", {"in1": "hello", "in2": "foo"}),
     ],
     "integrations-k8s-spark": [
         ("k8s_spark.pyspark_pi.my_spark", {"triggered_date": datetime.datetime.now()}),
@@ -63,9 +63,9 @@ FLYTESNACKS_WORKFLOW_GROUPS: Mapping[str, List[Tuple[str, dict]]] = {
     "integrations-kftensorflow": [
         ("kftensorflow.tf_mnist.mnist_tensorflow_workflow", {}),
     ],
-    # "integrations-pod": [
-    #     ("pod.pod.pod_workflow", {}),
-    # ],
+    "integrations-pod": [
+        ("pod.pod.pod_workflow", {}),
+    ],
     "integrations-pandera_examples": [
         ("pandera_examples.basic_schema_example.process_data", {}),
         # TODO: investigate type mismatch float -> numpy.float64
@@ -102,7 +102,6 @@ def sync_executions(remote: FlyteRemote, executions_by_wfgroup: Dict[str, List[F
         for execution in executions:
             print(f"About to sync execution_id={execution.id.name}")
             remote.sync(execution)
-
 
 def report_executions(executions_by_wfgroup: Dict[str, List[FlyteWorkflowExecution]]):
     for executions in executions_by_wfgroup.values():
