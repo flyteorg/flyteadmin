@@ -3,16 +3,13 @@ package impl
 import (
 	"context"
 
-	"github.com/flyteorg/flyteadmin/pkg/common"
-	"github.com/flyteorg/flytestdlib/storage"
-
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/executioncluster"
 	execClusterInterfaces "github.com/flyteorg/flyteadmin/pkg/executioncluster/interfaces"
-	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
 	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/storage"
 	"google.golang.org/grpc/codes"
 	k8_api_err "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -48,17 +45,10 @@ func (e K8sWorkflowExecutor) Execute(ctx context.Context, data interfaces.Execut
 	}
 
 	if e.config.ApplicationConfiguration().GetTopLevelConfig().OffloadWorkflowClosureToStorage {
-		// if offloading workflow closure is enabled we write the proto using the storage client
-		// and remove the fields from the FlyteWorkflow CRD. They are read from the storage client
-		// and temporarily repopulated during execution to reduce the CRD size.
-		execID := flyteWf.ExecutionID
-		reference, err := common.OffloadProto(ctx, e.storageClient, data.WorkflowClosure,
-			execID.GetProject(), execID.Domain, execID.Name, shared.WorkflowClosure)
-		if err != nil {
-			return interfaces.ExecutionResponse{}, err
-		}
-
-		flyteWf.WorkflowClosureDataReference = reference
+		// if offloading workflow closure is enabled we set the WorkflowClosureReference and remove
+		// the closure generated static fields from the FlyteWorkflow CRD. They are read from the
+		// storage client and temporarily repopulated during execution to reduce the CRD size.
+		flyteWf.WorkflowClosureReference = data.WorkflowClosureReference
 		flyteWf.WorkflowSpec = nil
 		flyteWf.SubWorkflows = nil
 		flyteWf.Tasks = nil
