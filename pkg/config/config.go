@@ -96,7 +96,7 @@ var defaultServerConfig = &ServerConfig{
 			MaxExpiresIn: config.Duration{Duration: time.Hour},
 		},
 	},
-	ReadHeaderTimeoutSeconds: 32,
+	ReadHeaderTimeoutSeconds: 32, // just shy of requestTimeoutUpperBound
 }
 var serverConfig = config.MustRegisterSection(SectionKey, defaultServerConfig)
 
