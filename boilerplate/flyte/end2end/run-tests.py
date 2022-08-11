@@ -104,7 +104,6 @@ def sync_executions(remote: FlyteRemote, executions_by_wfgroup: Dict[str, List[F
                 print(f"About to sync execution_id={execution.id.name}")
                 remote.sync(execution)
     except:
-        print("GOT TO THE EXCEPT")
         print("COUNT THIS!")
 
 
