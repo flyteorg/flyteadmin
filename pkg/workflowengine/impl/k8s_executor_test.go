@@ -340,3 +340,77 @@ func TestAbort_MiscError(t *testing.T) {
 	})
 	assert.EqualError(t, err, "failed to terminate execution: project:\"proj\" domain:\"domain\" name:\"name\"  with err call failed")
 }
+
+func TestExecute_OffloadWorkflowClosure(t *testing.T) {
+	offloadedFlyteWf := &v1alpha1.FlyteWorkflow{
+		ExecutionID: v1alpha1.ExecutionID{
+			WorkflowExecutionIdentifier: execID,
+		},
+		WorkflowSpec: &v1alpha1.WorkflowSpec{},
+		Tasks:        make(map[v1alpha1.TaskID]*v1alpha1.TaskSpec),
+		SubWorkflows: make(map[v1alpha1.WorkflowID]*v1alpha1.WorkflowSpec),
+	}
+
+	mockApplicationConfig := runtimeMocks.MockApplicationProvider{}
+	mockApplicationConfig.SetTopLevelConfig(runtimeInterfaces.ApplicationConfig{
+		OffloadWorkflowClosureToStorage: true,
+	})
+	mockRuntime := runtimeMocks.NewMockConfigurationProvider(&mockApplicationConfig, nil, nil, nil, nil, nil)
+
+	mockBuilder := mocks.FlyteWorkflowBuilder{}
+	workflowClosure := core.CompiledWorkflowClosure{
+		Primary: &core.CompiledWorkflow{
+			Template: &core.WorkflowTemplate{
+				Id: &core.Identifier{
+					Project: "p",
+					Domain:  "d",
+					Name:    "n",
+					Version: "version",
+				},
+			},
+		},
+		SubWorkflows: []*core.CompiledWorkflow{},
+		Tasks:        []*core.CompiledTask{},
+	}
+	mockBuilder.OnBuildMatch(mock.MatchedBy(func(wfClosure *core.CompiledWorkflowClosure) bool {
+		return proto.Equal(wfClosure, &workflowClosure)
+	}), mock.MatchedBy(func(inputs *core.LiteralMap) bool {
+		return proto.Equal(inputs, testInputs)
+	}), mock.MatchedBy(func(executionID *core.WorkflowExecutionIdentifier) bool {
+		return proto.Equal(executionID, execID)
+	}), namespace).Return(offloadedFlyteWf, nil)
+	executor := K8sWorkflowExecutor{
+		config:           mockRuntime,
+		workflowBuilder:  &mockBuilder,
+		executionCluster: getFakeExecutionCluster(),
+	}
+
+	assert.NotNil(t, offloadedFlyteWf.WorkflowSpec)
+	assert.NotNil(t, offloadedFlyteWf.Tasks)
+	assert.NotNil(t, offloadedFlyteWf.SubWorkflows)
+
+	resp, err := executor.Execute(context.TODO(), interfaces.ExecutionData{
+		Namespace:               namespace,
+		ExecutionID:             execID,
+		ReferenceWorkflowName:   "ref_workflow_name",
+		ReferenceLaunchPlanName: "ref_lp_name",
+		WorkflowClosure:         &workflowClosure,
+		ExecutionParameters: interfaces.ExecutionParameters{
+			Inputs: testInputs,
+			ExecutionConfig: &admin.WorkflowExecutionConfig{
+				SecurityContext: &core.SecurityContext{
+					RunAs: &core.Identity{
+						IamRole:           testRoleSc,
+						K8SServiceAccount: testK8sServiceAccountSc,
+					},
+				},
+			},
+		},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, resp.Cluster, clusterID)
+
+	assert.Nil(t, offloadedFlyteWf.WorkflowSpec)
+	assert.Nil(t, offloadedFlyteWf.Tasks)
+	assert.Nil(t, offloadedFlyteWf.SubWorkflows)
+}
