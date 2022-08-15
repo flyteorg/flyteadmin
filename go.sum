@@ -223,8 +223,6 @@ github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1/go.mod h1:Q3SI9o4m/ZMn
 github.com/cihub/seelog v0.0.0-20170130134532-f561c5e57575/go.mod h1:9d6lWj8KzO/fd/NrVaLscBKmPigpZpn5YawRPw+e3Yo=
 github.com/circonus-labs/circonus-gometrics v2.3.1+incompatible/go.mod h1:nmEj6Dob7S7YxXgwXpfOuvO54S+tGdZdw9fuRZt25Ag=
 github.com/circonus-labs/circonusllhist v0.1.3/go.mod h1:kMXHVDlOchFAehlya5ePtbp5jckzBHf4XRpQvBOLI+I=
-github.com/ckiosidis/flytepropeller v0.16.2-0.20220809114224-4b75fe0ee7c8 h1:Rj6pZ9jCPQ5szrw9nhVJEvqsvavbnQE/kMXjzBN12yE=
-github.com/ckiosidis/flytepropeller v0.16.2-0.20220809114224-4b75fe0ee7c8/go.mod h1:GDzJp5Q2JoDDYJPvrL+1fgMDwIOg90fEIkxCQxAWxcg=
 github.com/clbanning/x2j v0.0.0-20191024224557-825249438eec/go.mod h1:jMjuTZXRI4dUb/I5gc9Hdhagfvm9+RyrPryS/auMzxE=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/cloudevents/sdk-go/binding/format/protobuf/v2 v2.8.0 h1:hRguaVL9rVsO8PMOpKSZ5gYZ2kjGRCvuKw4yMlfsBtg=
@@ -352,6 +350,8 @@ github.com/flyteorg/flyteidl v1.1.9 h1:ZIjbBqNYvxnT8Tw6HYH5IDs3CJuCmT7ecrJPczty3
 github.com/flyteorg/flyteidl v1.1.9/go.mod h1:f1tvw5CDjqmrzNxKpRYr6BdAhHL8f7Wp1Duxl0ZOV4g=
 github.com/flyteorg/flyteplugins v1.0.8 h1:92KXn9X/og2z0mOV5xFQjBp/hlVcBQDdoHo/7467AhU=
 github.com/flyteorg/flyteplugins v1.0.8/go.mod h1:vVKWzbVl43Jr+AUrVYsU7s4O5YOd631C1bCsZ7mnzmU=
+github.com/flyteorg/flytepropeller v1.1.26-0.20220815205752-ca0fc22b27e2 h1:LZ3mCkp3zx1eBwZPZ5YhPFZqKU8OC/ElyYm5IcMlvzU=
+github.com/flyteorg/flytepropeller v1.1.26-0.20220815205752-ca0fc22b27e2/go.mod h1:GDzJp5Q2JoDDYJPvrL+1fgMDwIOg90fEIkxCQxAWxcg=
 github.com/flyteorg/flytestdlib v1.0.0/go.mod h1:QSVN5wIM1lM9d60eAEbX7NwweQXW96t5x4jbyftn89c=
 github.com/flyteorg/flytestdlib v1.0.4 h1:pbidu/cpCY3/hxnAXwcNx0LoNiu6eQt58Dju+K+/yxA=
 github.com/flyteorg/flytestdlib v1.0.4/go.mod h1:QSVN5wIM1lM9d60eAEbX7NwweQXW96t5x4jbyftn89c=

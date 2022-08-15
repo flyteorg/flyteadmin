@@ -846,23 +846,6 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		return nil, nil, err
 	}
 
-	/*workflowModel, err :=
-		util.CreateOrGetWorkflowModel(ctx, request, m.db, m.workflowManager, m.namedEntityManager, taskIdentifier, &task)
-	if err != nil {
-		logger.Debugf(ctx, "Failed to created skeleton workflow for [%+v] with err: %v", taskIdentifier, err)
-		return nil, nil, err
-	}
-	workflow, err := transformers.FromWorkflowModel(*workflowModel)
-	if err != nil {
-		return nil, nil, err
-	}
-	closure, err := util.FetchAndGetWorkflowClosure(ctx, m.storageClient, workflowModel.RemoteClosureIdentifier)
-	if err != nil {
-		return nil, nil, err
-	}
-	closure.CreatedAt = workflow.Closure.CreatedAt
-	workflow.Closure = closure*/
-	//
 	workflowModel, err := util.GetWorkflowModel(ctx, m.db, *launchPlan.Spec.WorkflowId)
 	if err != nil {
 		logger.Debugf(ctx, "Failed to get workflow with id %+v with err %v", launchPlan.Spec.WorkflowId, err)
@@ -881,11 +864,6 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	closure.CreatedAt = workflow.Closure.CreatedAt
 	workflow.Closure = closure
 
-	/*workflow, err := util.GetWorkflow(ctx, m.db, m.storageClient, *launchPlan.Spec.WorkflowId)
-	if err != nil {
-		logger.Debugf(ctx, "Failed to get workflow with id %+v with err %v", launchPlan.Spec.WorkflowId, err)
-		return nil, nil, err
-	}*/
 	name := util.GetExecutionName(request)
 	workflowExecutionID := core.WorkflowExecutionIdentifier{
 		Project: request.Project,
