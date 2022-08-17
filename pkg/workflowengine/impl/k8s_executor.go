@@ -44,7 +44,7 @@ func (e K8sWorkflowExecutor) Execute(ctx context.Context, data interfaces.Execut
 		return interfaces.ExecutionResponse{}, err
 	}
 
-	if e.config.ApplicationConfiguration().GetTopLevelConfig().OffloadWorkflowClosureToStorage {
+	if e.config.ApplicationConfiguration().GetTopLevelConfig().UseOffloadedWorkflowClosure {
 		// if offloading workflow closure is enabled we set the WorkflowClosureReference and remove
 		// the closure generated static fields from the FlyteWorkflow CRD. They are read from the
 		// storage client and temporarily repopulated during execution to reduce the CRD size.

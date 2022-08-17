@@ -137,7 +137,7 @@ func TestExecute(t *testing.T) {
 
 	mockApplicationConfig := runtimeMocks.MockApplicationProvider{}
 	mockApplicationConfig.SetTopLevelConfig(runtimeInterfaces.ApplicationConfig{
-		OffloadWorkflowClosureToStorage: false,
+		UseOffloadedWorkflowClosure: false,
 	})
 	mockRuntime := runtimeMocks.NewMockConfigurationProvider(&mockApplicationConfig, nil, nil, nil, nil, nil)
 
@@ -201,7 +201,7 @@ func TestExecute_AlreadyExists(t *testing.T) {
 
 	mockApplicationConfig := runtimeMocks.MockApplicationProvider{}
 	mockApplicationConfig.SetTopLevelConfig(runtimeInterfaces.ApplicationConfig{
-		OffloadWorkflowClosureToStorage: false,
+		UseOffloadedWorkflowClosure: false,
 	})
 	mockRuntime := runtimeMocks.NewMockConfigurationProvider(&mockApplicationConfig, nil, nil, nil, nil, nil)
 
@@ -245,7 +245,7 @@ func TestExecute_MiscError(t *testing.T) {
 
 	mockApplicationConfig := runtimeMocks.MockApplicationProvider{}
 	mockApplicationConfig.SetTopLevelConfig(runtimeInterfaces.ApplicationConfig{
-		OffloadWorkflowClosureToStorage: false,
+		UseOffloadedWorkflowClosure: false,
 	})
 	mockRuntime := runtimeMocks.NewMockConfigurationProvider(&mockApplicationConfig, nil, nil, nil, nil, nil)
 
@@ -353,7 +353,7 @@ func TestExecute_OffloadWorkflowClosure(t *testing.T) {
 
 	mockApplicationConfig := runtimeMocks.MockApplicationProvider{}
 	mockApplicationConfig.SetTopLevelConfig(runtimeInterfaces.ApplicationConfig{
-		OffloadWorkflowClosureToStorage: true,
+		UseOffloadedWorkflowClosure: true,
 	})
 	mockRuntime := runtimeMocks.NewMockConfigurationProvider(&mockApplicationConfig, nil, nil, nil, nil, nil)
 
