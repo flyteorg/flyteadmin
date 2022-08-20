@@ -66,6 +66,16 @@ func (r *ExecutionRepo) Update(ctx context.Context, execution models.Execution) 
 	return nil
 }
 
+func (r *ExecutionRepo) Delete(ctx context.Context, input models.Execution) error {
+	timer := r.metrics.DeleteDuration.Start()
+	tx := r.db.Model(&input).Delete(input)
+	timer.Stop()
+	if err := tx.Error; err != nil {
+		return r.errorTransformer.ToFlyteAdminError(err)
+	}
+	return nil
+}
+
 func (r *ExecutionRepo) List(ctx context.Context, input interfaces.ListResourceInput) (
 	interfaces.ExecutionCollectionOutput, error) {
 	var err error

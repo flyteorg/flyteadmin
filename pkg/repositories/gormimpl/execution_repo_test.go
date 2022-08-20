@@ -80,6 +80,30 @@ func TestUpdateExecution(t *testing.T) {
 	assert.True(t, updated)
 }
 
+func TestDeleteExecution(t *testing.T) {
+	GlobalMock := mocket.Catcher.Reset()
+	GlobalMock.Logging = true
+	deleted := false
+
+	GlobalMock.NewMock().WithQuery(`DELETE FROM "executions" WHERE ("executions"."execution_project","executions"."execution_domain","executions"."execution_name") IN (($1,$2,$3))`).WithCallback(
+		func(s string, values []driver.NamedValue) {
+			deleted = true
+		},
+	)
+
+	executionRepo := NewExecutionRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
+	err := executionRepo.Delete(context.Background(),
+		models.Execution{
+			ExecutionKey: models.ExecutionKey{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "1",
+			}})
+	assert.NoError(t, err)
+	assert.True(t, deleted)
+
+}
+
 func getMockExecutionResponseFromDb(expected models.Execution) map[string]interface{} {
 	execution := make(map[string]interface{})
 	execution["id"] = expected.ID
