@@ -11,12 +11,21 @@ type CreateTaskExecutionFunc func(ctx context.Context, input models.TaskExecutio
 type GetTaskExecutionFunc func(ctx context.Context, input interfaces.GetTaskExecutionInput) (models.TaskExecution, error)
 type UpdateTaskExecutionFunc func(ctx context.Context, execution models.TaskExecution) error
 type ListTaskExecutionFunc func(ctx context.Context, input interfaces.ListResourceInput) (interfaces.TaskExecutionCollectionOutput, error)
+type DeleteTaskExecutionFunc func(ctx context.Context, input models.TaskExecution) error
 
 type MockTaskExecutionRepo struct {
 	createFunction CreateTaskExecutionFunc
 	getFunction    GetTaskExecutionFunc
 	updateFunction UpdateTaskExecutionFunc
 	listFunction   ListTaskExecutionFunc
+	deleteFunction DeleteTaskExecutionFunc
+}
+
+func (r *MockTaskExecutionRepo) Delete(ctx context.Context, input models.TaskExecution) error {
+	if r.deleteFunction != nil {
+		return r.deleteFunction(ctx, input)
+	}
+	return nil
 }
 
 func (r *MockTaskExecutionRepo) Create(ctx context.Context, input models.TaskExecution) error {

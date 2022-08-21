@@ -32,3 +32,25 @@ func TestCreateNodeExecutionEvent(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, nodeExecutionEventQuery.Triggered)
 }
+
+func TestDeleteNodeExecutionEvent(t *testing.T) {
+	GlobalMock := mocket.Catcher.Reset()
+	GlobalMock.Logging = true
+	nodeExecutionEventQuery := GlobalMock.NewMock()
+	nodeExecutionEventQuery.WithQuery(`DELETE FROM "node_execution_events" WHERE ("node_execution_events"."execution_project","node_execution_events"."execution_domain","node_execution_events"."execution_name","node_execution_events"."node_id","node_execution_events"."phase") IN (($1,$2,$3,$4,$5))`)
+	nodeExecEventRepo := NewNodeExecutionEventRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
+
+	err := nodeExecEventRepo.Delete(context.Background(), models.NodeExecutionEvent{
+		NodeExecutionKey: models.NodeExecutionKey{
+			NodeID: "1",
+			ExecutionKey: models.ExecutionKey{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "1",
+			},
+		},
+	})
+
+	assert.NoError(t, err)
+	assert.True(t, nodeExecutionEventQuery.Triggered)
+}

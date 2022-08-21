@@ -16,6 +16,16 @@ type NodeExecutionEventRepo struct {
 	metrics          gormMetrics
 }
 
+func (r *NodeExecutionEventRepo) Delete(ctx context.Context, input models.NodeExecutionEvent) error {
+	timer := r.metrics.CreateDuration.Start()
+	tx := r.db.Delete(&input)
+	timer.Stop()
+	if tx.Error != nil {
+		return r.errorTransformer.ToFlyteAdminError(tx.Error)
+	}
+	return nil
+}
+
 func (r *NodeExecutionEventRepo) Create(ctx context.Context, input models.NodeExecutionEvent) error {
 	timer := r.metrics.CreateDuration.Start()
 	tx := r.db.Omit("id").Create(&input)

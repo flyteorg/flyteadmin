@@ -201,3 +201,15 @@ func TestListTaskExecutionsForTaskExecution(t *testing.T) {
 		assert.Equal(t, time.Hour, taskExecution.Duration)
 	}
 }
+
+func TestDeleteTaskExecution(t *testing.T) {
+	GlobalMock := mocket.Catcher.Reset()
+	GlobalMock.Logging = true
+
+	taskExecutionQuery := GlobalMock.NewMock().WithQuery(`DELETE FROM "task_executions" WHERE ("task_executions"."project","task_executions"."domain","task_executions"."name","task_executions"."version","task_executions"."execution_project","task_executions"."execution_domain","task_executions"."execution_name","task_executions"."node_id","task_executions"."retry_attempt") IN (($1,$2,$3,$4,$5,$6,$7,$8,$9))`)
+
+	taskExecutionRepo := NewTaskExecutionRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
+	err := taskExecutionRepo.Delete(context.Background(), testTaskExecution)
+	assert.NoError(t, err)
+	assert.True(t, taskExecutionQuery.Triggered)
+}

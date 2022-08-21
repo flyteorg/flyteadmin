@@ -14,6 +14,7 @@ type ListNodeExecutionFunc func(ctx context.Context, input interfaces.ListResour
 	interfaces.NodeExecutionCollectionOutput, error)
 type ListNodeExecutionEventFunc func(ctx context.Context, input interfaces.ListResourceInput) (
 	interfaces.NodeExecutionEventCollectionOutput, error)
+type DeleteNodeExecutionFunc func(ctx context.Context, input *models.NodeExecution) error
 
 type MockNodeExecutionRepo struct {
 	createFunction          CreateNodeExecutionFunc
@@ -23,6 +24,14 @@ type MockNodeExecutionRepo struct {
 	listFunction            ListNodeExecutionFunc
 	listEventFunction       ListNodeExecutionEventFunc
 	ExistsFunction          func(ctx context.Context, input interfaces.NodeExecutionResource) (bool, error)
+	deleteFunction          DeleteNodeExecutionFunc
+}
+
+func (r *MockNodeExecutionRepo) Delete(ctx context.Context, input *models.NodeExecution) error {
+	if r.deleteFunction != nil {
+		return r.deleteFunction(ctx, input)
+	}
+	return nil
 }
 
 func (r *MockNodeExecutionRepo) Create(ctx context.Context, input *models.NodeExecution) error {

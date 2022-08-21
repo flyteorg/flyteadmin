@@ -89,6 +89,29 @@ func TestUpdateNodeExecution(t *testing.T) {
 	assert.True(t, nodeExecutionQuery.Triggered)
 }
 
+func TestDeleteNodeExecution(t *testing.T) {
+	GlobalMock := mocket.Catcher.Reset()
+	GlobalMock.Logging = true
+
+	nodeExecutionQuery := GlobalMock.NewMock().WithQuery(`DELETE FROM "node_executions" WHERE ("node_executions"."execution_project","node_executions"."execution_domain","node_executions"."execution_name","node_executions"."node_id") IN (($1,$2,$3,$4))`)
+
+	nodeExecutionRepo := NewNodeExecutionRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
+	err := nodeExecutionRepo.Delete(context.Background(),
+		&models.NodeExecution{
+			NodeExecutionKey: models.NodeExecutionKey{
+				NodeID: "1",
+				ExecutionKey: models.ExecutionKey{
+					Project: "project",
+					Domain:  "domain",
+					Name:    "1",
+				},
+			},
+		})
+	assert.NoError(t, err)
+	assert.True(t, nodeExecutionQuery.Triggered)
+
+}
+
 func getMockNodeExecutionResponseFromDb(expected models.NodeExecution) map[string]interface{} {
 	nodeExecution := make(map[string]interface{})
 	nodeExecution["execution_project"] = expected.ExecutionKey.Project

@@ -12,12 +12,21 @@ type UpdateExecutionFunc func(ctx context.Context, execution models.Execution) e
 type GetExecutionFunc func(ctx context.Context, input interfaces.Identifier) (models.Execution, error)
 type ListExecutionFunc func(ctx context.Context, input interfaces.ListResourceInput) (
 	interfaces.ExecutionCollectionOutput, error)
+type DeleteExecutionFunc func(ctx context.Context, input models.Execution) error
 
 type MockExecutionRepo struct {
 	createFunction CreateExecutionFunc
 	updateFunction UpdateExecutionFunc
 	getFunction    GetExecutionFunc
 	listFunction   ListExecutionFunc
+	deleteFunction DeleteExecutionFunc
+}
+
+func (r *MockExecutionRepo) Delete(ctx context.Context, execution models.Execution) error {
+	if r.deleteFunction != nil {
+		return r.deleteFunction(ctx, execution)
+	}
+	return nil
 }
 
 func (r *MockExecutionRepo) Create(ctx context.Context, input models.Execution) error {

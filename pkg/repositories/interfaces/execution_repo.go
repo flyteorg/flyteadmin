@@ -17,7 +17,7 @@ type ExecutionRepoInterface interface {
 	// Returns executions matching query parameters. A limit must be provided for the results page size.
 	List(ctx context.Context, input ListResourceInput) (ExecutionCollectionOutput, error)
 	// Deletes a workflow execution model from the database store.
-	Delete(ctx context.Context, input models.Execution) error
+	Delete(ctx context.Context, execution models.Execution) error
 }
 
 // Response format for a query on workflows.

@@ -21,6 +21,16 @@ type TaskExecutionRepo struct {
 	metrics          gormMetrics
 }
 
+func (r *TaskExecutionRepo) Delete(ctx context.Context, input models.TaskExecution) error {
+	timer := r.metrics.CreateDuration.Start()
+	tx := r.db.Delete(&input)
+	timer.Stop()
+	if tx.Error != nil {
+		return r.errorTransformer.ToFlyteAdminError(tx.Error)
+	}
+	return nil
+}
+
 func (r *TaskExecutionRepo) Create(ctx context.Context, input models.TaskExecution) error {
 	timer := r.metrics.CreateDuration.Start()
 	tx := r.db.Omit("id").Create(&input)
