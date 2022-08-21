@@ -15,11 +15,6 @@ type NodeExecutionEventRepoInterface struct {
 	mock.Mock
 }
 
-func (_m *NodeExecutionEventRepoInterface) Delete(ctx context.Context, input models.NodeExecutionEvent) error {
-	//TODO implement me
-	panic("implement me")
-}
-
 type NodeExecutionEventRepoInterface_Create struct {
 	*mock.Call
 }
