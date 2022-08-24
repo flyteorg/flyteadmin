@@ -196,6 +196,23 @@ func (r *NodeExecutionRepo) Exists(ctx context.Context, input interfaces.NodeExe
 	return true, nil
 }
 
+func (r *NodeExecutionRepo) Count(ctx context.Context, input interfaces.CountResourceInput) (int64, error) {
+	var err error
+	tx := r.db.Model(&models.NodeExecution{})
+	tx, err = applyScopedFilters(tx, input.InlineFilters, input.MapFilters)
+	if err != nil {
+		return 0, err
+	}
+	timer := r.metrics.CountDuration.Start()
+	var count int64
+	tx = tx.Count(&count)
+	timer.Stop()
+	if tx.Error != nil {
+		return 0, r.errorTransformer.ToFlyteAdminError(tx.Error)
+	}
+	return count, nil
+}
+
 // Returns an instance of NodeExecutionRepoInterface
 func NewNodeExecutionRepo(
 	db *gorm.DB, errorTransformer adminErrors.ErrorTransformer,

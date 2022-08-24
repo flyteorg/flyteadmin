@@ -343,3 +343,36 @@ func TestListExecutionsForWorkflow(t *testing.T) {
 		assert.Equal(t, time.Hour, execution.Duration)
 	}
 }
+
+func TestCountExecutions(t *testing.T) {
+	executionRepo := NewExecutionRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
+
+	GlobalMock := mocket.Catcher.Reset()
+	GlobalMock.NewMock().WithQuery(
+		`SELECT count(*) FROM "executions"`).WithReply([]map[string]interface{}{{"rows": 2}})
+
+	count, err := executionRepo.Count(context.Background(), interfaces.CountResourceInput{})
+	assert.NoError(t, err)
+	assert.Equal(t, int64(2), count)
+}
+
+func TestCountExecutions_Filters(t *testing.T) {
+	executionRepo := NewExecutionRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
+
+	GlobalMock := mocket.Catcher.Reset()
+	GlobalMock.NewMock().WithQuery(
+		`SELECT count(*) FROM "executions" WHERE executions.phase = $1 AND "error_code" IS NULL`).WithReply([]map[string]interface{}{{"rows": 3}})
+
+	count, err := executionRepo.Count(context.Background(), interfaces.CountResourceInput{
+		InlineFilters: []common.InlineFilter{
+			getEqualityFilter(common.Execution, "phase", core.WorkflowExecution_FAILED.String()),
+		},
+		MapFilters: []common.MapFilter{
+			common.NewMapFilter(map[string]interface{}{
+				"error_code": nil,
+			}),
+		},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, int64(3), count)
+}

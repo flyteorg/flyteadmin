@@ -32,3 +32,12 @@ type UpdateResourceInput struct {
 	Filters    []common.InlineFilter
 	Attributes map[string]interface{}
 }
+
+// Parameters for counting multiple resources.
+type CountResourceInput struct {
+	InlineFilters []common.InlineFilter
+	// MapFilters refers to primary entity filters defined as map values rather than inline sql queries.
+	// These exist to permit filtering on "IS NULL" which isn't permitted with inline filter queries and
+	// pq driver value substitution.
+	MapFilters []common.MapFilter
+}

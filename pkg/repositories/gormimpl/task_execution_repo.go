@@ -129,6 +129,23 @@ func (r *TaskExecutionRepo) List(ctx context.Context, input interfaces.ListResou
 	}, nil
 }
 
+func (r *TaskExecutionRepo) Count(ctx context.Context, input interfaces.CountResourceInput) (int64, error) {
+	var err error
+	tx := r.db.Model(&models.TaskExecution{})
+	tx, err = applyScopedFilters(tx, input.InlineFilters, input.MapFilters)
+	if err != nil {
+		return 0, err
+	}
+	timer := r.metrics.CountDuration.Start()
+	var count int64
+	tx = tx.Count(&count)
+	timer.Stop()
+	if tx.Error != nil {
+		return 0, r.errorTransformer.ToFlyteAdminError(tx.Error)
+	}
+	return count, nil
+}
+
 // Returns an instance of TaskExecutionRepoInterface
 func NewTaskExecutionRepo(
 	db *gorm.DB, errorTransformer flyteAdminDbErrors.ErrorTransformer, scope promutils.Scope) interfaces.TaskExecutionRepoInterface {
