@@ -219,7 +219,7 @@ func TestCountTaskExecutions_Filters(t *testing.T) {
 
 	GlobalMock := mocket.Catcher.Reset()
 	GlobalMock.NewMock().WithQuery(
-		`SELECT count(*) FROM "task_executions" WHERE task_executions.phase = $1 AND "task_execution_updated_at" IS NULL`).WithReply([]map[string]interface{}{{"rows": 3}})
+		`SELECT count(*) FROM "task_executions" LEFT JOIN tasks ON task_executions.project = tasks.project AND task_executions.domain = tasks.domain AND task_executions.name = tasks.name AND task_executions.version = tasks.version INNER JOIN node_executions ON task_executions.node_id = node_executions.node_id AND task_executions.execution_project = node_executions.execution_project AND task_executions.execution_domain = node_executions.execution_domain AND task_executions.execution_name = node_executions.execution_name INNER JOIN executions ON node_executions.execution_project = executions.execution_project AND node_executions.execution_domain = executions.execution_domain AND node_executions.execution_name = executions.execution_name WHERE task_executions.phase = $1 AND "task_execution_updated_at" IS NULL`).WithReply([]map[string]interface{}{{"rows": 3}})
 
 	count, err := taskExecutionRepo.Count(context.Background(), interfaces.CountResourceInput{
 		InlineFilters: []common.InlineFilter{

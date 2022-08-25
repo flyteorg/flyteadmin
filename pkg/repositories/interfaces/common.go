@@ -22,7 +22,7 @@ type ListResourceInput struct {
 	// pq driver value substitution.
 	MapFilters    []common.MapFilter
 	SortParameter common.SortParameter
-	// A set of the entities (besides the primary table being queries) that should be joined with when performing
+	// A set of the entities (besides the primary table being queried) that should be joined with when performing
 	// the list query. This enables filtering on non-primary entity attributes.
 	JoinTableEntities map[common.Entity]bool
 }
@@ -40,4 +40,7 @@ type CountResourceInput struct {
 	// These exist to permit filtering on "IS NULL" which isn't permitted with inline filter queries and
 	// pq driver value substitution.
 	MapFilters []common.MapFilter
+	// A set of the entities (besides the primary table being queried) that should be joined with when performing
+	// the count query. This enables filtering on non-primary entity attributes.
+	JoinTableEntities map[common.Entity]bool
 }

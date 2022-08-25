@@ -361,7 +361,8 @@ func TestCountExecutions_Filters(t *testing.T) {
 
 	GlobalMock := mocket.Catcher.Reset()
 	GlobalMock.NewMock().WithQuery(
-		`SELECT count(*) FROM "executions" WHERE executions.phase = $1 AND "error_code" IS NULL`).WithReply([]map[string]interface{}{{"rows": 3}})
+		`SELECT count(*) FROM "executions" INNER JOIN workflows ON executions.workflow_id = workflows.id INNER JOIN tasks ON executions.task_id = tasks.id WHERE executions.phase = $1 AND "error_code" IS NULL`,
+	).WithReply([]map[string]interface{}{{"rows": 3}})
 
 	count, err := executionRepo.Count(context.Background(), interfaces.CountResourceInput{
 		InlineFilters: []common.InlineFilter{
@@ -371,6 +372,10 @@ func TestCountExecutions_Filters(t *testing.T) {
 			common.NewMapFilter(map[string]interface{}{
 				"error_code": nil,
 			}),
+		},
+		JoinTableEntities: map[common.Entity]bool{
+			common.Workflow: true,
+			common.Task:     true,
 		},
 	})
 	assert.NoError(t, err)
