@@ -97,7 +97,7 @@ func TestDeleteNodeExecution(t *testing.T) {
 
 	nodeExecutionRepo := NewNodeExecutionRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
 	err := nodeExecutionRepo.Delete(context.Background(),
-		&models.NodeExecution{
+		models.NodeExecution{
 			NodeExecutionKey: models.NodeExecutionKey{
 				NodeID: "1",
 				ExecutionKey: models.ExecutionKey{
