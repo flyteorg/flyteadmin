@@ -25,7 +25,7 @@ type NodeExecutionRepoInterface interface {
 	// Exists returns whether a matching execution exists.
 	Exists(ctx context.Context, input NodeExecutionResource) (bool, error)
 	// Delete an existing node execution in the database store
-	Delete(ctx context.Context, input *models.NodeExecution) error
+	Delete(ctx context.Context, input models.NodeExecution) error
 }
 
 type NodeExecutionResource struct {

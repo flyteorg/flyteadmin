@@ -13,4 +13,7 @@ type NodeExecutionEventRepoInterface interface {
 	Create(ctx context.Context, input models.NodeExecutionEvent) error
 	// Deletes a node execution event from the database store.
 	Delete(ctx context.Context, input models.NodeExecutionEvent) error
+	// List returns node executions matching query parameters. A limit must be provided for the results page size.
+	// TODO Unit Test
+	List(ctx context.Context, input ListResourceInput) (NodeExecutionEventCollectionOutput, error)
 }
