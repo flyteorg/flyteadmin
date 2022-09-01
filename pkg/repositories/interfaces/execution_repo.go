@@ -18,6 +18,8 @@ type ExecutionRepoInterface interface {
 	List(ctx context.Context, input ListResourceInput) (ExecutionCollectionOutput, error)
 	// Deletes a workflow execution model from the database store.
 	Delete(ctx context.Context, execution models.Execution) error
+	// Returns count of executions matching query parameters.
+	Count(ctx context.Context, input CountResourceInput) (int64, error)
 }
 
 // Response format for a query on workflows.

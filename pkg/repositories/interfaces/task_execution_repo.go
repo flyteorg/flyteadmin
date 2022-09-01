@@ -19,6 +19,8 @@ type TaskExecutionRepoInterface interface {
 	List(ctx context.Context, input ListResourceInput) (TaskExecutionCollectionOutput, error)
 	// Delete a task execution in the database store
 	Delete(ctx context.Context, input models.TaskExecution) error
+	// Returns count of task executions matching query parameters.
+	Count(ctx context.Context, input CountResourceInput) (int64, error)
 }
 
 type GetTaskExecutionInput struct {

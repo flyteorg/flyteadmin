@@ -12,6 +12,7 @@ type GetTaskExecutionFunc func(ctx context.Context, input interfaces.GetTaskExec
 type UpdateTaskExecutionFunc func(ctx context.Context, execution models.TaskExecution) error
 type ListTaskExecutionFunc func(ctx context.Context, input interfaces.ListResourceInput) (interfaces.TaskExecutionCollectionOutput, error)
 type DeleteTaskExecutionFunc func(ctx context.Context, input models.TaskExecution) error
+type CountTaskExecutionFunc func(ctx context.Context, input interfaces.CountResourceInput) (int64, error)
 
 type MockTaskExecutionRepo struct {
 	createFunction CreateTaskExecutionFunc
@@ -26,6 +27,7 @@ func (r *MockTaskExecutionRepo) Delete(ctx context.Context, input models.TaskExe
 		return r.deleteFunction(ctx, input)
 	}
 	return nil
+	countFunction  CountTaskExecutionFunc
 }
 
 func (r *MockTaskExecutionRepo) Create(ctx context.Context, input models.TaskExecution) error {
@@ -70,6 +72,17 @@ func (r *MockTaskExecutionRepo) List(ctx context.Context, input interfaces.ListR
 
 func (r *MockTaskExecutionRepo) SetListCallback(listFunction ListTaskExecutionFunc) {
 	r.listFunction = listFunction
+}
+
+func (r *MockTaskExecutionRepo) Count(ctx context.Context, input interfaces.CountResourceInput) (int64, error) {
+	if r.countFunction != nil {
+		return r.countFunction(ctx, input)
+	}
+	return 0, nil
+}
+
+func (r *MockTaskExecutionRepo) SetCountCallback(countFunction CountTaskExecutionFunc) {
+	r.countFunction = countFunction
 }
 
 func NewMockTaskExecutionRepo() interfaces.TaskExecutionRepoInterface {
