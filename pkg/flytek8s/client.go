@@ -44,6 +44,11 @@ func GetRestClientConfigForCluster(cluster runtimeInterfaces.ClusterConfig) (*re
 		return nil, err
 	}
 	logger.Debugf(context.Background(), "successfully loaded kube configuration from %v", cluster)
+	if cluster.KubeClientConfig != nil {
+		kubeConfiguration.QPS = cluster.KubeClientConfig.QPS
+		kubeConfiguration.Burst = cluster.KubeClientConfig.Burst
+		kubeConfiguration.Timeout = cluster.KubeClientConfig.Timeout.Duration
+	}
 	return kubeConfiguration, nil
 }
 
@@ -70,6 +75,12 @@ func GetRestClientConfig(kubeConfig, master string,
 			return nil, errors.NewFlyteAdminErrorf(codes.Internal, "Cannot get incluster kubeconfig : %v", err.Error())
 		}
 		logger.Debug(context.Background(), "successfully loaded kube configuration from in cluster config")
+	}
+
+	if k8sCluster.KubeClientConfig != nil {
+		kubeConfiguration.QPS = k8sCluster.KubeClientConfig.QPS
+		kubeConfiguration.Burst = k8sCluster.KubeClientConfig.Burst
+		kubeConfiguration.Timeout = k8sCluster.KubeClientConfig.Timeout.Duration
 	}
 	return kubeConfiguration, nil
 }
