@@ -166,7 +166,11 @@ func verifyClaims(expectedAudience sets.String, claimsRaw map[string]interface{}
 
 	scopes := sets.NewString()
 	if scopesClaim, found := claimsRaw[ScopeClaim]; found {
-		scopes = sets.NewString(interfaceSliceToStringSlice(scopesClaim.([]interface{}))...)
+		if scopesSlice, ok := scopesClaim.([]interface{}); ok {
+			scopes = sets.NewString(interfaceSliceToStringSlice(scopesSlice)...)
+		} else {
+			scopes = sets.NewString().Insert(fmt.Sprintf("%v", scopesClaim))
+		}
 	}
 
 	// If this is a user-only access token with no scopes defined then add `all` scope by default because it's equivalent
