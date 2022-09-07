@@ -84,18 +84,6 @@ func (r *MockNodeExecutionRepo) SetListCallback(listFunction ListNodeExecutionFu
 	r.listFunction = listFunction
 }
 
-func (r *MockNodeExecutionRepo) ListEvents(ctx context.Context, input interfaces.ListResourceInput) (
-	interfaces.NodeExecutionEventCollectionOutput, error) {
-	if r.listFunction != nil {
-		return r.listEventFunction(ctx, input)
-	}
-	return interfaces.NodeExecutionEventCollectionOutput{}, nil
-}
-
-func (r *MockNodeExecutionRepo) SetListEventCallback(listEventFunction ListNodeExecutionEventFunc) {
-	r.listEventFunction = listEventFunction
-}
-
 func (r *MockNodeExecutionRepo) Exists(ctx context.Context, input interfaces.NodeExecutionResource) (bool, error) {
 	if r.existsFunction != nil {
 		return r.existsFunction(ctx, input)
