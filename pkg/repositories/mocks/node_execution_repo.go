@@ -12,8 +12,6 @@ type UpdateNodeExecutionFunc func(ctx context.Context, nodeExecution *models.Nod
 type GetNodeExecutionFunc func(ctx context.Context, input interfaces.NodeExecutionResource) (models.NodeExecution, error)
 type ListNodeExecutionFunc func(ctx context.Context, input interfaces.ListResourceInput) (
 	interfaces.NodeExecutionCollectionOutput, error)
-type ListNodeExecutionEventFunc func(ctx context.Context, input interfaces.ListResourceInput) (
-	interfaces.NodeExecutionEventCollectionOutput, error)
 type ExistsNodeExecutionFunc func(ctx context.Context, input interfaces.NodeExecutionResource) (bool, error)
 type CountNodeExecutionFunc func(ctx context.Context, input interfaces.CountResourceInput) (int64, error)
 
@@ -23,7 +21,6 @@ type MockNodeExecutionRepo struct {
 	getFunction             GetNodeExecutionFunc
 	getWithChildrenFunction GetNodeExecutionFunc
 	listFunction            ListNodeExecutionFunc
-	listEventFunction       ListNodeExecutionEventFunc
 	existsFunction          ExistsNodeExecutionFunc
 	countFunction           CountNodeExecutionFunc
 }

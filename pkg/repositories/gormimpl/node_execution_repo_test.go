@@ -333,18 +333,6 @@ func TestListNodeExecutionsForExecution(t *testing.T) {
 	}
 }
 
-func getMockNodeExecutionEventResponseFromDb(expected models.NodeExecutionEvent) map[string]interface{} {
-	nodeExecutionEvent := make(map[string]interface{})
-	nodeExecutionEvent["execution_project"] = expected.ExecutionKey.Project
-	nodeExecutionEvent["execution_domain"] = expected.ExecutionKey.Domain
-	nodeExecutionEvent["execution_name"] = expected.ExecutionKey.Name
-	nodeExecutionEvent["node_id"] = expected.NodeExecutionKey.NodeID
-	nodeExecutionEvent["request_id"] = expected.RequestID
-	nodeExecutionEvent["phase"] = expected.Phase
-	nodeExecutionEvent["occurred_at"] = expected.OccurredAt
-	return nodeExecutionEvent
-}
-
 func TestNodeExecutionExists(t *testing.T) {
 	nodeExecutionRepo := NewNodeExecutionRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
 	id := uint(10)
