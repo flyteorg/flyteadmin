@@ -57,7 +57,7 @@ func GetDescriptionEntityDigest(ctx context.Context, descriptionEntity *admin.De
 		logger.Warningf(ctx, "failed to hash description entity [%+v] to digest with err %v",
 			descriptionEntity, err)
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal,
-			"failed to hash workflow [%+v] to digest with err %v", descriptionEntity, err)
+			"failed to hash description entity [%+v] to digest with err %v", descriptionEntity, err)
 	}
 
 	return descriptionEntityDigest, nil

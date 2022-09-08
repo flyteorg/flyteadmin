@@ -481,15 +481,9 @@ func mergeIntoExecConfig(workflowExecConfig admin.WorkflowExecutionConfig, spec 
 		workflowExecConfig.Annotations = spec.GetAnnotations()
 	}
 
-	// Override interruptible flag if workflow execution config does not have a value set or the spec sets a different
-	// value that defined as the workflow default. This allows for workflows to have their interruptible setting
-	// explicitly turned on and off for a single execution.
-	if (workflowExecConfig.GetInterruptible() == nil && spec.GetInterruptible() != nil) ||
-		(workflowExecConfig.GetInterruptible() != nil && spec.GetInterruptible() != nil &&
-			workflowExecConfig.GetInterruptible().GetValue() != spec.GetInterruptible().GetValue()) {
+	if workflowExecConfig.GetInterruptible() == nil && spec.GetInterruptible() != nil {
 		workflowExecConfig.Interruptible = spec.GetInterruptible()
 	}
-
 	return workflowExecConfig
 }
 
@@ -538,6 +532,12 @@ func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admi
 	}
 	//  merge the application config into workflowExecConfig. If even the deprecated fields are not set
 	workflowExecConfig = mergeIntoExecConfig(workflowExecConfig, m.config.ApplicationConfiguration().GetTopLevelConfig())
+	// Explicitly set the security context if its nil since downstream we expect this settings to be available
+	if workflowExecConfig.GetSecurityContext() == nil {
+		workflowExecConfig.SecurityContext = &core.SecurityContext{
+			RunAs: &core.Identity{},
+		}
+	}
 	logger.Infof(ctx, "getting the workflow execution config from application configuration")
 	// Defaults to one from the application config
 	return &workflowExecConfig, nil
@@ -708,12 +708,13 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 
 	workflowExecutor := plugins.Get[workflowengineInterfaces.WorkflowExecutor](m.pluginRegistry, plugins.PluginIDWorkflowExecutor)
 	execInfo, err := workflowExecutor.Execute(ctx, workflowengineInterfaces.ExecutionData{
-		Namespace:               namespace,
-		ExecutionID:             &workflowExecutionID,
-		ReferenceWorkflowName:   workflow.Id.Name,
-		ReferenceLaunchPlanName: launchPlan.Id.Name,
-		WorkflowClosure:         workflow.Closure.CompiledWorkflow,
-		ExecutionParameters:     executionParameters,
+		Namespace:                namespace,
+		ExecutionID:              &workflowExecutionID,
+		ReferenceWorkflowName:    workflow.Id.Name,
+		ReferenceLaunchPlanName:  launchPlan.Id.Name,
+		WorkflowClosure:          workflow.Closure.CompiledWorkflow,
+		WorkflowClosureReference: storage.DataReference(workflowModel.RemoteClosureIdentifier),
+		ExecutionParameters:      executionParameters,
 	})
 
 	if err != nil {
@@ -845,12 +846,24 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		return nil, nil, err
 	}
 
-	workflow, err := util.GetWorkflow(ctx, m.db, m.storageClient, *launchPlan.Spec.WorkflowId)
-
+	workflowModel, err := util.GetWorkflowModel(ctx, m.db, *launchPlan.Spec.WorkflowId)
 	if err != nil {
 		logger.Debugf(ctx, "Failed to get workflow with id %+v with err %v", launchPlan.Spec.WorkflowId, err)
 		return nil, nil, err
 	}
+	workflow, err := transformers.FromWorkflowModel(workflowModel)
+	if err != nil {
+		logger.Debugf(ctx, "Failed to get workflow with id %+v with err %v", launchPlan.Spec.WorkflowId, err)
+		return nil, nil, err
+	}
+	closure, err := util.FetchAndGetWorkflowClosure(ctx, m.storageClient, workflowModel.RemoteClosureIdentifier)
+	if err != nil {
+		logger.Debugf(ctx, "Failed to get workflow with id %+v with err %v", launchPlan.Spec.WorkflowId, err)
+		return nil, nil, err
+	}
+	closure.CreatedAt = workflow.Closure.CreatedAt
+	workflow.Closure = closure
+
 	name := util.GetExecutionName(request)
 	workflowExecutionID := core.WorkflowExecutionIdentifier{
 		Project: request.Project,
@@ -948,12 +961,13 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 
 	workflowExecutor := plugins.Get[workflowengineInterfaces.WorkflowExecutor](m.pluginRegistry, plugins.PluginIDWorkflowExecutor)
 	execInfo, err := workflowExecutor.Execute(ctx, workflowengineInterfaces.ExecutionData{
-		Namespace:               namespace,
-		ExecutionID:             &workflowExecutionID,
-		ReferenceWorkflowName:   workflow.Id.Name,
-		ReferenceLaunchPlanName: launchPlan.Id.Name,
-		WorkflowClosure:         workflow.Closure.CompiledWorkflow,
-		ExecutionParameters:     executionParameters,
+		Namespace:                namespace,
+		ExecutionID:              &workflowExecutionID,
+		ReferenceWorkflowName:    workflow.Id.Name,
+		ReferenceLaunchPlanName:  launchPlan.Id.Name,
+		WorkflowClosure:          workflow.Closure.CompiledWorkflow,
+		WorkflowClosureReference: storage.DataReference(workflowModel.RemoteClosureIdentifier),
+		ExecutionParameters:      executionParameters,
 	})
 
 	if err != nil {
@@ -1649,6 +1663,9 @@ func (m *ExecutionManager) TerminateExecution(
 	if err != nil {
 		logger.Infof(ctx, "couldn't find execution [%+v] to save termination cause", request.Id)
 		return nil, err
+	}
+	if common.IsExecutionTerminal(core.WorkflowExecution_Phase(core.WorkflowExecution_Phase_value[executionModel.Phase])) {
+		return nil, errors.NewFlyteAdminError(codes.PermissionDenied, "Cannot abort an already terminate workflow execution")
 	}
 
 	err = transformers.SetExecutionAborting(&executionModel, request.Cause, getUser(ctx))

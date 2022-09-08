@@ -212,5 +212,11 @@ func InitMetrics(adminScope promutils.Scope) AdminMetrics {
 			list:    util.NewRequestMetrics(adminScope, "list_workflow"),
 			listIds: util.NewRequestMetrics(adminScope, "list_workflow_ids"),
 		},
+
+		descriptionEntityMetrics: descriptionEntityEndpointMetrics{
+			scope:  adminScope,
+			create: util.NewRequestMetrics(adminScope, "create_description_entity"),
+			get:    util.NewRequestMetrics(adminScope, "get_description_entity"),
+		},
 	}
 }
