@@ -21,7 +21,7 @@ COPY go.mod go.sum /go/src/github.com/flyteorg/flyteadmin/
 WORKDIR /go/src/github.com/flyteorg/flyteadmin
 
 # Pull dependencies
-RUN go mod download
+RUN go mod vendor && go mod download
 
 
 # COPY the rest of the source code
