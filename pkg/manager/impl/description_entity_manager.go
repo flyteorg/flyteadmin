@@ -54,8 +54,9 @@ func (d *DescriptionEntityManager) CreateDescriptionEntity(ctx context.Context, 
 		return nil, err
 	}
 
+	logger.Infof(ctx, "test")
 	if err := d.db.DescriptionEntityRepo().Create(ctx, descriptionModel); err != nil {
-		logger.Debugf(ctx, "Failed to create description model with id [%+v] with err %v", request.Id, err)
+		logger.Errorf(ctx, "Failed to create description model with id [%+v] with err %v", request.Id, err)
 		return nil, err
 	}
 

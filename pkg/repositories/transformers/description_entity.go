@@ -18,16 +18,29 @@ func CreateDescriptionEntityModel(
 	ctx := context.Background()
 
 	// TODO: offload the LongDescription in to a separate file if value exceed 4KB, and update URI in LongDescription
-	longDescriptionBytes, err := proto.Marshal(request.DescriptionEntity.LongDescription)
-	if err != nil {
-		logger.Errorf(ctx, "Failed to marshal LongDescription with error: %v", err)
-		return models.DescriptionEntity{}, err
+	var longDescriptionBytes []byte
+	var labelsBytes []byte
+	var sourceCode models.SourceCode
+	var err error
+
+	if request.DescriptionEntity.LongDescription != nil {
+		longDescriptionBytes, err = proto.Marshal(request.DescriptionEntity.LongDescription)
+		if err != nil {
+			logger.Errorf(ctx, "Failed to marshal LongDescription with error: %v", err)
+			return models.DescriptionEntity{}, err
+		}
 	}
 
-	labelsBytes, err := proto.Marshal(request.DescriptionEntity.Labels)
-	if err != nil {
-		logger.Errorf(ctx, "Failed to marshal label with error: %v", err)
-		return models.DescriptionEntity{}, err
+	if request.DescriptionEntity.Labels != nil {
+		labelsBytes, err = proto.Marshal(request.DescriptionEntity.Labels)
+		if err != nil {
+			logger.Errorf(ctx, "Failed to marshal label with error: %v", err)
+			return models.DescriptionEntity{}, err
+		}
+	}
+
+	if request.DescriptionEntity.SourceCode != nil {
+		sourceCode = models.SourceCode{Link: request.DescriptionEntity.SourceCode.Link}
 	}
 
 	return models.DescriptionEntity{
@@ -41,7 +54,7 @@ func CreateDescriptionEntityModel(
 		ShortDescription: request.DescriptionEntity.ShortDescription,
 		LongDescription:  longDescriptionBytes,
 		Labels:           labelsBytes,
-		SourceCode:       models.SourceCode{Link: request.DescriptionEntity.SourceCode.Link},
+		SourceCode:       sourceCode,
 	}, nil
 }
 
