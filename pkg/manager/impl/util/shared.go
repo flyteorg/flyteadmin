@@ -157,10 +157,12 @@ func GetDescriptionEntity(
 	ctx context.Context, repo repoInterfaces.Repository, identifier core.Identifier) (*admin.DescriptionEntity, error) {
 	descriptionEntityModel, err := GetDescriptionEntityModel(ctx, repo, identifier)
 	if err != nil {
+		logger.Errorf(ctx, "Failed to get description entity [%+v]: %v", identifier, err)
 		return nil, err
 	}
 	descriptionEntity, err := transformers.FromDescriptionEntityModel(descriptionEntityModel)
 	if err != nil {
+		logger.Errorf(ctx, "Failed to unmarshal description entity [%+v]: %v", descriptionEntityModel, err)
 		return nil, err
 	}
 	return descriptionEntity, nil

@@ -41,8 +41,13 @@ func FromTaskModel(taskModel models.Task) (admin.Task, error) {
 	taskClosure := &admin.TaskClosure{}
 	err := proto.Unmarshal(taskModel.Closure, taskClosure)
 	if err != nil {
-		return admin.Task{}, errors.NewFlyteAdminError(codes.Internal, "failed to unmarshal clsoure")
+		return admin.Task{}, errors.NewFlyteAdminError(codes.Internal, "failed to unmarshal closure")
 	}
+	descriptionEntity, err := FromDescriptionEntityModel(taskModel.DescriptionEntity)
+	if err != nil {
+		return admin.Task{}, errors.NewFlyteAdminError(codes.Internal, "failed to transform DescriptionEntity")
+	}
+
 	createdAt, err := ptypes.TimestampProto(taskModel.CreatedAt)
 	if err != nil {
 		return admin.Task{}, errors.NewFlyteAdminErrorf(codes.Internal, "failed to serialize created at")
@@ -56,8 +61,9 @@ func FromTaskModel(taskModel models.Task) (admin.Task, error) {
 		Version:      taskModel.Version,
 	}
 	return admin.Task{
-		Id:      &id,
-		Closure: taskClosure,
+		Id:                &id,
+		Closure:           taskClosure,
+		DescriptionEntity: descriptionEntity,
 	}, nil
 }
 

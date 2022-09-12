@@ -45,10 +45,11 @@ func CreateDescriptionEntityModel(
 
 	return models.DescriptionEntity{
 		DescriptionEntityKey: models.DescriptionEntityKey{
-			Project: request.Id.Project,
-			Domain:  request.Id.Domain,
-			Name:    request.Id.Name,
-			Version: request.Id.Version,
+			ResourceType: request.Id.ResourceType,
+			Project:      request.Id.Project,
+			Domain:       request.Id.Domain,
+			Name:         request.Id.Name,
+			Version:      request.Id.Version,
 		},
 		Digest:           digest,
 		ShortDescription: request.DescriptionEntity.ShortDescription,

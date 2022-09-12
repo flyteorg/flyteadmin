@@ -3,6 +3,7 @@ package gormimpl
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
@@ -13,6 +14,13 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"gorm.io/gorm"
 )
+
+var leftJoinTaskToDescriptionEntity = fmt.Sprintf(
+	"LEFT JOIN %s ON %s.project = %s.project AND %s.domain = %s.domain AND %s.name = %s.name AND "+
+		"%s.version = %s.version AND %s.resource_type = %d",
+	descriptionEntityTableName, taskTableName, descriptionEntityTableName, taskTableName,
+	descriptionEntityTableName, taskTableName, descriptionEntityTableName, taskTableName,
+	descriptionEntityTableName, descriptionEntityTableName, core.ResourceType_TASK)
 
 // Implementation of TaskRepoInterface.
 type TaskRepo struct {
@@ -41,6 +49,10 @@ func (r *TaskRepo) Get(ctx context.Context, input interfaces.Identifier) (models
 			Name:    input.Name,
 			Version: input.Version,
 		},
+	})
+	tx = tx.Joins(leftJoinTaskToDescriptionEntity).Select([]string{
+		fmt.Sprintf("%s.*", taskTableName),
+		fmt.Sprintf("%s.*", descriptionEntityTableName),
 	}).Take(&task)
 	timer.Stop()
 	if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
@@ -51,6 +63,7 @@ func (r *TaskRepo) Get(ctx context.Context, input interfaces.Identifier) (models
 			Version: input.Version,
 		})
 	}
+
 	if tx.Error != nil {
 		return models.Task{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
 	}
@@ -76,7 +89,10 @@ func (r *TaskRepo) List(
 		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
 	}
 	timer := r.metrics.ListDuration.Start()
-	tx.Find(&tasks)
+	tx.Joins(leftJoinTaskToDescriptionEntity).Select([]string{
+		fmt.Sprintf("%s.*", taskTableName),
+		fmt.Sprintf("%s.*", descriptionEntityTableName),
+	}).Find(&tasks)
 	timer.Stop()
 	if tx.Error != nil {
 		return interfaces.TaskCollectionOutput{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
