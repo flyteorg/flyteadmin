@@ -47,10 +47,14 @@ func verifyClaims(expectedAudience sets.String, claimsRaw map[string]interface{}
 
 	scopes := sets.NewString()
 	if scopesClaim, found := claimsRaw[ScopeClaim]; found {
-		if scopesSlice, ok := scopesClaim.([]interface{}); ok {
-			scopes = sets.NewString(interfaceSliceToStringSlice(scopesSlice)...)
-		} else {
-			scopes = sets.NewString(fmt.Sprintf("%v", scopesClaim))
+
+		switch sct := scopesClaim.(type) {
+		case []interface{}:
+			scopes = sets.NewString(interfaceSliceToStringSlice(sct)...)
+		case string:
+			sets.NewString(fmt.Sprintf("%v", scopesClaim))
+		default:
+			return nil, fmt.Errorf("failed getting scope claims due to  unknown type %T with value %v", sct, sct)
 		}
 	}
 

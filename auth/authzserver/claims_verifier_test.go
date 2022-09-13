@@ -84,4 +84,15 @@ func Test_verifyClaims(t *testing.T) {
 		assert.Equal(t, "https://myserver", identityCtx.Audience())
 		assert.Equal(t, sets.NewString("all"), identityCtx.Scopes())
 	})
+	t.Run("unknown scope", func(t *testing.T) {
+		identityCtx, err := verifyClaims(sets.NewString("https://myserver", "https://myserver2"),
+			map[string]interface{}{
+				"aud": []string{"https://myserver"},
+				"scp": 1,
+			})
+
+		assert.Error(t, err)
+		assert.Nil(t, identityCtx)
+		assert.Equal(t, "failed getting scope claims due to  unknown type int with value 1", err.Error())
+	})
 }
