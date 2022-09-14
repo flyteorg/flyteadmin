@@ -13,18 +13,8 @@ require (
 	github.com/cloudevents/sdk-go/v2 v2.8.0
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/evanphx/json-patch v4.12.0+incompatible
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 	github.com/flyteorg/flyteidl v1.1.15
 	github.com/flyteorg/flyteplugins v1.0.13
-=======
-	github.com/flyteorg/flyteidl v1.1.13
-	github.com/flyteorg/flyteplugins v1.0.10
->>>>>>> Stashed changes
-=======
-	github.com/flyteorg/flyteidl v1.1.13
-	github.com/flyteorg/flyteplugins v1.0.10
->>>>>>> Stashed changes
 	github.com/flyteorg/flytepropeller v1.1.28
 	github.com/flyteorg/flytestdlib v1.0.5
 	github.com/flyteorg/stow v0.3.6
@@ -219,14 +209,4 @@ require (
 
 replace github.com/robfig/cron/v3 => github.com/unionai/cron/v3 v3.0.2-0.20210825070134-bfc34418fe84
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-replace github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v1.1.15-0.20220912165855-9938707dfdcb
-
-replace github.com/flyteorg/flytepropeller => github.com/flyteorg/flytepropeller v1.1.34-0.20220913095706-05b45495b069
-=======
 replace github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v1.1.15-0.20220908202244-fcfed61461ff
->>>>>>> Stashed changes
-=======
-replace github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v1.1.15-0.20220908202244-fcfed61461ff
->>>>>>> Stashed changes
