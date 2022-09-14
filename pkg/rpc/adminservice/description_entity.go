@@ -2,7 +2,11 @@ package adminservice
 
 import (
 	"context"
+<<<<<<< Updated upstream
 	"github.com/flyteorg/flyteadmin/pkg/rpc/adminservice/util"
+=======
+	"fmt"
+>>>>>>> Stashed changes
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -18,13 +22,13 @@ func (m *AdminService) CreateDescriptionEntity(
 		return nil, status.Errorf(codes.InvalidArgument, "Incorrect request, nil requests not allowed")
 	}
 	var response *admin.DescriptionEntityCreateResponse
-	var err error
-	m.Metrics.descriptionEntityMetrics.create.Time(func() {
-		response, err = m.DescriptionEntityManager.CreateDescriptionEntity(ctx, *request)
-	})
-	if err != nil {
-		return nil, util.TransformAndRecordError(err, &m.Metrics.descriptionEntityMetrics.create)
-	}
+	//var err error
+	//m.Metrics.descriptionEntityMetrics.create.Time(func() {
+	//	response, err = m.DescriptionEntityManager.CreateDescriptionEntity(ctx, *request)
+	//})
+	//if err != nil {
+	//	return nil, util.TransformAndRecordError(err, &m.Metrics.descriptionEntityMetrics.create)
+	//}
 	m.Metrics.descriptionEntityMetrics.create.Success()
 	return response, nil
 }
@@ -34,6 +38,7 @@ func (m *AdminService) GetDescriptionEntity(ctx context.Context, request *admin.
 	if request == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Incorrect request, nil requests not allowed")
 	}
+	fmt.Printf("test5")
 	// NOTE: When the Get HTTP endpoint is called the resource type is implicit (from the URL) so we must add it
 	// to the request.
 	if request.Id != nil && request.Id.ResourceType == core.ResourceType_UNSPECIFIED {
@@ -41,6 +46,7 @@ func (m *AdminService) GetDescriptionEntity(ctx context.Context, request *admin.
 		request.Id.ResourceType = core.ResourceType_TASK
 	}
 	var response *admin.DescriptionEntity
+<<<<<<< Updated upstream
 	response = &admin.DescriptionEntity{ShortDescription: "test"}
 	var err error
 	m.Metrics.descriptionEntityMetrics.get.Time(func() {
@@ -49,7 +55,20 @@ func (m *AdminService) GetDescriptionEntity(ctx context.Context, request *admin.
 	if err != nil {
 		return nil, util.TransformAndRecordError(err, &m.Metrics.descriptionEntityMetrics.get)
 	}
+=======
+	fmt.Printf("test1")
+	response = &admin.DescriptionEntity{ShortDescription: "test"}
+	//var err error
+	//m.Metrics.descriptionEntityMetrics.get.Time(func() {
+	//	response, err = m.DescriptionEntityManager.GetDescriptionEntity(ctx, *request)
+	//})
+	//if err != nil {
+	//	return nil, util.TransformAndRecordError(err, &m.Metrics.descriptionEntityMetrics.get)
+	//}
+	fmt.Printf("test2")
+>>>>>>> Stashed changes
 	m.Metrics.descriptionEntityMetrics.get.Success()
+	fmt.Printf("test3")
 	return response, nil
 
 }
