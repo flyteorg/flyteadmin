@@ -3,7 +3,11 @@ package adminservice
 import (
 	"context"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 	"github.com/flyteorg/flyteadmin/pkg/rpc/adminservice/util"
+=======
+	"fmt"
+>>>>>>> Stashed changes
 =======
 	"fmt"
 >>>>>>> Stashed changes
@@ -47,6 +51,7 @@ func (m *AdminService) GetDescriptionEntity(ctx context.Context, request *admin.
 	}
 	var response *admin.DescriptionEntity
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 	response = &admin.DescriptionEntity{ShortDescription: "test"}
 	var err error
 	m.Metrics.descriptionEntityMetrics.get.Time(func() {
@@ -56,6 +61,8 @@ func (m *AdminService) GetDescriptionEntity(ctx context.Context, request *admin.
 		return nil, util.TransformAndRecordError(err, &m.Metrics.descriptionEntityMetrics.get)
 	}
 =======
+=======
+>>>>>>> Stashed changes
 	fmt.Printf("test1")
 	response = &admin.DescriptionEntity{ShortDescription: "test"}
 	//var err error
@@ -66,6 +73,9 @@ func (m *AdminService) GetDescriptionEntity(ctx context.Context, request *admin.
 	//	return nil, util.TransformAndRecordError(err, &m.Metrics.descriptionEntityMetrics.get)
 	//}
 	fmt.Printf("test2")
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 	m.Metrics.descriptionEntityMetrics.get.Success()
 	fmt.Printf("test3")
