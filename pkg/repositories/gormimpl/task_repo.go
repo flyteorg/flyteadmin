@@ -17,10 +17,10 @@ import (
 
 var leftJoinTaskToDescriptionEntity = fmt.Sprintf(
 	"LEFT JOIN %s ON %s.project = %s.project AND %s.domain = %s.domain AND %s.name = %s.name AND "+
-		"%s.version = %s.version AND %s.resource_type = %d",
+		"%s.version = %s.version",
 	descriptionEntityTableName, taskTableName, descriptionEntityTableName, taskTableName,
 	descriptionEntityTableName, taskTableName, descriptionEntityTableName, taskTableName,
-	descriptionEntityTableName, descriptionEntityTableName, core.ResourceType_TASK)
+	descriptionEntityTableName)
 
 var selectTaskAndDescriptionEntity = []string{
 	fmt.Sprintf("%s.*", taskTableName),
