@@ -22,5 +22,5 @@ type Task struct {
 	Type string `valid:"length(0|255)"`
 
 	// Read only and will not create this column in the task table
-	DescriptionEntity `gorm:"->"`
+	DescriptionEntity `gorm:"<-:false"`
 }

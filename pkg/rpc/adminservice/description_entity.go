@@ -18,13 +18,13 @@ func (m *AdminService) CreateDescriptionEntity(
 		return nil, status.Errorf(codes.InvalidArgument, "Incorrect request, nil requests not allowed")
 	}
 	var response *admin.DescriptionEntityCreateResponse
-	//var err error
-	//m.Metrics.descriptionEntityMetrics.create.Time(func() {
-	//	response, err = m.DescriptionEntityManager.CreateDescriptionEntity(ctx, *request)
-	//})
-	//if err != nil {
-	//	return nil, util.TransformAndRecordError(err, &m.Metrics.descriptionEntityMetrics.create)
-	//}
+	var err error
+	m.Metrics.descriptionEntityMetrics.create.Time(func() {
+		response, err = m.DescriptionEntityManager.CreateDescriptionEntity(ctx, *request)
+	})
+	if err != nil {
+		return nil, util.TransformAndRecordError(err, &m.Metrics.descriptionEntityMetrics.create)
+	}
 	m.Metrics.descriptionEntityMetrics.create.Success()
 	return response, nil
 }

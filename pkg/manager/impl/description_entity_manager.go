@@ -47,7 +47,7 @@ func (d *DescriptionEntityManager) CreateDescriptionEntity(ctx context.Context, 
 			"description entity with different structure already exists with id %v", request.Id)
 	}
 
-	descriptionModel, err := transformers.CreateDescriptionEntityModel(request, []byte(""))
+	descriptionModel, err := transformers.CreateDescriptionEntityModel(request, descriptionDigest)
 	if err != nil {
 		logger.Errorf(ctx,
 			"Failed to transform description model [%+v] with err: %v", request, err)

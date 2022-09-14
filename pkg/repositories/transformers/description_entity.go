@@ -19,7 +19,6 @@ func CreateDescriptionEntityModel(
 
 	// TODO: offload the LongDescription in to a separate file if value exceed 4KB, and update URI in LongDescription
 	var longDescriptionBytes []byte
-	var labelsBytes []byte
 	var sourceCode models.SourceCode
 	var err error
 
@@ -31,14 +30,13 @@ func CreateDescriptionEntityModel(
 		}
 	}
 
-	if request.DescriptionEntity.Labels != nil {
-		labelsBytes, err = proto.Marshal(request.DescriptionEntity.Labels)
+	if request.DescriptionEntity.LongDescription != nil {
+		longDescriptionBytes, err = proto.Marshal(request.DescriptionEntity.LongDescription)
 		if err != nil {
-			logger.Errorf(ctx, "Failed to marshal label with error: %v", err)
+			logger.Errorf(ctx, "Failed to marshal LongDescription with error: %v", err)
 			return models.DescriptionEntity{}, err
 		}
 	}
-
 	if request.DescriptionEntity.SourceCode != nil {
 		sourceCode = models.SourceCode{Link: request.DescriptionEntity.SourceCode.Link}
 	}
@@ -54,21 +52,14 @@ func CreateDescriptionEntityModel(
 		Digest:           digest,
 		ShortDescription: request.DescriptionEntity.ShortDescription,
 		LongDescription:  longDescriptionBytes,
-		Labels:           labelsBytes,
 		SourceCode:       sourceCode,
 	}, nil
 }
 
 func FromDescriptionEntityModel(descriptionEntityModel models.DescriptionEntity) (*admin.DescriptionEntity, error) {
 
-	labels := admin.Labels{}
-	err := proto.Unmarshal(descriptionEntityModel.Labels, &labels)
-	if err != nil {
-		return nil, errors.NewFlyteAdminError(codes.Internal, "failed to unmarshal Labels")
-	}
-
 	longDescription := admin.LongDescription{}
-	err = proto.Unmarshal(descriptionEntityModel.LongDescription, &longDescription)
+	err := proto.Unmarshal(descriptionEntityModel.LongDescription, &longDescription)
 	if err != nil {
 		return nil, errors.NewFlyteAdminError(codes.Internal, "failed to unmarshal longDescription")
 	}
@@ -76,7 +67,6 @@ func FromDescriptionEntityModel(descriptionEntityModel models.DescriptionEntity)
 	return &admin.DescriptionEntity{
 		ShortDescription: descriptionEntityModel.ShortDescription,
 		LongDescription:  &longDescription,
-		Labels:           &labels,
 		SourceCode:       &admin.SourceCode{Link: descriptionEntityModel.Link},
 	}, nil
 }

@@ -28,7 +28,5 @@ type DescriptionEntity struct {
 
 	LongDescription []byte
 
-	Labels []byte
-
 	SourceCode
 }
