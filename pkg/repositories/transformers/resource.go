@@ -112,6 +112,19 @@ func ProjectDomainAttributesToResourceModel(attributes admin.ProjectDomainAttrib
 	}, nil
 }
 
+func ProjectAttributesToResourceModel(attributes admin.ProjectDomainAttributes, resource admin.MatchableResource) (models.Resource, error) {
+	attributeBytes, err := proto.Marshal(attributes.MatchingAttributes)
+	if err != nil {
+		return models.Resource{}, err
+	}
+	return models.Resource{
+		Project:      attributes.Project,
+		ResourceType: resource.String(),
+		Priority:     models.ResourcePriorityProjectDomainLevel,
+		Attributes:   attributeBytes,
+	}, nil
+}
+
 func MergeUpdateProjectDomainAttributes(ctx context.Context, model models.Resource, resource admin.MatchableResource,
 	resourceID *repoInterfaces.ResourceID, attributes *admin.ProjectDomainAttributes) (models.Resource, error) {
 	switch resource {

@@ -5,7 +5,7 @@ import "time"
 type ResourcePriority int32
 
 const (
-	ResourcePriorityDomainLevel        ResourcePriority = 1
+	ResourcePriorityDomainLevel        ResourcePriority = 1 // why not used? what is domain level?
 	ResourcePriorityProjectDomainLevel ResourcePriority = 10
 	ResourcePriorityWorkflowLevel      ResourcePriority = 100
 	ResourcePriorityLaunchPlanLevel    ResourcePriority = 1000

@@ -81,3 +81,19 @@ func ValidateProjectAndDomain(
 	}
 	return nil
 }
+
+func ValidateProjectForUpdate(
+	ctx context.Context, db repositoryInterfaces.Repository, projectID string) error {
+
+	project, err := db.ProjectRepo().Get(ctx, projectID)
+	if err != nil {
+		return errors.NewFlyteAdminErrorf(codes.InvalidArgument,
+			"failed to validate that project [%s] is registered, err: [%+v]",
+			projectID, err)
+	}
+	if *project.State != int32(admin.Project_ACTIVE) {
+		return errors.NewFlyteAdminErrorf(codes.InvalidArgument,
+			"project [%s] is not active", projectID)
+	}
+	return nil
+}

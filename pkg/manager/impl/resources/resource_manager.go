@@ -148,6 +148,41 @@ func (m *ResourceManager) DeleteWorkflowAttributes(ctx context.Context,
 	return &admin.WorkflowAttributesDeleteResponse{}, nil
 }
 
+func (m *ResourceManager) UpdateProjectAttributes(ctx context.Context, request admin.ProjectAttributesUpdateRequest) (
+	*admin.ProjectAttributesUpdateResponse, error) {
+
+	var resource admin.MatchableResource
+	var err error
+
+	if resource, err = validation.ValidateProjectAttributesUpdateRequest(ctx, m.db, request); err != nil {
+		return nil, err
+	}
+	model, err := transformers.ProjectDomainAttributesToResourceModel(*request.Attributes, resource)
+	if err != nil {
+		return nil, err
+	}
+
+	if request.Attributes.GetMatchingAttributes().GetPluginOverrides() != nil {
+		return m.createOrMergeUpdateProjectDomainAttributes(ctx, request, model, admin.MatchableResource_PLUGIN_OVERRIDE)
+	}
+
+	err = m.db.ResourceRepo().CreateOrUpdate(ctx, model)
+	if err != nil {
+		return nil, err
+	}
+
+	return &admin.ProjectAttributesUpdateResponse{}, nil
+}
+func (m *ResourceManager) GetProjectAttributes(ctx context.Context, request admin.ProjectAttributesGetRequest) (
+	*admin.ProjectAttributesGetResponse, error) {
+	return nil, nil
+}
+
+func (m *ResourceManager) DeleteProjectAttributes(ctx context.Context, request admin.ProjectAttributesDeleteRequest) (
+	*admin.ProjectAttributesDeleteResponse, error) {
+	return nil, nil
+}
+
 func (m *ResourceManager) createOrMergeUpdateProjectDomainAttributes(
 	ctx context.Context, request admin.ProjectDomainAttributesUpdateRequest, model models.Resource,
 	resourceType admin.MatchableResource) (*admin.ProjectDomainAttributesUpdateResponse, error) {

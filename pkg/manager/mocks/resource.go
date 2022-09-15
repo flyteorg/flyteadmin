@@ -8,6 +8,13 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 )
 
+type UpdateProjectAttrsFunc func(ctx context.Context, request admin.ProjectAttributesUpdateRequest) (
+	*admin.ProjectAttributesUpdateResponse, error)
+type GetProjectFunc func(ctx context.Context, request admin.ProjectAttributesGetRequest) (
+	*admin.ProjectAttributesGetResponse, error)
+type DeleteProjectFunc func(ctx context.Context, request admin.ProjectAttributesDeleteRequest) (
+	*admin.ProjectAttributesDeleteResponse, error)
+
 type UpdateProjectDomainFunc func(ctx context.Context, request admin.ProjectDomainAttributesUpdateRequest) (
 	*admin.ProjectDomainAttributesUpdateResponse, error)
 type GetProjectDomainFunc func(ctx context.Context, request admin.ProjectDomainAttributesGetRequest) (
@@ -24,6 +31,9 @@ type MockResourceManager struct {
 	DeleteFunc              DeleteProjectDomainFunc
 	ListFunc                ListResourceFunc
 	GetResourceFunc         GetResourceFunc
+	updateProjectAttrsFunc  UpdateProjectAttrsFunc
+	getProjectFunc          GetProjectFunc
+	deleteProjectFunc       DeleteProjectFunc
 }
 
 func (m *MockResourceManager) GetResource(ctx context.Context, request interfaces.ResourceRequest) (*interfaces.ResourceResponse, error) {
@@ -75,6 +85,30 @@ func (m *MockResourceManager) DeleteProjectDomainAttributes(
 	*admin.ProjectDomainAttributesDeleteResponse, error) {
 	if m.DeleteFunc != nil {
 		return m.DeleteFunc(ctx, request)
+	}
+	return nil, nil
+}
+
+func (m *MockResourceManager) UpdateProjectAttributes(ctx context.Context, request admin.ProjectAttributesUpdateRequest) (
+	*admin.ProjectAttributesUpdateResponse, error) {
+	if m.updateProjectAttrsFunc != nil {
+		return m.updateProjectAttrsFunc(ctx, request)
+	}
+	return nil, nil
+}
+
+func (m *MockResourceManager) GetProjectAttributes(ctx context.Context, request admin.ProjectAttributesGetRequest) (
+	*admin.ProjectAttributesGetResponse, error) {
+	if m.updateProjectAttrsFunc != nil {
+		return m.getProjectFunc(ctx, request)
+	}
+	return nil, nil
+}
+
+func (m *MockResourceManager) DeleteProjectAttributes(ctx context.Context, request admin.ProjectAttributesDeleteRequest) (
+	*admin.ProjectAttributesDeleteResponse, error) {
+	if m.updateProjectAttrsFunc != nil {
+		return m.deleteProjectFunc(ctx, request)
 	}
 	return nil, nil
 }
