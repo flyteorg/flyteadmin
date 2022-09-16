@@ -163,7 +163,7 @@ func TestListTasks_Filters(t *testing.T) {
 	GlobalMock := mocket.Catcher.Reset()
 	GlobalMock.Logging = true
 	// Only match on queries that append the name filter
-	GlobalMock.NewMock().WithQuery(`SELECT tasks.*,description_entities.* FROM "tasks" LEFT JOIN description_entities ON tasks.project = description_entities.project AND tasks.domain = description_entities.domain AND tasks.name = description_entities.name AND tasks.version = description_entities.version WHERE tasks.project = $1 AND tasks.domain = $2 AND tasks.name = $3 AND tasks.version = $4 LIMIT 20`).WithReply(tasks[0:1])
+	GlobalMock.NewMock().WithQuery(`SELECT * FROM "tasks" WHERE project = $1 AND domain = $2 AND name = $3 AND version = $4 LIMIT 20`).WithReply(tasks[0:1])
 
 	collection, err := taskRepo.List(context.Background(), interfaces.ListResourceInput{
 		InlineFilters: []common.InlineFilter{

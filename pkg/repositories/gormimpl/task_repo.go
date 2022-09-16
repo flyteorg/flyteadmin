@@ -36,7 +36,7 @@ type TaskRepo struct {
 
 func (r *TaskRepo) Create(ctx context.Context, input models.Task) error {
 	timer := r.metrics.CreateDuration.Start()
-	tx := r.db.Omit("id", "short_description", "long_description", "resource_type", "link").Create(&input)
+	tx := r.db.Omit("id").Create(&input)
 	timer.Stop()
 	if tx.Error != nil {
 		return r.errorTransformer.ToFlyteAdminError(tx.Error)
@@ -55,7 +55,7 @@ func (r *TaskRepo) Get(ctx context.Context, input interfaces.Identifier) (models
 			Version: input.Version,
 		},
 	})
-	tx = tx.Joins(leftJoinTaskToDescriptionEntity).Select(selectTaskAndDescriptionEntity).Take(&task)
+	tx = tx.Take(&task)
 	timer.Stop()
 	if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
 		return models.Task{}, flyteAdminDbErrors.GetMissingEntityError(core.ResourceType_TASK.String(), &core.Identifier{
@@ -81,7 +81,7 @@ func (r *TaskRepo) List(
 	var tasks []models.Task
 	tx := r.db.Limit(input.Limit).Offset(input.Offset)
 	// Apply filters
-	tx, err := applyScopedFilters(tx, input.InlineFilters, input.MapFilters)
+	tx, err := applyFilters(tx, input.InlineFilters, input.MapFilters)
 	if err != nil {
 		return interfaces.TaskCollectionOutput{}, err
 	}
@@ -90,7 +90,7 @@ func (r *TaskRepo) List(
 		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
 	}
 	timer := r.metrics.ListDuration.Start()
-	tx.Joins(leftJoinTaskToDescriptionEntity).Select(selectTaskAndDescriptionEntity).Find(&tasks)
+	tx.Find(&tasks)
 	timer.Stop()
 	if tx.Error != nil {
 		return interfaces.TaskCollectionOutput{}, r.errorTransformer.ToFlyteAdminError(tx.Error)

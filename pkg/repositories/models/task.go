@@ -20,7 +20,4 @@ type Task struct {
 	Digest []byte
 	// Task type (also stored in the closure put promoted as a column for filtering).
 	Type string `valid:"length(0|255)"`
-
-	// Read only and will not create this column in the task table
-	DescriptionEntity `gorm:"<-:false"`
 }
