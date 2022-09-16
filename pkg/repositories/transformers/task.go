@@ -43,10 +43,6 @@ func FromTaskModel(taskModel models.Task) (admin.Task, error) {
 	if err != nil {
 		return admin.Task{}, errors.NewFlyteAdminError(codes.Internal, "failed to unmarshal closure")
 	}
-	descriptionEntity, err := FromDescriptionEntityModel(taskModel.DescriptionEntity)
-	if err != nil {
-		return admin.Task{}, errors.NewFlyteAdminError(codes.Internal, "failed to transform DescriptionEntity")
-	}
 
 	createdAt, err := ptypes.TimestampProto(taskModel.CreatedAt)
 	if err != nil {
@@ -61,9 +57,8 @@ func FromTaskModel(taskModel models.Task) (admin.Task, error) {
 		Version:      taskModel.Version,
 	}
 	return admin.Task{
-		Id:                &id,
-		Closure:           taskClosure,
-		DescriptionEntity: descriptionEntity,
+		Id:      &id,
+		Closure: taskClosure,
 	}, nil
 }
 
