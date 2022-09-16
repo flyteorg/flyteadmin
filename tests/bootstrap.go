@@ -93,6 +93,7 @@ func truncateAllTablesForTestingOnly() {
 	db.Exec(TruncateExecutions)
 	db.Exec(TruncateExecutionEvents)
 	db.Exec(TruncateNamedEntityMetadata)
+	db.Exec(TruncateDescriptionEntityMetadata)
 	db.Exec(TruncateNodeExecutions)
 	db.Exec(TruncateNodeExecutionEvents)
 	db.Exec(TruncateTaskExecutions)

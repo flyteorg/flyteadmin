@@ -3,8 +3,6 @@ package gormimpl
 import (
 	"context"
 	"errors"
-	"fmt"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/flyteorg/flytestdlib/promutils"
@@ -14,18 +12,6 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"gorm.io/gorm"
 )
-
-var leftJoinTaskToDescriptionEntity = fmt.Sprintf(
-	"LEFT JOIN %s ON %s.project = %s.project AND %s.domain = %s.domain AND %s.name = %s.name AND "+
-		"%s.version = %s.version",
-	descriptionEntityTableName, taskTableName, descriptionEntityTableName, taskTableName,
-	descriptionEntityTableName, taskTableName, descriptionEntityTableName, taskTableName,
-	descriptionEntityTableName)
-
-var selectTaskAndDescriptionEntity = []string{
-	fmt.Sprintf("%s.*", taskTableName),
-	fmt.Sprintf("%s.*", descriptionEntityTableName),
-}
 
 // Implementation of TaskRepoInterface.
 type TaskRepo struct {
