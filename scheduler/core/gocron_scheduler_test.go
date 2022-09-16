@@ -321,8 +321,6 @@ func TestScheduleJob(t *testing.T) {
 		Active:         &True,
 	}
 	t.Run("using schedule time", func(t *testing.T) {
-		var schedules []models.SchedulableEntity
-		schedules = append(schedules, scheduleFixed)
 		wg := &sync.WaitGroup{}
 		wg.Add(1)
 		timedFuncWithSchedule := func(jobCtx context.Context, schedule models.SchedulableEntity, scheduleTime time.Time) error {
@@ -344,8 +342,6 @@ func TestScheduleJob(t *testing.T) {
 	})
 
 	t.Run("without schedule time", func(t *testing.T) {
-		var schedules []models.SchedulableEntity
-		schedules = append(schedules, scheduleFixed)
 		wg := &sync.WaitGroup{}
 		wg.Add(1)
 		timedFuncWithSchedule := func(jobCtx context.Context, schedule models.SchedulableEntity, scheduleTime time.Time) error {
