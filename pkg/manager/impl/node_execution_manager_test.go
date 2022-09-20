@@ -541,6 +541,11 @@ func TestGetNodeExecution(t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
 	expectedClosure := admin.NodeExecutionClosure{
 		Phase: core.NodeExecution_SUCCEEDED,
+		TargetMetadata: &admin.NodeExecutionClosure_TaskNodeMetadata{
+			TaskNodeMetadata: &admin.TaskNodeMetadata{
+				CheckpointUri: "last checkpoint uri",
+			},
+		},
 	}
 	expectedMetadata := admin.NodeExecutionMetaData{
 		SpecNodeId: "spec_node_id",
