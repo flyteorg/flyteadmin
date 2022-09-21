@@ -38,7 +38,10 @@ The data in the Resource repo maps to the following rules:
 **	Example: Domain="staging" Project="Lyft" Workflow="" LaunchPlan= "l1" is invalid.
 */
 func validateCreateOrUpdateResourceInput(project, domain, workflow, launchPlan, resourceType string) bool {
-	if domain == "" || resourceType == "" {
+	if resourceType == "" {
+		return false
+	}
+	if domain == "" && project == "" {
 		return false
 	}
 	if project == "" && (workflow != "" || launchPlan != "") {
