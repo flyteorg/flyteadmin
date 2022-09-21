@@ -454,7 +454,7 @@ type WorkflowExecutionConfigInterface interface {
 
 // Merge into workflowExecConfig from spec and return true if any value has been changed
 func mergeIntoExecConfig(workflowExecConfig admin.WorkflowExecutionConfig, spec WorkflowExecutionConfigInterface) admin.WorkflowExecutionConfig {
-	// update this
+	// update this, katrina says no
 	if workflowExecConfig.GetMaxParallelism() == 0 && spec.GetMaxParallelism() > 0 {
 		workflowExecConfig.MaxParallelism = spec.GetMaxParallelism()
 	}

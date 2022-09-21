@@ -6,7 +6,7 @@ server:
   httpPort: 8088
   grpcPort: 8089
   grpcServerReflection: true
-  kube-config: /Users/ytong/.kube/config.yaml
+  kube-config: /Users/ytong/.kube/config
   security:
     secure: false
     useAuth: false
@@ -66,7 +66,7 @@ database:
     port: 5432
     username: postgres
     host: localhost
-    dbname: postgres
+    dbname: flyteadmin
     options: "sslmode=disable"
 scheduler:
   eventScheduler:

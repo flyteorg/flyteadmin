@@ -97,3 +97,17 @@ func ValidateProjectForUpdate(
 	}
 	return nil
 }
+
+// ValidateProjectExists doesn't check that the project is active. This is used to get Project level attributes, which you should
+// be able to do even for inactive projects.
+func ValidateProjectExists(
+	ctx context.Context, db repositoryInterfaces.Repository, projectID string) error {
+
+	_, err := db.ProjectRepo().Get(ctx, projectID)
+	if err != nil {
+		return errors.NewFlyteAdminErrorf(codes.InvalidArgument,
+			"failed to validate that project [%s] exists, err: [%+v]",
+			projectID, err)
+	}
+	return nil
+}
