@@ -154,7 +154,6 @@ func (m *AdminService) GetProjectAttributes(ctx context.Context, request *admin.
 	}
 
 	return response, nil
-
 }
 
 func (m *AdminService) DeleteProjectAttributes(ctx context.Context, request *admin.ProjectAttributesDeleteRequest) (

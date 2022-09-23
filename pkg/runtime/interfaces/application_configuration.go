@@ -158,6 +158,18 @@ func (a *ApplicationConfig) GetInterruptible() *wrappers.BoolValue {
 	}
 }
 
+// GetAsWorkflowExecutionConfig returns the WorkflowExecutionConfig as extracted from this object
+func (a *ApplicationConfig) GetAsWorkflowExecutionConfig() admin.WorkflowExecutionConfig {
+	return admin.WorkflowExecutionConfig{
+		MaxParallelism:      a.GetMaxParallelism(),
+		SecurityContext:     a.GetSecurityContext(),
+		RawOutputDataConfig: a.GetRawOutputDataConfig(),
+		Labels:              a.GetLabels(),
+		Annotations:         a.GetAnnotations(),
+		Interruptible:       a.GetInterruptible(),
+	}
+}
+
 // This section holds common config for AWS
 type AWSConfig struct {
 	Region string `json:"region"`
