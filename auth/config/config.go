@@ -111,14 +111,6 @@ var (
 						Scopes:        []string{"all", "offline", "access_token"},
 						Public:        true,
 					},
-					"flytepropeller": {
-						ID:            "flytepropeller",
-						Secret:        []byte(`$2a$06$pxs1AkG81Kvrhpml1QiLSOQaTk9eePrU/7Yab9y07h3x0TglbaoT6`), // = "foobar"
-						RedirectURIs:  []string{"http://localhost:3846/callback"},
-						ResponseTypes: []string{"token"},
-						GrantTypes:    []string{"refresh_token", "client_credentials"},
-						Scopes:        []string{"all", "offline", "access_token"},
-					},
 				},
 			},
 		},
