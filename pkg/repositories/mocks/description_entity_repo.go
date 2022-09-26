@@ -16,11 +16,11 @@ type MockDescriptionEntityRepo struct {
 	getFunction    GetDescriptionEntityFunc
 }
 
-func (r *MockDescriptionEntityRepo) Create(ctx context.Context, DescriptionEntity models.DescriptionEntity) error {
+func (r *MockDescriptionEntityRepo) Create(ctx context.Context, DescriptionEntity models.DescriptionEntity) (uint, error) {
 	if r.createFunction != nil {
-		return r.createFunction(DescriptionEntity)
+		return 1, r.createFunction(DescriptionEntity)
 	}
-	return nil
+	return 1, nil
 }
 
 func (r *MockDescriptionEntityRepo) Get(

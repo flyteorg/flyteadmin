@@ -400,6 +400,16 @@ var Migrations = []*gormigrate.Migration{
 			return tx.Migrator().DropTable("description_entities")
 		},
 	},
+	// Modify the tasks table, if necessary
+	{
+		ID: "2020-09-03-task-description_id",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.Exec("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS description_id integer;").Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Exec("ALTER TABLE tasks DROP COLUMN IF EXISTS description_id").Error
+		},
+	},
 }
 
 func alterTableColumnType(db *sql.DB, columnName, columnType string) error {

@@ -15,6 +15,7 @@ import (
 const Project = "project"
 const Domain = "domain"
 const Name = "name"
+const Version = "version"
 const Description = "description"
 const ResourceType = "resource_type"
 const State = "state"

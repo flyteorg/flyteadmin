@@ -47,7 +47,6 @@ func CreateDescriptionEntityModel(
 			Project:      request.Id.Project,
 			Domain:       request.Id.Domain,
 			Name:         request.Id.Name,
-			Version:      request.Id.Version,
 		},
 		Digest:           digest,
 		ShortDescription: request.DescriptionEntity.ShortDescription,

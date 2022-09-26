@@ -107,6 +107,7 @@ func (t *TaskManager) CreateTask(
 			"Failed to transform task model [%+v] with err: %v", finalizedRequest, err)
 		return nil, err
 	}
+
 	err = t.db.TaskRepo().Create(ctx, taskModel)
 	if err != nil {
 		logger.Debugf(ctx, "Failed to create task model with id [%+v] with err %v", request.Id, err)

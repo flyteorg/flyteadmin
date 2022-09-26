@@ -3,6 +3,7 @@ package impl
 import (
 	"bytes"
 	"context"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/util"
@@ -54,8 +55,23 @@ func (d *DescriptionEntityManager) CreateDescriptionEntity(ctx context.Context, 
 		return nil, err
 	}
 
-	if err := d.db.DescriptionEntityRepo().Create(ctx, descriptionModel); err != nil {
+	var descriptionID uint
+	if descriptionID, err = d.db.DescriptionEntityRepo().Create(ctx, descriptionModel); err != nil {
 		logger.Errorf(ctx, "Failed to create description model with id [%+v] with err %v", request.Id, err)
+		return nil, err
+	}
+	logger.Errorf(ctx, "iiiiinput.ID [%v]", descriptionID)
+	err = d.db.TaskRepo().UpdateDescriptionID(models.Task{
+		TaskKey: models.TaskKey{
+			Project: descriptionModel.Project,
+			Domain:  descriptionModel.Domain,
+			Name:    descriptionModel.Name,
+			Version: descriptionModel.Version,
+		},
+		DescriptionID: descriptionID,
+	})
+	if err != nil {
+		logger.Errorf(ctx, "Failed to update descriptionID in tasks table: %v", err)
 		return nil, err
 	}
 

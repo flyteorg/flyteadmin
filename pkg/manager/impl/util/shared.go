@@ -30,6 +30,7 @@ func GetExecutionName(request admin.ExecutionCreateRequest) string {
 func GetTask(ctx context.Context, repo repoInterfaces.Repository, identifier core.Identifier) (
 	*admin.Task, error) {
 	taskModel, err := GetTaskModel(ctx, repo, &identifier)
+	logger.Errorf(ctx, "taskModel.DescriptionID iiiiinput.ID [%v]", taskModel.DescriptionID)
 	if err != nil {
 		return nil, err
 	}
@@ -140,6 +141,7 @@ func GetNamedEntity(
 
 func GetDescriptionEntityModel(
 	ctx context.Context, repo repoInterfaces.Repository, identifier core.Identifier) (models.DescriptionEntity, error) {
+	// TODO: Get DescriptionID from task table, then retrieve description entity
 	descriptionEntityModel, err := (repo).DescriptionEntityRepo().Get(ctx, models.DescriptionEntityKey{
 		ResourceType: identifier.ResourceType,
 		Project:      identifier.Project,
@@ -234,7 +236,6 @@ func GetNodeExecutionModel(ctx context.Context, repo repoInterfaces.Repository, 
 
 func GetTaskModel(ctx context.Context, repo repoInterfaces.Repository, taskIdentifier *core.Identifier) (
 	*models.Task, error) {
-
 	taskModel, err := repo.TaskRepo().Get(ctx, repoInterfaces.Identifier{
 		Project: taskIdentifier.Project,
 		Domain:  taskIdentifier.Domain,

@@ -17,6 +17,8 @@ type TaskRepoInterface interface {
 	// Returns tasks with only the project, name, and domain filled in.
 	// A limit must be provided.
 	ListTaskIdentifiers(ctx context.Context, input ListResourceInput) (TaskCollectionOutput, error)
+
+	UpdateDescriptionID(input models.Task) error
 }
 
 // Response format for a query on tasks.
