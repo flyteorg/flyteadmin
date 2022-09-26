@@ -197,6 +197,9 @@ func TestCreateNodeEvent_Update(t *testing.T) {
 				StartedAt: occurredAtProto,
 				Phase:     core.NodeExecution_RUNNING,
 				UpdatedAt: occurredAtProto,
+				TargetMetadata: &admin.NodeExecutionClosure_TaskNodeMetadata{
+					TaskNodeMetadata: &admin.TaskNodeMetadata{},
+				},
 			}
 			expectedClosureBytes, _ := proto.Marshal(&expectedClosure)
 			actualClosure := admin.NodeExecutionClosure{}
