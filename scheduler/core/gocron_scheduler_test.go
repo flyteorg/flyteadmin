@@ -31,9 +31,6 @@ var scheduleFixedDeactivated models.SchedulableEntity
 var scheduleNonExistentDeActivated models.SchedulableEntity
 
 func setup(t *testing.T, subscope string, useUtcTz bool) *GoCronScheduler {
-	configuration := runtime.NewConfigurationProvider()
-	applicationConfiguration := configuration.ApplicationConfiguration().GetTopLevelConfig()
-	schedulerScope := promutils.NewScope(applicationConfiguration.MetricsScope).NewSubScope(subscope)
 	var schedules []models.SchedulableEntity
 	True := true
 	False := false
@@ -109,10 +106,10 @@ func setup(t *testing.T, subscope string, useUtcTz bool) *GoCronScheduler {
 	schedules = append(schedules, scheduleCronDeactivated)
 	schedules = append(schedules, scheduleFixedDeactivated)
 	schedules = append(schedules, scheduleNonExistentDeActivated)
-	return setupWithSchedules(t, subscope, schedules)
+	return setupWithSchedules(t, subscope, schedules, useUtcTz)
 }
 
-func setupWithSchedules(t *testing.T, subscope string, schedules []models.SchedulableEntity) *GoCronScheduler {
+func setupWithSchedules(t *testing.T, subscope string, schedules []models.SchedulableEntity, useUtcTz bool) *GoCronScheduler {
 	configuration := runtime.NewConfigurationProvider()
 	applicationConfiguration := configuration.ApplicationConfiguration().GetTopLevelConfig()
 	schedulerScope := promutils.NewScope(applicationConfiguration.MetricsScope).NewSubScope(subscope)
@@ -146,7 +143,7 @@ func TestUseUTCTz(t *testing.T) {
 func TestCalculateSnapshot(t *testing.T) {
 	t.Run("empty snapshot", func(t *testing.T) {
 		ctx := context.Background()
-		g := setup(t, "empty_snapshot", false)
+		g := setupWithSchedules(t, "empty_snapshot", nil, false)
 		snapshot := g.CalculateSnapshot(ctx)
 		assert.NotNil(t, snapshot)
 		assert.True(t, snapshot.IsEmpty())
@@ -154,12 +151,6 @@ func TestCalculateSnapshot(t *testing.T) {
 	t.Run("non empty snapshot", func(t *testing.T) {
 		ctx := context.Background()
 		g := setup(t, "non_empty_snapshot", false)
-		g.jobStore.Range(func(key, value interface{}) bool {
-			currTime := time.Now()
-			job := value.(*GoCronJob)
-			job.lastTime = &currTime
-			return true
-		})
 		snapshot := g.CalculateSnapshot(ctx)
 		assert.NotNil(t, snapshot)
 		assert.False(t, snapshot.IsEmpty())
