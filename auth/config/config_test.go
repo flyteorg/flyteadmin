@@ -52,5 +52,5 @@ func TestParseClientSecretConfig(t *testing.T) {
 
 func TestDefaultConfig(t *testing.T) {
 	assert.Equal(t, len(DefaultConfig.AppAuth.SelfAuthServer.StaticClients), 2)
-	assert.Equal(t, DefaultConfig.AppAuth.SelfAuthServer.StaticClients["flyte-cli"].Id, "flyte-cli")
+	assert.Equal(t, DefaultConfig.AppAuth.SelfAuthServer.StaticClients["flyte-cli"].ID, "flyte-cli")
 }
