@@ -49,3 +49,7 @@ func TestParseClientSecretConfig(t *testing.T) {
 	assert.NoError(t, accessor.UpdateConfig(context.Background()))
 	assert.Equal(t, "my-client", GetConfig().AppAuth.SelfAuthServer.StaticClients["my-client"].ID)
 }
+
+func TestDefaultConfig(t *testing.T) {
+	assert.Equal(t, len(DefaultConfig.AppAuth.SelfAuthServer.StaticClients), 2)
+}
