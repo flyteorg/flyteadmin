@@ -113,7 +113,7 @@ var (
 					},
 					"flytepropeller": {
 						ID:            "flytepropeller",
-						Secret:        []byte(`$2a$06$xAAvtAwLXh4TkB7KrkSyLuakqJjH6lOXyVd6iPQcuvuyYdeT7C.sC`), // Change this.
+						Secret:        []byte(`$2a$06$d6PQn2QAFU3cL5V8MDkeuuk63xubqUxNxjtfPw.Fc9MgV6vpmyOIy`), // Change this.
 						RedirectURIs:  []string{"http://localhost:3846/callback"},
 						ResponseTypes: []string{"token"},
 						GrantTypes:    []string{"refresh_token", "client_credentials"},

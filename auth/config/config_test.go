@@ -53,3 +53,9 @@ func TestDefaultConfig(t *testing.T) {
 	assert.Equal(t, len(DefaultConfig.AppAuth.SelfAuthServer.StaticClients), 3)
 	assert.Equal(t, DefaultConfig.AppAuth.SelfAuthServer.StaticClients["flyte-cli"].ID, "flyte-cli")
 }
+
+func TestCompare(t *testing.T) {
+	hasher := &fosite.BCrypt{WorkFactor: 6}
+	err := hasher.Compare(context.Background(), DefaultConfig.AppAuth.SelfAuthServer.StaticClients["flytepropeller"].Secret, []byte("foobar"))
+	assert.Error(t, err)
+}
