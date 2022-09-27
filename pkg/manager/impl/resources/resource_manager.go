@@ -237,24 +237,11 @@ func (m *ResourceManager) GetProjectAttributes(ctx context.Context, request admi
 	*admin.ProjectAttributesGetResponse, error) {
 
 	getResponse, err := m.GetProjectAttributesBase(ctx, request)
+	configLevelDefaults := m.config.GetTopLevelConfig().GetAsWorkflowExecutionConfig()
 	if err != nil {
-		logger.Warning(ctx, "Err != nil =========")
 		ec, ok := err.(errors.FlyteAdminError)
 		if ok && ec.Code() == codes.NotFound {
 			// Proceed with the default CreateOrUpdate call since there's no existing model to update.
-			logger.Warning(ctx, "Not found error -------------------------------------")
-			configLevelDefaults := m.config.GetTopLevelConfig().GetAsWorkflowExecutionConfig()
-			x := &admin.ProjectAttributesGetResponse{
-				Attributes: &admin.ProjectAttributes{
-					Project: request.Project,
-					MatchingAttributes: &admin.MatchingAttributes{
-						Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
-							WorkflowExecutionConfig: &configLevelDefaults,
-						},
-					},
-				},
-			}
-			logger.Warningf(ctx, "Result: ========= %s", x)
 			return &admin.ProjectAttributesGetResponse{
 				Attributes: &admin.ProjectAttributes{
 					Project: request.Project,
@@ -269,7 +256,22 @@ func (m *ResourceManager) GetProjectAttributes(ctx context.Context, request admi
 		return nil, err
 
 	}
-	//m.mergeWorkflowExecutionConfigs()
+	// If found, then merge result with the default values for the platform
+	responseAttributes := getResponse.Attributes.GetMatchingAttributes().GetWorkflowExecutionConfig()
+	if responseAttributes != nil {
+		logger.Debugf(ctx, "Merging response %s with defaults %s", responseAttributes, configLevelDefaults)
+		newResponseAttributes := m.mergeWorkflowExecutionConfigs(*responseAttributes, configLevelDefaults)
+		return &admin.ProjectAttributesGetResponse{
+			Attributes: &admin.ProjectAttributes{
+				Project: request.Project,
+				MatchingAttributes: &admin.MatchingAttributes{
+					Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
+						WorkflowExecutionConfig: &newResponseAttributes,
+					},
+				},
+			},
+		}, nil
+	}
 
 	return getResponse, nil
 }
