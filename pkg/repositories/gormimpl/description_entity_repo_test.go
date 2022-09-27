@@ -2,12 +2,13 @@ package gormimpl
 
 import (
 	"context"
+	"testing"
+
 	mocket "github.com/Selvatico/go-mocket"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	mockScope "github.com/flyteorg/flytestdlib/promutils"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 const shortDescription = "hello"
@@ -33,7 +34,7 @@ func TestGetDescriptionEntity(t *testing.T) {
 	GlobalMock.Logging = true
 	// Only match on queries that append expected filters
 	GlobalMock.NewMock().WithQuery(
-		`SELECT "description_entities"."resource_type","description_entities"."project","description_entities"."domain","description_entities"."name","description_entities"."version","description_entities"."id","description_entities"."created_at","description_entities"."updated_at","description_entities"."deleted_at","description_entities"."digest","description_entities"."short_description","description_entities"."long_description","description_entities"."link" FROM "description_entities" INNER JOIN tasks ON description_entities.project = tasks.project AND description_entities.domain = tasks.domain AND description_entities.name = tasks.name AND description_entities.id = tasks.description_id WHERE (workflows.project = $1) AND (workflows.domain = $2) AND (workflows.name = $3) AND (workflows.version = $4) LIMIT 1`).
+		`SELECT "description_entities"."resource_type","description_entities"."project","description_entities"."domain","description_entities"."name","description_entities"."version","description_entities"."id","description_entities"."created_at","description_entities"."updated_at","description_entities"."deleted_at","description_entities"."digest","description_entities"."short_description","description_entities"."long_description","description_entities"."link" FROM "description_entities" INNER JOIN tasks ON description_entities.project = tasks.project AND description_entities.domain = tasks.domain AND description_entities.id = tasks.description_id WHERE (workflows.project = $1) AND (workflows.domain = $2) AND (workflows.name = $3) AND (workflows.version = $4) LIMIT 1`).
 		WithReply(descriptionEntities)
 	output, err = descriptionEntityRepo.Get(context.Background(), models.DescriptionEntityKey{
 		ResourceType: resourceType,

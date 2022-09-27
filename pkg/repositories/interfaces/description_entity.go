@@ -3,9 +3,8 @@ package interfaces
 import (
 	"context"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 )
 
 type GetDescriptionEntityInput struct {
@@ -14,14 +13,6 @@ type GetDescriptionEntityInput struct {
 	Domain       string
 	Name         string
 	Version      string
-}
-
-// Parameters for querying multiple resources.
-type ListDescriptionEntityInput struct {
-	ListResourceInput
-	Project      string
-	Domain       string
-	ResourceType core.ResourceType
 }
 
 type DescriptionEntityCollectionOutput struct {
@@ -34,5 +25,6 @@ type DescriptionEntityRepoInterface interface {
 	Create(ctx context.Context, input models.DescriptionEntity) (uint, error)
 	// Get Returns a matching DescriptionEntity if it exists.
 	Get(ctx context.Context, input models.DescriptionEntityKey) (models.DescriptionEntity, error)
-	// TODO: List DescriptionEntity
+	// List Returns matching DescriptionEntities.
+	List(ctx context.Context, input ListResourceInput) (DescriptionEntityCollectionOutput, error)
 }

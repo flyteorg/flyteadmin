@@ -3,6 +3,7 @@ package gormimpl
 import (
 	"context"
 	"fmt"
+
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	adminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -66,15 +67,55 @@ func (r *DescriptionEntityRepo) Get(ctx context.Context, input models.Descriptio
 	return descriptionEntity, nil
 }
 
-var leftJoinDescriptionToTaskName = fmt.Sprintf(
+func (r *DescriptionEntityRepo) List(ctx context.Context, input interfaces.ListResourceInput) (
+	interfaces.DescriptionEntityCollectionOutput, error) {
+
+	if input.Limit == 0 {
+		return interfaces.DescriptionEntityCollectionOutput{}, flyteAdminDbErrors.GetInvalidInputError(limit)
+	}
+
+	var descriptionEntities []models.DescriptionEntity
+	tx := r.db.Limit(input.Limit).Offset(input.Offset)
+	// Apply filters
+	tx, err := applyFilters(tx, input.InlineFilters, input.MapFilters)
+	if err != nil {
+		return interfaces.DescriptionEntityCollectionOutput{}, err
+	}
+	// Apply sort ordering.
+	if input.SortParameter != nil {
+		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
+	}
+	timer := r.metrics.ListDuration.Start()
+	tx.Group(identifierGroupBy).Scan(&descriptionEntities)
+	timer.Stop()
+	if tx.Error != nil {
+		return interfaces.DescriptionEntityCollectionOutput{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
+	}
+
+	return interfaces.DescriptionEntityCollectionOutput{
+		Entities: descriptionEntities,
+	}, nil
+}
+
+var innerJoinDescriptionToTaskName = fmt.Sprintf(
 	"INNER JOIN %s ON %s.project = %s.project AND %s.domain = %s.domain AND %s.id = %s.description_id", taskTableName, descriptionEntityTableName, taskTableName,
 	descriptionEntityTableName, taskTableName,
 	descriptionEntityTableName, taskTableName)
 
+var innerJoinDescriptionToWorkflowName = fmt.Sprintf(
+	"INNER JOIN %s ON %s.project = %s.project AND %s.domain = %s.domain AND %s.id = %s.description_id", workflowTableName, descriptionEntityTableName, workflowTableName,
+	descriptionEntityTableName, workflowTableName,
+	descriptionEntityTableName, workflowTableName)
+
+var innerJoinDescriptionToLaunchPlanName = fmt.Sprintf(
+	"INNER JOIN %s ON %s.project = %s.project AND %s.domain = %s.domain AND %s.id = %s.description_id", launchPlanTableName, descriptionEntityTableName, launchPlanTableName,
+	descriptionEntityTableName, launchPlanTableName,
+	descriptionEntityTableName, launchPlanTableName)
+
 var resourceTypeToDescriptionJoin = map[core.ResourceType]string{
-	core.ResourceType_LAUNCH_PLAN: leftJoinDescriptionToTaskName,
-	core.ResourceType_WORKFLOW:    leftJoinDescriptionToTaskName,
-	core.ResourceType_TASK:        leftJoinDescriptionToTaskName,
+	core.ResourceType_LAUNCH_PLAN: innerJoinDescriptionToLaunchPlanName,
+	core.ResourceType_WORKFLOW:    innerJoinDescriptionToWorkflowName,
+	core.ResourceType_TASK:        innerJoinDescriptionToTaskName,
 }
 
 func getDescriptionEntityFilters(resourceType core.ResourceType, project string, domain string, name string, version string) ([]common.InlineFilter, error) {
@@ -103,71 +144,6 @@ func getDescriptionEntityFilters(resourceType core.ResourceType, project string,
 	filters = append(filters, versionFilter)
 
 	return filters, nil
-}
-
-func getDescriptionSubQueryJoin(db *gorm.DB, tableName string, input interfaces.ListDescriptionEntityInput) *gorm.DB {
-	tx := db.Select([]string{Project, Domain, Name}).
-		Table(tableName).
-		Where(map[string]interface{}{Project: input.Project, Domain: input.Domain}).
-		Limit(input.Limit).
-		Offset(input.Offset).
-		Group(identifierGroupBy)
-
-	// Apply consistent sort ordering.
-	if input.SortParameter != nil {
-		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
-	}
-
-	return db.Joins(fmt.Sprintf(joinString, input.ResourceType), tx)
-}
-
-func (r *DescriptionEntityRepo) List(ctx context.Context, input interfaces.ListDescriptionEntityInput) (
-	interfaces.DescriptionEntityCollectionOutput, error) {
-
-	// Validate input. Filters aren't required because they're implicit in the Project & Domain specified by the input.
-	if len(input.Project) == 0 {
-		return interfaces.DescriptionEntityCollectionOutput{}, flyteAdminDbErrors.GetInvalidInputError(Project)
-	}
-	if len(input.Domain) == 0 {
-		return interfaces.DescriptionEntityCollectionOutput{}, flyteAdminDbErrors.GetInvalidInputError(Domain)
-	}
-	if input.Limit == 0 {
-		return interfaces.DescriptionEntityCollectionOutput{}, flyteAdminDbErrors.GetInvalidInputError(limit)
-	}
-
-	tableName, tableFound := resourceTypeToTableName[input.ResourceType]
-	if !tableFound {
-		return interfaces.DescriptionEntityCollectionOutput{}, adminErrors.NewFlyteAdminErrorf(codes.InvalidArgument,
-			"Cannot list entity names for resource type: %v", input.ResourceType)
-	}
-
-	tx := getDescriptionSubQueryJoin(r.db, tableName, input)
-
-	// Apply filters
-	tx, err := applyScopedFilters(tx, input.InlineFilters, input.MapFilters)
-	if err != nil {
-		return interfaces.DescriptionEntityCollectionOutput{}, err
-	}
-	// Apply sort ordering.
-	if input.SortParameter != nil {
-		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
-	}
-
-	// Scan the results into a list of named entities
-	var entities []models.DescriptionEntity
-	timer := r.metrics.ListDuration.Start()
-
-	tx.Select(getSelectForNamedEntity(innerJoinTableAlias, input.ResourceType)).Table(namedEntityMetadataTableName).Group(getGroupByForNamedEntity).Scan(&entities)
-
-	timer.Stop()
-
-	if tx.Error != nil {
-		return interfaces.DescriptionEntityCollectionOutput{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
-	}
-
-	return interfaces.DescriptionEntityCollectionOutput{
-		Entities: entities,
-	}, nil
 }
 
 // NewDescriptionEntityRepo Returns an instance of DescriptionRepoInterface
