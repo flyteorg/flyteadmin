@@ -12,7 +12,6 @@ import (
 	"github.com/flyteorg/flytestdlib/config/viper"
 
 	"github.com/ghodss/yaml"
-
 	"github.com/stretchr/testify/assert"
 
 	"github.com/ory/fosite"
