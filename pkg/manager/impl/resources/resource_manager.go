@@ -244,11 +244,24 @@ func (m *ResourceManager) GetProjectAttributes(ctx context.Context, request admi
 			// Proceed with the default CreateOrUpdate call since there's no existing model to update.
 			logger.Warning(ctx, "Not found error -------------------------------------")
 			configLevelDefaults := m.config.GetTopLevelConfig().GetAsWorkflowExecutionConfig()
+			x := &admin.ProjectAttributesGetResponse{
+				Attributes: &admin.ProjectAttributes{
+					Project: request.Project,
+					MatchingAttributes: &admin.MatchingAttributes{
+						Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
+							WorkflowExecutionConfig: &configLevelDefaults,
+						},
+					},
+				},
+			}
+			logger.Warningf(ctx, "Result: ========= %s", x)
 			return &admin.ProjectAttributesGetResponse{
 				Attributes: &admin.ProjectAttributes{
 					Project: request.Project,
 					MatchingAttributes: &admin.MatchingAttributes{
-						Target: &configLevelDefaults,
+						Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
+							WorkflowExecutionConfig: &configLevelDefaults,
+						},
 					},
 				},
 			}, nil

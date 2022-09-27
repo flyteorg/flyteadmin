@@ -184,7 +184,7 @@ func FromResourceModelToMatchableAttributes(model models.Resource) (admin.Matcha
 	}, nil
 }
 
-func `FromResourceModelsToMatchableAttributes(models []models.Resource) (
+func FromResourceModelsToMatchableAttributes(models []models.Resource) (
 	[]*admin.MatchableAttributesConfiguration, error) {
 	configs := make([]*admin.MatchableAttributesConfiguration, len(models))
 	for idx, model := range models {
