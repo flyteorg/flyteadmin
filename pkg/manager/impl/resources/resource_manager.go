@@ -2,6 +2,7 @@ package resources
 
 import (
 	"context"
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/util"
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 
@@ -16,7 +17,6 @@ import (
 	repo_interface "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
 
-	executionManager "github.com/flyteorg/flyteadmin/pkg/manager/impl"
 	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 
@@ -242,7 +242,7 @@ func (m *ResourceManager) GetProjectAttributes(ctx context.Context, request admi
 	if err != nil {
 		ec, ok := err.(errors.FlyteAdminError)
 		if ok && ec.Code() == codes.NotFound {
-			// TODO: Will likely be removed after overarching settins project is done.
+			// TODO: Will likely be removed after overarching settings project is done
 			// Proceed with the default CreateOrUpdate call since there's no existing model to update.
 			return &admin.ProjectAttributesGetResponse{
 				Attributes: &admin.ProjectAttributes{
@@ -263,8 +263,9 @@ func (m *ResourceManager) GetProjectAttributes(ctx context.Context, request admi
 	//   default configuration into account.
 	responseAttributes := getResponse.Attributes.GetMatchingAttributes().GetWorkflowExecutionConfig()
 	if responseAttributes != nil {
-		logger.Debugf(ctx, "Merging response %s with defaults %s", responseAttributes, configLevelDefaults)
-		executionManager.MergeIntoExecConfig(*responseAttributes, &configLevelDefaults)
+		logger.Warningf(ctx, "Merging response %s with defaults %s", responseAttributes, configLevelDefaults)
+		tmp := util.MergeIntoExecConfig(*responseAttributes, &configLevelDefaults)
+		responseAttributes = &tmp
 		//newResponseAttributes := m.mergeWorkflowExecutionConfigs(*responseAttributes, configLevelDefaults)
 		return &admin.ProjectAttributesGetResponse{
 			Attributes: &admin.ProjectAttributes{
