@@ -16,6 +16,7 @@ import (
 	repo_interface "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
 
+	executionManager "github.com/flyteorg/flyteadmin/pkg/manager/impl"
 	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 
@@ -263,13 +264,14 @@ func (m *ResourceManager) GetProjectAttributes(ctx context.Context, request admi
 	responseAttributes := getResponse.Attributes.GetMatchingAttributes().GetWorkflowExecutionConfig()
 	if responseAttributes != nil {
 		logger.Debugf(ctx, "Merging response %s with defaults %s", responseAttributes, configLevelDefaults)
-		newResponseAttributes := m.mergeWorkflowExecutionConfigs(*responseAttributes, configLevelDefaults)
+		executionManager.MergeIntoExecConfig(*responseAttributes, &configLevelDefaults)
+		//newResponseAttributes := m.mergeWorkflowExecutionConfigs(*responseAttributes, configLevelDefaults)
 		return &admin.ProjectAttributesGetResponse{
 			Attributes: &admin.ProjectAttributes{
 				Project: request.Project,
 				MatchingAttributes: &admin.MatchingAttributes{
 					Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
-						WorkflowExecutionConfig: &newResponseAttributes,
+						WorkflowExecutionConfig: responseAttributes,
 					},
 				},
 			},

@@ -452,12 +452,15 @@ type WorkflowExecutionConfigInterface interface {
 	GetInterruptible() *wrappers.BoolValue
 }
 
-// Merge into workflowExecConfig from spec and return true if any value has been changed
-func mergeIntoExecConfig(workflowExecConfig admin.WorkflowExecutionConfig, spec WorkflowExecutionConfigInterface) admin.WorkflowExecutionConfig {
+// MergeIntoExecConfig into workflowExecConfig from spec and return true if any value has been changed
+// After settings project is done, can make this module private again.
+func MergeIntoExecConfig(workflowExecConfig admin.WorkflowExecutionConfig, spec WorkflowExecutionConfigInterface) admin.WorkflowExecutionConfig {
 	if workflowExecConfig.GetMaxParallelism() == 0 && spec.GetMaxParallelism() > 0 {
 		workflowExecConfig.MaxParallelism = spec.GetMaxParallelism()
 	}
 
+	// Do a deep check on the spec in case the security context is set but to an empty object (which may be
+	// the case when coming from the UI)
 	if workflowExecConfig.GetSecurityContext() == nil && spec.GetSecurityContext() != nil {
 		if spec.GetSecurityContext().GetRunAs() != nil &&
 			(len(spec.GetSecurityContext().GetRunAs().GetK8SServiceAccount()) > 0 ||
@@ -491,31 +494,34 @@ func mergeIntoExecConfig(workflowExecConfig admin.WorkflowExecutionConfig, spec 
 // Defaults to overridable execution values set in the execution create request, then looks at the launch plan values
 // (if any) before defaulting to values set in the matchable resource db and further if matchable resources don't
 // exist then defaults to one set in application configuration
+// praful 3 - merge happens here
 func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admin.ExecutionCreateRequest,
 	launchPlan *admin.LaunchPlan) (*admin.WorkflowExecutionConfig, error) {
 
 	workflowExecConfig := admin.WorkflowExecutionConfig{}
 	// merge the request spec into workflowExecConfig
-	workflowExecConfig = mergeIntoExecConfig(workflowExecConfig, request.Spec)
+	workflowExecConfig = MergeIntoExecConfig(workflowExecConfig, request.Spec)
 
 	var workflowName string
 	if launchPlan != nil && launchPlan.Spec != nil {
 		// merge the launch plan spec into workflowExecConfig
-		workflowExecConfig = mergeIntoExecConfig(workflowExecConfig, launchPlan.Spec)
+		workflowExecConfig = MergeIntoExecConfig(workflowExecConfig, launchPlan.Spec)
 		if launchPlan.Spec.WorkflowId != nil {
 			workflowName = launchPlan.Spec.WorkflowId.Name
 		}
 	}
 
+	// This will get the most specific thing
 	matchableResource, err := util.GetMatchableResource(ctx, m.resourceManager,
 		admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG, request.Project, request.Domain, workflowName)
 	if err != nil {
 		return nil, err
 	}
+	// But also need to get the
 
 	if matchableResource != nil && matchableResource.Attributes.GetWorkflowExecutionConfig() != nil {
 		// merge the matchable resource workflow execution config into workflowExecConfig
-		workflowExecConfig = mergeIntoExecConfig(workflowExecConfig,
+		workflowExecConfig = MergeIntoExecConfig(workflowExecConfig,
 			matchableResource.Attributes.GetWorkflowExecutionConfig())
 	}
 
@@ -531,7 +537,7 @@ func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admi
 		workflowExecConfig.SecurityContext = resolvedSecurityCtx
 	}
 	//  merge the application config into workflowExecConfig. If even the deprecated fields are not set
-	workflowExecConfig = mergeIntoExecConfig(workflowExecConfig, m.config.ApplicationConfiguration().GetTopLevelConfig())
+	workflowExecConfig = MergeIntoExecConfig(workflowExecConfig, m.config.ApplicationConfiguration().GetTopLevelConfig())
 	// Explicitly set the security context if its nil since downstream we expect this settings to be available
 	if workflowExecConfig.GetSecurityContext() == nil {
 		workflowExecConfig.SecurityContext = &core.SecurityContext{
@@ -567,6 +573,7 @@ func (m *ExecutionManager) getClusterAssignment(ctx context.Context, request *ad
 	return &admin.ClusterAssignment{}, nil
 }
 
+// praful 2
 func (m *ExecutionManager) launchSingleTaskExecution(
 	ctx context.Context, request admin.ExecutionCreateRequest, requestedAt time.Time) (
 	context.Context, *models.Execution, error) {
@@ -810,6 +817,7 @@ func resolveSecurityCtx(ctx context.Context, executionConfigSecurityCtx *core.Se
 	}
 }
 
+// praful 1
 func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	ctx context.Context, request admin.ExecutionCreateRequest, requestedAt time.Time) (
 	context.Context, *models.Execution, error) {
