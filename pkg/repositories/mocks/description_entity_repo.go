@@ -4,20 +4,16 @@ package mocks
 import (
 	"context"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 )
 
 type CreateDescriptionEntityFunc func(input models.DescriptionEntity) error
 type GetDescriptionEntityFunc func(input models.DescriptionEntityKey) (models.DescriptionEntity, error)
-type ListDescriptionEntityFunc func(interfaces.ListResourceInput) (interfaces.DescriptionEntityCollectionOutput, error)
 
 type MockDescriptionEntityRepo struct {
 	createFunction CreateDescriptionEntityFunc
 	getFunction    GetDescriptionEntityFunc
-	listFunction   ListDescriptionEntityFunc
 }
 
 func (r *MockDescriptionEntityRepo) Create(ctx context.Context, DescriptionEntity models.DescriptionEntity) (uint, error) {
@@ -44,32 +40,12 @@ func (r *MockDescriptionEntityRepo) Get(
 	}, nil
 }
 
-func (r *MockDescriptionEntityRepo) List(ctx context.Context, input interfaces.ListResourceInput) (interfaces.DescriptionEntityCollectionOutput, error) {
-	if r.listFunction != nil {
-		return r.listFunction(input)
-	}
-	return interfaces.DescriptionEntityCollectionOutput{Entities: []models.DescriptionEntity{{
-		DescriptionEntityKey: models.DescriptionEntityKey{
-			ResourceType: core.ResourceType_TASK,
-			Project:      "project",
-			Domain:       "domain",
-			Name:         "name",
-			Version:      "xyz",
-		},
-		ShortDescription: "hello world",
-	}}}, nil
-}
-
 func (r *MockDescriptionEntityRepo) SetCreateCallback(createFunction CreateDescriptionEntityFunc) {
 	r.createFunction = createFunction
 }
 
 func (r *MockDescriptionEntityRepo) SetGetCallback(getFunction GetDescriptionEntityFunc) {
 	r.getFunction = getFunction
-}
-
-func (r *MockDescriptionEntityRepo) SetListCallback(listFunction ListDescriptionEntityFunc) {
-	r.listFunction = listFunction
 }
 
 func NewMockDescriptionEntityRepo() interfaces.DescriptionEntityRepoInterface {

@@ -25,6 +25,4 @@ type DescriptionEntityRepoInterface interface {
 	Create(ctx context.Context, input models.DescriptionEntity) (uint, error)
 	// Get Returns a matching DescriptionEntity if it exists.
 	Get(ctx context.Context, input models.DescriptionEntityKey) (models.DescriptionEntity, error)
-	// List Returns matching DescriptionEntities.
-	List(ctx context.Context, input ListResourceInput) (DescriptionEntityCollectionOutput, error)
 }

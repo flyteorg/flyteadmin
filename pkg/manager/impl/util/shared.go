@@ -30,7 +30,6 @@ func GetExecutionName(request admin.ExecutionCreateRequest) string {
 func GetTask(ctx context.Context, repo repoInterfaces.Repository, identifier core.Identifier) (
 	*admin.Task, error) {
 	taskModel, err := GetTaskModel(ctx, repo, &identifier)
-	logger.Errorf(ctx, "taskModel.DescriptionID iiiiinput.ID [%v]", taskModel.DescriptionID)
 	if err != nil {
 		return nil, err
 	}

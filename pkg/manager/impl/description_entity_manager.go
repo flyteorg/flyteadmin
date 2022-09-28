@@ -61,7 +61,6 @@ func (d *DescriptionEntityManager) CreateDescriptionEntity(ctx context.Context, 
 		logger.Errorf(ctx, "Failed to create description model with id [%+v] with err %v", request.Id, err)
 		return nil, err
 	}
-	logger.Errorf(ctx, "iiiiinput.ID [%v]", descriptionID)
 	err = d.db.TaskRepo().UpdateDescriptionID(models.Task{
 		TaskKey: models.TaskKey{
 			Project: descriptionModel.Project,
