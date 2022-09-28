@@ -241,6 +241,7 @@ func (m *ResourceManager) GetProjectAttributes(ctx context.Context, request admi
 	if err != nil {
 		ec, ok := err.(errors.FlyteAdminError)
 		if ok && ec.Code() == codes.NotFound {
+			// TODO: Will likely be removed after overarching settins project is done.
 			// Proceed with the default CreateOrUpdate call since there's no existing model to update.
 			return &admin.ProjectAttributesGetResponse{
 				Attributes: &admin.ProjectAttributes{
