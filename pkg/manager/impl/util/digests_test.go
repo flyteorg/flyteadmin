@@ -179,6 +179,10 @@ func TestGetDescriptionEntityDigest(t *testing.T) {
 	descriptionEntityDigest, err := GetDescriptionEntityDigest(context.Background(), descriptionEntity)
 	assert.Equal(t, compiledDescriptionEntityDigest, descriptionEntityDigest)
 	assert.Nil(t, err)
+
+	descriptionEntityDigest, err = GetDescriptionEntityDigest(context.Background(), nil)
+	assert.Nil(t, descriptionEntityDigest)
+	assert.Error(t, err)
 }
 
 func TestGetDescriptionEntityDigest_Unequal(t *testing.T) {

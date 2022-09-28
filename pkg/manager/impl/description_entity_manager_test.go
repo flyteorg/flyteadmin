@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/util"
+
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"google.golang.org/grpc/codes"
@@ -48,32 +50,79 @@ func getMockConfigForDETest() runtimeInterfaces.Configuration {
 func TestDescriptionEntityManager_Create(t *testing.T) {
 	repository := getMockRepositoryForDETest()
 	manager := NewDescriptionEntityManager(repository, getMockConfigForDETest(), mockScope.NewTestScope())
-
 	shortDescription := "hello world"
-	getFunction := func(input models.DescriptionEntityKey) (models.DescriptionEntity, error) {
-		return models.DescriptionEntity{}, errors.NewFlyteAdminErrorf(codes.NotFound, "NotFound")
-	}
-	repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetGetCallback(getFunction)
 	descriptionEntity := admin.DescriptionEntity{
 		ShortDescription: shortDescription,
 	}
-	response, err := manager.CreateDescriptionEntity(context.Background(), admin.DescriptionEntityCreateRequest{
-		DescriptionEntity: &descriptionEntity,
-		Id:                &descriptionEntityIdentifier,
-	})
-	assert.NoError(t, err)
-	assert.NotNil(t, response)
 
-	getFunction = func(input models.DescriptionEntityKey) (models.DescriptionEntity, error) {
-		return models.DescriptionEntity{}, nil
-	}
-	repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetGetCallback(getFunction)
-	response, err = manager.CreateDescriptionEntity(context.Background(), admin.DescriptionEntityCreateRequest{
-		DescriptionEntity: &descriptionEntity,
-		Id:                &descriptionEntityIdentifier,
+	t.Run("failed to compute description entity digest", func(t *testing.T) {
+		response, err := manager.CreateDescriptionEntity(context.Background(), admin.DescriptionEntityCreateRequest{
+			Id: &descriptionEntityIdentifier,
+		})
+		assert.Error(t, err)
+		assert.Nil(t, response)
 	})
-	assert.Error(t, err)
-	assert.Nil(t, response)
+
+	t.Run("entity not found", func(t *testing.T) {
+		getFunction := func(input models.DescriptionEntityKey) (models.DescriptionEntity, error) {
+			return models.DescriptionEntity{}, errors.NewFlyteAdminErrorf(codes.NotFound, "NotFound")
+		}
+		repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetGetCallback(getFunction)
+
+		response, err := manager.CreateDescriptionEntity(context.Background(), admin.DescriptionEntityCreateRequest{
+			DescriptionEntity: &descriptionEntity,
+			Id:                &descriptionEntityIdentifier,
+		})
+		assert.NoError(t, err)
+		assert.NotNil(t, response)
+	})
+
+	t.Run("entity exists and identical digest", func(t *testing.T) {
+		digest, err := util.GetDescriptionEntityDigest(context.Background(), &descriptionEntity)
+		assert.NoError(t, err)
+
+		getFunction := func(input models.DescriptionEntityKey) (models.DescriptionEntity, error) {
+			return models.DescriptionEntity{Digest: digest}, nil
+		}
+		repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetGetCallback(getFunction)
+		response, err := manager.CreateDescriptionEntity(context.Background(), admin.DescriptionEntityCreateRequest{
+			DescriptionEntity: &descriptionEntity,
+			Id:                &descriptionEntityIdentifier,
+		})
+		assert.Error(t, err)
+		assert.Nil(t, response)
+	})
+
+	t.Run("entity exists and non-identical digest", func(t *testing.T) {
+		getFunction := func(input models.DescriptionEntityKey) (models.DescriptionEntity, error) {
+			return models.DescriptionEntity{}, nil
+		}
+		repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetGetCallback(getFunction)
+		response, err := manager.CreateDescriptionEntity(context.Background(), admin.DescriptionEntityCreateRequest{
+			DescriptionEntity: &descriptionEntity,
+			Id:                &descriptionEntityIdentifier,
+		})
+		assert.Error(t, err)
+		assert.Nil(t, response)
+	})
+
+	t.Run("failed to create description model", func(t *testing.T) {
+		getFunction := func(input models.DescriptionEntityKey) (models.DescriptionEntity, error) {
+			return models.DescriptionEntity{}, errors.NewFlyteAdminErrorf(codes.NotFound, "NotFound")
+		}
+		createFunction := func(input models.DescriptionEntity) error {
+			return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "InvalidArgument")
+		}
+
+		repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetGetCallback(getFunction)
+		repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetCreateCallback(createFunction)
+		response, err := manager.CreateDescriptionEntity(context.Background(), admin.DescriptionEntityCreateRequest{
+			DescriptionEntity: &descriptionEntity,
+			Id:                &descriptionEntityIdentifier,
+		})
+		assert.Error(t, err)
+		assert.Nil(t, response)
+	})
 }
 
 func TestDescriptionEntityManager_Get(t *testing.T) {

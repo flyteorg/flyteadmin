@@ -140,7 +140,6 @@ func GetNamedEntity(
 
 func GetDescriptionEntityModel(
 	ctx context.Context, repo repoInterfaces.Repository, identifier core.Identifier) (models.DescriptionEntity, error) {
-	// TODO: Get DescriptionID from task table, then retrieve description entity
 	descriptionEntityModel, err := (repo).DescriptionEntityRepo().Get(ctx, models.DescriptionEntityKey{
 		ResourceType: identifier.ResourceType,
 		Project:      identifier.Project,
