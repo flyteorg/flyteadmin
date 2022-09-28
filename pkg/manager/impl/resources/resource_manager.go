@@ -257,6 +257,8 @@ func (m *ResourceManager) GetProjectAttributes(ctx context.Context, request admi
 
 	}
 	// If found, then merge result with the default values for the platform
+	// TODO: Remove this logic once the overarching settings project is done. Those endpoints should take
+	//   default configuration into account.
 	responseAttributes := getResponse.Attributes.GetMatchingAttributes().GetWorkflowExecutionConfig()
 	if responseAttributes != nil {
 		logger.Debugf(ctx, "Merging response %s with defaults %s", responseAttributes, configLevelDefaults)
