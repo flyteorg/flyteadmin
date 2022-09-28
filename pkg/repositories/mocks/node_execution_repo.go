@@ -12,17 +12,17 @@ type UpdateNodeExecutionFunc func(ctx context.Context, nodeExecution *models.Nod
 type GetNodeExecutionFunc func(ctx context.Context, input interfaces.NodeExecutionResource) (models.NodeExecution, error)
 type ListNodeExecutionFunc func(ctx context.Context, input interfaces.ListResourceInput) (
 	interfaces.NodeExecutionCollectionOutput, error)
-type ListNodeExecutionEventFunc func(ctx context.Context, input interfaces.ListResourceInput) (
-	interfaces.NodeExecutionEventCollectionOutput, error)
+type ExistsNodeExecutionFunc func(ctx context.Context, input interfaces.NodeExecutionResource) (bool, error)
+type CountNodeExecutionFunc func(ctx context.Context, input interfaces.CountResourceInput) (int64, error)
 
 type MockNodeExecutionRepo struct {
 	createFunction          CreateNodeExecutionFunc
 	updateFunction          UpdateNodeExecutionFunc
 	getFunction             GetNodeExecutionFunc
-	GetWithChildrenFunction GetNodeExecutionFunc
+	getWithChildrenFunction GetNodeExecutionFunc
 	listFunction            ListNodeExecutionFunc
-	listEventFunction       ListNodeExecutionEventFunc
-	ExistsFunction          func(ctx context.Context, input interfaces.NodeExecutionResource) (bool, error)
+	existsFunction          ExistsNodeExecutionFunc
+	countFunction           CountNodeExecutionFunc
 }
 
 func (r *MockNodeExecutionRepo) Create(ctx context.Context, input *models.NodeExecution) error {
@@ -59,10 +59,14 @@ func (r *MockNodeExecutionRepo) SetGetCallback(getFunction GetNodeExecutionFunc)
 }
 
 func (r *MockNodeExecutionRepo) GetWithChildren(ctx context.Context, input interfaces.NodeExecutionResource) (models.NodeExecution, error) {
-	if r.GetWithChildrenFunction != nil {
-		return r.GetWithChildrenFunction(ctx, input)
+	if r.getWithChildrenFunction != nil {
+		return r.getWithChildrenFunction(ctx, input)
 	}
 	return models.NodeExecution{}, nil
+}
+
+func (r *MockNodeExecutionRepo) SetGetWithChildrenCallback(getWithChildrenFunction GetNodeExecutionFunc) {
+	r.getWithChildrenFunction = getWithChildrenFunction
 }
 
 func (r *MockNodeExecutionRepo) List(ctx context.Context, input interfaces.ListResourceInput) (
@@ -77,23 +81,26 @@ func (r *MockNodeExecutionRepo) SetListCallback(listFunction ListNodeExecutionFu
 	r.listFunction = listFunction
 }
 
-func (r *MockNodeExecutionRepo) ListEvents(ctx context.Context, input interfaces.ListResourceInput) (
-	interfaces.NodeExecutionEventCollectionOutput, error) {
-	if r.listFunction != nil {
-		return r.listEventFunction(ctx, input)
-	}
-	return interfaces.NodeExecutionEventCollectionOutput{}, nil
-}
-
-func (r *MockNodeExecutionRepo) SetListEventCallback(listEventFunction ListNodeExecutionEventFunc) {
-	r.listEventFunction = listEventFunction
-}
-
 func (r *MockNodeExecutionRepo) Exists(ctx context.Context, input interfaces.NodeExecutionResource) (bool, error) {
-	if r.ExistsFunction != nil {
-		return r.ExistsFunction(ctx, input)
+	if r.existsFunction != nil {
+		return r.existsFunction(ctx, input)
 	}
 	return true, nil
+}
+
+func (r *MockNodeExecutionRepo) SetExistsCallback(existsFunction ExistsNodeExecutionFunc) {
+	r.existsFunction = existsFunction
+}
+
+func (r *MockNodeExecutionRepo) Count(ctx context.Context, input interfaces.CountResourceInput) (int64, error) {
+	if r.countFunction != nil {
+		return r.countFunction(ctx, input)
+	}
+	return 0, nil
+}
+
+func (r *MockNodeExecutionRepo) SetCountCallback(countFunction CountNodeExecutionFunc) {
+	r.countFunction = countFunction
 }
 
 func NewMockNodeExecutionRepo() interfaces.NodeExecutionRepoInterface {

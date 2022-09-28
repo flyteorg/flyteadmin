@@ -15,9 +15,9 @@ require (
 	github.com/evanphx/json-patch v4.12.0+incompatible
 	github.com/flyteorg/flyteidl v1.1.17
 	github.com/flyteorg/flyteplugins v1.0.13
-	github.com/flyteorg/flytepropeller v1.1.3
+	github.com/flyteorg/flytepropeller v1.1.28
 	github.com/flyteorg/flytestdlib v1.0.5
-	github.com/flyteorg/stow v0.3.5
+	github.com/flyteorg/stow v0.3.6
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-gormigrate/gormigrate/v2 v2.0.0
 	github.com/gogo/protobuf v1.3.2
