@@ -402,12 +402,32 @@ var Migrations = []*gormigrate.Migration{
 	},
 	// Modify the tasks table, if necessary
 	{
-		ID: "2020-09-03-task-description_id",
+		ID: "2020-09-13-task-description_id",
 		Migrate: func(tx *gorm.DB) error {
 			return tx.Exec("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS description_id integer;").Error
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return tx.Exec("ALTER TABLE tasks DROP COLUMN IF EXISTS description_id").Error
+		},
+	},
+	// Modify the workflows table, if necessary
+	{
+		ID: "2020-09-13-workflow-description_id",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.Exec("ALTER TABLE workflows ADD COLUMN IF NOT EXISTS description_id integer;").Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Exec("ALTER TABLE workflows DROP COLUMN IF EXISTS description_id").Error
+		},
+	},
+	// Modify the launch_plans table, if necessary
+	{
+		ID: "2020-09-13-launchPlan-description_id",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.Exec("ALTER TABLE launch_plans ADD COLUMN IF NOT EXISTS description_id integer;").Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Exec("ALTER TABLE launch_plans DROP COLUMN IF EXISTS description_id").Error
 		},
 	},
 }

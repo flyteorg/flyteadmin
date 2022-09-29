@@ -10,4 +10,5 @@ import (
 type DescriptionEntityInterface interface {
 	CreateDescriptionEntity(ctx context.Context, request admin.DescriptionEntityCreateRequest) (*admin.DescriptionEntityCreateResponse, error)
 	GetDescriptionEntity(ctx context.Context, request admin.ObjectGetRequest) (*admin.DescriptionEntity, error)
+	ListDescriptionEntity(ctx context.Context, request admin.DescriptionEntityListRequest) (*admin.DescriptionEntityList, error)
 }

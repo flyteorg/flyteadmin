@@ -564,3 +564,71 @@ func TestGetMatchableResource(t *testing.T) {
 		assert.NotNil(t, err)
 	})
 }
+
+func TestGetDescriptionEntityModel(t *testing.T) {
+	repository := repositoryMocks.NewMockRepository()
+	t.Run("Get Description Entity model", func(t *testing.T) {
+		entity, err := GetDescriptionEntityModel(context.Background(), repository,
+			core.Identifier{
+				ResourceType: core.ResourceType_TASK,
+				Project:      project,
+				Domain:       domain,
+				Name:         name,
+				Version:      version,
+			})
+		assert.Nil(t, err)
+		assert.NotNil(t, entity)
+		assert.Equal(t, "hello world", entity.ShortDescription)
+	})
+
+	t.Run("Failed to get DescriptionEntity model", func(t *testing.T) {
+		getFunction := func(input models.DescriptionEntityKey) (models.DescriptionEntity, error) {
+			return models.DescriptionEntity{}, flyteAdminErrors.NewFlyteAdminErrorf(codes.NotFound, "NotFound")
+		}
+		repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetGetCallback(getFunction)
+		entity, err := GetDescriptionEntityModel(context.Background(), repository,
+			core.Identifier{
+				ResourceType: core.ResourceType_TASK,
+				Project:      project,
+				Domain:       domain,
+				Name:         name,
+				Version:      version,
+			})
+		assert.Error(t, err)
+		assert.Equal(t, "", entity.Name)
+	})
+}
+
+func TestGetDescriptionEntity(t *testing.T) {
+	repository := repositoryMocks.NewMockRepository()
+	t.Run("Get Description Entity", func(t *testing.T) {
+		entity, err := GetDescriptionEntity(context.Background(), repository,
+			core.Identifier{
+				ResourceType: core.ResourceType_TASK,
+				Project:      project,
+				Domain:       domain,
+				Name:         name,
+				Version:      version,
+			})
+		assert.Nil(t, err)
+		assert.NotNil(t, entity)
+		assert.Equal(t, "hello world", entity.ShortDescription)
+	})
+
+	t.Run("Failed to get DescriptionEntity", func(t *testing.T) {
+		getFunction := func(input models.DescriptionEntityKey) (models.DescriptionEntity, error) {
+			return models.DescriptionEntity{}, flyteAdminErrors.NewFlyteAdminErrorf(codes.NotFound, "NotFound")
+		}
+		repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetGetCallback(getFunction)
+		entity, err := GetDescriptionEntity(context.Background(), repository,
+			core.Identifier{
+				ResourceType: core.ResourceType_TASK,
+				Project:      project,
+				Domain:       domain,
+				Name:         name,
+				Version:      version,
+			})
+		assert.Error(t, err)
+		assert.Nil(t, entity)
+	})
+}

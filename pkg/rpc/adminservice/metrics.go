@@ -100,6 +100,7 @@ type descriptionEntityEndpointMetrics struct {
 
 	create util.RequestMetrics
 	get    util.RequestMetrics
+	list   util.RequestMetrics
 }
 
 type AdminMetrics struct {
@@ -217,6 +218,7 @@ func InitMetrics(adminScope promutils.Scope) AdminMetrics {
 			scope:  adminScope,
 			create: util.NewRequestMetrics(adminScope, "create_description_entity"),
 			get:    util.NewRequestMetrics(adminScope, "get_description_entity"),
+			list:   util.NewRequestMetrics(adminScope, "list_description_entity"),
 		},
 	}
 }

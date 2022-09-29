@@ -94,6 +94,31 @@ func TestValidateNamedEntityIdentifierListRequest(t *testing.T) {
 	}))
 }
 
+func TestValidateDescriptionEntityIdentifierGetRequest(t *testing.T) {
+	assert.Nil(t, ValidateDescriptionEntityGetRequest(admin.ObjectGetRequest{
+		Id: &core.Identifier{
+			ResourceType: core.ResourceType_WORKFLOW,
+			Project:      "project",
+			Domain:       "domain",
+			Name:         "name",
+			Version:      "v1",
+		},
+	}))
+
+	assert.NotNil(t, ValidateDescriptionEntityGetRequest(admin.ObjectGetRequest{
+		Id: &core.Identifier{
+			Project: "project",
+		},
+	}))
+
+	assert.NotNil(t, ValidateDescriptionEntityGetRequest(admin.ObjectGetRequest{
+		Id: &core.Identifier{
+			ResourceType: core.ResourceType_WORKFLOW,
+			Project:      "project",
+		},
+	}))
+}
+
 func TestValidateVersion(t *testing.T) {
 	err := ValidateVersion("")
 	assert.EqualError(t, err, "missing version")

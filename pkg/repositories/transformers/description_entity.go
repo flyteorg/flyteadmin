@@ -69,3 +69,15 @@ func FromDescriptionEntityModel(descriptionEntityModel models.DescriptionEntity)
 		SourceCode:       &admin.SourceCode{Link: descriptionEntityModel.Link},
 	}, nil
 }
+
+func FromDescriptionEntityModels(descriptionEntityModels []models.DescriptionEntity) ([]*admin.DescriptionEntity, error) {
+	descriptionEntities := make([]*admin.DescriptionEntity, len(descriptionEntityModels))
+	for idx, descriptionEntityModel := range descriptionEntityModels {
+		descriptionEntity, err := FromDescriptionEntityModel(descriptionEntityModel)
+		if err != nil {
+			return nil, err
+		}
+		descriptionEntities[idx] = descriptionEntity
+	}
+	return descriptionEntities, nil
+}

@@ -66,3 +66,32 @@ func TestFromDescriptionEntityExecutionModel(t *testing.T) {
 		SourceCode:       sourceCode,
 	}, descriptionEntity))
 }
+
+func TestFromDescriptionEntityExecutionModels(t *testing.T) {
+	shortDescription := "hello"
+	longDescription := &admin.LongDescription{IconLink: "https://flyte"}
+	sourceCode := &admin.SourceCode{Link: "https://github/flyte"}
+
+	longDescriptionBytes, err := proto.Marshal(longDescription)
+	assert.Nil(t, err)
+
+	descriptionEntity, err := FromDescriptionEntityModels([]models.DescriptionEntity{
+		{
+			DescriptionEntityKey: models.DescriptionEntityKey{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+				Version: "version",
+			},
+			ShortDescription: shortDescription,
+			LongDescription:  longDescriptionBytes,
+			SourceCode:       models.SourceCode{Link: "https://github/flyte"},
+		},
+	})
+	assert.Nil(t, err)
+	assert.True(t, proto.Equal(&admin.DescriptionEntity{
+		ShortDescription: shortDescription,
+		LongDescription:  longDescription,
+		SourceCode:       sourceCode,
+	}, descriptionEntity[0]))
+}

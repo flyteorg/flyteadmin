@@ -51,5 +51,21 @@ func (m *AdminService) GetDescriptionEntity(ctx context.Context, request *admin.
 	}
 	m.Metrics.descriptionEntityMetrics.get.Success()
 	return response, nil
+}
 
+func (m *AdminService) ListDescriptionEntities(ctx context.Context, request *admin.DescriptionEntityListRequest) (*admin.DescriptionEntityList, error) {
+	defer m.interceptPanic(ctx, request)
+	if request == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Incorrect request, nil requests not allowed")
+	}
+	var response *admin.DescriptionEntityList
+	var err error
+	m.Metrics.descriptionEntityMetrics.list.Time(func() {
+		response, err = m.DescriptionEntityManager.ListDescriptionEntity(ctx, *request)
+	})
+	if err != nil {
+		return nil, util.TransformAndRecordError(err, &m.Metrics.descriptionEntityMetrics.list)
+	}
+	m.Metrics.descriptionEntityMetrics.list.Success()
+	return response, nil
 }

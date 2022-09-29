@@ -13,6 +13,22 @@ import (
 
 const shortDescription = "hello"
 
+func TestCreateDescriptionEntity(t *testing.T) {
+	descriptionEntityRepo := NewDescriptionEntityRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
+	id, err := descriptionEntityRepo.Create(context.Background(), models.DescriptionEntity{
+		DescriptionEntityKey: models.DescriptionEntityKey{
+			ResourceType: resourceType,
+			Project:      project,
+			Domain:       domain,
+			Name:         name,
+			Version:      version,
+		},
+		ShortDescription: "hello",
+	})
+	assert.NoError(t, err)
+	assert.NotEqual(t, 0, id)
+}
+
 func TestGetDescriptionEntity(t *testing.T) {
 	descriptionEntityRepo := NewDescriptionEntityRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
 
