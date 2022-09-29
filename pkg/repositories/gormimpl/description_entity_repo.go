@@ -67,6 +67,35 @@ func (r *DescriptionEntityRepo) Get(ctx context.Context, input models.Descriptio
 	return descriptionEntity, nil
 }
 
+func (r *DescriptionEntityRepo) List(
+	ctx context.Context, input interfaces.ListResourceInput) (interfaces.DescriptionEntityCollectionOutput, error) {
+	// First validate input.
+	if err := ValidateListInput(input); err != nil {
+		return interfaces.DescriptionEntityCollectionOutput{}, err
+	}
+	var descriptionEntities []models.DescriptionEntity
+	tx := r.db.Limit(input.Limit).Offset(input.Offset)
+
+	// Apply filters
+	tx, err := applyFilters(tx, input.InlineFilters, input.MapFilters)
+	if err != nil {
+		return interfaces.DescriptionEntityCollectionOutput{}, err
+	}
+	// Apply sort ordering.
+	if input.SortParameter != nil {
+		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
+	}
+	timer := r.metrics.ListDuration.Start()
+	tx.Find(&descriptionEntities)
+	timer.Stop()
+	if tx.Error != nil {
+		return interfaces.DescriptionEntityCollectionOutput{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
+	}
+	return interfaces.DescriptionEntityCollectionOutput{
+		Entities: descriptionEntities,
+	}, nil
+}
+
 var innerJoinDescriptionToTaskName = fmt.Sprintf(
 	"INNER JOIN %s ON %s.project = %s.project AND %s.domain = %s.domain AND %s.id = %s.description_id", taskTableName, descriptionEntityTableName, taskTableName,
 	descriptionEntityTableName, taskTableName,
