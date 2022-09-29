@@ -2,6 +2,7 @@ package resources
 
 import (
 	"context"
+
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/util"
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
@@ -201,35 +202,6 @@ func (m *ResourceManager) GetProjectAttributesBase(ctx context.Context, request 
 	}, nil
 }
 
-func (m *ResourceManager) mergeWorkflowExecutionConfigs(higher, lower admin.WorkflowExecutionConfig) admin.WorkflowExecutionConfig {
-	result := admin.WorkflowExecutionConfig{
-		MaxParallelism:      higher.GetMaxParallelism(), // Always take from higher, 0 still overrides
-		SecurityContext:     lower.GetSecurityContext(),
-		RawOutputDataConfig: lower.GetRawOutputDataConfig(),
-		Labels:              lower.GetLabels(),
-		Annotations:         lower.GetAnnotations(),
-		Interruptible:       lower.GetInterruptible(),
-	}
-
-	if higher.GetSecurityContext() != nil {
-		result.SecurityContext = higher.GetSecurityContext()
-	}
-	if higher.GetRawOutputDataConfig() != nil {
-		result.RawOutputDataConfig = higher.GetRawOutputDataConfig()
-	}
-	if higher.GetLabels() != nil {
-		result.Labels = higher.GetLabels()
-	}
-	if higher.GetAnnotations() != nil {
-		result.Annotations = higher.GetAnnotations()
-	}
-	if higher.GetInterruptible() != nil {
-		result.Interruptible = higher.GetInterruptible()
-	}
-
-	return result
-}
-
 // GetProjectAttributes combines the call to the database to get the Project level settings with
 // Admin server level configuration.
 // Note this merge is only done for WorkflowExecutionConfig
@@ -266,7 +238,6 @@ func (m *ResourceManager) GetProjectAttributes(ctx context.Context, request admi
 		logger.Warningf(ctx, "Merging response %s with defaults %s", responseAttributes, configLevelDefaults)
 		tmp := util.MergeIntoExecConfig(*responseAttributes, &configLevelDefaults)
 		responseAttributes = &tmp
-		//newResponseAttributes := m.mergeWorkflowExecutionConfigs(*responseAttributes, configLevelDefaults)
 		return &admin.ProjectAttributesGetResponse{
 			Attributes: &admin.ProjectAttributes{
 				Project: request.Project,

@@ -437,7 +437,6 @@ func (m *ExecutionManager) getInheritedExecMetadata(ctx context.Context, request
 // Defaults to overridable execution values set in the execution create request, then looks at the launch plan values
 // (if any) before defaulting to values set in the matchable resource db and further if matchable resources don't
 // exist then defaults to one set in application configuration
-// praful 3 - merge happens here
 func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admin.ExecutionCreateRequest,
 	launchPlan *admin.LaunchPlan) (*admin.WorkflowExecutionConfig, error) {
 
@@ -476,6 +475,9 @@ func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admi
 	// See FLYTE-2322 for more background information.
 	projectMatchableResource, err := util.GetMatchableResource(ctx, m.resourceManager,
 		admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG, request.Project, "", "")
+	if err != nil {
+		return nil, err
+	}
 	if projectMatchableResource != nil && projectMatchableResource.Attributes.GetWorkflowExecutionConfig() != nil {
 		// merge the matchable resource workflow execution config into workflowExecConfig
 		workflowExecConfig = util.MergeIntoExecConfig(workflowExecConfig,
@@ -530,7 +532,6 @@ func (m *ExecutionManager) getClusterAssignment(ctx context.Context, request *ad
 	return &admin.ClusterAssignment{}, nil
 }
 
-// praful 2
 func (m *ExecutionManager) launchSingleTaskExecution(
 	ctx context.Context, request admin.ExecutionCreateRequest, requestedAt time.Time) (
 	context.Context, *models.Execution, error) {
@@ -774,7 +775,6 @@ func resolveSecurityCtx(ctx context.Context, executionConfigSecurityCtx *core.Se
 	}
 }
 
-// praful 1
 func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	ctx context.Context, request admin.ExecutionCreateRequest, requestedAt time.Time) (
 	context.Context, *models.Execution, error) {
