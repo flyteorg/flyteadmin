@@ -365,6 +365,38 @@ func TestDeleteProjectDomainAttributes(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestGetProjectAttributes(t *testing.T) {
+	request := admin.ProjectAttributesGetRequest{
+		Project:      project,
+		ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
+	}
+	db := mocks.NewMockRepository()
+	db.ResourceRepo().(*mocks.MockResourceRepo).GetFunction = func(
+		ctx context.Context, ID repoInterfaces.ResourceID) (models.Resource, error) {
+
+		assert.Equal(t, project, ID.Project)
+		assert.Equal(t, "", ID.Domain)
+		assert.Equal(t, "", ID.Workflow)
+		assert.Equal(t, admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG.String(), ID.ResourceType)
+		expectedSerializedAttrs, _ := proto.Marshal(testutils.WorkflowExecutionConfigSample)
+		return models.Resource{
+			Project:      project,
+			Domain:       "",
+			ResourceType: "resource",
+			Attributes:   expectedSerializedAttrs,
+		}, nil
+	}
+	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+	response, err := manager.GetProjectAttributes(context.Background(), request)
+	assert.Nil(t, err)
+	assert.True(t, proto.Equal(&admin.ProjectAttributesGetResponse{
+		Attributes: &admin.ProjectAttributes{
+			Project:            project,
+			MatchingAttributes: testutils.WorkflowExecutionConfigSample,
+		},
+	}, response))
+}
+
 func TestGetResource(t *testing.T) {
 	request := interfaces.ResourceRequest{
 		Project:      project,
