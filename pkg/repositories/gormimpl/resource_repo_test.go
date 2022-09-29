@@ -90,7 +90,7 @@ func TestGetWorkflowAttributes(t *testing.T) {
 	response["attributes"] = []byte("attrs")
 
 	query := GlobalMock.NewMock()
-	query.WithQuery(`SELECT * FROM "resources" WHERE resource_type = $1 AND domain = $2 AND project IN ($3,$4) AND workflow IN ($5,$6) AND launch_plan IN ($7) ORDER BY priority desc,"resources"."id" LIMIT 1`).WithReply(
+	query.WithQuery(`SELECT * FROM "resources" WHERE resource_type = $1 AND domain IN ($2,$3) AND project IN ($4,$5) AND workflow IN ($6,$7) AND launch_plan IN ($8) ORDER BY priority desc,"resources"."id" LIMIT 1`).WithReply(
 		[]map[string]interface{}{
 			response,
 		})
@@ -115,7 +115,7 @@ func TestProjectDomainAttributes(t *testing.T) {
 	response["attributes"] = []byte("attrs")
 
 	query := GlobalMock.NewMock()
-	query.WithQuery(`SELECT * FROM "resources" WHERE resource_type = $1 AND domain = $2 AND project IN ($3,$4) AND workflow IN ($5) AND launch_plan IN ($6) ORDER BY priority desc,"resources"."id" LIMIT 1`).WithReply(
+	query.WithQuery(`SELECT * FROM "resources" WHERE resource_type = $1 AND domain IN ($2,$3) AND project IN ($4,$5) AND workflow IN ($6) AND launch_plan IN ($7) ORDER BY priority desc,"resources"."id" LIMIT 1`).WithReply(
 		[]map[string]interface{}{
 			response,
 		})
@@ -124,6 +124,31 @@ func TestProjectDomainAttributes(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, project, output.Project)
 	assert.Equal(t, domain, output.Domain)
+	assert.Equal(t, "", output.Workflow)
+	assert.Equal(t, "resource-type", output.ResourceType)
+	assert.Equal(t, []byte("attrs"), output.Attributes)
+}
+
+func TestProjectLevelAttributes(t *testing.T) {
+	resourceRepo := NewResourceRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
+	GlobalMock := mocket.Catcher.Reset()
+	GlobalMock.Logging = true
+	response := make(map[string]interface{})
+	response[project] = project
+	response[domain] = ""
+	response["resource_type"] = "resource-type"
+	response["attributes"] = []byte("attrs")
+
+	query := GlobalMock.NewMock()
+	query.WithQuery(`SELECT * FROM "resources" WHERE resource_type = $1 AND domain = '' AND project = $2 AND workflow = '' AND launch_plan = '' ORDER BY priority desc,"resources"."id" LIMIT 1`).WithReply(
+		[]map[string]interface{}{
+			response,
+		})
+
+	output, err := resourceRepo.GetProjectLevel(context.Background(), interfaces.ResourceID{Project: "project", Domain: "", ResourceType: "resource"})
+	assert.Nil(t, err)
+	assert.Equal(t, project, output.Project)
+	assert.Equal(t, "", output.Domain)
 	assert.Equal(t, "", output.Workflow)
 	assert.Equal(t, "resource-type", output.ResourceType)
 	assert.Equal(t, []byte("attrs"), output.Attributes)
