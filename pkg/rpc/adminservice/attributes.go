@@ -126,15 +126,14 @@ func (m *AdminService) UpdateProjectAttributes(ctx context.Context, request *adm
 	}
 	var response *admin.ProjectAttributesUpdateResponse
 	var err error
-	m.Metrics.workflowAttributesEndpointMetrics.get.Time(func() {
+	m.Metrics.projectAttributesEndpointMetrics.get.Time(func() {
 		response, err = m.ResourceManager.UpdateProjectAttributes(ctx, *request)
 	})
 	if err != nil {
-		return nil, util.TransformAndRecordError(err, &m.Metrics.workflowAttributesEndpointMetrics.get)
+		return nil, util.TransformAndRecordError(err, &m.Metrics.projectAttributesEndpointMetrics.get)
 	}
 
 	return response, nil
-
 }
 
 func (m *AdminService) GetProjectAttributes(ctx context.Context, request *admin.ProjectAttributesGetRequest) (
@@ -146,11 +145,11 @@ func (m *AdminService) GetProjectAttributes(ctx context.Context, request *admin.
 	}
 	var response *admin.ProjectAttributesGetResponse
 	var err error
-	m.Metrics.workflowAttributesEndpointMetrics.get.Time(func() {
+	m.Metrics.projectAttributesEndpointMetrics.get.Time(func() {
 		response, err = m.ResourceManager.GetProjectAttributes(ctx, *request)
 	})
 	if err != nil {
-		return nil, util.TransformAndRecordError(err, &m.Metrics.workflowAttributesEndpointMetrics.get)
+		return nil, util.TransformAndRecordError(err, &m.Metrics.projectAttributesEndpointMetrics.get)
 	}
 
 	return response, nil
@@ -165,11 +164,11 @@ func (m *AdminService) DeleteProjectAttributes(ctx context.Context, request *adm
 	}
 	var response *admin.ProjectAttributesDeleteResponse
 	var err error
-	m.Metrics.workflowAttributesEndpointMetrics.delete.Time(func() {
+	m.Metrics.projectAttributesEndpointMetrics.delete.Time(func() {
 		response, err = m.ResourceManager.DeleteProjectAttributes(ctx, *request)
 	})
 	if err != nil {
-		return nil, util.TransformAndRecordError(err, &m.Metrics.workflowAttributesEndpointMetrics.delete)
+		return nil, util.TransformAndRecordError(err, &m.Metrics.projectAttributesEndpointMetrics.delete)
 	}
 
 	return response, nil
