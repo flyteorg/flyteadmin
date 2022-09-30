@@ -567,35 +567,6 @@ func TestGetMatchableResource(t *testing.T) {
 	})
 }
 
-func dddddd(t *testing.T) {
-	t.Run("dfs", func(t *testing.T) {
-		higher := admin.WorkflowExecutionConfig{
-			MaxParallelism: 5,
-			RawOutputDataConfig: &admin.RawOutputDataConfig{
-				OutputLocationPrefix: "s3://test-bucket",
-			},
-			Labels: &admin.Labels{
-				Values: map[string]string{"lab1": "val1"},
-			},
-			Annotations: nil,
-		}
-
-		lower := admin.WorkflowExecutionConfig{
-			MaxParallelism: 0,
-			RawOutputDataConfig: &admin.RawOutputDataConfig{
-				OutputLocationPrefix: "s3://asdf",
-			},
-			Labels: &admin.Labels{
-				Values: map[string]string{"lab1": "oldvalue"},
-			},
-		}
-
-		res := MergeIntoExecConfig(higher, &lower)
-
-		fmt.Println(res)
-	})
-}
-
 func TestMergeIntoExecConfig(t *testing.T) {
 	var res admin.WorkflowExecutionConfig
 	parameters := []struct {

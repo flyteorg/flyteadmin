@@ -165,11 +165,11 @@ func (a *ApplicationConfig) GetAsWorkflowExecutionConfig() admin.WorkflowExecuti
 		MaxParallelism: a.GetMaxParallelism(),
 		Interruptible:  a.GetInterruptible(),
 	}
+
 	// For the others, we only add the field when the field is set in the config.
 	if a.GetSecurityContext().RunAs.GetK8SServiceAccount() != "" || a.GetSecurityContext().RunAs.GetIamRole() != "" {
 		wec.SecurityContext = a.GetSecurityContext()
 	}
-
 	if a.GetRawOutputDataConfig().OutputLocationPrefix != "" {
 		wec.RawOutputDataConfig = a.GetRawOutputDataConfig()
 	}
