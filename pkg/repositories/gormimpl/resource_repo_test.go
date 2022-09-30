@@ -14,6 +14,7 @@ import (
 )
 
 const resourceTestWorkflowName = "workflow"
+const resourceTypeStr = "resource-type"
 
 func TestCreateWorkflowAttributes(t *testing.T) {
 	resourceRepo := NewResourceRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
@@ -86,7 +87,7 @@ func TestGetWorkflowAttributes(t *testing.T) {
 	response["project"] = "project"
 	response["domain"] = "domain"
 	response["workflow"] = resourceTestWorkflowName
-	response["resource_type"] = "resource-type"
+	response["resource_type"] = resourceTypeStr
 	response["attributes"] = []byte("attrs")
 
 	query := GlobalMock.NewMock()
@@ -100,7 +101,7 @@ func TestGetWorkflowAttributes(t *testing.T) {
 	assert.Equal(t, "project", output.Project)
 	assert.Equal(t, "domain", output.Domain)
 	assert.Equal(t, "workflow", output.Workflow)
-	assert.Equal(t, "resource-type", output.ResourceType)
+	assert.Equal(t, resourceTypeStr, output.ResourceType)
 	assert.Equal(t, []byte("attrs"), output.Attributes)
 }
 
@@ -111,7 +112,7 @@ func TestProjectDomainAttributes(t *testing.T) {
 	response := make(map[string]interface{})
 	response[project] = project
 	response[domain] = domain
-	response["resource_type"] = "resource-type"
+	response["resource_type"] = resourceTypeStr
 	response["attributes"] = []byte("attrs")
 
 	query := GlobalMock.NewMock()

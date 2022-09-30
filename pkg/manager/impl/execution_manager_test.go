@@ -4036,18 +4036,21 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 	}
 	resourceManager.GetResourceFunc = func(ctx context.Context,
 		request managerInterfaces.ResourceRequest) (*managerInterfaces.ResourceResponse, error) {
-		assert.EqualValues(t, request, managerInterfaces.ResourceRequest{
+		// two requests will be made, one with empty domain and one with filled in domain
+		assert.Contains(t, []managerInterfaces.ResourceRequest{{
 			Project:      workflowIdentifier.Project,
 			Domain:       workflowIdentifier.Domain,
 			ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
-		})
-		return &managerInterfaces.ResourceResponse{
+		}, {Project: workflowIdentifier.Project,
+			Domain:       "",
+			ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG},
+		}, request)
+		projectDomainResponse := &managerInterfaces.ResourceResponse{
 			Attributes: &admin.MatchingAttributes{
 				Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
 					WorkflowExecutionConfig: &admin.WorkflowExecutionConfig{
 						MaxParallelism: rmMaxParallelism,
 						Interruptible:  &wrappers.BoolValue{Value: rmInterruptible},
-						Labels:         &admin.Labels{Values: rmLabels},
 						Annotations:    &admin.Annotations{Values: rmAnnotations},
 						RawOutputDataConfig: &admin.RawOutputDataConfig{
 							OutputLocationPrefix: rmOutputLocationPrefix,
@@ -4060,7 +4063,24 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 					},
 				},
 			},
-		}, nil
+		}
+
+		projectResponse := &managerInterfaces.ResourceResponse{
+			Attributes: &admin.MatchingAttributes{
+				Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
+					WorkflowExecutionConfig: &admin.WorkflowExecutionConfig{
+						Labels: &admin.Labels{Values: rmLabels},
+						RawOutputDataConfig: &admin.RawOutputDataConfig{
+							OutputLocationPrefix: "shouldnotbeused",
+						},
+					},
+				},
+			},
+		}
+		if request.Domain == "" {
+			return projectResponse, nil
+		}
+		return projectDomainResponse, nil
 	}
 
 	t.Run("request with full config", func(t *testing.T) {
@@ -4244,11 +4264,15 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 	t.Run("matchable resource partial config", func(t *testing.T) {
 		resourceManager.GetResourceFunc = func(ctx context.Context,
 			request managerInterfaces.ResourceRequest) (*managerInterfaces.ResourceResponse, error) {
-			assert.EqualValues(t, request, managerInterfaces.ResourceRequest{
+			assert.Contains(t, []managerInterfaces.ResourceRequest{{
 				Project:      workflowIdentifier.Project,
 				Domain:       workflowIdentifier.Domain,
 				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
-			})
+			}, {Project: workflowIdentifier.Project,
+				Domain:       "",
+				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG},
+			}, request)
+
 			return &managerInterfaces.ResourceResponse{
 				Attributes: &admin.MatchingAttributes{
 					Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
@@ -4285,11 +4309,14 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 	t.Run("matchable resource with no config", func(t *testing.T) {
 		resourceManager.GetResourceFunc = func(ctx context.Context,
 			request managerInterfaces.ResourceRequest) (*managerInterfaces.ResourceResponse, error) {
-			assert.EqualValues(t, request, managerInterfaces.ResourceRequest{
+			assert.Contains(t, []managerInterfaces.ResourceRequest{{
 				Project:      workflowIdentifier.Project,
 				Domain:       workflowIdentifier.Domain,
 				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
-			})
+			}, {Project: workflowIdentifier.Project,
+				Domain:       "",
+				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG},
+			}, request)
 			return &managerInterfaces.ResourceResponse{
 				Attributes: &admin.MatchingAttributes{
 					Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
@@ -4318,11 +4345,15 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 	t.Run("fetch security context from deprecated config", func(t *testing.T) {
 		resourceManager.GetResourceFunc = func(ctx context.Context,
 			request managerInterfaces.ResourceRequest) (*managerInterfaces.ResourceResponse, error) {
-			assert.EqualValues(t, request, managerInterfaces.ResourceRequest{
+			assert.Contains(t, []managerInterfaces.ResourceRequest{{
 				Project:      workflowIdentifier.Project,
 				Domain:       workflowIdentifier.Domain,
 				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
-			})
+			}, {Project: workflowIdentifier.Project,
+				Domain:       "",
+				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG},
+			}, request)
+
 			return &managerInterfaces.ResourceResponse{
 				Attributes: &admin.MatchingAttributes{
 					Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
@@ -4355,12 +4386,17 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 	t.Run("matchable resource workflow resource", func(t *testing.T) {
 		resourceManager.GetResourceFunc = func(ctx context.Context,
 			request managerInterfaces.ResourceRequest) (*managerInterfaces.ResourceResponse, error) {
-			assert.EqualValues(t, request, managerInterfaces.ResourceRequest{
+			assert.Contains(t, []managerInterfaces.ResourceRequest{{
 				Project:      workflowIdentifier.Project,
 				Domain:       workflowIdentifier.Domain,
-				Workflow:     workflowIdentifier.Name,
 				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
-			})
+				Workflow:     workflowIdentifier.Name,
+			}, {Project: workflowIdentifier.Project,
+				Domain:       "",
+				Workflow:     "",
+				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG},
+			}, request)
+
 			return &managerInterfaces.ResourceResponse{
 				Attributes: &admin.MatchingAttributes{
 					Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
@@ -4401,11 +4437,14 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 	t.Run("matchable resource failure", func(t *testing.T) {
 		resourceManager.GetResourceFunc = func(ctx context.Context,
 			request managerInterfaces.ResourceRequest) (*managerInterfaces.ResourceResponse, error) {
-			assert.EqualValues(t, request, managerInterfaces.ResourceRequest{
+			assert.Contains(t, []managerInterfaces.ResourceRequest{{
 				Project:      workflowIdentifier.Project,
 				Domain:       workflowIdentifier.Domain,
 				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
-			})
+			}, {Project: workflowIdentifier.Project,
+				Domain:       "",
+				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG},
+			}, request)
 			return nil, fmt.Errorf("failed to fetch the resources")
 		}
 		request := &admin.ExecutionCreateRequest{
@@ -4427,11 +4466,14 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 	t.Run("application configuration", func(t *testing.T) {
 		resourceManager.GetResourceFunc = func(ctx context.Context,
 			request managerInterfaces.ResourceRequest) (*managerInterfaces.ResourceResponse, error) {
-			assert.EqualValues(t, request, managerInterfaces.ResourceRequest{
+			assert.Contains(t, []managerInterfaces.ResourceRequest{{
 				Project:      workflowIdentifier.Project,
 				Domain:       workflowIdentifier.Domain,
 				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
-			})
+			}, {Project: workflowIdentifier.Project,
+				Domain:       "",
+				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG},
+			}, request)
 			return &managerInterfaces.ResourceResponse{
 				Attributes: &admin.MatchingAttributes{
 					Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
@@ -4590,11 +4632,14 @@ func TestGetExecutionConfig(t *testing.T) {
 	resourceManager := managerMocks.MockResourceManager{}
 	resourceManager.GetResourceFunc = func(ctx context.Context,
 		request managerInterfaces.ResourceRequest) (*managerInterfaces.ResourceResponse, error) {
-		assert.EqualValues(t, request, managerInterfaces.ResourceRequest{
+		assert.Contains(t, []managerInterfaces.ResourceRequest{{
 			Project:      workflowIdentifier.Project,
 			Domain:       workflowIdentifier.Domain,
 			ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
-		})
+		}, {Project: workflowIdentifier.Project,
+			Domain:       "",
+			ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG},
+		}, request)
 		return &managerInterfaces.ResourceResponse{
 			Attributes: &admin.MatchingAttributes{
 				Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
