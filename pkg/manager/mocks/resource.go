@@ -10,9 +10,9 @@ import (
 
 type UpdateProjectAttrsFunc func(ctx context.Context, request admin.ProjectAttributesUpdateRequest) (
 	*admin.ProjectAttributesUpdateResponse, error)
-type GetProjectFunc func(ctx context.Context, request admin.ProjectAttributesGetRequest) (
+type GetProjectAttrFunc func(ctx context.Context, request admin.ProjectAttributesGetRequest) (
 	*admin.ProjectAttributesGetResponse, error)
-type DeleteProjectFunc func(ctx context.Context, request admin.ProjectAttributesDeleteRequest) (
+type DeleteProjectAttrFunc func(ctx context.Context, request admin.ProjectAttributesDeleteRequest) (
 	*admin.ProjectAttributesDeleteResponse, error)
 
 type UpdateProjectDomainFunc func(ctx context.Context, request admin.ProjectDomainAttributesUpdateRequest) (
@@ -32,8 +32,8 @@ type MockResourceManager struct {
 	ListFunc                ListResourceFunc
 	GetResourceFunc         GetResourceFunc
 	updateProjectAttrsFunc  UpdateProjectAttrsFunc
-	getProjectFunc          GetProjectFunc
-	deleteProjectFunc       DeleteProjectFunc
+	getProjectAttrFunc      GetProjectAttrFunc
+	deleteProjectAttrFunc   DeleteProjectAttrFunc
 }
 
 func (m *MockResourceManager) GetResource(ctx context.Context, request interfaces.ResourceRequest) (*interfaces.ResourceResponse, error) {
@@ -89,6 +89,10 @@ func (m *MockResourceManager) DeleteProjectDomainAttributes(
 	return nil, nil
 }
 
+func (m *MockResourceManager) SetUpdateProjectAttributes(updateProjectAttrsFunc UpdateProjectAttrsFunc) {
+	m.updateProjectAttrsFunc = updateProjectAttrsFunc
+}
+
 func (m *MockResourceManager) UpdateProjectAttributes(ctx context.Context, request admin.ProjectAttributesUpdateRequest) (
 	*admin.ProjectAttributesUpdateResponse, error) {
 	if m.updateProjectAttrsFunc != nil {
@@ -97,18 +101,26 @@ func (m *MockResourceManager) UpdateProjectAttributes(ctx context.Context, reque
 	return nil, nil
 }
 
+func (m *MockResourceManager) SetGetProjectAttributes(getProjectFunc GetProjectAttrFunc) {
+	m.getProjectAttrFunc = getProjectFunc
+}
+
 func (m *MockResourceManager) GetProjectAttributes(ctx context.Context, request admin.ProjectAttributesGetRequest) (
 	*admin.ProjectAttributesGetResponse, error) {
-	if m.updateProjectAttrsFunc != nil {
-		return m.getProjectFunc(ctx, request)
+	if m.getProjectAttrFunc != nil {
+		return m.getProjectAttrFunc(ctx, request)
 	}
 	return nil, nil
 }
 
+func (m *MockResourceManager) SetDeleteProjectAttributes(deleteProjectFunc DeleteProjectAttrFunc) {
+	m.deleteProjectAttrFunc = deleteProjectFunc
+}
+
 func (m *MockResourceManager) DeleteProjectAttributes(ctx context.Context, request admin.ProjectAttributesDeleteRequest) (
 	*admin.ProjectAttributesDeleteResponse, error) {
-	if m.updateProjectAttrsFunc != nil {
-		return m.deleteProjectFunc(ctx, request)
+	if m.deleteProjectAttrFunc != nil {
+		return m.deleteProjectAttrFunc(ctx, request)
 	}
 	return nil, nil
 }
