@@ -2,6 +2,11 @@ package resources
 
 import (
 	"context"
+	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+
+	// pkg/runtime/interfaces/application_configuration.go
+	runtimeMocks "github.com/flyteorg/flyteadmin/pkg/runtime/mocks"
 	"testing"
 
 	"github.com/flyteorg/flyteadmin/pkg/errors"
@@ -391,6 +396,25 @@ func TestUpdateProjectAttributes(t *testing.T) {
 	_, err := manager.UpdateProjectAttributes(context.Background(), request)
 	assert.Nil(t, err)
 	assert.True(t, createOrUpdateCalled)
+
+	// Test empty attributes
+	request = admin.ProjectAttributesUpdateRequest{Attributes: nil}
+	_, err = manager.UpdateProjectAttributes(context.Background(), request)
+	assert.Error(t, err)
+
+	// Test error handling
+	db.ResourceRepo().(*mocks.MockResourceRepo).CreateOrUpdateFunction = func(
+		ctx context.Context, input models.Resource) error {
+		return errors.NewFlyteAdminErrorf(123, "123")
+	}
+	request = admin.ProjectAttributesUpdateRequest{
+		Attributes: &admin.ProjectAttributes{
+			Project:            project,
+			MatchingAttributes: testutils.WorkflowExecutionConfigSample,
+		},
+	}
+	_, err = manager.UpdateProjectAttributes(context.Background(), request)
+	assert.Error(t, err, "123")
 }
 
 func TestUpdateProjectAttributes_CreateOrMerge(t *testing.T) {
@@ -477,12 +501,15 @@ func TestUpdateProjectAttributes_CreateOrMerge(t *testing.T) {
 		assert.True(t, createOrUpdateCalled)
 	})
 }
+
 func TestGetProjectAttributes(t *testing.T) {
 	request := admin.ProjectAttributesGetRequest{
 		Project:      project,
 		ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
 	}
 	db := mocks.NewMockRepository()
+
+	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
 	db.ResourceRepo().(*mocks.MockResourceRepo).GetFunction = func(
 		ctx context.Context, ID repoInterfaces.ResourceID) (models.Resource, error) {
 
@@ -498,7 +525,6 @@ func TestGetProjectAttributes(t *testing.T) {
 			Attributes:   expectedSerializedAttrs,
 		}, nil
 	}
-	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
 	response, err := manager.GetProjectAttributes(context.Background(), request)
 	assert.Nil(t, err)
 	assert.True(t, proto.Equal(&admin.ProjectAttributesGetResponse{
@@ -507,6 +533,116 @@ func TestGetProjectAttributes(t *testing.T) {
 			MatchingAttributes: testutils.WorkflowExecutionConfigSample,
 		},
 	}, response))
+
+	// unrecognized errors are thrown
+	db.ResourceRepo().(*mocks.MockResourceRepo).GetFunction = func(
+		ctx context.Context, ID repoInterfaces.ResourceID) (models.Resource, error) {
+
+		return models.Resource{}, errors.NewFlyteAdminErrorf(5323, "random code")
+	}
+	response, err = manager.GetProjectAttributes(context.Background(), request)
+	assert.Error(t, err)
+}
+
+func TestGetProjectAttributes_ConfigLookup(t *testing.T) {
+	request := admin.ProjectAttributesGetRequest{
+		Project:      project,
+		ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
+	}
+	db := mocks.NewMockRepository()
+	db.ResourceRepo().(*mocks.MockResourceRepo).GetFunction = func(
+		ctx context.Context, ID repoInterfaces.ResourceID) (models.Resource, error) {
+		// return not found to trigger loading from config
+		return models.Resource{}, errors.NewFlyteAdminError(codes.NotFound, "not found message")
+	}
+	config := runtimeMocks.MockApplicationProvider{}
+	manager := NewResourceManager(db, &config)
+
+	t.Run("config 1", func(t *testing.T) {
+		appConfig := runtimeInterfaces.ApplicationConfig{
+			MaxParallelism:       3,
+			K8SServiceAccount:    "testserviceaccount",
+			Labels:               map[string]string{"lab1": "name"},
+			OutputLocationPrefix: "s3://test-bucket",
+		}
+		config.SetTopLevelConfig(appConfig)
+
+		response, err := manager.GetProjectAttributes(context.Background(), request)
+		assert.Nil(t, err)
+		assert.True(t, proto.Equal(&admin.ProjectAttributesGetResponse{
+			Attributes: &admin.ProjectAttributes{
+				Project: project,
+				MatchingAttributes: &admin.MatchingAttributes{
+					Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
+						WorkflowExecutionConfig: &admin.WorkflowExecutionConfig{
+							MaxParallelism: 3,
+							SecurityContext: &core.SecurityContext{
+								RunAs: &core.Identity{K8SServiceAccount: "testserviceaccount"},
+							},
+							RawOutputDataConfig: &admin.RawOutputDataConfig{
+								OutputLocationPrefix: "s3://test-bucket",
+							},
+							Labels: &admin.Labels{
+								Values: map[string]string{"lab1": "name"},
+							},
+						},
+					},
+				},
+			},
+		}, response))
+	})
+
+	t.Run("config 2", func(t *testing.T) {
+		appConfig := runtimeInterfaces.ApplicationConfig{
+			MaxParallelism:   3,
+			AssumableIamRole: "myrole",
+		}
+		config.SetTopLevelConfig(appConfig)
+
+		response, err := manager.GetProjectAttributes(context.Background(), request)
+		assert.Nil(t, err)
+		assert.True(t, proto.Equal(&admin.ProjectAttributesGetResponse{
+			Attributes: &admin.ProjectAttributes{
+				Project: project,
+				MatchingAttributes: &admin.MatchingAttributes{
+					Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
+						WorkflowExecutionConfig: &admin.WorkflowExecutionConfig{
+							MaxParallelism: 3,
+							SecurityContext: &core.SecurityContext{
+								RunAs: &core.Identity{IamRole: "myrole"},
+							},
+						},
+					},
+				},
+			},
+		}, response))
+	})
+
+	t.Run("config 3", func(t *testing.T) {
+		appConfig := runtimeInterfaces.ApplicationConfig{
+			MaxParallelism: 3,
+			Annotations:    map[string]string{"ann1": "val1"},
+		}
+		config.SetTopLevelConfig(appConfig)
+
+		response, err := manager.GetProjectAttributes(context.Background(), request)
+		assert.Nil(t, err)
+		assert.True(t, proto.Equal(&admin.ProjectAttributesGetResponse{
+			Attributes: &admin.ProjectAttributes{
+				Project: project,
+				MatchingAttributes: &admin.MatchingAttributes{
+					Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
+						WorkflowExecutionConfig: &admin.WorkflowExecutionConfig{
+							MaxParallelism: 3,
+							Annotations: &admin.Annotations{
+								Values: map[string]string{"ann1": "val1"},
+							},
+						},
+					},
+				},
+			},
+		}, response))
+	})
 }
 
 func TestDeleteProjectAttributes(t *testing.T) {
