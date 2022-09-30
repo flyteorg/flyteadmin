@@ -1,3 +1,4 @@
 ignore:
 - "pkg/executioncluster"
 - "pkg/clusterresource"
+- "*_test.go"
