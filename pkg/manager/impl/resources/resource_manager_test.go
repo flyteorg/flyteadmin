@@ -540,7 +540,7 @@ func TestGetProjectAttributes(t *testing.T) {
 
 		return models.Resource{}, errors.NewFlyteAdminErrorf(5323, "random code")
 	}
-	response, err = manager.GetProjectAttributes(context.Background(), request)
+	_, err = manager.GetProjectAttributes(context.Background(), request)
 	assert.Error(t, err)
 }
 
