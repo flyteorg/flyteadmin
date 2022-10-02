@@ -250,3 +250,20 @@ func TestFromWorkflowAttributesModel_InvalidResourceAttributes(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.Equal(t, codes.Internal, err.(errors.FlyteAdminError).Code())
 }
+
+func TestProjectAttributesToResourceModel(t *testing.T) {
+	pa := admin.ProjectAttributes{
+		Project:            resourceProject,
+		MatchingAttributes: matchingClusterResourceAttributes,
+	}
+	rm, err := ProjectAttributesToResourceModel(pa, admin.MatchableResource_CLUSTER_RESOURCE)
+
+	assert.NoError(t, err)
+	assert.EqualValues(t, models.Resource{
+		Project:      resourceProject,
+		Domain:       "",
+		ResourceType: admin.MatchableResource_CLUSTER_RESOURCE.String(),
+		Priority:     models.ResourcePriorityProjectLevel,
+		Attributes:   marshalledClusterResourceAttributes,
+	}, rm)
+}

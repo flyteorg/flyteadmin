@@ -131,7 +131,6 @@ func (r *ResourceRepo) Get(ctx context.Context, ID interfaces.ResourceID) (model
 // given ResourceType if it exists. The reason this exists is because we want to return project level
 // attributes to Flyte Console, regardless of whether a more specific setting exists.
 func (r *ResourceRepo) GetProjectLevel(ctx context.Context, ID interfaces.ResourceID) (models.Resource, error) {
-
 	if ID.Project == "" {
 		return models.Resource{}, r.errorTransformer.ToFlyteAdminError(flyteAdminDbErrors.GetInvalidInputError(fmt.Sprintf("%v", ID)))
 	}

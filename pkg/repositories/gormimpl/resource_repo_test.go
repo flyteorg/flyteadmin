@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"gorm.io/gorm"
+
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 
 	mocket "github.com/Selvatico/go-mocket"
@@ -153,6 +155,10 @@ func TestProjectLevelAttributes(t *testing.T) {
 	assert.Equal(t, "", output.Workflow)
 	assert.Equal(t, "resource-type", output.ResourceType)
 	assert.Equal(t, []byte("attrs"), output.Attributes)
+
+	// Must have a project defined
+	_, err = resourceRepo.GetProjectLevel(context.Background(), interfaces.ResourceID{Project: "", Domain: "", ResourceType: "resource"})
+	assert.Error(t, err)
 }
 
 func TestGetRawWorkflowAttributes(t *testing.T) {
@@ -223,4 +229,19 @@ func TestListAll(t *testing.T) {
 	assert.Equal(t, "resource", output[0].ResourceType)
 	assert.Equal(t, []byte("attrs"), output[0].Attributes)
 	assert.True(t, fakeResponse.Triggered)
+}
+
+func TestGetError(t *testing.T) {
+	resourceRepo := NewResourceRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
+	GlobalMock := mocket.Catcher.Reset()
+	GlobalMock.Logging = true
+
+	query := GlobalMock.NewMock()
+	query.WithQuery(`SELECT * FROM "resources" WHERE resource_type = $1 AND domain IN ($2,$3) AND project IN ($4,$5) AND workflow IN ($6,$7) AND launch_plan IN ($8) ORDER BY priority desc,"resources"."id" LIMIT 1`).WithError(gorm.ErrRecordNotFound)
+
+	output, err := resourceRepo.Get(context.Background(), interfaces.ResourceID{Project: "project", Domain: "domain", Workflow: "workflow", ResourceType: "resource"})
+	assert.Error(t, err)
+	assert.Equal(t, "", output.Project)
+	assert.Equal(t, "", output.Domain)
+	assert.Equal(t, "", output.Workflow)
 }
