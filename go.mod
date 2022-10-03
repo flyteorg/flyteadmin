@@ -2,6 +2,13 @@ module github.com/flyteorg/flyteadmin
 
 go 1.18
 
+replace (
+	github.com/flyteorg/flyteidl => github.com/blackshark-ai/flyteidl v0.24.22-0.20221003071410-7bb56c04c334
+	github.com/flyteorg/flyteplugins => github.com/blackshark-ai/flyteplugins v1.0.2-0.20220927114241-fb57ce261bb5
+	github.com/flyteorg/flytepropeller => github.com/blackshark-ai/flytepropeller v0.16.48-0.20221003094721-cb2bbe598ee5
+	github.com/flyteorg/flytestdlib => github.com/blackshark-ai/flytestdlib v1.0.1-0.20220927112514-285faf0b16b4
+)
+
 require (
 	cloud.google.com/go/iam v0.3.0
 	cloud.google.com/go/storage v1.22.0
@@ -13,8 +20,8 @@ require (
 	github.com/cloudevents/sdk-go/v2 v2.8.0
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/evanphx/json-patch v4.12.0+incompatible
-	github.com/flyteorg/flyteidl v1.2.0
-	github.com/flyteorg/flyteplugins v1.0.10
+	github.com/flyteorg/flyteidl v1.1.19
+	github.com/flyteorg/flyteplugins v1.0.15
 	github.com/flyteorg/flytepropeller v1.1.28
 	github.com/flyteorg/flytestdlib v1.0.5
 	github.com/flyteorg/stow v0.3.6
@@ -168,12 +175,12 @@ require (
 	go.opencensus.io v0.23.0 // indirect
 	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e // indirect
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
-	golang.org/x/net v0.0.0-20220607020251-c690dde0001d // indirect
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220608164250-635b8c9b7f68 // indirect
+	golang.org/x/net v0.0.0-20220722155237-a158d28d115b // indirect
+	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
+	golang.org/x/sys v0.0.0-20220829200755-d48e67d00261 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
-	golang.org/x/tools v0.1.11 // indirect
+	golang.org/x/tools v0.1.12 // indirect
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect

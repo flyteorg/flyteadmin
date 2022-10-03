@@ -158,6 +158,14 @@ func TestAddExecutionOverrides(t *testing.T) {
 		assert.NotNil(t, workflow.ExecutionConfig.Interruptible)
 		assert.True(t, *workflow.ExecutionConfig.Interruptible)
 	})
+	t.Run("skip cache", func(t *testing.T) {
+		workflowExecutionConfig := &admin.WorkflowExecutionConfig{
+			SkipCache: true,
+		}
+		workflow := &v1alpha1.FlyteWorkflow{}
+		addExecutionOverrides(nil, workflowExecutionConfig, nil, nil, workflow)
+		assert.True(t, workflow.ExecutionConfig.SkipCache)
+	})
 }
 
 func TestPrepareFlyteWorkflow(t *testing.T) {
