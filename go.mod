@@ -3,7 +3,7 @@ module github.com/flyteorg/flyteadmin
 go 1.18
 
 replace (
-	github.com/flyteorg/flyteidl => github.com/blackshark-ai/flyteidl v0.24.22-0.20221003071410-7bb56c04c334
+	github.com/flyteorg/flyteidl => github.com/blackshark-ai/flyteidl v0.24.22-0.20221005103053-1172311340ca
 	github.com/flyteorg/flyteplugins => github.com/blackshark-ai/flyteplugins v1.0.2-0.20220927114241-fb57ce261bb5
 	github.com/flyteorg/flytepropeller => github.com/blackshark-ai/flytepropeller v0.16.48-0.20221003094721-cb2bbe598ee5
 	github.com/flyteorg/flytestdlib => github.com/blackshark-ai/flytestdlib v1.0.1-0.20220927112514-285faf0b16b4

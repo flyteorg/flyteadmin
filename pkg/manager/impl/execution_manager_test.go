@@ -1410,37 +1410,110 @@ func TestRelaunchExecutionSkipCacheOverride(t *testing.T) {
 		StartedAt: startTimeProto,
 	}
 	existingClosureBytes, _ := proto.Marshal(&existingClosure)
-	executionGetFunc := makeExecutionSkipCacheGetFunc(t, existingClosureBytes, &startTime, true)
-	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
 
-	var createCalled bool
-	exCreateFunc := func(ctx context.Context, input models.Execution) error {
-		createCalled = true
-		assert.Equal(t, "relaunchy", input.Name)
-		assert.Equal(t, "domain", input.Domain)
-		assert.Equal(t, "project", input.Project)
-		assert.Equal(t, uint(8), input.SourceExecutionID)
-		var spec admin.ExecutionSpec
-		err := proto.Unmarshal(input.Spec, &spec)
+	t.Run("override enable", func(t *testing.T) {
+		executionGetFunc := makeExecutionSkipCacheGetFunc(t, existingClosureBytes, &startTime, false)
+		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
+
+		var createCalled bool
+		exCreateFunc := func(ctx context.Context, input models.Execution) error {
+			createCalled = true
+			assert.Equal(t, "relaunchy", input.Name)
+			assert.Equal(t, "domain", input.Domain)
+			assert.Equal(t, "project", input.Project)
+			assert.Equal(t, uint(8), input.SourceExecutionID)
+			var spec admin.ExecutionSpec
+			err := proto.Unmarshal(input.Spec, &spec)
+			assert.Nil(t, err)
+			assert.Equal(t, admin.ExecutionMetadata_RELAUNCH, spec.Metadata.Mode)
+			assert.Equal(t, int32(admin.ExecutionMetadata_RELAUNCH), input.Mode)
+			assert.True(t, spec.GetSkipCache())
+			return nil
+		}
+		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
+
+		asd, err := execManager.RelaunchExecution(context.Background(), admin.ExecutionRelaunchRequest{
+			Id: &core.WorkflowExecutionIdentifier{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			},
+			Name:      "relaunchy",
+			SkipCache: true,
+		}, requestedAt)
 		assert.Nil(t, err)
-		assert.Equal(t, admin.ExecutionMetadata_RELAUNCH, spec.Metadata.Mode)
-		assert.Equal(t, int32(admin.ExecutionMetadata_RELAUNCH), input.Mode)
-		assert.True(t, spec.GetSkipCache())
-		return nil
-	}
-	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
+		assert.NotNil(t, asd)
+		assert.True(t, createCalled)
+	})
 
-	asd, err := execManager.RelaunchExecution(context.Background(), admin.ExecutionRelaunchRequest{
-		Id: &core.WorkflowExecutionIdentifier{
-			Project: "project",
-			Domain:  "domain",
-			Name:    "name",
-		},
-		Name: "relaunchy",
-	}, requestedAt)
-	assert.Nil(t, err)
-	assert.NotNil(t, asd)
-	assert.True(t, createCalled)
+	t.Run("override disable", func(t *testing.T) {
+		executionGetFunc := makeExecutionSkipCacheGetFunc(t, existingClosureBytes, &startTime, true)
+		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
+
+		var createCalled bool
+		exCreateFunc := func(ctx context.Context, input models.Execution) error {
+			createCalled = true
+			assert.Equal(t, "relaunchy", input.Name)
+			assert.Equal(t, "domain", input.Domain)
+			assert.Equal(t, "project", input.Project)
+			assert.Equal(t, uint(8), input.SourceExecutionID)
+			var spec admin.ExecutionSpec
+			err := proto.Unmarshal(input.Spec, &spec)
+			assert.Nil(t, err)
+			assert.Equal(t, admin.ExecutionMetadata_RELAUNCH, spec.Metadata.Mode)
+			assert.Equal(t, int32(admin.ExecutionMetadata_RELAUNCH), input.Mode)
+			assert.False(t, spec.GetSkipCache())
+			return nil
+		}
+		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
+
+		asd, err := execManager.RelaunchExecution(context.Background(), admin.ExecutionRelaunchRequest{
+			Id: &core.WorkflowExecutionIdentifier{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			},
+			Name:      "relaunchy",
+			SkipCache: false,
+		}, requestedAt)
+		assert.Nil(t, err)
+		assert.NotNil(t, asd)
+		assert.True(t, createCalled)
+	})
+
+	t.Run("override omitted", func(t *testing.T) {
+		executionGetFunc := makeExecutionSkipCacheGetFunc(t, existingClosureBytes, &startTime, true)
+		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
+
+		var createCalled bool
+		exCreateFunc := func(ctx context.Context, input models.Execution) error {
+			createCalled = true
+			assert.Equal(t, "relaunchy", input.Name)
+			assert.Equal(t, "domain", input.Domain)
+			assert.Equal(t, "project", input.Project)
+			assert.Equal(t, uint(8), input.SourceExecutionID)
+			var spec admin.ExecutionSpec
+			err := proto.Unmarshal(input.Spec, &spec)
+			assert.Nil(t, err)
+			assert.Equal(t, admin.ExecutionMetadata_RELAUNCH, spec.Metadata.Mode)
+			assert.Equal(t, int32(admin.ExecutionMetadata_RELAUNCH), input.Mode)
+			assert.False(t, spec.GetSkipCache())
+			return nil
+		}
+		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
+
+		asd, err := execManager.RelaunchExecution(context.Background(), admin.ExecutionRelaunchRequest{
+			Id: &core.WorkflowExecutionIdentifier{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			},
+			Name: "relaunchy",
+		}, requestedAt)
+		assert.Nil(t, err)
+		assert.NotNil(t, asd)
+		assert.True(t, createCalled)
+	})
 }
 
 func TestRecoverExecution(t *testing.T) {
