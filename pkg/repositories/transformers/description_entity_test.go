@@ -10,8 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const shortDescription = "hello"
+
 func TestToDescriptionEntityExecutionModel(t *testing.T) {
-	shortDescription := "hello"
 	longDescription := &admin.LongDescription{IconLink: "https://flyte"}
 	sourceCode := &admin.SourceCode{Link: "https://github/flyte"}
 
@@ -41,7 +42,6 @@ func TestToDescriptionEntityExecutionModel(t *testing.T) {
 }
 
 func TestFromDescriptionEntityExecutionModel(t *testing.T) {
-	shortDescription := "hello"
 	longDescription := &admin.LongDescription{IconLink: "https://flyte"}
 	sourceCode := &admin.SourceCode{Link: "https://github/flyte"}
 
@@ -68,7 +68,6 @@ func TestFromDescriptionEntityExecutionModel(t *testing.T) {
 }
 
 func TestFromDescriptionEntityExecutionModels(t *testing.T) {
-	shortDescription := "hello"
 	longDescription := &admin.LongDescription{IconLink: "https://flyte"}
 	sourceCode := &admin.SourceCode{Link: "https://github/flyte"}
 

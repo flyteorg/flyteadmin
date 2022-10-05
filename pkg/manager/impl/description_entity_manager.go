@@ -5,6 +5,8 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+
 	"github.com/flyteorg/flyteadmin/pkg/common"
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
@@ -30,41 +32,40 @@ type DescriptionEntityMetrics struct {
 type DescriptionEntityManager struct {
 	db      repoInterfaces.Repository
 	config  runtimeInterfaces.Configuration
-	metrics NamedEntityMetrics
+	metrics DescriptionEntityMetrics
 }
 
-func (d *DescriptionEntityManager) CreateDescriptionEntity(ctx context.Context, request admin.DescriptionEntityCreateRequest) (
-	*admin.DescriptionEntityCreateResponse, error) {
-	descriptionDigest, err := util.GetDescriptionEntityDigest(ctx, request.DescriptionEntity)
+func createDescriptionEntity(ctx context.Context, db repoInterfaces.Repository, descriptionEntity *admin.DescriptionEntity, id core.Identifier) error {
+	descriptionDigest, err := util.GetDescriptionEntityDigest(ctx, descriptionEntity)
 	if err != nil {
-		logger.Errorf(ctx, "failed to compute description entity digest for [%+v] with err: %v", request.Id, err)
-		return nil, err
+		logger.Errorf(ctx, "failed to compute description entity digest for [%+v] with err: %v", id, err)
+		return err
 	}
 
-	existingDescriptionEntityModel, err := util.GetDescriptionEntityModel(ctx, d.db, *request.Id)
+	existingDescriptionEntityModel, err := util.GetDescriptionEntityModel(ctx, db, id)
 	if err == nil {
 		if bytes.Equal(existingDescriptionEntityModel.Digest, descriptionDigest) {
-			return nil, errors.NewFlyteAdminErrorf(codes.AlreadyExists,
-				"identical description entity already exists with id %s", request.Id)
+			return errors.NewFlyteAdminErrorf(codes.AlreadyExists,
+				"identical description entity already exists with id %s", id)
 		}
 
-		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
-			"description entity with different structure already exists with id %v", request.Id)
+		return errors.NewFlyteAdminErrorf(codes.InvalidArgument,
+			"description entity with different structure already exists with id %v", id)
 	}
 
-	descriptionModel, err := transformers.CreateDescriptionEntityModel(request, descriptionDigest)
+	descriptionModel, err := transformers.CreateDescriptionEntityModel(descriptionEntity, id, descriptionDigest)
 	if err != nil {
 		logger.Errorf(ctx,
-			"Failed to transform description model [%+v] with err: %v", request, err)
-		return nil, err
+			"Failed to transform description model [%+v] with err: %v", descriptionEntity, err)
+		return err
 	}
 
 	var descriptionID uint
-	if descriptionID, err = d.db.DescriptionEntityRepo().Create(ctx, descriptionModel); err != nil {
-		logger.Errorf(ctx, "Failed to create description model with id [%+v] with err %v", request.Id, err)
-		return nil, err
+	if descriptionID, err = db.DescriptionEntityRepo().Create(ctx, descriptionModel); err != nil {
+		logger.Errorf(ctx, "Failed to create description model with id [%+v] with err %v", id, err)
+		return err
 	}
-	err = d.db.TaskRepo().UpdateDescriptionID(models.Task{
+	err = db.TaskRepo().UpdateDescriptionID(models.Task{
 		TaskKey: models.TaskKey{
 			Project: descriptionModel.Project,
 			Domain:  descriptionModel.Domain,
@@ -75,10 +76,10 @@ func (d *DescriptionEntityManager) CreateDescriptionEntity(ctx context.Context, 
 	})
 	if err != nil {
 		logger.Errorf(ctx, "Failed to update descriptionID in tasks table: %v", err)
-		return nil, err
+		return err
 	}
 
-	return &admin.DescriptionEntityCreateResponse{}, nil
+	return nil
 }
 
 func (d *DescriptionEntityManager) GetDescriptionEntity(ctx context.Context, request admin.ObjectGetRequest) (
@@ -151,7 +152,7 @@ func NewDescriptionEntityManager(
 	config runtimeInterfaces.Configuration,
 	scope promutils.Scope) interfaces.DescriptionEntityInterface {
 
-	metrics := NamedEntityMetrics{
+	metrics := DescriptionEntityMetrics{
 		Scope: scope,
 	}
 	return &DescriptionEntityManager{

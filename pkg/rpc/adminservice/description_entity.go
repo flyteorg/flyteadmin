@@ -12,24 +12,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (m *AdminService) CreateDescriptionEntity(
-	ctx context.Context, request *admin.DescriptionEntityCreateRequest) (*admin.DescriptionEntityCreateResponse, error) {
-	defer m.interceptPanic(ctx, request)
-	if request == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "Incorrect request, nil requests not allowed")
-	}
-	var response *admin.DescriptionEntityCreateResponse
-	var err error
-	m.Metrics.descriptionEntityMetrics.create.Time(func() {
-		response, err = m.DescriptionEntityManager.CreateDescriptionEntity(ctx, *request)
-	})
-	if err != nil {
-		return nil, util.TransformAndRecordError(err, &m.Metrics.descriptionEntityMetrics.create)
-	}
-	m.Metrics.descriptionEntityMetrics.create.Success()
-	return response, nil
-}
-
 func (m *AdminService) GetDescriptionEntity(ctx context.Context, request *admin.ObjectGetRequest) (*admin.DescriptionEntity, error) {
 	defer m.interceptPanic(ctx, request)
 	if request == nil {

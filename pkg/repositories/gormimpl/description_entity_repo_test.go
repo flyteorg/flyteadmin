@@ -4,6 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+
 	mocket "github.com/Selvatico/go-mocket"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
@@ -66,6 +69,40 @@ func TestGetDescriptionEntity(t *testing.T) {
 	assert.Equal(t, version, output.Version)
 	assert.Equal(t, []byte{1, 2}, output.Digest)
 	assert.Equal(t, shortDescription, output.ShortDescription)
+}
+
+func TestListDescriptionEntities(t *testing.T) {
+	descriptionEntityRepo := NewDescriptionEntityRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
+
+	descriptionEntities := make([]map[string]interface{}, 0)
+	versions := []string{"ABC", "XYZ"}
+	for _, version := range versions {
+		descriptionEntity := getMockDescriptionEntityResponseFromDb(version, []byte{1, 2})
+		descriptionEntities = append(descriptionEntities, descriptionEntity)
+	}
+
+	GlobalMock := mocket.Catcher.Reset()
+	GlobalMock.NewMock().WithReply(descriptionEntities)
+
+	collection, err := descriptionEntityRepo.List(context.Background(), interfaces.ListResourceInput{
+		InlineFilters: []common.InlineFilter{
+			getEqualityFilter(common.Workflow, "project", project),
+			getEqualityFilter(common.Workflow, "domain", domain),
+			getEqualityFilter(common.Workflow, "name", name),
+		},
+		Limit: 20,
+	})
+	assert.Empty(t, err)
+	assert.NotEmpty(t, collection)
+	assert.NotEmpty(t, collection.Entities)
+	assert.Len(t, collection.Entities, 2)
+	for _, descriptionEntity := range collection.Entities {
+		assert.Equal(t, project, descriptionEntity.Project)
+		assert.Equal(t, domain, descriptionEntity.Domain)
+		assert.Equal(t, name, descriptionEntity.Name)
+		assert.Contains(t, versions, descriptionEntity.Version)
+		assert.Equal(t, shortDescription, descriptionEntity.ShortDescription)
+	}
 }
 
 func getMockDescriptionEntityResponseFromDb(version string, digest []byte) map[string]interface{} {

@@ -3,6 +3,8 @@ package transformers
 import (
 	"context"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
@@ -13,7 +15,8 @@ import (
 
 // CreateDescriptionEntityModel Transforms a TaskCreateRequest to a Description entity model
 func CreateDescriptionEntityModel(
-	request admin.DescriptionEntityCreateRequest,
+	descriptionEntity *admin.DescriptionEntity,
+	id core.Identifier,
 	digest []byte) (models.DescriptionEntity, error) {
 	ctx := context.Background()
 
@@ -22,34 +25,34 @@ func CreateDescriptionEntityModel(
 	var sourceCode models.SourceCode
 	var err error
 
-	if request.DescriptionEntity.LongDescription != nil {
-		longDescriptionBytes, err = proto.Marshal(request.DescriptionEntity.LongDescription)
+	if descriptionEntity.LongDescription != nil {
+		longDescriptionBytes, err = proto.Marshal(descriptionEntity.LongDescription)
 		if err != nil {
 			logger.Errorf(ctx, "Failed to marshal LongDescription with error: %v", err)
 			return models.DescriptionEntity{}, err
 		}
 	}
 
-	if request.DescriptionEntity.LongDescription != nil {
-		longDescriptionBytes, err = proto.Marshal(request.DescriptionEntity.LongDescription)
+	if descriptionEntity.LongDescription != nil {
+		longDescriptionBytes, err = proto.Marshal(descriptionEntity.LongDescription)
 		if err != nil {
 			logger.Errorf(ctx, "Failed to marshal LongDescription with error: %v", err)
 			return models.DescriptionEntity{}, err
 		}
 	}
-	if request.DescriptionEntity.SourceCode != nil {
-		sourceCode = models.SourceCode{Link: request.DescriptionEntity.SourceCode.Link}
+	if descriptionEntity.SourceCode != nil {
+		sourceCode = models.SourceCode{Link: descriptionEntity.SourceCode.Link}
 	}
 
 	return models.DescriptionEntity{
 		DescriptionEntityKey: models.DescriptionEntityKey{
-			ResourceType: request.Id.ResourceType,
-			Project:      request.Id.Project,
-			Domain:       request.Id.Domain,
-			Name:         request.Id.Name,
+			ResourceType: id.ResourceType,
+			Project:      id.Project,
+			Domain:       id.Domain,
+			Name:         id.Name,
 		},
 		Digest:           digest,
-		ShortDescription: request.DescriptionEntity.ShortDescription,
+		ShortDescription: descriptionEntity.ShortDescription,
 		LongDescription:  longDescriptionBytes,
 		SourceCode:       sourceCode,
 	}, nil
