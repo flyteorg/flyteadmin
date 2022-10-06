@@ -46,7 +46,7 @@ func createDescriptionEntity(ctx context.Context, db repoInterfaces.Repository, 
 	if err == nil {
 		if bytes.Equal(existingDescriptionEntityModel.Digest, descriptionDigest) {
 			return errors.NewFlyteAdminErrorf(codes.AlreadyExists,
-				"identical description entity already exists with id %s", id)
+				"identical description entity already exists with id %v", id)
 		}
 
 		return errors.NewFlyteAdminErrorf(codes.InvalidArgument,

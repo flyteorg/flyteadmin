@@ -49,18 +49,15 @@ func getMockConfigForDETest() runtimeInterfaces.Configuration {
 
 func TestDescriptionEntityManager_Create(t *testing.T) {
 	repository := getMockRepositoryForDETest()
-	manager := NewDescriptionEntityManager(repository, getMockConfigForDETest(), mockScope.NewTestScope())
+	// manager := NewDescriptionEntityManager(repository, getMockConfigForDETest(), mockScope.NewTestScope())
 	shortDescription := "hello world"
-	descriptionEntity := admin.DescriptionEntity{
+	descriptionEntity := &admin.DescriptionEntity{
 		ShortDescription: shortDescription,
 	}
 
 	t.Run("failed to compute description entity digest", func(t *testing.T) {
-		response, err := manager.CreateDescriptionEntity(context.Background(), admin.DescriptionEntityCreateRequest{
-			Id: &descriptionEntityIdentifier,
-		})
+		err := createDescriptionEntity(context.Background(), repository, descriptionEntity, descriptionEntityIdentifier)
 		assert.Error(t, err)
-		assert.Nil(t, response)
 	})
 
 	t.Run("entity not found", func(t *testing.T) {
@@ -68,29 +65,20 @@ func TestDescriptionEntityManager_Create(t *testing.T) {
 			return models.DescriptionEntity{}, errors.NewFlyteAdminErrorf(codes.NotFound, "NotFound")
 		}
 		repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetGetCallback(getFunction)
-
-		response, err := manager.CreateDescriptionEntity(context.Background(), admin.DescriptionEntityCreateRequest{
-			DescriptionEntity: &descriptionEntity,
-			Id:                &descriptionEntityIdentifier,
-		})
+		err := createDescriptionEntity(context.Background(), repository, descriptionEntity, descriptionEntityIdentifier)
 		assert.NoError(t, err)
-		assert.NotNil(t, response)
 	})
 
 	t.Run("entity exists and identical digest", func(t *testing.T) {
-		digest, err := util.GetDescriptionEntityDigest(context.Background(), &descriptionEntity)
+		digest, err := util.GetDescriptionEntityDigest(context.Background(), descriptionEntity)
 		assert.NoError(t, err)
 
 		getFunction := func(input models.DescriptionEntityKey) (models.DescriptionEntity, error) {
 			return models.DescriptionEntity{Digest: digest}, nil
 		}
 		repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetGetCallback(getFunction)
-		response, err := manager.CreateDescriptionEntity(context.Background(), admin.DescriptionEntityCreateRequest{
-			DescriptionEntity: &descriptionEntity,
-			Id:                &descriptionEntityIdentifier,
-		})
+		err = createDescriptionEntity(context.Background(), repository, descriptionEntity, descriptionEntityIdentifier)
 		assert.Error(t, err)
-		assert.Nil(t, response)
 	})
 
 	t.Run("entity exists and non-identical digest", func(t *testing.T) {
@@ -98,12 +86,8 @@ func TestDescriptionEntityManager_Create(t *testing.T) {
 			return models.DescriptionEntity{}, nil
 		}
 		repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetGetCallback(getFunction)
-		response, err := manager.CreateDescriptionEntity(context.Background(), admin.DescriptionEntityCreateRequest{
-			DescriptionEntity: &descriptionEntity,
-			Id:                &descriptionEntityIdentifier,
-		})
+		err := createDescriptionEntity(context.Background(), repository, descriptionEntity, descriptionEntityIdentifier)
 		assert.Error(t, err)
-		assert.Nil(t, response)
 	})
 
 	t.Run("failed to create description model", func(t *testing.T) {
@@ -116,12 +100,8 @@ func TestDescriptionEntityManager_Create(t *testing.T) {
 
 		repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetGetCallback(getFunction)
 		repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetCreateCallback(createFunction)
-		response, err := manager.CreateDescriptionEntity(context.Background(), admin.DescriptionEntityCreateRequest{
-			DescriptionEntity: &descriptionEntity,
-			Id:                &descriptionEntityIdentifier,
-		})
+		err := createDescriptionEntity(context.Background(), repository, descriptionEntity, descriptionEntityIdentifier)
 		assert.Error(t, err)
-		assert.Nil(t, response)
 	})
 }
 
