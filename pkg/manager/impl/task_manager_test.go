@@ -92,6 +92,11 @@ func TestCreateTask(t *testing.T) {
 
 	assert.Equal(t, &admin.TaskCreateResponse{}, response)
 	assert.True(t, createCalled)
+
+	request.Spec.DescriptionEntity = nil
+	response, err = taskManager.CreateTask(context.Background(), request)
+	assert.Error(t, err)
+	assert.Nil(t, response)
 }
 
 func TestCreateTask_ValidationError(t *testing.T) {

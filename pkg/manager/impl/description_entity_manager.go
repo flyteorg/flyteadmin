@@ -106,6 +106,7 @@ func (d *DescriptionEntityManager) ListDescriptionEntity(ctx context.Context, re
 		RequestFilters: request.Filters,
 	}, common.ResourceTypeToEntity[request.DescriptionEntityId.ResourceType])
 	if err != nil {
+		logger.Error(ctx, "failed to get database filter")
 		return nil, err
 	}
 	var sortParameter common.SortParameter

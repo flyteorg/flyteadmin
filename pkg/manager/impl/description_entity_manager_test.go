@@ -49,14 +49,13 @@ func getMockConfigForDETest() runtimeInterfaces.Configuration {
 
 func TestDescriptionEntityManager_Create(t *testing.T) {
 	repository := getMockRepositoryForDETest()
-	// manager := NewDescriptionEntityManager(repository, getMockConfigForDETest(), mockScope.NewTestScope())
 	shortDescription := "hello world"
 	descriptionEntity := &admin.DescriptionEntity{
 		ShortDescription: shortDescription,
 	}
 
 	t.Run("failed to compute description entity digest", func(t *testing.T) {
-		err := createDescriptionEntity(context.Background(), repository, descriptionEntity, descriptionEntityIdentifier)
+		err := createDescriptionEntity(context.Background(), repository, nil, descriptionEntityIdentifier)
 		assert.Error(t, err)
 	})
 
@@ -120,4 +119,67 @@ func TestDescriptionEntityManager_Get(t *testing.T) {
 	})
 	assert.Error(t, err)
 	assert.Nil(t, response)
+}
+
+func TestDescriptionEntityManager_List(t *testing.T) {
+	repository := getMockRepositoryForDETest()
+	manager := NewDescriptionEntityManager(repository, getMockConfigForDETest(), mockScope.NewTestScope())
+	// shortDescription := "hello world"
+	//descriptionEntity := &admin.DescriptionEntity{
+	//	ShortDescription: shortDescription,
+	//}
+
+	t.Run("failed to validate a request", func(t *testing.T) {
+		response, err := manager.ListDescriptionEntity(context.Background(), admin.DescriptionEntityListRequest{
+			DescriptionEntityId: &admin.DescriptionEntityIdentifier{
+				Name: "flyte",
+			},
+		})
+		assert.Error(t, err)
+		assert.Nil(t, response)
+	})
+
+	t.Run("failed to sort description entity", func(t *testing.T) {
+		response, err := manager.ListDescriptionEntity(context.Background(), admin.DescriptionEntityListRequest{
+			DescriptionEntityId: &admin.DescriptionEntityIdentifier{
+				Name:         "flyte",
+				Project:      "project",
+				Domain:       "domain",
+				ResourceType: core.ResourceType_TASK,
+			},
+			Limit:  1,
+			SortBy: &admin.Sort{Direction: 3},
+		})
+		assert.Error(t, err)
+		assert.Nil(t, response)
+	})
+
+	t.Run("failed to validate token", func(t *testing.T) {
+		response, err := manager.ListDescriptionEntity(context.Background(), admin.DescriptionEntityListRequest{
+			DescriptionEntityId: &admin.DescriptionEntityIdentifier{
+				Name:         "flyte",
+				Project:      "project",
+				Domain:       "domain",
+				ResourceType: core.ResourceType_TASK,
+			},
+			Limit: 1,
+			Token: "hello",
+		})
+		assert.Error(t, err)
+		assert.Nil(t, response)
+	})
+
+	t.Run("list description entities", func(t *testing.T) {
+		response, err := manager.ListDescriptionEntity(context.Background(), admin.DescriptionEntityListRequest{
+			DescriptionEntityId: &admin.DescriptionEntityIdentifier{
+				Name:         "flyte",
+				Project:      "project",
+				Domain:       "domain",
+				ResourceType: core.ResourceType_TASK,
+			},
+			Limit: 1,
+		})
+		assert.NoError(t, err)
+		assert.NotNil(t, response)
+	})
 }
