@@ -80,14 +80,17 @@ func TestCreateTask(t *testing.T) {
 		createCalled = true
 		return nil
 	})
+	mockRepository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetGetCallback(
+		func(input models.DescriptionEntityKey) (models.DescriptionEntity, error) {
+			return models.DescriptionEntity{}, adminErrors.NewFlyteAdminErrorf(codes.NotFound, "NotFound")
+		})
 	taskManager := NewTaskManager(mockRepository, getMockConfigForTaskTest(), getMockTaskCompiler(),
 		mockScope.NewTestScope())
 	request := testutils.GetValidTaskRequest()
 	response, err := taskManager.CreateTask(context.Background(), request)
 	assert.NoError(t, err)
 
-	expectedResponse := &admin.TaskCreateResponse{}
-	assert.Equal(t, expectedResponse, response)
+	assert.Equal(t, &admin.TaskCreateResponse{}, response)
 	assert.True(t, createCalled)
 }
 

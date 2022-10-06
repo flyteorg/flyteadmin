@@ -41,6 +41,11 @@ func GetValidTaskRequest() admin.TaskCreateRequest {
 					},
 				},
 			},
+			DescriptionEntity: &admin.DescriptionEntity{
+				ShortDescription: "short",
+				LongDescription:  &admin.LongDescription{Content: &admin.LongDescription_Value{Value: "long"}},
+				SourceCode:       &admin.SourceCode{Link: "https://github/flyteadmin"},
+			},
 		},
 	}
 }
