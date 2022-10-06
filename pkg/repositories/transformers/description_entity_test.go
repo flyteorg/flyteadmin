@@ -19,21 +19,20 @@ func TestToDescriptionEntityExecutionModel(t *testing.T) {
 	longDescriptionBytes, err := proto.Marshal(longDescription)
 	assert.Nil(t, err)
 
-	request := admin.DescriptionEntityCreateRequest{
-		Id: &core.Identifier{
-			ResourceType: core.ResourceType_TASK,
-			Project:      "project",
-			Domain:       "domain",
-			Version:      "xyz",
-		},
-		DescriptionEntity: &admin.DescriptionEntity{
-			ShortDescription: shortDescription,
-			LongDescription:  longDescription,
-			SourceCode:       sourceCode,
-		},
+	descriptionEntity := &admin.DescriptionEntity{
+		ShortDescription: shortDescription,
+		LongDescription:  longDescription,
+		SourceCode:       sourceCode,
 	}
 
-	model, err := CreateDescriptionEntityModel(request, []byte{1})
+	id := core.Identifier{
+		ResourceType: core.ResourceType_TASK,
+		Project:      "project",
+		Domain:       "domain",
+		Version:      "xyz",
+	}
+
+	model, err := CreateDescriptionEntityModel(descriptionEntity, id, []byte{1})
 	assert.Nil(t, err)
 	assert.Equal(t, shortDescription, model.ShortDescription)
 	assert.Equal(t, longDescriptionBytes, model.LongDescription)
