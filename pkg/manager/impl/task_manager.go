@@ -121,11 +121,15 @@ func (t *TaskManager) CreateTask(
 			contextWithRuntimeMeta, common.RuntimeVersionKey, finalizedRequest.Spec.Template.Metadata.Runtime.Version)
 		t.metrics.Registered.Inc(contextWithRuntimeMeta)
 	}
-	//err = createDescriptionEntity(ctx, t.db, request.Spec.DescriptionEntity, *request.Id)
-	//if err != nil {
-	//	logger.Debugf(ctx, "Failed to create description entity model with id [%+v] with err %v", request.Id, err)
-	//	return nil, err
-	//}
+
+	if request.Spec.DescriptionEntity != nil {
+		err = createDescriptionEntity(ctx, t.db, request.Spec.DescriptionEntity, *request.Id)
+		if err != nil {
+			logger.Debugf(ctx, "Failed to create description entity model with id [%+v] with err %v", request.Id, err)
+			return nil, err
+		}
+	}
+
 	return &admin.TaskCreateResponse{}, nil
 }
 

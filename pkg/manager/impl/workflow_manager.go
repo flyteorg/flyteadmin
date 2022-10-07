@@ -208,6 +208,15 @@ func (w *WorkflowManager) CreateWorkflow(
 		return nil, err
 	}
 	w.metrics.TypedInterfaceSizeBytes.Observe(float64(len(workflowModel.TypedInterface)))
+
+	if request.Spec.DescriptionEntity != nil {
+		err = createDescriptionEntity(ctx, w.db, request.Spec.DescriptionEntity, *request.Id)
+		if err != nil {
+			logger.Debugf(ctx, "Failed to create description entity model with id [%+v] with err %v", request.Id, err)
+			return nil, err
+		}
+	}
+
 	return &admin.WorkflowCreateResponse{}, nil
 }
 
