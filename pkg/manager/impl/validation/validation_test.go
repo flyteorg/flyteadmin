@@ -129,7 +129,7 @@ func TestValidateDescriptionEntityListRequest(t *testing.T) {
 		},
 		Limit: 1,
 	}))
-	
+
 	assert.NotNil(t, ValidateDescriptionEntityListRequest(admin.DescriptionEntityListRequest{
 		DescriptionEntityId: &admin.DescriptionEntityIdentifier{
 			ResourceType: core.ResourceType_WORKFLOW,
