@@ -2,13 +2,8 @@ package gormimpl
 
 import (
 	"context"
-	"fmt"
-
 	"github.com/flyteorg/flyteadmin/pkg/common"
-	adminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"google.golang.org/grpc/codes"
-
 	"github.com/flyteorg/flytestdlib/promutils"
 
 	flyteAdminDbErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
@@ -43,15 +38,9 @@ func (r *DescriptionEntityRepo) Get(ctx context.Context, input models.Descriptio
 		return models.DescriptionEntity{}, err
 	}
 
-	joinString, joinFound := resourceTypeToDescriptionJoin[input.ResourceType]
-	if !joinFound {
-		return models.DescriptionEntity{}, adminErrors.NewFlyteAdminErrorf(codes.InvalidArgument, "Cannot get description entity for resource type: %v", input.ResourceType)
-	}
-
-	tx := r.db.Table(descriptionEntityTableName).Joins(joinString)
-
+	tx := r.db.Table(descriptionEntityTableName)
 	// Apply filters
-	tx, err = applyScopedFilters(tx, filters, nil)
+	tx, err = applyFilters(tx, filters, nil)
 	if err != nil {
 		return models.DescriptionEntity{}, err
 	}
@@ -94,21 +83,6 @@ func (r *DescriptionEntityRepo) List(
 	return interfaces.DescriptionEntityCollectionOutput{
 		Entities: descriptionEntities,
 	}, nil
-}
-
-var innerJoinDescriptionToTaskName = fmt.Sprintf(
-	"INNER JOIN %s ON %s.project = %s.project AND %s.domain = %s.domain AND %s.id = %s.description_id", taskTableName, descriptionEntityTableName, taskTableName,
-	descriptionEntityTableName, taskTableName,
-	descriptionEntityTableName, taskTableName)
-
-var innerJoinDescriptionToWorkflowName = fmt.Sprintf(
-	"INNER JOIN %s ON %s.project = %s.project AND %s.domain = %s.domain AND %s.id = %s.description_id", workflowTableName, descriptionEntityTableName, workflowTableName,
-	descriptionEntityTableName, workflowTableName,
-	descriptionEntityTableName, workflowTableName)
-
-var resourceTypeToDescriptionJoin = map[core.ResourceType]string{
-	core.ResourceType_WORKFLOW: innerJoinDescriptionToWorkflowName,
-	core.ResourceType_TASK:     innerJoinDescriptionToTaskName,
 }
 
 func getDescriptionEntityFilters(resourceType core.ResourceType, project string, domain string, name string, version string) ([]common.InlineFilter, error) {

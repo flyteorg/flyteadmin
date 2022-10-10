@@ -52,8 +52,7 @@ func TestGetDescriptionEntity(t *testing.T) {
 	GlobalMock := mocket.Catcher.Reset()
 	GlobalMock.Logging = true
 	// Only match on queries that append expected filters
-	GlobalMock.NewMock().WithQuery(
-		`SELECT "description_entities"."resource_type","description_entities"."project","description_entities"."domain","description_entities"."name","description_entities"."version","description_entities"."id","description_entities"."created_at","description_entities"."updated_at","description_entities"."deleted_at","description_entities"."digest","description_entities"."short_description","description_entities"."long_description","description_entities"."link" FROM "description_entities" INNER JOIN workflows ON description_entities.project = workflows.project AND description_entities.domain = workflows.domain AND description_entities.id = workflows.description_id WHERE (workflows.project = $1) AND (workflows.domain = $2) AND (workflows.name = $3) AND (workflows.version = $4) LIMIT 1`).
+	GlobalMock.NewMock().WithQuery(`SELECT * FROM "description_entities" WHERE project = $1 AND domain = $2 AND name = $3 AND version = $4 LIMIT 1`).
 		WithReply(descriptionEntities)
 	output, err = descriptionEntityRepo.Get(context.Background(), models.DescriptionEntityKey{
 		ResourceType: resourceType,
