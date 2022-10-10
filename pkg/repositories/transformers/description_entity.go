@@ -20,7 +20,6 @@ func CreateDescriptionEntityModel(
 	digest []byte) (models.DescriptionEntity, error) {
 	ctx := context.Background()
 
-	// TODO: offload the LongDescription in to a separate file if value exceed 4KB, and update URI in LongDescription
 	var longDescriptionBytes []byte
 	var sourceCode models.SourceCode
 	var err error
@@ -50,6 +49,7 @@ func CreateDescriptionEntityModel(
 			Project:      id.Project,
 			Domain:       id.Domain,
 			Name:         id.Name,
+			Version:      id.Version,
 		},
 		Digest:           digest,
 		ShortDescription: descriptionEntity.ShortDescription,

@@ -3,6 +3,7 @@ package gormimpl
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	flyteAdminDbErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
@@ -11,8 +12,6 @@ import (
 	"github.com/flyteorg/flytestdlib/promutils"
 	"gorm.io/gorm"
 )
-
-const workflowTableName = "workflows"
 
 // Implementation of WorkflowRepoInterface.
 type WorkflowRepo struct {
@@ -58,6 +57,12 @@ func (r *WorkflowRepo) Get(ctx context.Context, input interfaces.Identifier) (mo
 			Name:    input.Name,
 			Version: input.Version,
 		},
+	})
+
+	tx = tx.Joins(leftJoinWorkflowToDescription)
+	tx = tx.Select([]string{
+		fmt.Sprintf("%s.*", workflowTableName),
+		fmt.Sprintf("%s.short_description", descriptionEntityTableName),
 	}).Take(&workflow)
 	timer.Stop()
 
@@ -84,7 +89,7 @@ func (r *WorkflowRepo) List(
 	tx := r.db.Limit(input.Limit).Offset(input.Offset)
 
 	// Apply filters
-	tx, err := applyFilters(tx, input.InlineFilters, input.MapFilters)
+	tx, err := applyScopedFilters(tx, input.InlineFilters, input.MapFilters)
 	if err != nil {
 		return interfaces.WorkflowCollectionOutput{}, err
 	}
@@ -93,7 +98,11 @@ func (r *WorkflowRepo) List(
 		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
 	}
 	timer := r.metrics.ListDuration.Start()
-	tx.Find(&workflows)
+	tx = tx.Joins(leftJoinWorkflowToDescription)
+	tx = tx.Select([]string{
+		fmt.Sprintf("%s.*", workflowTableName),
+		fmt.Sprintf("%s.short_description", descriptionEntityTableName),
+	}).Find(&workflows)
 	timer.Stop()
 	if tx.Error != nil {
 		return interfaces.WorkflowCollectionOutput{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
@@ -137,6 +146,11 @@ func (r *WorkflowRepo) ListIdentifiers(ctx context.Context, input interfaces.Lis
 		Workflows: workflows,
 	}, nil
 }
+
+var leftJoinWorkflowToDescription = fmt.Sprintf(
+	"LEFT JOIN %s ON %s.project = %s.project AND %s.domain = %s.domain AND %s.id = %s.description_id", descriptionEntityTableName, descriptionEntityTableName, workflowTableName,
+	descriptionEntityTableName, workflowTableName,
+	descriptionEntityTableName, workflowTableName)
 
 // Returns an instance of WorkflowRepoInterface
 func NewWorkflowRepo(

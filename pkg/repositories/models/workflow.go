@@ -12,9 +12,11 @@ type WorkflowKey struct {
 type Workflow struct {
 	BaseModel
 	WorkflowKey
-	DescriptionID           uint `gorm:"index"`
 	TypedInterface          []byte
 	RemoteClosureIdentifier string `gorm:"not null" valid:"length(0|255)"`
 	// Hash of the compiled workflow closure
-	Digest []byte
+	Digest        []byte
+	DescriptionID uint `gorm:"index"`
+	// Read only and will not create this column in the task table
+	ShortDescription string `gorm:"<-:false"`
 }

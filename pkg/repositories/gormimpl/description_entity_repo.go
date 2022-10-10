@@ -45,7 +45,7 @@ func (r *DescriptionEntityRepo) Get(ctx context.Context, input models.Descriptio
 
 	joinString, joinFound := resourceTypeToDescriptionJoin[input.ResourceType]
 	if !joinFound {
-		return models.DescriptionEntity{}, adminErrors.NewFlyteAdminErrorf(codes.InvalidArgument, "Cannot get DescriptionEntity for resource type: %v", input.ResourceType)
+		return models.DescriptionEntity{}, adminErrors.NewFlyteAdminErrorf(codes.InvalidArgument, "Cannot get description entity for resource type: %v", input.ResourceType)
 	}
 
 	tx := r.db.Table(descriptionEntityTableName).Joins(joinString)

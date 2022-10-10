@@ -26,6 +26,7 @@ const namedEntityMetadataTableName = "named_entity_metadata"
 const nodeExecutionTableName = "node_executions"
 const taskExecutionTableName = "task_executions"
 const taskTableName = "tasks"
+const workflowTableName = "workflows"
 const descriptionEntityTableName = "description_entities"
 
 const limit = "limit"

@@ -63,7 +63,7 @@ func (r *TaskRepo) Get(ctx context.Context, input interfaces.Identifier) (models
 	tx = tx.Joins(leftJoinTaskToDescription)
 	tx = tx.Select([]string{
 		fmt.Sprintf("%s.*", taskTableName),
-		fmt.Sprintf("%s.*", descriptionEntityTableName),
+		fmt.Sprintf("%s.short_description", descriptionEntityTableName),
 	}).Take(&task)
 	timer.Stop()
 	if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
@@ -90,7 +90,7 @@ func (r *TaskRepo) List(
 	var tasks []models.Task
 	tx := r.db.Limit(input.Limit).Offset(input.Offset)
 	// Apply filters
-	tx, err := applyFilters(tx, input.InlineFilters, input.MapFilters)
+	tx, err := applyScopedFilters(tx, input.InlineFilters, input.MapFilters)
 	if err != nil {
 		return interfaces.TaskCollectionOutput{}, err
 	}
@@ -102,7 +102,7 @@ func (r *TaskRepo) List(
 	tx = tx.Joins(leftJoinTaskToDescription)
 	tx = tx.Select([]string{
 		fmt.Sprintf("%s.*", taskTableName),
-		fmt.Sprintf("%s.*", descriptionEntityTableName),
+		fmt.Sprintf("%s.short_description", descriptionEntityTableName),
 	}).Find(&tasks)
 	timer.Stop()
 	if tx.Error != nil {
