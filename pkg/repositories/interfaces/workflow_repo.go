@@ -15,6 +15,7 @@ type WorkflowRepoInterface interface {
 	// Returns workflow revisions matching query parameters. A limit must be provided for the results page size.
 	List(ctx context.Context, input ListResourceInput) (WorkflowCollectionOutput, error)
 	ListIdentifiers(ctx context.Context, input ListResourceInput) (WorkflowCollectionOutput, error)
+	UpdateDescriptionID(input models.Workflow) error
 }
 
 // Response format for a query on workflows.

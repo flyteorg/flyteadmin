@@ -65,18 +65,35 @@ func createDescriptionEntity(ctx context.Context, db repoInterfaces.Repository, 
 		logger.Errorf(ctx, "Failed to create description model with id [%+v] with err %v", id, err)
 		return err
 	}
-	err = db.TaskRepo().UpdateDescriptionID(models.Task{
-		TaskKey: models.TaskKey{
-			Project: descriptionModel.Project,
-			Domain:  descriptionModel.Domain,
-			Name:    descriptionModel.Name,
-			Version: descriptionModel.Version,
-		},
-		DescriptionID: descriptionID,
-	})
-	if err != nil {
-		logger.Errorf(ctx, "Failed to update descriptionID in tasks table: %v", err)
-		return err
+
+	if id.ResourceType == core.ResourceType_TASK {
+		err = db.TaskRepo().UpdateDescriptionID(models.Task{
+			TaskKey: models.TaskKey{
+				Project: descriptionModel.Project,
+				Domain:  descriptionModel.Domain,
+				Name:    descriptionModel.Name,
+				Version: descriptionModel.Version,
+			},
+			DescriptionID: descriptionID,
+		})
+		if err != nil {
+			logger.Errorf(ctx, "Failed to update descriptionID in tasks table: %v", err)
+			return err
+		}
+	} else if id.ResourceType == core.ResourceType_WORKFLOW {
+		err = db.WorkflowRepo().UpdateDescriptionID(models.Workflow{
+			WorkflowKey: models.WorkflowKey{
+				Project: descriptionModel.Project,
+				Domain:  descriptionModel.Domain,
+				Name:    descriptionModel.Name,
+				Version: descriptionModel.Version,
+			},
+			DescriptionID: descriptionID,
+		})
+		if err != nil {
+			logger.Errorf(ctx, "Failed to update descriptionID in workflows table: %v", err)
+			return err
+		}
 	}
 
 	return nil

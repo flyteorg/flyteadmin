@@ -106,15 +106,9 @@ var innerJoinDescriptionToWorkflowName = fmt.Sprintf(
 	descriptionEntityTableName, workflowTableName,
 	descriptionEntityTableName, workflowTableName)
 
-var innerJoinDescriptionToLaunchPlanName = fmt.Sprintf(
-	"INNER JOIN %s ON %s.project = %s.project AND %s.domain = %s.domain AND %s.id = %s.description_id", launchPlanTableName, descriptionEntityTableName, launchPlanTableName,
-	descriptionEntityTableName, launchPlanTableName,
-	descriptionEntityTableName, launchPlanTableName)
-
 var resourceTypeToDescriptionJoin = map[core.ResourceType]string{
-	core.ResourceType_LAUNCH_PLAN: innerJoinDescriptionToLaunchPlanName,
-	core.ResourceType_WORKFLOW:    innerJoinDescriptionToWorkflowName,
-	core.ResourceType_TASK:        innerJoinDescriptionToTaskName,
+	core.ResourceType_WORKFLOW: innerJoinDescriptionToWorkflowName,
+	core.ResourceType_TASK:     innerJoinDescriptionToTaskName,
 }
 
 func getDescriptionEntityFilters(resourceType core.ResourceType, project string, domain string, name string, version string) ([]common.InlineFilter, error) {

@@ -57,8 +57,9 @@ func FromTaskModel(taskModel models.Task) (admin.Task, error) {
 		Version:      taskModel.Version,
 	}
 	return admin.Task{
-		Id:      &id,
-		Closure: taskClosure,
+		Id:               &id,
+		Closure:          taskClosure,
+		ShortDescription: taskModel.ShortDescription,
 	}, nil
 }
 

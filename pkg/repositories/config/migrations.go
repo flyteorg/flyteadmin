@@ -420,16 +420,6 @@ var Migrations = []*gormigrate.Migration{
 			return tx.Exec("ALTER TABLE workflows DROP COLUMN IF EXISTS description_id").Error
 		},
 	},
-	// Modify the launch_plans table, if necessary
-	{
-		ID: "2020-09-13-launchPlan-description_id",
-		Migrate: func(tx *gorm.DB) error {
-			return tx.Exec("ALTER TABLE launch_plans ADD COLUMN IF NOT EXISTS description_id integer;").Error
-		},
-		Rollback: func(tx *gorm.DB) error {
-			return tx.Exec("ALTER TABLE launch_plans DROP COLUMN IF EXISTS description_id").Error
-		},
-	},
 }
 
 func alterTableColumnType(db *sql.DB, columnName, columnType string) error {

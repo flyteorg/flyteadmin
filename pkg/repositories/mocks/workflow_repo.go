@@ -12,12 +12,14 @@ type CreateWorkflowFunc func(input models.Workflow) error
 type GetWorkflowFunc func(input interfaces.Identifier) (models.Workflow, error)
 type ListWorkflowFunc func(input interfaces.ListResourceInput) (interfaces.WorkflowCollectionOutput, error)
 type ListIdentifiersFunc func(input interfaces.ListResourceInput) (interfaces.WorkflowCollectionOutput, error)
+type UpdateWorkflowDescriptionIDFunc func(input models.Workflow) error
 
 type MockWorkflowRepo struct {
-	createFunction      CreateWorkflowFunc
-	getFunction         GetWorkflowFunc
-	listFunction        ListWorkflowFunc
-	listIdentifiersFunc ListIdentifiersFunc
+	createFunction                  CreateWorkflowFunc
+	getFunction                     GetWorkflowFunc
+	listFunction                    ListWorkflowFunc
+	listIdentifiersFunc             ListIdentifiersFunc
+	updateWorkflowDescriptionIDFunc UpdateWorkflowDescriptionIDFunc
 }
 
 func (r *MockWorkflowRepo) Create(ctx context.Context, input models.Workflow) error {
@@ -73,6 +75,13 @@ func (r *MockWorkflowRepo) ListIdentifiers(ctx context.Context, input interfaces
 	}
 
 	return interfaces.WorkflowCollectionOutput{}, nil
+}
+
+func (r *MockWorkflowRepo) UpdateDescriptionID(input models.Workflow) error {
+	if r.updateWorkflowDescriptionIDFunc != nil {
+		return r.updateWorkflowDescriptionIDFunc(input)
+	}
+	return nil
 }
 
 func NewMockWorkflowRepo() interfaces.WorkflowRepoInterface {

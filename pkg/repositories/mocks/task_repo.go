@@ -12,14 +12,14 @@ type CreateTaskFunc func(input models.Task) error
 type GetTaskFunc func(input interfaces.Identifier) (models.Task, error)
 type ListTaskFunc func(input interfaces.ListResourceInput) (interfaces.TaskCollectionOutput, error)
 type ListTaskIdentifiersFunc func(input interfaces.ListResourceInput) (interfaces.TaskCollectionOutput, error)
-type UpdateDescriptionIDFunc func(input models.Task) error
+type UpdateTaskDescriptionIDFunc func(input models.Task) error
 
 type MockTaskRepo struct {
-	createFunction            CreateTaskFunc
-	getFunction               GetTaskFunc
-	listFunction              ListTaskFunc
-	listUniqueTaskIdsFunction ListTaskIdentifiersFunc
-	updateDescriptionIDFunc   UpdateDescriptionIDFunc
+	createFunction              CreateTaskFunc
+	getFunction                 GetTaskFunc
+	listFunction                ListTaskFunc
+	listUniqueTaskIdsFunction   ListTaskIdentifiersFunc
+	updateTaskDescriptionIDFunc UpdateTaskDescriptionIDFunc
 }
 
 func (r *MockTaskRepo) Create(ctx context.Context, input models.Task) error {
@@ -73,8 +73,8 @@ func (r *MockTaskRepo) ListTaskIdentifiers(ctx context.Context, input interfaces
 }
 
 func (r *MockTaskRepo) UpdateDescriptionID(input models.Task) error {
-	if r.updateDescriptionIDFunc != nil {
-		return r.updateDescriptionIDFunc(input)
+	if r.updateTaskDescriptionIDFunc != nil {
+		return r.updateTaskDescriptionIDFunc(input)
 	}
 	return nil
 }

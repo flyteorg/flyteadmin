@@ -31,6 +31,23 @@ func (r *WorkflowRepo) Create(ctx context.Context, input models.Workflow) error 
 	return nil
 }
 
+func (r *WorkflowRepo) UpdateDescriptionID(input models.Workflow) error {
+	timer := r.metrics.UpdateDuration.Start()
+	tx := r.db.Where(&models.Workflow{
+		WorkflowKey: models.WorkflowKey{
+			Project: input.Project,
+			Domain:  input.Domain,
+			Name:    input.Name,
+			Version: input.Version,
+		},
+	}).Assign(input).FirstOrCreate(&input)
+	timer.Stop()
+	if tx.Error != nil {
+		return r.errorTransformer.ToFlyteAdminError(tx.Error)
+	}
+	return nil
+}
+
 func (r *WorkflowRepo) Get(ctx context.Context, input interfaces.Identifier) (models.Workflow, error) {
 	var workflow models.Workflow
 	timer := r.metrics.GetDuration.Start()

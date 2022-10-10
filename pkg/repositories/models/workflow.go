@@ -12,6 +12,7 @@ type WorkflowKey struct {
 type Workflow struct {
 	BaseModel
 	WorkflowKey
+	DescriptionID           uint `gorm:"index"`
 	TypedInterface          []byte
 	RemoteClosureIdentifier string `gorm:"not null" valid:"length(0|255)"`
 	// Hash of the compiled workflow closure
