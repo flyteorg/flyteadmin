@@ -64,7 +64,7 @@ func TestGetTask(t *testing.T) {
 	GlobalMock.Logging = true
 	// Only match on queries that append expected filters
 	GlobalMock.NewMock().WithQuery(
-		`SELECT tasks.*,description_entities.* FROM "tasks" LEFT JOIN description_entities ON description_entities.project = tasks.project AND description_entities.domain = tasks.domain AND description_entities.id = tasks.description_id WHERE "tasks"."project" = $1 AND "tasks"."domain" = $2 AND "tasks"."name" = $3 AND "tasks"."version" = $4 LIMIT 1`).
+		`SELECT tasks.*,description_entities.short_description FROM "tasks" LEFT JOIN description_entities ON description_entities.project = tasks.project AND description_entities.domain = tasks.domain AND description_entities.id = tasks.description_id WHERE "tasks"."project" = $1 AND "tasks"."domain" = $2 AND "tasks"."name" = $3 AND "tasks"."version" = $4 LIMIT 1`).
 		WithReply(tasks)
 	output, err = taskRepo.Get(context.Background(), interfaces.Identifier{
 		Project: project,

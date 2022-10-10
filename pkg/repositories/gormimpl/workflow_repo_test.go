@@ -54,7 +54,7 @@ func TestGetWorkflow(t *testing.T) {
 	GlobalMock := mocket.Catcher.Reset()
 	// Only match on queries that append expected filters
 	GlobalMock.NewMock().WithQuery(
-		`SELECT * FROM "workflows" WHERE "workflows"."project" = $1 AND "workflows"."domain" = $2 AND "workflows"."name" = $3 AND "workflows"."version" = $4 LIMIT 1`).WithReply(workflows)
+		`SELECT workflows.*,description_entities.short_description FROM "workflows" LEFT JOIN description_entities ON description_entities.project = workflows.project AND description_entities.domain = workflows.domain AND description_entities.id = workflows.description_id WHERE "workflows"."project" = $1 AND "workflows"."domain" = $2 AND "workflows"."name" = $3 AND "workflows"."version" = $4 LIMIT 1`).WithReply(workflows)
 	output, err := workflowRepo.Get(context.Background(), interfaces.Identifier{
 		Project: project,
 		Domain:  domain,
