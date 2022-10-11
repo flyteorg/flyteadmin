@@ -98,8 +98,7 @@ func (r *WorkflowRepo) List(
 		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
 	}
 	timer := r.metrics.ListDuration.Start()
-	tx = tx.Joins(leftJoinWorkflowToDescription)
-	tx = tx.Select([]string{
+	tx = tx.Joins(leftJoinWorkflowToDescription).Select([]string{
 		fmt.Sprintf("%s.*", workflowTableName),
 		fmt.Sprintf("%s.short_description", descriptionEntityTableName),
 	}).Find(&workflows)
