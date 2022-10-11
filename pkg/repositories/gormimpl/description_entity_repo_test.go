@@ -121,10 +121,13 @@ func getMockDescriptionEntityResponseFromDb(version string, digest []byte) map[s
 }
 
 func TestGetDescriptionEntityFilters(t *testing.T) {
-	filters, err := getDescriptionEntityFilters(resourceType, project, domain, name, version)
+	var err error
+	var filters []common.InlineFilter
+	var filter common.InlineFilter
+
+	filters, err = getDescriptionEntityFilters(resourceType, project, domain, name, version)
 	entity := common.ResourceTypeToEntity[resourceType]
 
-	var filter common.InlineFilter
 	filter, err = common.NewSingleValueFilter(entity, common.Equal, Project, project)
 	assert.NoError(t, err)
 	assert.Equal(t, filters[0], filter)
