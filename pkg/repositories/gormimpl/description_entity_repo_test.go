@@ -124,7 +124,8 @@ func TestGetDescriptionEntityFilters(t *testing.T) {
 	filters, err := getDescriptionEntityFilters(resourceType, project, domain, name, version)
 	entity := common.ResourceTypeToEntity[resourceType]
 
-	filter, err := common.NewSingleValueFilter(entity, common.Equal, Project, project)
+	var filter common.InlineFilter
+	filter, err = common.NewSingleValueFilter(entity, common.Equal, Project, project)
 	assert.NoError(t, err)
 	assert.Equal(t, filters[0], filter)
 
