@@ -121,22 +121,22 @@ func getMockDescriptionEntityResponseFromDb(version string, digest []byte) map[s
 }
 
 func TestGetDescriptionEntityFilters(t *testing.T) {
-	filter, err := getDescriptionEntityFilters(resourceType, project, domain, name, version)
+	filters, err := getDescriptionEntityFilters(resourceType, project, domain, name, version)
 	entity := common.ResourceTypeToEntity[resourceType]
 
-	projectFilter, err := common.NewSingleValueFilter(entity, common.Equal, Project, project)
+	filter, err := common.NewSingleValueFilter(entity, common.Equal, Project, project)
 	assert.NoError(t, err)
-	assert.Equal(t, filter[0], projectFilter)
+	assert.Equal(t, filters[0], filter)
 
-	domainFilter, err := common.NewSingleValueFilter(entity, common.Equal, Domain, domain)
+	filter, err = common.NewSingleValueFilter(entity, common.Equal, Domain, domain)
 	assert.NoError(t, err)
-	assert.Equal(t, filter[1], domainFilter)
+	assert.Equal(t, filters[1], filter)
 
-	nameFilter, err := common.NewSingleValueFilter(entity, common.Equal, Name, name)
+	filter, err = common.NewSingleValueFilter(entity, common.Equal, Name, name)
 	assert.NoError(t, err)
-	assert.Equal(t, filter[2], nameFilter)
+	assert.Equal(t, filters[2], filter)
 
-	versionFilter, err := common.NewSingleValueFilter(entity, common.Equal, Version, version)
+	filter, err = common.NewSingleValueFilter(entity, common.Equal, Version, version)
 	assert.NoError(t, err)
-	assert.Equal(t, filter[3], versionFilter)
+	assert.Equal(t, filters[3], filter)
 }
