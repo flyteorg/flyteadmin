@@ -83,7 +83,11 @@ func TestListDescriptionEntities(t *testing.T) {
 	GlobalMock := mocket.Catcher.Reset()
 	GlobalMock.NewMock().WithReply(descriptionEntities)
 
-	collection, err := descriptionEntityRepo.List(context.Background(), interfaces.ListResourceInput{
+	collection, err := descriptionEntityRepo.List(context.Background(), interfaces.ListResourceInput{})
+	assert.Equal(t, 0, len(collection.Entities))
+	assert.Error(t, err)
+
+	collection, err = descriptionEntityRepo.List(context.Background(), interfaces.ListResourceInput{
 		InlineFilters: []common.InlineFilter{
 			getEqualityFilter(common.Workflow, "project", project),
 			getEqualityFilter(common.Workflow, "domain", domain),
@@ -114,4 +118,25 @@ func getMockDescriptionEntityResponseFromDb(version string, digest []byte) map[s
 	descriptionEntity["Digest"] = digest
 	descriptionEntity["ShortDescription"] = shortDescription
 	return descriptionEntity
+}
+
+func TestGetDescriptionEntityFilters(t *testing.T) {
+	filter, err := getDescriptionEntityFilters(resourceType, project, domain, name, version)
+	entity := common.ResourceTypeToEntity[resourceType]
+
+	projectFilter, err := common.NewSingleValueFilter(entity, common.Equal, Project, project)
+	assert.NoError(t, err)
+	assert.Equal(t, filter[0], projectFilter)
+
+	domainFilter, err := common.NewSingleValueFilter(entity, common.Equal, Domain, domain)
+	assert.NoError(t, err)
+	assert.Equal(t, filter[1], domainFilter)
+
+	nameFilter, err := common.NewSingleValueFilter(entity, common.Equal, Name, name)
+	assert.NoError(t, err)
+	assert.Equal(t, filter[2], nameFilter)
+
+	versionFilter, err := common.NewSingleValueFilter(entity, common.Equal, Version, version)
+	assert.NoError(t, err)
+	assert.Equal(t, filter[3], versionFilter)
 }
