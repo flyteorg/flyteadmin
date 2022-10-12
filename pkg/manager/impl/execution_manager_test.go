@@ -277,17 +277,7 @@ func TestCreateExecution(t *testing.T) {
 
 	principal := "principal"
 	rawOutput := "raw_output"
-	clusterAssignment := admin.ClusterAssignment{
-		Affinity: &admin.Affinity{
-			Selectors: []*admin.Selector{
-				{
-					Key:      "foo",
-					Value:    []string{"bar"},
-					Operator: admin.Selector_NOT_EQUALS,
-				},
-			},
-		},
-	}
+	clusterAssignment := admin.ClusterAssignment{ClusterPoolName: "gpu"}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(
 		func(ctx context.Context, input models.Execution) error {
 			var spec admin.ExecutionSpec
@@ -367,7 +357,7 @@ func TestCreateExecution(t *testing.T) {
 	request.Spec.RawOutputDataConfig = &admin.RawOutputDataConfig{OutputLocationPrefix: rawOutput}
 	request.Spec.ClusterAssignment = &clusterAssignment
 
-	identity := auth.NewIdentityContext("", principal, "", time.Now(), sets.NewString(), nil)
+	identity := auth.NewIdentityContext("", principal, "", time.Now(), sets.NewString(), nil, nil)
 	ctx := identity.WithContext(context.Background())
 	response, err := execManager.CreateExecution(ctx, request, requestedAt)
 	assert.Nil(t, err)
@@ -2294,7 +2284,7 @@ func TestUpdateExecution(t *testing.T) {
 			updateExecFuncCalled = true
 			return nil
 		}
-		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateExecutionCallback(updateExecFunc)
+		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateCallback(updateExecFunc)
 		r := plugins.NewRegistry()
 		r.RegisterDefault(plugins.PluginIDWorkflowExecutor, &defaultTestExecutor)
 		execManager := NewExecutionManager(repository, r, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
@@ -2315,7 +2305,7 @@ func TestUpdateExecution(t *testing.T) {
 			updateExecFuncCalled = true
 			return nil
 		}
-		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateExecutionCallback(updateExecFunc)
+		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateCallback(updateExecFunc)
 		r := plugins.NewRegistry()
 		r.RegisterDefault(plugins.PluginIDWorkflowExecutor, &defaultTestExecutor)
 		execManager := NewExecutionManager(repository, r, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
@@ -2333,7 +2323,7 @@ func TestUpdateExecution(t *testing.T) {
 		updateExecFunc := func(ctx context.Context, execModel models.Execution) error {
 			return fmt.Errorf("some db error")
 		}
-		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateExecutionCallback(updateExecFunc)
+		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateCallback(updateExecFunc)
 		r := plugins.NewRegistry()
 		r.RegisterDefault(plugins.PluginIDWorkflowExecutor, &defaultTestExecutor)
 		execManager := NewExecutionManager(repository, r, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
@@ -2818,7 +2808,7 @@ func TestTerminateExecution(t *testing.T) {
 		}, unmarshaledClosure.GetAbortMetadata()))
 		return nil
 	}
-	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateExecutionCallback(updateExecutionFunc)
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateCallback(updateExecutionFunc)
 
 	mockExecutor := workflowengineMocks.WorkflowExecutor{}
 	mockExecutor.OnAbortMatch(mock.Anything, mock.MatchedBy(func(data workflowengineInterfaces.AbortData) bool {
@@ -2834,7 +2824,7 @@ func TestTerminateExecution(t *testing.T) {
 	r.RegisterDefault(plugins.PluginIDWorkflowExecutor, &mockExecutor)
 	execManager := NewExecutionManager(repository, r, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
 
-	identity := auth.NewIdentityContext("", principal, "", time.Now(), sets.NewString(), nil)
+	identity := auth.NewIdentityContext("", principal, "", time.Now(), sets.NewString(), nil, nil)
 	ctx := identity.WithContext(context.Background())
 	resp, err := execManager.TerminateExecution(ctx, admin.ExecutionTerminateRequest{
 		Id: &core.WorkflowExecutionIdentifier{
@@ -2860,7 +2850,7 @@ func TestTerminateExecution_PropellerError(t *testing.T) {
 
 	updateCalled := false
 	repository := repositoryMocks.NewMockRepository()
-	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateExecutionCallback(func(
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateCallback(func(
 		context context.Context, execution models.Execution) error {
 		updateCalled = true
 		assert.Equal(t, core.WorkflowExecution_ABORTING.String(), execution.Phase)
@@ -2892,7 +2882,7 @@ func TestTerminateExecution_DatabaseError(t *testing.T) {
 		context context.Context, execution models.Execution) error {
 		return expectedError
 	}
-	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateExecutionCallback(updateExecutionFunc)
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetUpdateCallback(updateExecutionFunc)
 	mockExecutor := workflowengineMocks.WorkflowExecutor{}
 	mockExecutor.OnAbortMatch(mock.Anything, mock.Anything).Return(nil)
 	mockExecutor.OnID().Return("testMockExecutor")
@@ -2910,6 +2900,38 @@ func TestTerminateExecution_DatabaseError(t *testing.T) {
 
 	assert.Nil(t, resp)
 	assert.EqualError(t, err, expectedError.Error())
+}
+
+func TestTerminateExecution_AlreadyTerminated(t *testing.T) {
+	var expectedError = errors.New("expected error")
+
+	mockExecutor := workflowengineMocks.WorkflowExecutor{}
+	mockExecutor.OnAbortMatch(mock.Anything, mock.Anything).Return(expectedError)
+	mockExecutor.OnID().Return("customMockExecutor")
+	r := plugins.NewRegistry()
+	r.RegisterDefault(plugins.PluginIDWorkflowExecutor, &mockExecutor)
+
+	repository := repositoryMocks.NewMockRepository()
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(
+		func(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
+			return models.Execution{
+				Phase: core.WorkflowExecution_SUCCEEDED.String(),
+			}, nil
+		})
+	execManager := NewExecutionManager(repository, r, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
+	resp, err := execManager.TerminateExecution(context.Background(), admin.ExecutionTerminateRequest{
+		Id: &core.WorkflowExecutionIdentifier{
+			Project: "project",
+			Domain:  "domain",
+			Name:    "name",
+		},
+		Cause: "abort cause",
+	})
+
+	assert.Nil(t, resp)
+	s, ok := status.FromError(err)
+	assert.True(t, ok)
+	assert.Equal(t, codes.PermissionDenied, s.Code())
 }
 
 func TestGetExecutionData(t *testing.T) {
@@ -3974,6 +3996,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 	requestOutputLocationPrefix := "requestOutputLocationPrefix"
 	requestK8sServiceAccount := "requestK8sServiceAccount"
 	requestMaxParallelism := int32(10)
+	requestInterruptible := false
 
 	launchPlanLabels := map[string]string{"launchPlanLabelKey": "launchPlanLabelValue"}
 	launchPlanAnnotations := map[string]string{"launchPlanAnnotationKey": "launchPlanAnnotationValue"}
@@ -3981,17 +4004,20 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 	launchPlanK8sServiceAccount := "launchPlanK8sServiceAccount"
 	launchPlanAssumableIamRole := "launchPlanAssumableIamRole"
 	launchPlanMaxParallelism := int32(50)
+	launchPlanInterruptible := true
 
 	applicationConfig := runtime.NewConfigurationProvider()
 
 	defaultK8sServiceAccount := applicationConfig.ApplicationConfiguration().GetTopLevelConfig().K8SServiceAccount
 	defaultMaxParallelism := applicationConfig.ApplicationConfiguration().GetTopLevelConfig().MaxParallelism
 
+	deprecatedLaunchPlanK8sServiceAccount := "deprecatedLaunchPlanK8sServiceAccount"
 	rmLabels := map[string]string{"rmLabelKey": "rmLabelValue"}
 	rmAnnotations := map[string]string{"rmAnnotationKey": "rmAnnotationValue"}
 	rmOutputLocationPrefix := "rmOutputLocationPrefix"
 	rmK8sServiceAccount := "rmK8sServiceAccount"
 	rmMaxParallelism := int32(80)
+	rmInterruptible := false
 
 	resourceManager := managerMocks.MockResourceManager{}
 	executionManager := ExecutionManager{
@@ -4000,17 +4026,21 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 	}
 	resourceManager.GetResourceFunc = func(ctx context.Context,
 		request managerInterfaces.ResourceRequest) (*managerInterfaces.ResourceResponse, error) {
-		assert.EqualValues(t, request, managerInterfaces.ResourceRequest{
+		// two requests will be made, one with empty domain and one with filled in domain
+		assert.Contains(t, []managerInterfaces.ResourceRequest{{
 			Project:      workflowIdentifier.Project,
 			Domain:       workflowIdentifier.Domain,
 			ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
-		})
-		return &managerInterfaces.ResourceResponse{
+		}, {Project: workflowIdentifier.Project,
+			Domain:       "",
+			ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG},
+		}, request)
+		projectDomainResponse := &managerInterfaces.ResourceResponse{
 			Attributes: &admin.MatchingAttributes{
 				Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
 					WorkflowExecutionConfig: &admin.WorkflowExecutionConfig{
 						MaxParallelism: rmMaxParallelism,
-						Labels:         &admin.Labels{Values: rmLabels},
+						Interruptible:  &wrappers.BoolValue{Value: rmInterruptible},
 						Annotations:    &admin.Annotations{Values: rmAnnotations},
 						RawOutputDataConfig: &admin.RawOutputDataConfig{
 							OutputLocationPrefix: rmOutputLocationPrefix,
@@ -4023,7 +4053,24 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 					},
 				},
 			},
-		}, nil
+		}
+
+		projectResponse := &managerInterfaces.ResourceResponse{
+			Attributes: &admin.MatchingAttributes{
+				Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
+					WorkflowExecutionConfig: &admin.WorkflowExecutionConfig{
+						Labels: &admin.Labels{Values: rmLabels},
+						RawOutputDataConfig: &admin.RawOutputDataConfig{
+							OutputLocationPrefix: "shouldnotbeused",
+						},
+					},
+				},
+			},
+		}
+		if request.Domain == "" {
+			return projectResponse, nil
+		}
+		return projectDomainResponse, nil
 	}
 
 	t.Run("request with full config", func(t *testing.T) {
@@ -4042,12 +4089,14 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 					},
 				},
 				MaxParallelism: requestMaxParallelism,
+				Interruptible:  &wrappers.BoolValue{Value: requestInterruptible},
 			},
 		}
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, requestMaxParallelism, execConfig.MaxParallelism)
 		assert.Equal(t, requestK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
+		assert.Equal(t, requestInterruptible, execConfig.Interruptible.Value)
 		assert.Equal(t, requestOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, requestLabels, execConfig.GetLabels().Values)
 		assert.Equal(t, requestAnnotations, execConfig.GetAnnotations().Values)
@@ -4076,11 +4125,13 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 					},
 				},
 				MaxParallelism: launchPlanMaxParallelism,
+				Interruptible:  &wrappers.BoolValue{Value: launchPlanInterruptible},
 			},
 		}
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
 		assert.NoError(t, err)
 		assert.Equal(t, requestMaxParallelism, execConfig.MaxParallelism)
+		assert.Equal(t, launchPlanInterruptible, execConfig.Interruptible.Value)
 		assert.True(t, proto.Equal(launchPlan.Spec.SecurityContext, execConfig.SecurityContext))
 		assert.True(t, proto.Equal(launchPlan.Spec.Annotations, execConfig.Annotations))
 		assert.Equal(t, requestOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
@@ -4110,11 +4161,13 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 					},
 				},
 				MaxParallelism: launchPlanMaxParallelism,
+				Interruptible:  &wrappers.BoolValue{Value: launchPlanInterruptible},
 			},
 		}
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
 		assert.NoError(t, err)
 		assert.Equal(t, launchPlanMaxParallelism, execConfig.MaxParallelism)
+		assert.Equal(t, launchPlanInterruptible, execConfig.Interruptible.Value)
 		assert.Equal(t, launchPlanK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Equal(t, launchPlanOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, launchPlanLabels, execConfig.GetLabels().Values)
@@ -4138,11 +4191,13 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 					},
 				},
 				MaxParallelism: launchPlanMaxParallelism,
+				Interruptible:  &wrappers.BoolValue{Value: launchPlanInterruptible},
 			},
 		}
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
 		assert.NoError(t, err)
 		assert.Equal(t, launchPlanMaxParallelism, execConfig.MaxParallelism)
+		assert.Equal(t, launchPlanInterruptible, execConfig.Interruptible.Value)
 		assert.Equal(t, launchPlanK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Equal(t, launchPlanOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, launchPlanLabels, execConfig.GetLabels().Values)
@@ -4172,6 +4227,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
 		assert.NoError(t, err)
 		assert.Equal(t, launchPlanMaxParallelism, execConfig.MaxParallelism)
+		assert.Equal(t, rmInterruptible, execConfig.Interruptible.Value)
 		assert.Equal(t, launchPlanK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Equal(t, launchPlanOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, launchPlanLabels, execConfig.GetLabels().Values)
@@ -4189,6 +4245,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
 		assert.NoError(t, err)
 		assert.Equal(t, rmMaxParallelism, execConfig.MaxParallelism)
+		assert.Equal(t, rmInterruptible, execConfig.Interruptible.Value)
 		assert.Equal(t, rmK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Equal(t, rmOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, rmLabels, execConfig.GetLabels().Values)
@@ -4197,11 +4254,15 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 	t.Run("matchable resource partial config", func(t *testing.T) {
 		resourceManager.GetResourceFunc = func(ctx context.Context,
 			request managerInterfaces.ResourceRequest) (*managerInterfaces.ResourceResponse, error) {
-			assert.EqualValues(t, request, managerInterfaces.ResourceRequest{
+			assert.Contains(t, []managerInterfaces.ResourceRequest{{
 				Project:      workflowIdentifier.Project,
 				Domain:       workflowIdentifier.Domain,
 				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
-			})
+			}, {Project: workflowIdentifier.Project,
+				Domain:       "",
+				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG},
+			}, request)
+
 			return &managerInterfaces.ResourceResponse{
 				Attributes: &admin.MatchingAttributes{
 					Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
@@ -4229,6 +4290,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
 		assert.NoError(t, err)
 		assert.Equal(t, rmMaxParallelism, execConfig.MaxParallelism)
+		assert.Nil(t, execConfig.GetInterruptible())
 		assert.Equal(t, rmK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Nil(t, execConfig.GetRawOutputDataConfig())
 		assert.Nil(t, execConfig.GetLabels())
@@ -4237,11 +4299,14 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 	t.Run("matchable resource with no config", func(t *testing.T) {
 		resourceManager.GetResourceFunc = func(ctx context.Context,
 			request managerInterfaces.ResourceRequest) (*managerInterfaces.ResourceResponse, error) {
-			assert.EqualValues(t, request, managerInterfaces.ResourceRequest{
+			assert.Contains(t, []managerInterfaces.ResourceRequest{{
 				Project:      workflowIdentifier.Project,
 				Domain:       workflowIdentifier.Domain,
 				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
-			})
+			}, {Project: workflowIdentifier.Project,
+				Domain:       "",
+				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG},
+			}, request)
 			return &managerInterfaces.ResourceResponse{
 				Attributes: &admin.MatchingAttributes{
 					Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
@@ -4261,7 +4326,49 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
 		assert.NoError(t, err)
 		assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
+		assert.Nil(t, execConfig.GetInterruptible())
 		assert.Equal(t, defaultK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
+		assert.Nil(t, execConfig.GetRawOutputDataConfig())
+		assert.Nil(t, execConfig.GetLabels())
+		assert.Nil(t, execConfig.GetAnnotations())
+	})
+	t.Run("fetch security context from deprecated config", func(t *testing.T) {
+		resourceManager.GetResourceFunc = func(ctx context.Context,
+			request managerInterfaces.ResourceRequest) (*managerInterfaces.ResourceResponse, error) {
+			assert.Contains(t, []managerInterfaces.ResourceRequest{{
+				Project:      workflowIdentifier.Project,
+				Domain:       workflowIdentifier.Domain,
+				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
+			}, {Project: workflowIdentifier.Project,
+				Domain:       "",
+				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG},
+			}, request)
+
+			return &managerInterfaces.ResourceResponse{
+				Attributes: &admin.MatchingAttributes{
+					Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
+						WorkflowExecutionConfig: &admin.WorkflowExecutionConfig{},
+					},
+				},
+			}, nil
+		}
+		request := &admin.ExecutionCreateRequest{
+			Project: workflowIdentifier.Project,
+			Domain:  workflowIdentifier.Domain,
+			Spec:    &admin.ExecutionSpec{},
+		}
+		launchPlan := &admin.LaunchPlan{
+			Spec: &admin.LaunchPlanSpec{
+				AuthRole: &admin.AuthRole{
+					KubernetesServiceAccount: deprecatedLaunchPlanK8sServiceAccount,
+				},
+			},
+		}
+		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
+		assert.NoError(t, err)
+		assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
+		assert.Nil(t, execConfig.GetInterruptible())
+		assert.Equal(t, deprecatedLaunchPlanK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Nil(t, execConfig.GetRawOutputDataConfig())
 		assert.Nil(t, execConfig.GetLabels())
 		assert.Nil(t, execConfig.GetAnnotations())
@@ -4269,17 +4376,23 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 	t.Run("matchable resource workflow resource", func(t *testing.T) {
 		resourceManager.GetResourceFunc = func(ctx context.Context,
 			request managerInterfaces.ResourceRequest) (*managerInterfaces.ResourceResponse, error) {
-			assert.EqualValues(t, request, managerInterfaces.ResourceRequest{
+			assert.Contains(t, []managerInterfaces.ResourceRequest{{
 				Project:      workflowIdentifier.Project,
 				Domain:       workflowIdentifier.Domain,
-				Workflow:     workflowIdentifier.Name,
 				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
-			})
+				Workflow:     workflowIdentifier.Name,
+			}, {Project: workflowIdentifier.Project,
+				Domain:       "",
+				Workflow:     "",
+				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG},
+			}, request)
+
 			return &managerInterfaces.ResourceResponse{
 				Attributes: &admin.MatchingAttributes{
 					Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
 						WorkflowExecutionConfig: &admin.WorkflowExecutionConfig{
 							MaxParallelism: 300,
+							Interruptible:  &wrappers.BoolValue{Value: true},
 							SecurityContext: &core.SecurityContext{
 								RunAs: &core.Identity{
 									K8SServiceAccount: "workflowDefault",
@@ -4305,6 +4418,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
 		assert.NoError(t, err)
 		assert.Equal(t, int32(300), execConfig.MaxParallelism)
+		assert.True(t, execConfig.Interruptible.Value)
 		assert.Equal(t, "workflowDefault", execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Nil(t, execConfig.GetRawOutputDataConfig())
 		assert.Nil(t, execConfig.GetLabels())
@@ -4313,11 +4427,14 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 	t.Run("matchable resource failure", func(t *testing.T) {
 		resourceManager.GetResourceFunc = func(ctx context.Context,
 			request managerInterfaces.ResourceRequest) (*managerInterfaces.ResourceResponse, error) {
-			assert.EqualValues(t, request, managerInterfaces.ResourceRequest{
+			assert.Contains(t, []managerInterfaces.ResourceRequest{{
 				Project:      workflowIdentifier.Project,
 				Domain:       workflowIdentifier.Domain,
 				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
-			})
+			}, {Project: workflowIdentifier.Project,
+				Domain:       "",
+				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG},
+			}, request)
 			return nil, fmt.Errorf("failed to fetch the resources")
 		}
 		request := &admin.ExecutionCreateRequest{
@@ -4330,10 +4447,174 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		}
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
 		assert.Equal(t, fmt.Errorf("failed to fetch the resources"), err)
+		assert.Nil(t, execConfig.GetInterruptible())
 		assert.Nil(t, execConfig.GetSecurityContext())
 		assert.Nil(t, execConfig.GetRawOutputDataConfig())
 		assert.Nil(t, execConfig.GetLabels())
 		assert.Nil(t, execConfig.GetAnnotations())
+	})
+	t.Run("application configuration", func(t *testing.T) {
+		resourceManager.GetResourceFunc = func(ctx context.Context,
+			request managerInterfaces.ResourceRequest) (*managerInterfaces.ResourceResponse, error) {
+			assert.Contains(t, []managerInterfaces.ResourceRequest{{
+				Project:      workflowIdentifier.Project,
+				Domain:       workflowIdentifier.Domain,
+				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
+			}, {Project: workflowIdentifier.Project,
+				Domain:       "",
+				ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG},
+			}, request)
+			return &managerInterfaces.ResourceResponse{
+				Attributes: &admin.MatchingAttributes{
+					Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
+						WorkflowExecutionConfig: &admin.WorkflowExecutionConfig{},
+					},
+				},
+			}, nil
+		}
+
+		executionManager.config.ApplicationConfiguration().GetTopLevelConfig().Interruptible = true
+
+		t.Run("request with interruptible override disabled", func(t *testing.T) {
+			request := &admin.ExecutionCreateRequest{
+				Project: workflowIdentifier.Project,
+				Domain:  workflowIdentifier.Domain,
+				Spec: &admin.ExecutionSpec{
+					Interruptible: &wrappers.BoolValue{Value: false},
+				},
+			}
+
+			execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, nil)
+			assert.NoError(t, err)
+			assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
+			assert.False(t, execConfig.Interruptible.Value)
+			assert.Equal(t, defaultK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
+			assert.Nil(t, execConfig.GetRawOutputDataConfig())
+			assert.Nil(t, execConfig.GetLabels())
+			assert.Nil(t, execConfig.GetAnnotations())
+		})
+		t.Run("request with interruptible override enabled", func(t *testing.T) {
+			request := &admin.ExecutionCreateRequest{
+				Project: workflowIdentifier.Project,
+				Domain:  workflowIdentifier.Domain,
+				Spec: &admin.ExecutionSpec{
+					Interruptible: &wrappers.BoolValue{Value: true},
+				},
+			}
+
+			execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, nil)
+			assert.NoError(t, err)
+			assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
+			assert.True(t, execConfig.Interruptible.Value)
+			assert.Equal(t, defaultK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
+			assert.Nil(t, execConfig.GetRawOutputDataConfig())
+			assert.Nil(t, execConfig.GetLabels())
+			assert.Nil(t, execConfig.GetAnnotations())
+		})
+		t.Run("request with no interruptible override specified", func(t *testing.T) {
+			request := &admin.ExecutionCreateRequest{
+				Project: workflowIdentifier.Project,
+				Domain:  workflowIdentifier.Domain,
+				Spec:    &admin.ExecutionSpec{},
+			}
+
+			execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, nil)
+			assert.NoError(t, err)
+			assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
+			assert.True(t, execConfig.Interruptible.Value)
+			assert.Equal(t, defaultK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
+			assert.Nil(t, execConfig.GetRawOutputDataConfig())
+			assert.Nil(t, execConfig.GetLabels())
+			assert.Nil(t, execConfig.GetAnnotations())
+		})
+		t.Run("launch plan with interruptible override disabled", func(t *testing.T) {
+			request := &admin.ExecutionCreateRequest{
+				Project: workflowIdentifier.Project,
+				Domain:  workflowIdentifier.Domain,
+				Spec:    &admin.ExecutionSpec{},
+			}
+
+			launchPlan := &admin.LaunchPlan{
+				Spec: &admin.LaunchPlanSpec{
+					Interruptible: &wrappers.BoolValue{Value: false},
+				},
+			}
+
+			execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
+			assert.NoError(t, err)
+			assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
+			assert.False(t, execConfig.Interruptible.Value)
+			assert.Equal(t, defaultK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
+			assert.Nil(t, execConfig.GetRawOutputDataConfig())
+			assert.Nil(t, execConfig.GetLabels())
+			assert.Nil(t, execConfig.GetAnnotations())
+		})
+		t.Run("launch plan with interruptible override enabled", func(t *testing.T) {
+			request := &admin.ExecutionCreateRequest{
+				Project: workflowIdentifier.Project,
+				Domain:  workflowIdentifier.Domain,
+				Spec:    &admin.ExecutionSpec{},
+			}
+
+			launchPlan := &admin.LaunchPlan{
+				Spec: &admin.LaunchPlanSpec{
+					Interruptible: &wrappers.BoolValue{Value: true},
+				},
+			}
+
+			execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
+			assert.NoError(t, err)
+			assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
+			assert.True(t, execConfig.Interruptible.Value)
+			assert.Equal(t, defaultK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
+			assert.Nil(t, execConfig.GetRawOutputDataConfig())
+			assert.Nil(t, execConfig.GetLabels())
+			assert.Nil(t, execConfig.GetAnnotations())
+		})
+		t.Run("launch plan with no interruptible override specified", func(t *testing.T) {
+			request := &admin.ExecutionCreateRequest{
+				Project: workflowIdentifier.Project,
+				Domain:  workflowIdentifier.Domain,
+				Spec:    &admin.ExecutionSpec{},
+			}
+
+			launchPlan := &admin.LaunchPlan{
+				Spec: &admin.LaunchPlanSpec{},
+			}
+
+			execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
+			assert.NoError(t, err)
+			assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
+			assert.True(t, execConfig.Interruptible.Value)
+			assert.Equal(t, defaultK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
+			assert.Nil(t, execConfig.GetRawOutputDataConfig())
+			assert.Nil(t, execConfig.GetLabels())
+			assert.Nil(t, execConfig.GetAnnotations())
+		})
+		t.Run("request and launch plan with different interruptible overrides", func(t *testing.T) {
+			request := &admin.ExecutionCreateRequest{
+				Project: workflowIdentifier.Project,
+				Domain:  workflowIdentifier.Domain,
+				Spec: &admin.ExecutionSpec{
+					Interruptible: &wrappers.BoolValue{Value: true},
+				},
+			}
+
+			launchPlan := &admin.LaunchPlan{
+				Spec: &admin.LaunchPlanSpec{
+					Interruptible: &wrappers.BoolValue{Value: false},
+				},
+			}
+
+			execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
+			assert.NoError(t, err)
+			assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
+			assert.True(t, execConfig.Interruptible.Value)
+			assert.Equal(t, defaultK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
+			assert.Nil(t, execConfig.GetRawOutputDataConfig())
+			assert.Nil(t, execConfig.GetLabels())
+			assert.Nil(t, execConfig.GetAnnotations())
+		})
 	})
 }
 
@@ -4341,11 +4622,14 @@ func TestGetExecutionConfig(t *testing.T) {
 	resourceManager := managerMocks.MockResourceManager{}
 	resourceManager.GetResourceFunc = func(ctx context.Context,
 		request managerInterfaces.ResourceRequest) (*managerInterfaces.ResourceResponse, error) {
-		assert.EqualValues(t, request, managerInterfaces.ResourceRequest{
+		assert.Contains(t, []managerInterfaces.ResourceRequest{{
 			Project:      workflowIdentifier.Project,
 			Domain:       workflowIdentifier.Domain,
 			ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
-		})
+		}, {Project: workflowIdentifier.Project,
+			Domain:       "",
+			ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG},
+		}, request)
 		return &managerInterfaces.ResourceResponse{
 			Attributes: &admin.MatchingAttributes{
 				Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
@@ -4430,17 +4714,7 @@ func TestGetExecutionConfig_Spec(t *testing.T) {
 }
 
 func TestGetClusterAssignment(t *testing.T) {
-	clusterAssignment := admin.ClusterAssignment{
-		Affinity: &admin.Affinity{
-			Selectors: []*admin.Selector{
-				{
-					Key:      "foo",
-					Value:    []string{"bar"},
-					Operator: admin.Selector_EQUALS,
-				},
-			},
-		},
-	}
+	clusterAssignment := admin.ClusterAssignment{ClusterPoolName: "gpu"}
 	resourceManager := managerMocks.MockResourceManager{}
 	resourceManager.GetResourceFunc = func(ctx context.Context,
 		request managerInterfaces.ResourceRequest) (*managerInterfaces.ResourceResponse, error) {
@@ -4471,16 +4745,7 @@ func TestGetClusterAssignment(t *testing.T) {
 		assert.True(t, proto.Equal(ca, &clusterAssignment))
 	})
 	t.Run("value from request", func(t *testing.T) {
-		reqClusterAssignment := admin.ClusterAssignment{
-			Affinity: &admin.Affinity{
-				Selectors: []*admin.Selector{
-					{
-						Key:      "baz",
-						Operator: admin.Selector_IN,
-					},
-				},
-			},
-		}
+		reqClusterAssignment := admin.ClusterAssignment{ClusterPoolName: "swimming-pool"}
 		ca, err := executionManager.getClusterAssignment(context.TODO(), &admin.ExecutionCreateRequest{
 			Project: workflowIdentifier.Project,
 			Domain:  workflowIdentifier.Domain,
@@ -4504,7 +4769,7 @@ func TestResolvePermissions(t *testing.T) {
 	k8sServiceAccountSc := "saSc"
 
 	t.Run("backward compat use request values from auth", func(t *testing.T) {
-		execRequest := admin.ExecutionCreateRequest{
+		execRequest := &admin.ExecutionCreateRequest{
 			Spec: &admin.ExecutionSpec{
 				AuthRole: &admin.AuthRole{
 					AssumableIamRole:         assumableIamRole,
@@ -4537,7 +4802,7 @@ func TestResolvePermissions(t *testing.T) {
 			}}, sc)
 	})
 	t.Run("use request values security context", func(t *testing.T) {
-		execRequest := admin.ExecutionCreateRequest{
+		execRequest := &admin.ExecutionCreateRequest{
 			Spec: &admin.ExecutionSpec{
 				SecurityContext: &core.SecurityContext{
 					RunAs: &core.Identity{
@@ -4571,7 +4836,7 @@ func TestResolvePermissions(t *testing.T) {
 		assert.Equal(t, k8sServiceAccountSc, sc.RunAs.K8SServiceAccount)
 	})
 	t.Run("prefer lp auth role over auth", func(t *testing.T) {
-		execRequest := admin.ExecutionCreateRequest{
+		execRequest := &admin.ExecutionCreateRequest{
 			Spec: &admin.ExecutionSpec{},
 		}
 		lp := &admin.LaunchPlan{
@@ -4601,7 +4866,7 @@ func TestResolvePermissions(t *testing.T) {
 		}, sc)
 	})
 	t.Run("prefer security context over auth context", func(t *testing.T) {
-		execRequest := admin.ExecutionCreateRequest{
+		execRequest := &admin.ExecutionCreateRequest{
 			Spec: &admin.ExecutionSpec{
 				AuthRole: &admin.AuthRole{
 					AssumableIamRole:         assumableIamRole,
@@ -4643,7 +4908,7 @@ func TestResolvePermissions(t *testing.T) {
 		assert.Equal(t, k8sServiceAccountSc, sc.RunAs.K8SServiceAccount)
 	})
 	t.Run("prefer lp auth over role", func(t *testing.T) {
-		execRequest := admin.ExecutionCreateRequest{
+		execRequest := &admin.ExecutionCreateRequest{
 			Spec: &admin.ExecutionSpec{},
 		}
 		lp := &admin.LaunchPlan{
@@ -4673,7 +4938,7 @@ func TestResolvePermissions(t *testing.T) {
 		}, sc)
 	})
 	t.Run("prefer lp auth over role", func(t *testing.T) {
-		authRole := resolveAuthRole(admin.ExecutionCreateRequest{
+		authRole := resolveAuthRole(&admin.ExecutionCreateRequest{
 			Spec: &admin.ExecutionSpec{},
 		}, &admin.LaunchPlan{
 			Spec: &admin.LaunchPlanSpec{

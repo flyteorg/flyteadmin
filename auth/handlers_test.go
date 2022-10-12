@@ -213,8 +213,8 @@ func TestGetHTTPRequestCookieToMetadataHandler(t *testing.T) {
 	hashKeyEncoded := "wG4pE1ccdw/pHZ2ml8wrD5VJkOtLPmBpWbKHmezWXktGaFbRoAhXidWs8OpbA3y7N8vyZhz1B1E37+tShWC7gA" //nolint:goconst
 	blockKeyEncoded := "afyABVgGOvWJFxVyOvCWCupoTn6BkNl4SOHmahho16Q"                                           //nolint:goconst
 	cookieSetting := config.CookieSettings{
-		SameSitePolicy:    config.SameSiteDefaultMode,
-		DomainMatchPolicy: config.DomainMatchSubdomains,
+		SameSitePolicy: config.SameSiteDefaultMode,
+		Domain:         "default",
 	}
 	cookieManager, err := NewCookieManager(ctx, hashKeyEncoded, blockKeyEncoded, cookieSetting)
 	assert.NoError(t, err)
@@ -234,7 +234,6 @@ func TestGetHTTPRequestCookieToMetadataHandler(t *testing.T) {
 	req.AddCookie(&idCookie)
 
 	assert.Equal(t, "IDToken a.b.c", handler(ctx, req)["authorization"][0])
-	assert.Equal(t, "bnVsbA", handler(ctx, req).Get(UserInfoMDKey)[0])
 }
 
 func TestGetHTTPMetadataTaggingHandler(t *testing.T) {
@@ -252,8 +251,8 @@ func TestGetHTTPRequestCookieToMetadataHandler_CustomHeader(t *testing.T) {
 	hashKeyEncoded := "wG4pE1ccdw/pHZ2ml8wrD5VJkOtLPmBpWbKHmezWXktGaFbRoAhXidWs8OpbA3y7N8vyZhz1B1E37+tShWC7gA" //nolint:goconst
 	blockKeyEncoded := "afyABVgGOvWJFxVyOvCWCupoTn6BkNl4SOHmahho16Q"                                           //nolint:goconst
 	cookieSetting := config.CookieSettings{
-		SameSitePolicy:    config.SameSiteDefaultMode,
-		DomainMatchPolicy: config.DomainMatchSubdomains,
+		SameSitePolicy: config.SameSiteDefaultMode,
+		Domain:         "default",
 	}
 	cookieManager, err := NewCookieManager(ctx, hashKeyEncoded, blockKeyEncoded, cookieSetting)
 	assert.NoError(t, err)

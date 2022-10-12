@@ -16,7 +16,8 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-const allowedExecutionNameLength = 20
+// Maximum value length of a Kubernetes label
+const allowedExecutionNameLength = 63
 
 var executionIDRegex = regexp.MustCompile(`^[a-z][a-z\-0-9]*$`)
 
@@ -61,6 +62,11 @@ func ValidateExecutionRequest(ctx context.Context, request admin.ExecutionCreate
 	}
 	if err := validateLiteralMap(request.Inputs, shared.Inputs); err != nil {
 		return err
+	}
+	if request.Spec.GetNotifications() != nil {
+		if err := validateNotifications(request.Spec.GetNotifications().Notifications); err != nil {
+			return err
+		}
 	}
 	// TODO: Remove redundant validation with the rest of the method.
 	// This final call to validating the request ensures the notification types are expected.

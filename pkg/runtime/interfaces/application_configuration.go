@@ -87,6 +87,9 @@ type ApplicationConfig struct {
 
 	// Prefix for where offloaded data from user workflows will be written
 	OutputLocationPrefix string `json:"outputLocationPrefix"`
+
+	// Enabling will use Storage (s3/gcs/etc) to offload static parts of CRDs.
+	UseOffloadedWorkflowClosure bool `json:"useOffloadedWorkflowClosure"`
 }
 
 func (a *ApplicationConfig) GetRoleNameKey() string {
@@ -153,6 +156,31 @@ func (a *ApplicationConfig) GetInterruptible() *wrappers.BoolValue {
 	return &wrappers.BoolValue{
 		Value: true,
 	}
+}
+
+// GetAsWorkflowExecutionConfig returns the WorkflowExecutionConfig as extracted from this object
+func (a *ApplicationConfig) GetAsWorkflowExecutionConfig() admin.WorkflowExecutionConfig {
+	// These two should always be set, one is a number, and the other returns nil when empty.
+	wec := admin.WorkflowExecutionConfig{
+		MaxParallelism: a.GetMaxParallelism(),
+		Interruptible:  a.GetInterruptible(),
+	}
+
+	// For the others, we only add the field when the field is set in the config.
+	if a.GetSecurityContext().RunAs.GetK8SServiceAccount() != "" || a.GetSecurityContext().RunAs.GetIamRole() != "" {
+		wec.SecurityContext = a.GetSecurityContext()
+	}
+	if a.GetRawOutputDataConfig().OutputLocationPrefix != "" {
+		wec.RawOutputDataConfig = a.GetRawOutputDataConfig()
+	}
+	if len(a.GetLabels().Values) > 0 {
+		wec.Labels = a.GetLabels()
+	}
+	if len(a.GetAnnotations().Values) > 0 {
+		wec.Annotations = a.GetAnnotations()
+	}
+
+	return wec
 }
 
 // This section holds common config for AWS
