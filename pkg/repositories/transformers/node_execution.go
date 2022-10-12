@@ -118,6 +118,7 @@ func CreateNodeExecutionModel(ctx context.Context, input ToNodeExecutionModelInp
 		Phase:     input.Request.Event.Phase,
 		CreatedAt: input.Request.Event.OccurredAt,
 		UpdatedAt: input.Request.Event.OccurredAt,
+		DeckUri:   input.Request.Event.DeckUri,
 	}
 
 	nodeExecutionMetadata := admin.NodeExecutionMetaData{

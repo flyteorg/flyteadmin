@@ -188,6 +188,7 @@ func TestAddTerminalState_Error(t *testing.T) {
 
 func TestCreateNodeExecutionModel(t *testing.T) {
 	parentTaskExecID := uint(8)
+	deckUri := "deck uri"
 	nodeExecutionModel, err := CreateNodeExecutionModel(context.TODO(), ToNodeExecutionModelInput{
 		Request: &admin.NodeExecutionEventRequest{
 			Event: &event.NodeExecutionEvent{
@@ -201,6 +202,7 @@ func TestCreateNodeExecutionModel(t *testing.T) {
 				},
 				Phase:    core.NodeExecution_RUNNING,
 				InputUri: "input uri",
+				DeckUri:  deckUri,
 				OutputResult: &event.NodeExecutionEvent_OutputUri{
 					OutputUri: "output uri",
 				},
@@ -224,6 +226,7 @@ func TestCreateNodeExecutionModel(t *testing.T) {
 		StartedAt: occurredAtProto,
 		CreatedAt: occurredAtProto,
 		UpdatedAt: occurredAtProto,
+		DeckUri:   deckUri,
 	}
 	var closureBytes, _ = proto.Marshal(closure)
 	var nodeExecutionMetadata, _ = proto.Marshal(&admin.NodeExecutionMetaData{
