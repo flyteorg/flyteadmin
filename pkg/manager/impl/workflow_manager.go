@@ -169,8 +169,11 @@ func (w *WorkflowManager) CreateWorkflow(
 			return nil, errors.NewFlyteAdminErrorf(
 				codes.AlreadyExists, "identical workflow already exists with id %v", request.Id)
 		}
-		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
-			"workflow with different structure already exists with id %v", request.Id)
+		// A workflow exists with different structure - sending much data to help debug on sdk end
+		return nil, errors.NewFlyteAdminErrorf(
+			codes.InvalidArgument,
+			"workflow with different structure already exists with that id: %v. workflow model: %+v.",
+			request.Id, existingMatchingWorkflow)
 	} else if flyteAdminError, ok := err.(errors.FlyteAdminError); !ok || flyteAdminError.Code() != codes.NotFound {
 		logger.Debugf(ctx, "Failed to get workflow for comparison in CreateWorkflow with ID [%+v] with err %v",
 			request.Id, err)
