@@ -107,3 +107,8 @@ func NewIncompatibleClusterError(ctx context.Context, errorMsg, curCluster strin
 	}
 	return statusErr
 }
+
+func NewWorkflowExistsDifferentStructureError(ctx context.Context, request *admin.Workflow) FlyteAdminError {
+	errorMsg := fmt.Sprintf("workflow with different structure already exists with that id: %v", request.GetId())
+	return NewFlyteAdminError(codes.InvalidArgument, errorMsg)
+}

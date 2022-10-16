@@ -196,11 +196,8 @@ func TestCreateWorkflow_ExistingWorkflow_NotIdentical(t *testing.T) {
 
 	request := testutils.GetWorkflowRequest()
 	response, err := workflowManager.CreateWorkflow(context.Background(), request)
-	assert.EqualError(t, err, "workflow with different structure already exists with that id:"+
-		" resource_type:WORKFLOW project:\"project\" domain:\"domain\" name:\"name\" version:\"version\" ."+
-		" workflow model: {BaseModel:{ID:0 CreatedAt:0001-01-01 00:00:00 +0000 UTC UpdatedAt:0001-01-01 00:00:00 +0000 UTC"+
-		" DeletedAt:<nil>} WorkflowKey:{Project:project Domain:domain Name:name Version:version} TypedInterface:[]"+
-		" RemoteClosureIdentifier: Digest:[]}.")
+	assert.EqualError(t, err, "workflow with different structure already exists with that id: "+
+		"resource_type:WORKFLOW project:\"project\" domain:\"domain\" name:\"name\" version:\"version\" ")
 	assert.Nil(t, response)
 }
 
