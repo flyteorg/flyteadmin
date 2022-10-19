@@ -22,14 +22,32 @@ type TaskRepo struct {
 	metrics          gormMetrics
 }
 
-func (r *TaskRepo) Create(ctx context.Context, input models.Task) error {
+func (r *TaskRepo) Create(_ context.Context, input models.Task, descriptionEntity *models.DescriptionEntity) error {
 	timer := r.metrics.CreateDuration.Start()
-	tx := r.db.Omit("id").Create(&input)
+	err := r.db.Transaction(func(tx *gorm.DB) error {
+		if descriptionEntity == nil {
+			tx := r.db.Omit("id").Create(input)
+			if tx.Error != nil {
+				return r.errorTransformer.ToFlyteAdminError(tx.Error)
+			}
+			return nil
+		}
+		tx = r.db.Omit("id").Create(descriptionEntity)
+		if tx.Error != nil {
+			return r.errorTransformer.ToFlyteAdminError(tx.Error)
+		}
+		tx = r.db.Last(descriptionEntity)
+
+		input.DescriptionID = descriptionEntity.ID
+		tx = r.db.Omit("id").Create(&input)
+		if tx.Error != nil {
+			return r.errorTransformer.ToFlyteAdminError(tx.Error)
+		}
+
+		return nil
+	})
 	timer.Stop()
-	if tx.Error != nil {
-		return r.errorTransformer.ToFlyteAdminError(tx.Error)
-	}
-	return nil
+	return err
 }
 
 func (r *TaskRepo) UpdateDescriptionID(input models.Task) error {

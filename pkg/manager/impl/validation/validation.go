@@ -152,16 +152,16 @@ func ValidateResourceListRequest(request admin.ResourceListRequest) error {
 }
 
 func ValidateDescriptionEntityListRequest(request admin.DescriptionEntityListRequest) error {
-	if request.DescriptionEntityId == nil {
+	if request.Id == nil {
 		return shared.GetMissingArgumentError(shared.ID)
 	}
-	if err := ValidateEmptyStringField(request.DescriptionEntityId.Project, shared.Project); err != nil {
+	if err := ValidateEmptyStringField(request.Id.Project, shared.Project); err != nil {
 		return err
 	}
-	if err := ValidateEmptyStringField(request.DescriptionEntityId.Domain, shared.Domain); err != nil {
+	if err := ValidateEmptyStringField(request.Id.Domain, shared.Domain); err != nil {
 		return err
 	}
-	if err := ValidateEmptyStringField(request.DescriptionEntityId.Name, shared.Name); err != nil {
+	if err := ValidateEmptyStringField(request.Id.Name, shared.Name); err != nil {
 		return err
 	}
 	if err := ValidateLimit(request.Limit); err != nil {

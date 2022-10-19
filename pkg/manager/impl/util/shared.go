@@ -140,7 +140,7 @@ func GetNamedEntity(
 
 func GetDescriptionEntityModel(
 	ctx context.Context, repo repoInterfaces.Repository, identifier core.Identifier) (models.DescriptionEntity, error) {
-	descriptionEntityModel, err := (repo).DescriptionEntityRepo().Get(ctx, models.DescriptionEntityKey{
+	descriptionEntityModel, err := (repo).DescriptionEntityRepo().Get(ctx, repoInterfaces.GetDescriptionEntityInput{
 		ResourceType: identifier.ResourceType,
 		Project:      identifier.Project,
 		Domain:       identifier.Domain,

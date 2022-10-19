@@ -21,8 +21,6 @@ type DescriptionEntity struct {
 	DescriptionEntityKey
 
 	BaseModel
-	// Hash of the Description entity
-	Digest []byte
 
 	ShortDescription string
 

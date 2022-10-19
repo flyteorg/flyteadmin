@@ -108,7 +108,14 @@ func (t *TaskManager) CreateTask(
 		return nil, err
 	}
 
-	err = t.db.TaskRepo().Create(ctx, taskModel)
+	descriptionModel, err := transformers.CreateDescriptionEntityModel(request.Spec.DescriptionEntity, *request.Id)
+	if err != nil {
+		logger.Errorf(ctx,
+			"Failed to transform description model [%+v] with err: %v", request.Spec.DescriptionEntity, err)
+		return nil, err
+	}
+
+	err = t.db.TaskRepo().Create(ctx, taskModel, descriptionModel)
 	if err != nil {
 		logger.Debugf(ctx, "Failed to create task model with id [%+v] with err %v", request.Id, err)
 		return nil, err
@@ -120,14 +127,6 @@ func (t *TaskManager) CreateTask(
 		contextWithRuntimeMeta = context.WithValue(
 			contextWithRuntimeMeta, common.RuntimeVersionKey, finalizedRequest.Spec.Template.Metadata.Runtime.Version)
 		t.metrics.Registered.Inc(contextWithRuntimeMeta)
-	}
-
-	if request.Spec.DescriptionEntity != nil {
-		err = createDescriptionEntity(ctx, t.db, request.Spec.DescriptionEntity, *request.Id)
-		if err != nil {
-			logger.Debugf(ctx, "Failed to create description entity model with id [%+v] with err %v", request.Id, err)
-			return nil, err
-		}
 	}
 
 	return &admin.TaskCreateResponse{}, nil

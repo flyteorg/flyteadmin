@@ -9,7 +9,7 @@ import (
 )
 
 type CreateDescriptionEntityFunc func(input models.DescriptionEntity) error
-type GetDescriptionEntityFunc func(input models.DescriptionEntityKey) (models.DescriptionEntity, error)
+type GetDescriptionEntityFunc func(input interfaces.GetDescriptionEntityInput) (models.DescriptionEntity, error)
 type ListDescriptionEntityFunc func(input interfaces.ListResourceInput) (interfaces.DescriptionEntityCollectionOutput, error)
 
 type MockDescriptionEntityRepo struct {
@@ -26,7 +26,7 @@ func (r *MockDescriptionEntityRepo) Create(ctx context.Context, DescriptionEntit
 }
 
 func (r *MockDescriptionEntityRepo) Get(
-	ctx context.Context, input models.DescriptionEntityKey) (models.DescriptionEntity, error) {
+	ctx context.Context, input interfaces.GetDescriptionEntityInput) (models.DescriptionEntity, error) {
 	if r.getFunction != nil {
 		return r.getFunction(input)
 	}

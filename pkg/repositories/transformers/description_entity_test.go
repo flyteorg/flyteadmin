@@ -32,11 +32,10 @@ func TestToDescriptionEntityExecutionModel(t *testing.T) {
 		Version:      "xyz",
 	}
 
-	model, err := CreateDescriptionEntityModel(descriptionEntity, id, []byte{1})
+	model, err := CreateDescriptionEntityModel(descriptionEntity, id)
 	assert.Nil(t, err)
 	assert.Equal(t, shortDescription, model.ShortDescription)
 	assert.Equal(t, longDescriptionBytes, model.LongDescription)
-	assert.Equal(t, []byte{1}, model.Digest)
 	assert.Equal(t, sourceCode.Link, model.Link)
 }
 

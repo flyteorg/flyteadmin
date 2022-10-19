@@ -16,9 +16,11 @@ import (
 // CreateDescriptionEntityModel Transforms a TaskCreateRequest to a Description entity model
 func CreateDescriptionEntityModel(
 	descriptionEntity *admin.DescriptionEntity,
-	id core.Identifier,
-	digest []byte) (models.DescriptionEntity, error) {
+	id core.Identifier) (*models.DescriptionEntity, error) {
 	ctx := context.Background()
+	if descriptionEntity == nil {
+		return nil, nil
+	}
 
 	var longDescriptionBytes []byte
 	var sourceCode models.SourceCode
@@ -28,7 +30,7 @@ func CreateDescriptionEntityModel(
 		longDescriptionBytes, err = proto.Marshal(descriptionEntity.LongDescription)
 		if err != nil {
 			logger.Errorf(ctx, "Failed to marshal LongDescription with error: %v", err)
-			return models.DescriptionEntity{}, err
+			return nil, err
 		}
 	}
 
@@ -36,14 +38,14 @@ func CreateDescriptionEntityModel(
 		longDescriptionBytes, err = proto.Marshal(descriptionEntity.LongDescription)
 		if err != nil {
 			logger.Errorf(ctx, "Failed to marshal LongDescription with error: %v", err)
-			return models.DescriptionEntity{}, err
+			return nil, err
 		}
 	}
 	if descriptionEntity.SourceCode != nil {
 		sourceCode = models.SourceCode{Link: descriptionEntity.SourceCode.Link}
 	}
 
-	return models.DescriptionEntity{
+	return &models.DescriptionEntity{
 		DescriptionEntityKey: models.DescriptionEntityKey{
 			ResourceType: id.ResourceType,
 			Project:      id.Project,
@@ -51,7 +53,6 @@ func CreateDescriptionEntityModel(
 			Name:         id.Name,
 			Version:      id.Version,
 		},
-		Digest:           digest,
 		ShortDescription: descriptionEntity.ShortDescription,
 		LongDescription:  longDescriptionBytes,
 		SourceCode:       sourceCode,
@@ -60,7 +61,7 @@ func CreateDescriptionEntityModel(
 
 func FromDescriptionEntityModel(descriptionEntityModel models.DescriptionEntity) (*admin.DescriptionEntity, error) {
 
-	longDescription := admin.LongDescription{}
+	longDescription := admin.Description{}
 	err := proto.Unmarshal(descriptionEntityModel.LongDescription, &longDescription)
 	if err != nil {
 		return nil, errors.NewFlyteAdminError(codes.Internal, "failed to unmarshal longDescription")

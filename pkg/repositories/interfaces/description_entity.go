@@ -24,7 +24,7 @@ type DescriptionEntityRepoInterface interface {
 	// Create Inserts a DescriptionEntity model into the database store.
 	Create(ctx context.Context, input models.DescriptionEntity) (uint, error)
 	// Get Returns a matching DescriptionEntity if it exists.
-	Get(ctx context.Context, input models.DescriptionEntityKey) (models.DescriptionEntity, error)
+	Get(ctx context.Context, input GetDescriptionEntityInput) (models.DescriptionEntity, error)
 
 	List(ctx context.Context, input ListResourceInput) (DescriptionEntityCollectionOutput, error)
 }

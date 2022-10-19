@@ -1,15 +1,12 @@
 package impl
 
 import (
-	"bytes"
 	"context"
 	"strconv"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
-
-	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/util"
@@ -35,70 +32,6 @@ type DescriptionEntityManager struct {
 	metrics DescriptionEntityMetrics
 }
 
-func createDescriptionEntity(ctx context.Context, db repoInterfaces.Repository, descriptionEntity *admin.DescriptionEntity, id core.Identifier) error {
-	descriptionDigest, err := util.GetDescriptionEntityDigest(ctx, descriptionEntity)
-	if err != nil {
-		logger.Errorf(ctx, "failed to compute description entity digest for [%+v] with err: %v", id, err)
-		return err
-	}
-
-	existingDescriptionEntityModel, err := util.GetDescriptionEntityModel(ctx, db, id)
-	if err == nil {
-		if bytes.Equal(existingDescriptionEntityModel.Digest, descriptionDigest) {
-			return errors.NewFlyteAdminErrorf(codes.AlreadyExists,
-				"identical description entity already exists with id %v", id)
-		}
-
-		return errors.NewFlyteAdminErrorf(codes.InvalidArgument,
-			"description entity with different structure already exists with id %v", id)
-	}
-
-	descriptionModel, err := transformers.CreateDescriptionEntityModel(descriptionEntity, id, descriptionDigest)
-	if err != nil {
-		logger.Errorf(ctx,
-			"Failed to transform description model [%+v] with err: %v", descriptionEntity, err)
-		return err
-	}
-
-	var descriptionID uint
-	if descriptionID, err = db.DescriptionEntityRepo().Create(ctx, descriptionModel); err != nil {
-		logger.Errorf(ctx, "Failed to create description model with id [%+v] with err %v", id, err)
-		return err
-	}
-
-	if id.ResourceType == core.ResourceType_TASK {
-		err = db.TaskRepo().UpdateDescriptionID(models.Task{
-			TaskKey: models.TaskKey{
-				Project: descriptionModel.Project,
-				Domain:  descriptionModel.Domain,
-				Name:    descriptionModel.Name,
-				Version: descriptionModel.Version,
-			},
-			DescriptionID: descriptionID,
-		})
-		if err != nil {
-			logger.Errorf(ctx, "Failed to update descriptionID in tasks table: %v", err)
-			return err
-		}
-	} else if id.ResourceType == core.ResourceType_WORKFLOW {
-		err = db.WorkflowRepo().UpdateDescriptionID(models.Workflow{
-			WorkflowKey: models.WorkflowKey{
-				Project: descriptionModel.Project,
-				Domain:  descriptionModel.Domain,
-				Name:    descriptionModel.Name,
-				Version: descriptionModel.Version,
-			},
-			DescriptionID: descriptionID,
-		})
-		if err != nil {
-			logger.Errorf(ctx, "Failed to update descriptionID in workflows table: %v", err)
-			return err
-		}
-	}
-
-	return nil
-}
-
 func (d *DescriptionEntityManager) GetDescriptionEntity(ctx context.Context, request admin.ObjectGetRequest) (
 	*admin.DescriptionEntity, error) {
 	if err := validation.ValidateDescriptionEntityGetRequest(request); err != nil {
@@ -114,14 +47,20 @@ func (d *DescriptionEntityManager) ListDescriptionEntity(ctx context.Context, re
 	if err := validation.ValidateDescriptionEntityListRequest(request); err != nil {
 		return nil, err
 	}
-	ctx = contextutils.WithProjectDomain(ctx, request.DescriptionEntityId.Project, request.DescriptionEntityId.Domain)
-	ctx = contextutils.WithWorkflowID(ctx, request.DescriptionEntityId.Name)
+	ctx = contextutils.WithProjectDomain(ctx, request.Id.Project, request.Id.Domain)
+
+	if request.ResourceType == core.ResourceType_WORKFLOW {
+		ctx = contextutils.WithWorkflowID(ctx, request.Id.Name)
+	} else {
+		ctx = contextutils.WithTaskID(ctx, request.Id.Name)
+	}
+
 	filters, err := util.GetDbFilters(util.FilterSpec{
-		Project:        request.DescriptionEntityId.Project,
-		Domain:         request.DescriptionEntityId.Domain,
-		Name:           request.DescriptionEntityId.Name,
+		Project:        request.Id.Project,
+		Domain:         request.Id.Domain,
+		Name:           request.Id.Name,
 		RequestFilters: request.Filters,
-	}, common.ResourceTypeToEntity[request.DescriptionEntityId.ResourceType])
+	}, common.ResourceTypeToEntity[request.ResourceType])
 	if err != nil {
 		logger.Error(ctx, "failed to get database filter")
 		return nil, err
@@ -146,7 +85,7 @@ func (d *DescriptionEntityManager) ListDescriptionEntity(ctx context.Context, re
 	}
 	output, err := d.db.DescriptionEntityRepo().List(ctx, listDescriptionEntitiesInput)
 	if err != nil {
-		logger.Debugf(ctx, "Failed to list workflows with [%+v] with err %v", request.DescriptionEntityId, err)
+		logger.Debugf(ctx, "Failed to list workflows with [%+v] with err %v", request.Id, err)
 		return nil, err
 	}
 	descriptionEntityList, err := transformers.FromDescriptionEntityModels(output.Entities)

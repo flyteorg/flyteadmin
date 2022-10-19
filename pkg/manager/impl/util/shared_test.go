@@ -585,7 +585,7 @@ func TestGetDescriptionEntityModel(t *testing.T) {
 	})
 
 	t.Run("Failed to get DescriptionEntity model", func(t *testing.T) {
-		getFunction := func(input models.DescriptionEntityKey) (models.DescriptionEntity, error) {
+		getFunction := func(input interfaces.GetDescriptionEntityInput) (models.DescriptionEntity, error) {
 			return models.DescriptionEntity{}, flyteAdminErrors.NewFlyteAdminErrorf(codes.NotFound, "NotFound")
 		}
 		repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetGetCallback(getFunction)
@@ -619,7 +619,7 @@ func TestGetDescriptionEntity(t *testing.T) {
 	})
 
 	t.Run("Failed to get DescriptionEntity", func(t *testing.T) {
-		getFunction := func(input models.DescriptionEntityKey) (models.DescriptionEntity, error) {
+		getFunction := func(input interfaces.GetDescriptionEntityInput) (models.DescriptionEntity, error) {
 			return models.DescriptionEntity{}, flyteAdminErrors.NewFlyteAdminErrorf(codes.NotFound, "NotFound")
 		}
 		repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetGetCallback(getFunction)

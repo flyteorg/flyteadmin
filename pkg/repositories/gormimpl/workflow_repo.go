@@ -20,31 +20,32 @@ type WorkflowRepo struct {
 	metrics          gormMetrics
 }
 
-func (r *WorkflowRepo) Create(ctx context.Context, input models.Workflow) error {
+func (r *WorkflowRepo) Create(_ context.Context, input models.Workflow, descriptionEntity *models.DescriptionEntity) error {
 	timer := r.metrics.CreateDuration.Start()
-	tx := r.db.Omit("id").Create(&input)
-	timer.Stop()
-	if tx.Error != nil {
-		return r.errorTransformer.ToFlyteAdminError(tx.Error)
-	}
-	return nil
-}
+	err := r.db.Transaction(func(tx *gorm.DB) error {
+		if descriptionEntity == nil {
+			tx := r.db.Omit("id").Create(input)
+			if tx.Error != nil {
+				return r.errorTransformer.ToFlyteAdminError(tx.Error)
+			}
+			return nil
+		}
+		tx = r.db.Omit("id").Create(descriptionEntity)
+		if tx.Error != nil {
+			return r.errorTransformer.ToFlyteAdminError(tx.Error)
+		}
+		tx = r.db.Last(descriptionEntity)
 
-func (r *WorkflowRepo) UpdateDescriptionID(input models.Workflow) error {
-	timer := r.metrics.UpdateDuration.Start()
-	tx := r.db.Where(&models.Workflow{
-		WorkflowKey: models.WorkflowKey{
-			Project: input.Project,
-			Domain:  input.Domain,
-			Name:    input.Name,
-			Version: input.Version,
-		},
-	}).Assign(input).FirstOrCreate(&input)
+		input.DescriptionID = descriptionEntity.ID
+		tx = r.db.Omit("id").Create(&input)
+		if tx.Error != nil {
+			return r.errorTransformer.ToFlyteAdminError(tx.Error)
+		}
+
+		return nil
+	})
 	timer.Stop()
-	if tx.Error != nil {
-		return r.errorTransformer.ToFlyteAdminError(tx.Error)
-	}
-	return nil
+	return err
 }
 
 func (r *WorkflowRepo) Get(ctx context.Context, input interfaces.Identifier) (models.Workflow, error) {

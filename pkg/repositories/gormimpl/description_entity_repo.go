@@ -31,7 +31,7 @@ func (r *DescriptionEntityRepo) Create(ctx context.Context, input models.Descrip
 	return input.ID, nil
 }
 
-func (r *DescriptionEntityRepo) Get(ctx context.Context, input models.DescriptionEntityKey) (models.DescriptionEntity, error) {
+func (r *DescriptionEntityRepo) Get(ctx context.Context, input interfaces.GetDescriptionEntityInput) (models.DescriptionEntity, error) {
 	var descriptionEntity models.DescriptionEntity
 
 	filters, err := getDescriptionEntityFilters(input.ResourceType, input.Project, input.Domain, input.Name, input.Version)
