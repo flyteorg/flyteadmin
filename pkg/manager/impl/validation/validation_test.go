@@ -121,46 +121,45 @@ func TestValidateDescriptionEntityIdentifierGetRequest(t *testing.T) {
 
 func TestValidateDescriptionEntityListRequest(t *testing.T) {
 	assert.Nil(t, ValidateDescriptionEntityListRequest(admin.DescriptionEntityListRequest{
-		DescriptionEntityId: &admin.DescriptionEntityIdentifier{
-			ResourceType: core.ResourceType_WORKFLOW,
-			Project:      "project",
-			Domain:       "domain",
-			Name:         "name",
+		ResourceType: core.ResourceType_WORKFLOW,
+		Id: &admin.NamedEntityIdentifier{
+			Project: "project",
+			Domain:  "domain",
+			Name:    "name",
 		},
 		Limit: 1,
 	}))
 
 	assert.NotNil(t, ValidateDescriptionEntityListRequest(admin.DescriptionEntityListRequest{
-		DescriptionEntityId: &admin.DescriptionEntityIdentifier{
-			ResourceType: core.ResourceType_WORKFLOW,
-			Project:      "project",
-			Domain:       "domain",
-			Name:         "name",
+		ResourceType: core.ResourceType_WORKFLOW,
+		Id: &admin.NamedEntityIdentifier{
+			Project: "project",
+			Domain:  "domain",
+			Name:    "name",
 		},
 	}))
 
 	assert.NotNil(t, ValidateDescriptionEntityListRequest(admin.DescriptionEntityListRequest{
-		DescriptionEntityId: nil,
+		Id: nil,
 	}))
 
 	assert.NotNil(t, ValidateDescriptionEntityListRequest(admin.DescriptionEntityListRequest{
-		DescriptionEntityId: &admin.DescriptionEntityIdentifier{
-			ResourceType: core.ResourceType_WORKFLOW,
+		ResourceType: core.ResourceType_WORKFLOW,
+		Id:           nil,
+	}))
+
+	assert.NotNil(t, ValidateDescriptionEntityListRequest(admin.DescriptionEntityListRequest{
+		ResourceType: core.ResourceType_WORKFLOW,
+		Id: &admin.NamedEntityIdentifier{
+			Project: "project",
 		},
 	}))
 
 	assert.NotNil(t, ValidateDescriptionEntityListRequest(admin.DescriptionEntityListRequest{
-		DescriptionEntityId: &admin.DescriptionEntityIdentifier{
-			ResourceType: core.ResourceType_WORKFLOW,
-			Project:      "project",
-		},
-	}))
-
-	assert.NotNil(t, ValidateDescriptionEntityListRequest(admin.DescriptionEntityListRequest{
-		DescriptionEntityId: &admin.DescriptionEntityIdentifier{
-			ResourceType: core.ResourceType_WORKFLOW,
-			Project:      "project",
-			Domain:       "domain",
+		ResourceType: core.ResourceType_WORKFLOW,
+		Id: &admin.NamedEntityIdentifier{
+			Project: "project",
+			Domain:  "domain",
 		},
 	}))
 }
