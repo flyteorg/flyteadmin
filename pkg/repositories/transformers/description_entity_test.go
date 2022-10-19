@@ -13,7 +13,7 @@ import (
 const shortDescription = "hello"
 
 func TestToDescriptionEntityExecutionModel(t *testing.T) {
-	longDescription := &admin.LongDescription{IconLink: "https://flyte"}
+	longDescription := &admin.Description{IconLink: "https://flyte"}
 	sourceCode := &admin.SourceCode{Link: "https://github/flyte"}
 
 	longDescriptionBytes, err := proto.Marshal(longDescription)
@@ -40,7 +40,7 @@ func TestToDescriptionEntityExecutionModel(t *testing.T) {
 }
 
 func TestFromDescriptionEntityExecutionModel(t *testing.T) {
-	longDescription := &admin.LongDescription{IconLink: "https://flyte"}
+	longDescription := &admin.Description{IconLink: "https://flyte"}
 	sourceCode := &admin.SourceCode{Link: "https://github/flyte"}
 
 	longDescriptionBytes, err := proto.Marshal(longDescription)
@@ -66,7 +66,7 @@ func TestFromDescriptionEntityExecutionModel(t *testing.T) {
 }
 
 func TestFromDescriptionEntityExecutionModels(t *testing.T) {
-	longDescription := &admin.LongDescription{IconLink: "https://flyte"}
+	longDescription := &admin.Description{IconLink: "https://flyte"}
 	sourceCode := &admin.SourceCode{Link: "https://github/flyte"}
 
 	longDescriptionBytes, err := proto.Marshal(longDescription)

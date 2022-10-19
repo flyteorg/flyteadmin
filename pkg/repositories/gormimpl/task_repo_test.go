@@ -29,7 +29,7 @@ func TestCreateTask(t *testing.T) {
 		},
 		Closure: []byte{1, 2},
 		Type:    pythonTestTaskType,
-	})
+	}, nil)
 	assert.NoError(t, err)
 }
 

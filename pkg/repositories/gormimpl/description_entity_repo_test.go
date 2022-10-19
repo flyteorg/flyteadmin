@@ -39,7 +39,7 @@ func TestGetDescriptionEntity(t *testing.T) {
 	descriptionEntity := getMockDescriptionEntityResponseFromDb(version, []byte{1, 2})
 	descriptionEntities = append(descriptionEntities, descriptionEntity)
 
-	output, err := descriptionEntityRepo.Get(context.Background(), models.DescriptionEntityKey{
+	output, err := descriptionEntityRepo.Get(context.Background(), interfaces.GetDescriptionEntityInput{
 		ResourceType: resourceType,
 		Project:      project,
 		Domain:       domain,
@@ -54,7 +54,7 @@ func TestGetDescriptionEntity(t *testing.T) {
 	// Only match on queries that append expected filters
 	GlobalMock.NewMock().WithQuery(`SELECT * FROM "description_entities" WHERE project = $1 AND domain = $2 AND name = $3 AND version = $4 LIMIT 1`).
 		WithReply(descriptionEntities)
-	output, err = descriptionEntityRepo.Get(context.Background(), models.DescriptionEntityKey{
+	output, err = descriptionEntityRepo.Get(context.Background(), interfaces.GetDescriptionEntityInput{
 		ResourceType: resourceType,
 		Project:      project,
 		Domain:       domain,
@@ -66,7 +66,6 @@ func TestGetDescriptionEntity(t *testing.T) {
 	assert.Equal(t, domain, output.Domain)
 	assert.Equal(t, name, output.Name)
 	assert.Equal(t, version, output.Version)
-	assert.Equal(t, []byte{1, 2}, output.Digest)
 	assert.Equal(t, shortDescription, output.ShortDescription)
 }
 

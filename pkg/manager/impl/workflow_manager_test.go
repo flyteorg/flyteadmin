@@ -131,7 +131,7 @@ func TestSetWorkflowDefaults(t *testing.T) {
 func TestCreateWorkflow(t *testing.T) {
 	repository := getMockRepository(!returnWorkflowOnGet)
 	var createCalled bool
-	repository.WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetCreateCallback(func(input models.Workflow) error {
+	repository.WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetCreateCallback(func(input models.Workflow, descriptionEntity *models.DescriptionEntity) error {
 		assert.Equal(t, []byte{
 			0x2c, 0x69, 0x58, 0x2f, 0xd5, 0x3e, 0x68, 0x7d, 0x5, 0x8e, 0xd9, 0xc8, 0x7d, 0xbd, 0xd1, 0xc7, 0xa7, 0x69,
 			0xeb, 0x2e, 0x54, 0x6, 0x3e, 0x67, 0x82, 0xcd, 0x54, 0x7a, 0x91, 0xb3, 0x35, 0x81}, input.Digest)
@@ -244,7 +244,7 @@ func TestCreateWorkflow_CompileWorkflowError(t *testing.T) {
 func TestCreateWorkflow_DatabaseError(t *testing.T) {
 	repository := getMockRepository(!returnWorkflowOnGet)
 	expectedErr := errors.New("expected error")
-	workflowCreateFunc := func(input models.Workflow) error {
+	workflowCreateFunc := func(input models.Workflow, descriptionEntity *models.DescriptionEntity) error {
 		return expectedErr
 	}
 

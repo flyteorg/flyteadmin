@@ -4,12 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/flyteorg/flyteadmin/pkg/manager/impl/util"
-
-	"github.com/flyteorg/flyteadmin/pkg/errors"
-	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
-	"google.golang.org/grpc/codes"
-
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	repositoryMocks "github.com/flyteorg/flyteadmin/pkg/repositories/mocks"
@@ -47,63 +41,6 @@ func getMockConfigForDETest() runtimeInterfaces.Configuration {
 	return mockConfig
 }
 
-func TestDescriptionEntityManager_Create(t *testing.T) {
-	repository := getMockRepositoryForDETest()
-	shortDescription := "hello world"
-	descriptionEntity := &admin.DescriptionEntity{
-		ShortDescription: shortDescription,
-	}
-
-	t.Run("failed to compute description entity digest", func(t *testing.T) {
-		err := createDescriptionEntity(context.Background(), repository, nil, descriptionEntityIdentifier)
-		assert.Error(t, err)
-	})
-
-	t.Run("entity not found", func(t *testing.T) {
-		getFunction := func(input models.DescriptionEntityKey) (models.DescriptionEntity, error) {
-			return models.DescriptionEntity{}, errors.NewFlyteAdminErrorf(codes.NotFound, "NotFound")
-		}
-		repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetGetCallback(getFunction)
-		err := createDescriptionEntity(context.Background(), repository, descriptionEntity, descriptionEntityIdentifier)
-		assert.NoError(t, err)
-	})
-
-	t.Run("entity exists and identical digest", func(t *testing.T) {
-		digest, err := util.GetDescriptionEntityDigest(context.Background(), descriptionEntity)
-		assert.NoError(t, err)
-
-		getFunction := func(input models.DescriptionEntityKey) (models.DescriptionEntity, error) {
-			return models.DescriptionEntity{Digest: digest}, nil
-		}
-		repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetGetCallback(getFunction)
-		err = createDescriptionEntity(context.Background(), repository, descriptionEntity, descriptionEntityIdentifier)
-		assert.Error(t, err)
-	})
-
-	t.Run("entity exists and non-identical digest", func(t *testing.T) {
-		getFunction := func(input models.DescriptionEntityKey) (models.DescriptionEntity, error) {
-			return models.DescriptionEntity{}, nil
-		}
-		repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetGetCallback(getFunction)
-		err := createDescriptionEntity(context.Background(), repository, descriptionEntity, descriptionEntityIdentifier)
-		assert.Error(t, err)
-	})
-
-	t.Run("failed to create description model", func(t *testing.T) {
-		getFunction := func(input models.DescriptionEntityKey) (models.DescriptionEntity, error) {
-			return models.DescriptionEntity{}, errors.NewFlyteAdminErrorf(codes.NotFound, "NotFound")
-		}
-		createFunction := func(input models.DescriptionEntity) error {
-			return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "InvalidArgument")
-		}
-
-		repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetGetCallback(getFunction)
-		repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetCreateCallback(createFunction)
-		err := createDescriptionEntity(context.Background(), repository, descriptionEntity, descriptionEntityIdentifier)
-		assert.Error(t, err)
-	})
-}
-
 func TestDescriptionEntityManager_Get(t *testing.T) {
 	repository := getMockRepositoryForDETest()
 	manager := NewDescriptionEntityManager(repository, getMockConfigForDETest(), mockScope.NewTestScope())
@@ -124,14 +61,10 @@ func TestDescriptionEntityManager_Get(t *testing.T) {
 func TestDescriptionEntityManager_List(t *testing.T) {
 	repository := getMockRepositoryForDETest()
 	manager := NewDescriptionEntityManager(repository, getMockConfigForDETest(), mockScope.NewTestScope())
-	// shortDescription := "hello world"
-	//descriptionEntity := &admin.DescriptionEntity{
-	//	ShortDescription: shortDescription,
-	//}
 
 	t.Run("failed to validate a request", func(t *testing.T) {
 		response, err := manager.ListDescriptionEntity(context.Background(), admin.DescriptionEntityListRequest{
-			DescriptionEntityId: &admin.DescriptionEntityIdentifier{
+			Id: &admin.NamedEntityIdentifier{
 				Name: "flyte",
 			},
 		})
@@ -141,11 +74,11 @@ func TestDescriptionEntityManager_List(t *testing.T) {
 
 	t.Run("failed to sort description entity", func(t *testing.T) {
 		response, err := manager.ListDescriptionEntity(context.Background(), admin.DescriptionEntityListRequest{
-			DescriptionEntityId: &admin.DescriptionEntityIdentifier{
-				Name:         "flyte",
-				Project:      "project",
-				Domain:       "domain",
-				ResourceType: core.ResourceType_TASK,
+			ResourceType: core.ResourceType_TASK,
+			Id: &admin.NamedEntityIdentifier{
+				Name:    "flyte",
+				Project: "project",
+				Domain:  "domain",
 			},
 			Limit:  1,
 			SortBy: &admin.Sort{Direction: 3},
@@ -156,11 +89,11 @@ func TestDescriptionEntityManager_List(t *testing.T) {
 
 	t.Run("failed to validate token", func(t *testing.T) {
 		response, err := manager.ListDescriptionEntity(context.Background(), admin.DescriptionEntityListRequest{
-			DescriptionEntityId: &admin.DescriptionEntityIdentifier{
-				Name:         "flyte",
-				Project:      "project",
-				Domain:       "domain",
-				ResourceType: core.ResourceType_TASK,
+			ResourceType: core.ResourceType_TASK,
+			Id: &admin.NamedEntityIdentifier{
+				Name:    "flyte",
+				Project: "project",
+				Domain:  "domain",
 			},
 			Limit: 1,
 			Token: "hello",
@@ -171,11 +104,11 @@ func TestDescriptionEntityManager_List(t *testing.T) {
 
 	t.Run("list description entities", func(t *testing.T) {
 		response, err := manager.ListDescriptionEntity(context.Background(), admin.DescriptionEntityListRequest{
-			DescriptionEntityId: &admin.DescriptionEntityIdentifier{
-				Name:         "flyte",
-				Project:      "project",
-				Domain:       "domain",
-				ResourceType: core.ResourceType_TASK,
+			ResourceType: core.ResourceType_TASK,
+			Id: &admin.NamedEntityIdentifier{
+				Name:    "flyte",
+				Project: "project",
+				Domain:  "domain",
 			},
 			Limit: 1,
 		})

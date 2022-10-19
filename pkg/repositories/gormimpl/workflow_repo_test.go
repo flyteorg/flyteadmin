@@ -29,7 +29,7 @@ func TestCreateWorkflow(t *testing.T) {
 		},
 		TypedInterface:          typedInterface,
 		RemoteClosureIdentifier: remoteSpecIdentifier,
-	})
+	}, nil)
 	assert.NoError(t, err)
 }
 

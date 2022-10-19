@@ -73,7 +73,7 @@ func TestCreateTask(t *testing.T) {
 			return models.Task{}, errors.New("foo")
 		})
 	var createCalled bool
-	mockRepository.TaskRepo().(*repositoryMocks.MockTaskRepo).SetCreateCallback(func(input models.Task) error {
+	mockRepository.TaskRepo().(*repositoryMocks.MockTaskRepo).SetCreateCallback(func(input models.Task, descriptionEntity *models.DescriptionEntity) error {
 		assert.Equal(t, []byte{
 			0xbf, 0x79, 0x61, 0x1c, 0xf5, 0xc1, 0xfb, 0x4c, 0xf8, 0xf4, 0xc4, 0x53, 0x5f, 0x8f, 0x73, 0xe2, 0x26, 0x5a,
 			0x18, 0x4a, 0xb7, 0x66, 0x98, 0x3c, 0xab, 0x2, 0x6c, 0x9, 0x9b, 0x90, 0xec, 0x8f}, input.Digest)
@@ -81,7 +81,7 @@ func TestCreateTask(t *testing.T) {
 		return nil
 	})
 	mockRepository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetGetCallback(
-		func(input models.DescriptionEntityKey) (models.DescriptionEntity, error) {
+		func(input interfaces.GetDescriptionEntityInput) (models.DescriptionEntity, error) {
 			return models.DescriptionEntity{}, adminErrors.NewFlyteAdminErrorf(codes.NotFound, "NotFound")
 		})
 	taskManager := NewTaskManager(mockRepository, getMockConfigForTaskTest(), getMockTaskCompiler(),
@@ -133,7 +133,7 @@ func TestCreateTask_DatabaseError(t *testing.T) {
 			return models.Task{}, errors.New("foo")
 		})
 	expectedErr := errors.New("expected error")
-	taskCreateFunc := func(input models.Task) error {
+	taskCreateFunc := func(input models.Task, descriptionEntity *models.DescriptionEntity) error {
 		return expectedErr
 	}
 
