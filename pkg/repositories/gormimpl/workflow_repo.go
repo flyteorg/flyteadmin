@@ -22,7 +22,7 @@ type WorkflowRepo struct {
 
 func (r *WorkflowRepo) Create(_ context.Context, input models.Workflow, descriptionEntity *models.DescriptionEntity) error {
 	timer := r.metrics.CreateDuration.Start()
-	err := r.db.Transaction(func(tx *gorm.DB) error {
+	err := r.db.Transaction(func(_ *gorm.DB) error {
 		if descriptionEntity == nil {
 			tx := r.db.Omit("id").Create(input)
 			if tx.Error != nil {
@@ -30,11 +30,11 @@ func (r *WorkflowRepo) Create(_ context.Context, input models.Workflow, descript
 			}
 			return nil
 		}
-		tx = r.db.Omit("id").Create(descriptionEntity)
+		tx := r.db.Omit("id").Create(descriptionEntity)
 		if tx.Error != nil {
 			return r.errorTransformer.ToFlyteAdminError(tx.Error)
 		}
-		tx = r.db.Last(descriptionEntity)
+		r.db.Last(descriptionEntity)
 
 		input.DescriptionID = descriptionEntity.ID
 		tx = r.db.Omit("id").Create(&input)

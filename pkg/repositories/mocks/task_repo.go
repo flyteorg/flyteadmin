@@ -12,14 +12,12 @@ type CreateTaskFunc func(input models.Task, descriptionEntity *models.Descriptio
 type GetTaskFunc func(input interfaces.Identifier) (models.Task, error)
 type ListTaskFunc func(input interfaces.ListResourceInput) (interfaces.TaskCollectionOutput, error)
 type ListTaskIdentifiersFunc func(input interfaces.ListResourceInput) (interfaces.TaskCollectionOutput, error)
-type UpdateTaskDescriptionIDFunc func(input models.Task) error
 
 type MockTaskRepo struct {
-	createFunction              CreateTaskFunc
-	getFunction                 GetTaskFunc
-	listFunction                ListTaskFunc
-	listUniqueTaskIdsFunction   ListTaskIdentifiersFunc
-	updateTaskDescriptionIDFunc UpdateTaskDescriptionIDFunc
+	createFunction            CreateTaskFunc
+	getFunction               GetTaskFunc
+	listFunction              ListTaskFunc
+	listUniqueTaskIdsFunction ListTaskIdentifiersFunc
 }
 
 func (r *MockTaskRepo) Create(ctx context.Context, input models.Task, descriptionEntity *models.DescriptionEntity) error {
@@ -70,13 +68,6 @@ func (r *MockTaskRepo) ListTaskIdentifiers(ctx context.Context, input interfaces
 		return r.listUniqueTaskIdsFunction(input)
 	}
 	return interfaces.TaskCollectionOutput{}, nil
-}
-
-func (r *MockTaskRepo) UpdateDescriptionID(input models.Task) error {
-	if r.updateTaskDescriptionIDFunc != nil {
-		return r.updateTaskDescriptionIDFunc(input)
-	}
-	return nil
 }
 
 func (r *MockTaskRepo) SetListTaskIdentifiersCallback(listFunction ListTaskIdentifiersFunc) {

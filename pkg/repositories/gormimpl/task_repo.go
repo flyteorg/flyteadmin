@@ -24,7 +24,7 @@ type TaskRepo struct {
 
 func (r *TaskRepo) Create(_ context.Context, input models.Task, descriptionEntity *models.DescriptionEntity) error {
 	timer := r.metrics.CreateDuration.Start()
-	err := r.db.Transaction(func(tx *gorm.DB) error {
+	err := r.db.Transaction(func(_ *gorm.DB) error {
 		if descriptionEntity == nil {
 			tx := r.db.Omit("id").Create(input)
 			if tx.Error != nil {
@@ -32,11 +32,11 @@ func (r *TaskRepo) Create(_ context.Context, input models.Task, descriptionEntit
 			}
 			return nil
 		}
-		tx = r.db.Omit("id").Create(descriptionEntity)
+		tx := r.db.Omit("id").Create(descriptionEntity)
 		if tx.Error != nil {
 			return r.errorTransformer.ToFlyteAdminError(tx.Error)
 		}
-		tx = r.db.Last(descriptionEntity)
+		r.db.Last(descriptionEntity)
 
 		input.DescriptionID = descriptionEntity.ID
 		tx = r.db.Omit("id").Create(&input)
