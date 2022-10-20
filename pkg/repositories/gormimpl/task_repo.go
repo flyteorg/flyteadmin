@@ -64,7 +64,7 @@ func (r *TaskRepo) Get(ctx context.Context, input interfaces.Identifier) (models
 	tx = tx.Joins(leftJoinTaskToDescription)
 	tx = tx.Select([]string{
 		fmt.Sprintf("%s.*", taskTableName),
-		fmt.Sprintf("%s.short_description", descriptionEntityTableName),
+		fmt.Sprintf("%s.%s", descriptionEntityTableName, ShortDescription),
 	}).Take(&task)
 	timer.Stop()
 	if errors.Is(tx.Error, gorm.ErrRecordNotFound) {

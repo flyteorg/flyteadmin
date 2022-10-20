@@ -101,7 +101,7 @@ func (r *WorkflowRepo) List(
 	timer := r.metrics.ListDuration.Start()
 	tx = tx.Joins(leftJoinWorkflowToDescription).Select([]string{
 		fmt.Sprintf("%s.*", workflowTableName),
-		fmt.Sprintf("%s.short_description", descriptionEntityTableName),
+		fmt.Sprintf("%s.%s", descriptionEntityTableName, ShortDescription),
 	}).Find(&workflows)
 	timer.Stop()
 	if tx.Error != nil {

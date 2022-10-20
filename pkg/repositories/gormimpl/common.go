@@ -20,6 +20,7 @@ const Description = "description"
 const ResourceType = "resource_type"
 const State = "state"
 const ID = "id"
+const ShortDescription = "short_description"
 
 const executionTableName = "executions"
 const namedEntityMetadataTableName = "named_entity_metadata"
