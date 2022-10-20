@@ -38,7 +38,7 @@ func getWorkflowCreateRequest() admin.WorkflowCreateRequest {
 			Version:      entityVersions[0],
 		},
 		Spec: &admin.WorkflowSpec{
-			DescriptionEntity: &admin.DescriptionEntity{},
+			DescriptionEntity: &admin.DescriptionEntity{ShortDescription: "hello"},
 			Template: &core.WorkflowTemplate{
 				Id: &core.Identifier{
 					ResourceType: core.ResourceType_WORKFLOW,
