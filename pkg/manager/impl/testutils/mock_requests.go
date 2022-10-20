@@ -41,6 +41,7 @@ func GetValidTaskRequest() admin.TaskCreateRequest {
 					},
 				},
 			},
+			DescriptionEntity: &admin.DescriptionEntity{},
 		},
 	}
 }

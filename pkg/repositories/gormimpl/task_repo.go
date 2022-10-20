@@ -50,23 +50,6 @@ func (r *TaskRepo) Create(_ context.Context, input models.Task, descriptionEntit
 	return err
 }
 
-func (r *TaskRepo) UpdateDescriptionID(input models.Task) error {
-	timer := r.metrics.UpdateDuration.Start()
-	tx := r.db.Where(&models.Task{
-		TaskKey: models.TaskKey{
-			Project: input.Project,
-			Domain:  input.Domain,
-			Name:    input.Name,
-			Version: input.Version,
-		},
-	}).Assign(input).FirstOrCreate(&input)
-	timer.Stop()
-	if tx.Error != nil {
-		return r.errorTransformer.ToFlyteAdminError(tx.Error)
-	}
-	return nil
-}
-
 func (r *TaskRepo) Get(ctx context.Context, input interfaces.Identifier) (models.Task, error) {
 	var task models.Task
 	timer := r.metrics.GetDuration.Start()
