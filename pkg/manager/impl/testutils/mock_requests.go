@@ -56,6 +56,7 @@ func GetValidTaskRequestWithOverrides(project string, domain string, name string
 			Version:      version,
 		},
 		Spec: &admin.TaskSpec{
+			DescriptionEntity: &admin.DescriptionEntity{ShortDescription: "hello"},
 			Template: &core.TaskTemplate{
 				Type: "type",
 				Metadata: &core.TaskMetadata{

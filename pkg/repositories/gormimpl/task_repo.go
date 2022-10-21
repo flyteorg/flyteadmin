@@ -103,7 +103,7 @@ func (r *TaskRepo) List(
 	tx = tx.Joins(leftJoinTaskToDescription)
 	tx = tx.Select([]string{
 		fmt.Sprintf("%s.*", taskTableName),
-		fmt.Sprintf("%s.short_description", descriptionEntityTableName),
+		fmt.Sprintf("%s.%s", descriptionEntityTableName, ShortDescription),
 	}).Find(&tasks)
 	timer.Stop()
 	if tx.Error != nil {

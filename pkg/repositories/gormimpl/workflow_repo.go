@@ -63,7 +63,7 @@ func (r *WorkflowRepo) Get(ctx context.Context, input interfaces.Identifier) (mo
 	tx = tx.Joins(leftJoinWorkflowToDescription)
 	tx = tx.Select([]string{
 		fmt.Sprintf("%s.*", workflowTableName),
-		fmt.Sprintf("%s.short_description", descriptionEntityTableName),
+		fmt.Sprintf("%s.%s", descriptionEntityTableName, ShortDescription),
 	}).Take(&workflow)
 	timer.Stop()
 
