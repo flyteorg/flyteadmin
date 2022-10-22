@@ -26,7 +26,7 @@ func (r *TaskRepo) Create(_ context.Context, input models.Task, descriptionEntit
 	timer := r.metrics.CreateDuration.Start()
 	err := r.db.Transaction(func(_ *gorm.DB) error {
 		if descriptionEntity == nil {
-			tx := r.db.Omit("id").Create(input)
+			tx := r.db.Omit("id").Create(&input)
 			if tx.Error != nil {
 				return r.errorTransformer.ToFlyteAdminError(tx.Error)
 			}
