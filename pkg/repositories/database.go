@@ -141,9 +141,9 @@ func createPostgresDbIfNotExists(ctx context.Context, gormConfig *gorm.Config, p
 
 	if result.Error != nil {
 		if !isPgErrorWithCode(result.Error, pqDbAlreadyExistsCode) {
-			logger.Warningf(ctx, "Got DB already exists for [%v], skipping...", pgConfig.DbName)
 			return nil, result.Error
 		}
+		logger.Warningf(ctx, "Got DB already exists error for [%s], skipping...", pgConfig.DbName)
 	}
 	// Now try connecting to the db again
 	return gorm.Open(dialector, gormConfig)
