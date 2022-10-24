@@ -116,7 +116,7 @@ func createPostgresDbIfNotExists(ctx context.Context, gormConfig *gorm.Config, p
 		return gormDb, nil
 	}
 
-	if !isInvalidDBPgError(err) {
+	if !isPgErrorWithCode(err, pqInvalidDBCode) {
 		return nil, err
 	}
 
@@ -140,7 +140,7 @@ func createPostgresDbIfNotExists(ctx context.Context, gormConfig *gorm.Config, p
 	result := gormDb.Exec(createDBStatement)
 
 	if result.Error != nil {
-		if !isPgDbAlreadyExistsError(result.Error) {
+		if !isPgErrorWithCode(result.Error, pqDbAlreadyExistsCode) {
 			logger.Warningf(ctx, "Got DB already exists for [%v], skipping...", pgConfig.DbName)
 			return nil, result.Error
 		}
@@ -149,25 +149,15 @@ func createPostgresDbIfNotExists(ctx context.Context, gormConfig *gorm.Config, p
 	return gorm.Open(dialector, gormConfig)
 }
 
-func isInvalidDBPgError(err error) bool {
+func isPgErrorWithCode(err error, code string) bool {
 	pgErr := &pgconn.PgError{}
 	if !errors.As(err, &pgErr) {
 		// err chain does not contain a pgconn.PgError
 		return false
 	}
 
-	// pgconn.PgError found in chain and set to pgErr
-	return pgErr.Code == pqInvalidDBCode
-}
-
-func isPgDbAlreadyExistsError(err error) bool {
-	pgErr := &pgconn.PgError{}
-	if !errors.As(err, &pgErr) {
-		return false
-	}
-
-	// pgconn.PgError found in chain and set to pgErr
-	return pgErr.Code == pqDbAlreadyExistsCode
+	// pgconn.PgError found in chain and set to code specified
+	return pgErr.Code == code
 }
 
 func setupDbConnectionPool(ctx context.Context, gormDb *gorm.DB, dbConfig *database.DbConfig) error {

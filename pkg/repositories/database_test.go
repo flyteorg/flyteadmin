@@ -122,7 +122,7 @@ func TestIsInvalidDBPgError(t *testing.T) {
 		tc := tc
 
 		t.Run(tc.Name, func(t *testing.T) {
-			assert.Equal(t, tc.ExpectedResult, isInvalidDBPgError(tc.Err))
+			assert.Equal(t, tc.ExpectedResult, isPgErrorWithCode(tc.Err, pqInvalidDBCode))
 		})
 	}
 }
@@ -230,7 +230,7 @@ func TestIsPgDbAlreadyExistsError(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			assert.Equal(t, tc.ExpectedResult, isPgDbAlreadyExistsError(tc.Err))
+			assert.Equal(t, tc.ExpectedResult, isPgErrorWithCode(tc.Err, pqDbAlreadyExistsCode))
 		})
 	}
 }
