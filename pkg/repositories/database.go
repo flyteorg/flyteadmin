@@ -19,6 +19,7 @@ import (
 )
 
 const pqInvalidDBCode = "3D000"
+const pqDbAlreadyExistsCode = "42P04"
 const defaultDB = "postgres"
 
 // Resolves a password value from either a user-provided inline value or a filepath whose contents contain a password.
@@ -139,7 +140,10 @@ func createPostgresDbIfNotExists(ctx context.Context, gormConfig *gorm.Config, p
 	result := gormDb.Exec(createDBStatement)
 
 	if result.Error != nil {
-		return nil, result.Error
+		if !isPgDbAlreadyExistsError(result.Error) {
+			logger.Warningf(ctx, "Got DB already exists for [%v], skipping...", pgConfig.DbName)
+			return nil, result.Error
+		}
 	}
 	// Now try connecting to the db again
 	return gorm.Open(dialector, gormConfig)
@@ -154,6 +158,16 @@ func isInvalidDBPgError(err error) bool {
 
 	// pgconn.PgError found in chain and set to pgErr
 	return pgErr.Code == pqInvalidDBCode
+}
+
+func isPgDbAlreadyExistsError(err error) bool {
+	pgErr := &pgconn.PgError{}
+	if !errors.As(err, &pgErr) {
+		return false
+	}
+
+	// pgconn.PgError found in chain and set to pgErr
+	return pgErr.Code == pqDbAlreadyExistsCode
 }
 
 func setupDbConnectionPool(ctx context.Context, gormDb *gorm.DB, dbConfig *database.DbConfig) error {
