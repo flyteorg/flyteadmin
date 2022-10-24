@@ -3,30 +3,18 @@ package interfaces
 import (
 	"io/ioutil"
 
-	"github.com/flyteorg/flytestdlib/config"
+	"github.com/flyteorg/flyteadmin/pkg/config"
 
 	"github.com/pkg/errors"
 )
 
-// KubeClientConfig contains the configuration used by flytepropeller to configure its internal Kubernetes Client.
-type KubeClientConfig struct {
-	// QPS indicates the maximum QPS to the master from this client.
-	// If it's zero, the created RESTClient will use DefaultQPS: 5
-	QPS float32 `json:"qps" pflag:"-,Max QPS to the master for requests to KubeAPI. 0 defaults to 5."`
-	// Maximum burst for throttle.
-	// If it's zero, the created RESTClient will use DefaultBurst: 10.
-	Burst int `json:"burst" pflag:",Max burst rate for throttle. 0 defaults to 10"`
-	// The maximum length of time to wait before giving up on a server request. A value of zero means no timeout.
-	Timeout config.Duration `json:"timeout" pflag:",Max duration allowed for every request to KubeAPI before giving up. 0 implies no timeout."`
-}
-
 // Holds details about a cluster used for workflow execution.
 type ClusterConfig struct {
-	Name             string            `json:"name"`
-	Endpoint         string            `json:"endpoint"`
-	Auth             Auth              `json:"auth"`
-	Enabled          bool              `json:"enabled"`
-	KubeClientConfig *KubeClientConfig `json:"kube-client-config,omitempty"`
+	Name             string                   `json:"name"`
+	Endpoint         string                   `json:"endpoint"`
+	Auth             Auth                     `json:"auth"`
+	Enabled          bool                     `json:"enabled"`
+	KubeClientConfig *config.KubeClientConfig `json:"kube-client-config,omitempty"`
 }
 
 type Auth struct {

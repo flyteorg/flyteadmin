@@ -5,6 +5,7 @@ import (
 	"context"
 	"os"
 
+	"github.com/flyteorg/flyteadmin/pkg/config"
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"google.golang.org/grpc/codes"
 
@@ -37,21 +38,6 @@ func RemoteClusterConfig(host string, auth runtimeInterfaces.Auth) (*restclient.
 	}, nil
 }
 
-func GetRestClientConfigForCluster(cluster runtimeInterfaces.ClusterConfig) (*restclient.Config, error) {
-	kubeConfiguration, err := RemoteClusterConfig(cluster.Endpoint, cluster.Auth)
-
-	if err != nil {
-		return nil, err
-	}
-	logger.Debugf(context.Background(), "successfully loaded kube configuration from %v", cluster)
-	if cluster.KubeClientConfig != nil {
-		kubeConfiguration.QPS = cluster.KubeClientConfig.QPS
-		kubeConfiguration.Burst = cluster.KubeClientConfig.Burst
-		kubeConfiguration.Timeout = cluster.KubeClientConfig.Timeout.Duration
-	}
-	return kubeConfiguration, nil
-}
-
 // Initializes a config using a variety of configurable or default fallback options that can be passed to a Kubernetes client on
 // initialization.
 func GetRestClientConfig(kubeConfig, master string,
@@ -59,6 +45,7 @@ func GetRestClientConfig(kubeConfig, master string,
 	var kubeConfiguration *restclient.Config
 	var err error
 
+	kubeClientConfig := &config.GetConfig().KubeClientConfig
 	if kubeConfig != "" {
 		// ExpandEnv allows using $HOME in the path and it will automatically map to the right OS's user home
 		kubeConfigPath := os.ExpandEnv(kubeConfig)
@@ -68,7 +55,15 @@ func GetRestClientConfig(kubeConfig, master string,
 		}
 		logger.Debugf(context.Background(), "successfully loaded kube config from %s", kubeConfig)
 	} else if k8sCluster != nil {
-		return GetRestClientConfigForCluster(*k8sCluster)
+		kubeConfiguration, err = RemoteClusterConfig(k8sCluster.Endpoint, k8sCluster.Auth)
+		if err != nil {
+			return nil, err
+		}
+		logger.Debugf(context.Background(), "successfully loaded kube configuration from %v", k8sCluster)
+
+		if k8sCluster.KubeClientConfig != nil {
+			kubeClientConfig = k8sCluster.KubeClientConfig
+		}
 	} else {
 		kubeConfiguration, err = restclient.InClusterConfig()
 		if err != nil {
@@ -77,11 +72,12 @@ func GetRestClientConfig(kubeConfig, master string,
 		logger.Debug(context.Background(), "successfully loaded kube configuration from in cluster config")
 	}
 
-	if k8sCluster.KubeClientConfig != nil {
-		kubeConfiguration.QPS = k8sCluster.KubeClientConfig.QPS
-		kubeConfiguration.Burst = k8sCluster.KubeClientConfig.Burst
-		kubeConfiguration.Timeout = k8sCluster.KubeClientConfig.Timeout.Duration
+	if kubeClientConfig != nil {
+		kubeConfiguration.QPS = float32(kubeClientConfig.QPS)
+		kubeConfiguration.Burst = kubeClientConfig.Burst
+		kubeConfiguration.Timeout = kubeClientConfig.Timeout.Duration
 	}
+
 	return kubeConfiguration, nil
 }
 

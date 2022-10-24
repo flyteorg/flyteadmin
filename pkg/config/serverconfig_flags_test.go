@@ -449,4 +449,46 @@ func TestServerConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_kube-client-config.qps", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("kube-client-config.qps", testValue)
+			if vInt32, err := cmdFlags.GetInt32("kube-client-config.qps"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vInt32), &actual.KubeClientConfig.QPS)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_kube-client-config.burst", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("kube-client-config.burst", testValue)
+			if vInt, err := cmdFlags.GetInt("kube-client-config.burst"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vInt), &actual.KubeClientConfig.Burst)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_kube-client-config.timeout", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := defaultServerConfig.KubeClientConfig.Timeout.String()
+
+			cmdFlags.Set("kube-client-config.timeout", testValue)
+			if vString, err := cmdFlags.GetString("kube-client-config.timeout"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.KubeClientConfig.Timeout)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 }
