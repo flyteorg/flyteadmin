@@ -108,7 +108,18 @@ func NewIncompatibleClusterError(ctx context.Context, errorMsg, curCluster strin
 	return statusErr
 }
 
-func NewWorkflowExistsDifferentStructureError(ctx context.Context, request *admin.Workflow) FlyteAdminError {
-	errorMsg := fmt.Sprintf("workflow with different structure already exists with that id: %v", request.GetId())
-	return NewFlyteAdminError(codes.InvalidArgument, errorMsg)
+func NewWorkflowExistsDifferentStructureError(ctx context.Context, workflow *admin.Workflow) FlyteAdminError {
+	errorMsg := "workflow with different structure already exists"
+	statusErr, transformationErr := NewFlyteAdminError(codes.FailedPrecondition, errorMsg).WithDetails(&admin.CreateWorkflowFailureReason{
+		Reason: &admin.CreateWorkflowFailureReason_ExistsDifferentStructure{
+			ExistsDifferentStructure: &admin.WorkflowErrorExistsDifferentStructure{
+				Id: workflow.GetId(),
+			},
+		},
+	})
+	if transformationErr != nil {
+		logger.Panicf(ctx, "Failed to wrap grpc status in type 'Error': %v", transformationErr)
+		return NewFlyteAdminErrorf(codes.InvalidArgument, errorMsg)
+	}
+	return statusErr
 }
