@@ -166,8 +166,7 @@ func (w *WorkflowManager) CreateWorkflow(
 	if err == nil {
 		// A workflow's structure is uniquely defined by its collection of nodes.
 		if bytes.Equal(workflowDigest, existingWorkflowModel.Digest) {
-			return nil, errors.NewFlyteAdminErrorf(
-				codes.AlreadyExists, "identical workflow already exists with id %v", request.Id)
+			return nil, errors.NewWorkflowExistsIdenticalStructureError(ctx, &request)
 		}
 		// A workflow exists with different structure
 		existingCtx := getWorkflowContext(ctx, request.Id)
