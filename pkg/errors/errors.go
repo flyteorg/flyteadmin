@@ -8,6 +8,7 @@ import (
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -16,14 +17,7 @@ type FlyteAdminError interface {
 	Error() string
 	Code() codes.Code
 	GRPCStatus() *status.Status
-	WithDetails(details ProtoMessager) (FlyteAdminError, error)
-	String() string
-}
-
-// This allows us to pass different protos to the FlyteAdminError.WithDetails() method
-type ProtoMessager interface {
-	ProtoMessage()
-	Reset()
+	WithDetails(details proto.Message) (FlyteAdminError, error)
 	String() string
 }
 type flyteAdminErrorImpl struct {
@@ -49,7 +43,7 @@ func (e *flyteAdminErrorImpl) String() string {
 // enclose the error in the format that grpc server expect from golang:
 //
 //	https://github.com/grpc/grpc-go/blob/master/status/status.go#L133
-func (e *flyteAdminErrorImpl) WithDetails(details ProtoMessager) (FlyteAdminError, error) {
+func (e *flyteAdminErrorImpl) WithDetails(details proto.Message) (FlyteAdminError, error) {
 	s, err := e.status.WithDetails(details)
 	if err != nil {
 		return nil, err
