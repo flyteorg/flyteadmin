@@ -169,14 +169,7 @@ func (w *WorkflowManager) CreateWorkflow(
 			return nil, errors.NewWorkflowExistsIdenticalStructureError(ctx, &request)
 		}
 		// A workflow exists with different structure
-		existingCtx := getWorkflowContext(ctx, request.Id)
-		existingWorkflow, err := util.GetWorkflow(existingCtx, w.db, w.storageClient, *request.Id)
-		if err != nil {
-			logger.Infof(existingCtx, "Workflow with different structure exists. Attempted to but "+
-				"Failed to get workflow with id [%+v] with err %v", request.Id, err)
-			return nil, err
-		}
-		return nil, errors.NewWorkflowExistsDifferentStructureError(ctx, existingWorkflow)
+		return nil, errors.NewWorkflowExistsDifferentStructureError(ctx, &request)
 	} else if flyteAdminError, ok := err.(errors.FlyteAdminError); !ok || flyteAdminError.Code() != codes.NotFound {
 		logger.Debugf(ctx, "Failed to get workflow for comparison in CreateWorkflow with ID [%+v] with err %v",
 			request.Id, err)

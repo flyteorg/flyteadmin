@@ -46,7 +46,7 @@ func TestNewIncompatibleClusterError(t *testing.T) {
 }
 
 func TestNewWorkflowExistsDifferentStructureError(t *testing.T) {
-	wf := &admin.Workflow{
+	wf := &admin.WorkflowCreateRequest{
 		Id: &core.Identifier{
 			ResourceType: core.ResourceType_WORKFLOW,
 			Project:      "testProj",
