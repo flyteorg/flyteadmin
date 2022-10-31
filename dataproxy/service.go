@@ -30,12 +30,10 @@ import (
 type Service struct {
 	service.DataProxyServiceServer
 
-	cfg                      config.DataProxyConfig
-	dataStore                *storage.DataStore
-	shardSelector            ioutils.ShardSelector
-	taskExecutionManager     interfaces.TaskExecutionInterface
-	nodeExecutionManager     interfaces.NodeExecutionInterface
-	workflowExecutionManager interfaces.ExecutionInterface
+	cfg                  config.DataProxyConfig
+	dataStore            *storage.DataStore
+	shardSelector        ioutils.ShardSelector
+	nodeExecutionManager interfaces.NodeExecutionInterface
 }
 
 // CreateUploadLocation creates a temporary signed url to allow callers to upload content.
@@ -244,9 +242,7 @@ func createShardedStorageLocation(ctx context.Context, shardSelector ioutils.Sha
 }
 
 func NewService(cfg config.DataProxyConfig,
-	taskExec interfaces.TaskExecutionInterface,
 	nodeExec interfaces.NodeExecutionInterface,
-	wfExec interfaces.ExecutionInterface,
 	dataStore *storage.DataStore) (Service, error) {
 
 	// Context is not used in the constructor. Should ideally be removed.
@@ -256,11 +252,9 @@ func NewService(cfg config.DataProxyConfig,
 	}
 
 	return Service{
-		cfg:                      cfg,
-		dataStore:                dataStore,
-		shardSelector:            selector,
-		taskExecutionManager:     taskExec,
-		nodeExecutionManager:     nodeExec,
-		workflowExecutionManager: wfExec,
+		cfg:                  cfg,
+		dataStore:            dataStore,
+		shardSelector:        selector,
+		nodeExecutionManager: nodeExec,
 	}, nil
 }
