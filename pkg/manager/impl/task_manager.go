@@ -108,10 +108,10 @@ func (t *TaskManager) CreateTask(
 		return nil, err
 	}
 
-	descriptionModel, err := transformers.CreateDescriptionEntityModel(request.Spec.DescriptionEntity, *request.Id)
+	descriptionModel, err := transformers.CreateDescriptionEntityModel(request.Spec.Description, *request.Id)
 	if err != nil {
 		logger.Errorf(ctx,
-			"Failed to transform description model [%+v] with err: %v", request.Spec.DescriptionEntity, err)
+			"Failed to transform description model [%+v] with err: %v", request.Spec.Description, err)
 		return nil, err
 	}
 
