@@ -99,7 +99,7 @@ func (s Service) CreateDownloadLink(ctx context.Context, req *service.CreateDown
 	}
 
 	// Lookup task, node, workflow execution
-	var nativeUrl string
+	var nativeURL string
 	switch o := req.GetSource().(type) {
 	case *service.CreateDownloadLinkRequest_TaskId:
 		return nil, fmt.Errorf("not implemented for task")
@@ -114,17 +114,17 @@ func (s Service) CreateDownloadLink(ctx context.Context, req *service.CreateDown
 
 		switch req.GetArtifactType() {
 		case service.ArtifactType_ARTIFACT_TYPE_DECK:
-			nativeUrl = node.Closure.DeckUri
+			nativeURL = node.Closure.DeckUri
 		}
 	case *service.CreateDownloadLinkRequest_ExecutionId:
 		return nil, fmt.Errorf("not implemented for workflow")
 	}
 
-	if len(nativeUrl) == 0 {
+	if len(nativeURL) == 0 {
 		return nil, fmt.Errorf("no deckUrl found for request [%+v]", req)
 	}
 
-	signedURLResp, err := s.dataStore.CreateSignedURL(ctx, storage.DataReference(nativeUrl), storage.SignedURLProperties{
+	signedURLResp, err := s.dataStore.CreateSignedURL(ctx, storage.DataReference(nativeURL), storage.SignedURLProperties{
 		Scope:     stow.ClientMethodGet,
 		ExpiresIn: req.ExpiresIn.AsDuration(),
 	})
