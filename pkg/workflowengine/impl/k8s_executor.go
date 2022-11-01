@@ -63,7 +63,7 @@ func (e K8sWorkflowExecutor) Execute(ctx context.Context, data interfaces.Execut
 	}
 	targetCluster, err := e.executionCluster.GetTarget(ctx, &executionTargetSpec)
 	if err != nil {
-		return interfaces.ExecutionResponse{}, errors.NewFlyteAdminErrorf(codes.Internal, "failed to create workflow in propeller %v", err)
+		return interfaces.ExecutionResponse{}, errors.NewFlyteAdminErrorf(codes.Internal, "failed to get target propeller cluster %v", err)
 	}
 	_, err = targetCluster.FlyteClient.FlyteworkflowV1alpha1().FlyteWorkflows(data.Namespace).Create(ctx, flyteWf, v1.CreateOptions{})
 	if err != nil {
