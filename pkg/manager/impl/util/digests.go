@@ -49,16 +49,3 @@ func GetWorkflowDigest(ctx context.Context, workflowClosure *core.CompiledWorkfl
 
 	return workflowDigest, nil
 }
-
-// GetDescriptionEntityDigest Returns a unique digest for functionally equivalent description entity
-func GetDescriptionEntityDigest(ctx context.Context, descriptionEntity *admin.DescriptionEntity) ([]byte, error) {
-	descriptionEntityDigest, err := pbhash.ComputeHash(ctx, descriptionEntity)
-	if err != nil {
-		logger.Warningf(ctx, "failed to hash description entity [%+v] to digest with err %v",
-			descriptionEntity, err)
-		return nil, errors.NewFlyteAdminErrorf(codes.Internal,
-			"failed to hash description entity [%+v] to digest with err %v", descriptionEntity, err)
-	}
-
-	return descriptionEntityDigest, nil
-}
