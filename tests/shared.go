@@ -72,7 +72,6 @@ func insertWorkflowsForTests(t *testing.T, client service.AdminServiceClient) {
 					req := admin.WorkflowCreateRequest{
 						Id: &identifier,
 						Spec: &admin.WorkflowSpec{
-							DescriptionEntity: &admin.DescriptionEntity{ShortDescription: "hello"},
 							Template: &core.WorkflowTemplate{
 								Id: &identifier,
 								Interface: &core.TypedInterface{
