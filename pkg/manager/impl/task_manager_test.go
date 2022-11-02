@@ -93,7 +93,7 @@ func TestCreateTask(t *testing.T) {
 	assert.Equal(t, &admin.TaskCreateResponse{}, response)
 	assert.True(t, createCalled)
 
-	request.Spec.DescriptionEntity = nil
+	request.Spec.Description = nil
 	response, err = taskManager.CreateTask(context.Background(), request)
 	assert.NoError(t, err)
 	assert.NotNil(t, response)
