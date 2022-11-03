@@ -344,10 +344,15 @@ type FlyteWorkflowExecutorConfig struct {
 	// eg : 100 TPS will send at the max 100 schedule requests to admin per sec.
 	// Burst specifies burst traffic count
 	AdminRateLimit *AdminRateLimit `json:"adminRateLimit"`
+	UseUTCTz       bool            `json:"useUTCTz"`
 }
 
 func (f *FlyteWorkflowExecutorConfig) GetAdminRateLimit() *AdminRateLimit {
 	return f.AdminRateLimit
+}
+
+func (f *FlyteWorkflowExecutorConfig) GetUseUTCTz() bool {
+	return f.UseUTCTz
 }
 
 type AdminRateLimit struct {
