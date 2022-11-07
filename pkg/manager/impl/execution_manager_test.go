@@ -3968,7 +3968,7 @@ func TestCreateSingleTaskExecution(t *testing.T) {
 	_, err := execManager.CreateExecution(context.TODO(), request, time.Now())
 	assert.NoError(t, err)
 
-	// test again to ensure existing launchplan retreival works
+	// test again to ensure existing launchplan retrieval works
 	_, err = execManager.CreateExecution(context.TODO(), request, time.Now())
 	assert.NoError(t, err)
 }
