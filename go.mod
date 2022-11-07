@@ -2,12 +2,7 @@ module github.com/flyteorg/flyteadmin
 
 go 1.18
 
-replace (
-	github.com/flyteorg/flyteidl => github.com/blackshark-ai/flyteidl v0.24.22-0.20221005103053-1172311340ca
-	github.com/flyteorg/flyteplugins => github.com/blackshark-ai/flyteplugins v1.0.2-0.20220927114241-fb57ce261bb5
-	github.com/flyteorg/flytepropeller => github.com/blackshark-ai/flytepropeller v0.16.48-0.20221005131926-b28ee5ec71d3
-	github.com/flyteorg/flytestdlib => github.com/blackshark-ai/flytestdlib v1.0.1-0.20220927112514-285faf0b16b4
-)
+replace github.com/flyteorg/flytepropeller => github.com/blackshark-ai/flytepropeller v0.16.48-0.20221104140634-612ad8925372
 
 require (
 	cloud.google.com/go/iam v0.3.0
@@ -20,10 +15,10 @@ require (
 	github.com/cloudevents/sdk-go/v2 v2.8.0
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/evanphx/json-patch v4.12.0+incompatible
-	github.com/flyteorg/flyteidl v1.1.19
-	github.com/flyteorg/flyteplugins v1.0.15
+	github.com/flyteorg/flyteidl v1.2.3
+	github.com/flyteorg/flyteplugins v1.0.18
 	github.com/flyteorg/flytepropeller v1.1.28
-	github.com/flyteorg/flytestdlib v1.0.5
+	github.com/flyteorg/flytestdlib v1.0.11
 	github.com/flyteorg/stow v0.3.6
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-gormigrate/gormigrate/v2 v2.0.0

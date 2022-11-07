@@ -292,8 +292,8 @@ func MergeIntoExecConfig(workflowExecConfig admin.WorkflowExecutionConfig, spec 
 		workflowExecConfig.Interruptible = spec.GetInterruptible()
 	}
 
-	if !workflowExecConfig.GetSkipCache() && spec.GetSkipCache() {
-		workflowExecConfig.SkipCache = spec.GetSkipCache()
+	if !workflowExecConfig.GetOverwriteCache() && spec.GetOverwriteCache() {
+		workflowExecConfig.OverwriteCache = spec.GetOverwriteCache()
 	}
 
 	return workflowExecConfig

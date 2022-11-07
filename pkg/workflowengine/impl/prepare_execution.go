@@ -63,7 +63,7 @@ func addExecutionOverrides(taskPluginOverrides []*admin.PluginOverride,
 			executionConfig.Interruptible = &interruptible
 		}
 
-		executionConfig.SkipCache = workflowExecutionConfig.GetSkipCache()
+		executionConfig.OverwriteCache = workflowExecutionConfig.GetOverwriteCache()
 	}
 	if taskResources != nil {
 		var requests = v1alpha1.TaskResourceSpec{}

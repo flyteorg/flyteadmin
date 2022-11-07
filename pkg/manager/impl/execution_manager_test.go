@@ -1001,36 +1001,36 @@ func TestCreateExecutionInterruptible(t *testing.T) {
 	}
 }
 
-func TestCreateExecutionSkipCache(t *testing.T) {
+func TestCreateExecutionOverwriteCache(t *testing.T) {
 	tests := []struct {
-		name      string
-		task      bool
-		skipCache bool
-		want      bool
+		name           string
+		task           bool
+		overwriteCache bool
+		want           bool
 	}{
 		{
-			name:      "LaunchPlanDefault",
-			task:      false,
-			skipCache: false,
-			want:      false,
+			name:           "LaunchPlanDefault",
+			task:           false,
+			overwriteCache: false,
+			want:           false,
 		},
 		{
-			name:      "LaunchPlanEnable",
-			task:      false,
-			skipCache: true,
-			want:      true,
+			name:           "LaunchPlanEnable",
+			task:           false,
+			overwriteCache: true,
+			want:           true,
 		},
 		{
-			name:      "TaskDefault",
-			task:      false,
-			skipCache: false,
-			want:      false,
+			name:           "TaskDefault",
+			task:           false,
+			overwriteCache: false,
+			want:           false,
 		},
 		{
-			name:      "TaskEnable",
-			task:      true,
-			skipCache: true,
-			want:      true,
+			name:           "TaskEnable",
+			task:           true,
+			overwriteCache: true,
+			want:           true,
 		},
 	}
 
@@ -1043,7 +1043,7 @@ func TestCreateExecutionSkipCache(t *testing.T) {
 			if tt.task {
 				request.Spec.LaunchPlan.ResourceType = core.ResourceType_TASK
 			}
-			request.Spec.SkipCache = tt.skipCache
+			request.Spec.OverwriteCache = tt.overwriteCache
 
 			repository := getMockRepositoryForExecTest()
 			setDefaultLpCallbackForExecTest(repository)
@@ -1062,7 +1062,7 @@ func TestCreateExecutionSkipCache(t *testing.T) {
 					assert.Equal(t, uint(0), input.TaskID)
 				}
 
-				assert.Equal(t, tt.skipCache, spec.GetSkipCache())
+				assert.Equal(t, tt.overwriteCache, spec.GetOverwriteCache())
 
 				return nil
 			}
@@ -1170,15 +1170,15 @@ func makeExecutionInterruptibleGetFunc(
 	}
 }
 
-func makeExecutionSkipCacheGetFunc(
-	t *testing.T, closureBytes []byte, startTime *time.Time, skipCache bool) repositoryMocks.GetExecutionFunc {
+func makeExecutionOverwriteCacheGetFunc(
+	t *testing.T, closureBytes []byte, startTime *time.Time, overwriteCache bool) repositoryMocks.GetExecutionFunc {
 	return func(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
 		assert.Equal(t, "project", input.Project)
 		assert.Equal(t, "domain", input.Domain)
 		assert.Equal(t, "name", input.Name)
 
 		request := testutils.GetExecutionRequest()
-		request.Spec.SkipCache = skipCache
+		request.Spec.OverwriteCache = overwriteCache
 
 		specBytes, err := proto.Marshal(request.Spec)
 		assert.Nil(t, err)
@@ -1393,7 +1393,7 @@ func TestRelaunchExecutionInterruptibleOverride(t *testing.T) {
 	assert.True(t, createCalled)
 }
 
-func TestRelaunchExecutionSkipCacheOverride(t *testing.T) {
+func TestRelaunchExecutionOverwriteCacheOverride(t *testing.T) {
 	// Set up mocks.
 	repository := getMockRepositoryForExecTest()
 	setDefaultLpCallbackForExecTest(repository)
@@ -1412,7 +1412,7 @@ func TestRelaunchExecutionSkipCacheOverride(t *testing.T) {
 	existingClosureBytes, _ := proto.Marshal(&existingClosure)
 
 	t.Run("override enable", func(t *testing.T) {
-		executionGetFunc := makeExecutionSkipCacheGetFunc(t, existingClosureBytes, &startTime, false)
+		executionGetFunc := makeExecutionOverwriteCacheGetFunc(t, existingClosureBytes, &startTime, false)
 		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
 
 		var createCalled bool
@@ -1427,7 +1427,7 @@ func TestRelaunchExecutionSkipCacheOverride(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, admin.ExecutionMetadata_RELAUNCH, spec.Metadata.Mode)
 			assert.Equal(t, int32(admin.ExecutionMetadata_RELAUNCH), input.Mode)
-			assert.True(t, spec.GetSkipCache())
+			assert.True(t, spec.GetOverwriteCache())
 			return nil
 		}
 		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
@@ -1438,8 +1438,8 @@ func TestRelaunchExecutionSkipCacheOverride(t *testing.T) {
 				Domain:  "domain",
 				Name:    "name",
 			},
-			Name:      "relaunchy",
-			SkipCache: true,
+			Name:           "relaunchy",
+			OverwriteCache: true,
 		}, requestedAt)
 		assert.Nil(t, err)
 		assert.NotNil(t, asd)
@@ -1447,7 +1447,7 @@ func TestRelaunchExecutionSkipCacheOverride(t *testing.T) {
 	})
 
 	t.Run("override disable", func(t *testing.T) {
-		executionGetFunc := makeExecutionSkipCacheGetFunc(t, existingClosureBytes, &startTime, true)
+		executionGetFunc := makeExecutionOverwriteCacheGetFunc(t, existingClosureBytes, &startTime, true)
 		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
 
 		var createCalled bool
@@ -1462,7 +1462,7 @@ func TestRelaunchExecutionSkipCacheOverride(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, admin.ExecutionMetadata_RELAUNCH, spec.Metadata.Mode)
 			assert.Equal(t, int32(admin.ExecutionMetadata_RELAUNCH), input.Mode)
-			assert.False(t, spec.GetSkipCache())
+			assert.False(t, spec.GetOverwriteCache())
 			return nil
 		}
 		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
@@ -1473,8 +1473,8 @@ func TestRelaunchExecutionSkipCacheOverride(t *testing.T) {
 				Domain:  "domain",
 				Name:    "name",
 			},
-			Name:      "relaunchy",
-			SkipCache: false,
+			Name:           "relaunchy",
+			OverwriteCache: false,
 		}, requestedAt)
 		assert.Nil(t, err)
 		assert.NotNil(t, asd)
@@ -1482,7 +1482,7 @@ func TestRelaunchExecutionSkipCacheOverride(t *testing.T) {
 	})
 
 	t.Run("override omitted", func(t *testing.T) {
-		executionGetFunc := makeExecutionSkipCacheGetFunc(t, existingClosureBytes, &startTime, true)
+		executionGetFunc := makeExecutionOverwriteCacheGetFunc(t, existingClosureBytes, &startTime, true)
 		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
 
 		var createCalled bool
@@ -1497,7 +1497,7 @@ func TestRelaunchExecutionSkipCacheOverride(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, admin.ExecutionMetadata_RELAUNCH, spec.Metadata.Mode)
 			assert.Equal(t, int32(admin.ExecutionMetadata_RELAUNCH), input.Mode)
-			assert.False(t, spec.GetSkipCache())
+			assert.False(t, spec.GetOverwriteCache())
 			return nil
 		}
 		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
@@ -1816,7 +1816,7 @@ func TestRecoverExecutionInterruptibleOverride(t *testing.T) {
 	assert.True(t, proto.Equal(expectedResponse, response))
 }
 
-func TestRecoverExecutionSkipCacheOverride(t *testing.T) {
+func TestRecoverExecutionOverwriteCacheOverride(t *testing.T) {
 	// Set up mocks.
 	repository := getMockRepositoryForExecTest()
 	setDefaultLpCallbackForExecTest(repository)
@@ -1833,7 +1833,7 @@ func TestRecoverExecutionSkipCacheOverride(t *testing.T) {
 		StartedAt: startTimeProto,
 	}
 	existingClosureBytes, _ := proto.Marshal(&existingClosure)
-	executionGetFunc := makeExecutionSkipCacheGetFunc(t, existingClosureBytes, &startTime, true)
+	executionGetFunc := makeExecutionOverwriteCacheGetFunc(t, existingClosureBytes, &startTime, true)
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
 
 	var createCalled bool
@@ -1848,7 +1848,7 @@ func TestRecoverExecutionSkipCacheOverride(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, admin.ExecutionMetadata_RECOVERED, spec.Metadata.Mode)
 		assert.Equal(t, int32(admin.ExecutionMetadata_RECOVERED), input.Mode)
-		assert.True(t, spec.GetSkipCache())
+		assert.True(t, spec.GetOverwriteCache())
 		return nil
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
@@ -4294,7 +4294,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 	requestK8sServiceAccount := "requestK8sServiceAccount"
 	requestMaxParallelism := int32(10)
 	requestInterruptible := false
-	requestSkipCache := false
+	requestOverwriteCache := false
 
 	launchPlanLabels := map[string]string{"launchPlanLabelKey": "launchPlanLabelValue"}
 	launchPlanAnnotations := map[string]string{"launchPlanAnnotationKey": "launchPlanAnnotationValue"}
@@ -4303,7 +4303,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 	launchPlanAssumableIamRole := "launchPlanAssumableIamRole"
 	launchPlanMaxParallelism := int32(50)
 	launchPlanInterruptible := true
-	launchPlanSkipCache := true
+	launchPlanOverwriteCache := true
 
 	applicationConfig := runtime.NewConfigurationProvider()
 
@@ -4317,7 +4317,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 	rmK8sServiceAccount := "rmK8sServiceAccount"
 	rmMaxParallelism := int32(80)
 	rmInterruptible := false
-	rmSkipCache := false
+	rmOverwriteCache := false
 
 	resourceManager := managerMocks.MockResourceManager{}
 	executionManager := ExecutionManager{
@@ -4341,7 +4341,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 					WorkflowExecutionConfig: &admin.WorkflowExecutionConfig{
 						MaxParallelism: rmMaxParallelism,
 						Interruptible:  &wrappers.BoolValue{Value: rmInterruptible},
-						SkipCache:      rmSkipCache,
+						OverwriteCache: rmOverwriteCache,
 						Annotations:    &admin.Annotations{Values: rmAnnotations},
 						RawOutputDataConfig: &admin.RawOutputDataConfig{
 							OutputLocationPrefix: rmOutputLocationPrefix,
@@ -4391,7 +4391,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 				},
 				MaxParallelism: requestMaxParallelism,
 				Interruptible:  &wrappers.BoolValue{Value: requestInterruptible},
-				SkipCache:      requestSkipCache,
+				OverwriteCache: requestOverwriteCache,
 			},
 		}
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, nil)
@@ -4399,7 +4399,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.Equal(t, requestMaxParallelism, execConfig.MaxParallelism)
 		assert.Equal(t, requestK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Equal(t, requestInterruptible, execConfig.Interruptible.Value)
-		assert.Equal(t, requestSkipCache, execConfig.SkipCache)
+		assert.Equal(t, requestOverwriteCache, execConfig.OverwriteCache)
 		assert.Equal(t, requestOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, requestLabels, execConfig.GetLabels().Values)
 		assert.Equal(t, requestAnnotations, execConfig.GetAnnotations().Values)
@@ -4429,14 +4429,14 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 				},
 				MaxParallelism: launchPlanMaxParallelism,
 				Interruptible:  &wrappers.BoolValue{Value: launchPlanInterruptible},
-				SkipCache:      launchPlanSkipCache,
+				OverwriteCache: launchPlanOverwriteCache,
 			},
 		}
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
 		assert.NoError(t, err)
 		assert.Equal(t, requestMaxParallelism, execConfig.MaxParallelism)
 		assert.Equal(t, launchPlanInterruptible, execConfig.Interruptible.Value)
-		assert.Equal(t, launchPlanSkipCache, execConfig.SkipCache)
+		assert.Equal(t, launchPlanOverwriteCache, execConfig.OverwriteCache)
 		assert.True(t, proto.Equal(launchPlan.Spec.SecurityContext, execConfig.SecurityContext))
 		assert.True(t, proto.Equal(launchPlan.Spec.Annotations, execConfig.Annotations))
 		assert.Equal(t, requestOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
@@ -4467,14 +4467,14 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 				},
 				MaxParallelism: launchPlanMaxParallelism,
 				Interruptible:  &wrappers.BoolValue{Value: launchPlanInterruptible},
-				SkipCache:      launchPlanSkipCache,
+				OverwriteCache: launchPlanOverwriteCache,
 			},
 		}
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
 		assert.NoError(t, err)
 		assert.Equal(t, launchPlanMaxParallelism, execConfig.MaxParallelism)
 		assert.Equal(t, launchPlanInterruptible, execConfig.Interruptible.Value)
-		assert.Equal(t, launchPlanSkipCache, execConfig.SkipCache)
+		assert.Equal(t, launchPlanOverwriteCache, execConfig.OverwriteCache)
 		assert.Equal(t, launchPlanK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Equal(t, launchPlanOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, launchPlanLabels, execConfig.GetLabels().Values)
@@ -4499,14 +4499,14 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 				},
 				MaxParallelism: launchPlanMaxParallelism,
 				Interruptible:  &wrappers.BoolValue{Value: launchPlanInterruptible},
-				SkipCache:      launchPlanSkipCache,
+				OverwriteCache: launchPlanOverwriteCache,
 			},
 		}
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
 		assert.NoError(t, err)
 		assert.Equal(t, launchPlanMaxParallelism, execConfig.MaxParallelism)
 		assert.Equal(t, launchPlanInterruptible, execConfig.Interruptible.Value)
-		assert.Equal(t, launchPlanSkipCache, execConfig.SkipCache)
+		assert.Equal(t, launchPlanOverwriteCache, execConfig.OverwriteCache)
 		assert.Equal(t, launchPlanK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Equal(t, launchPlanOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, launchPlanLabels, execConfig.GetLabels().Values)
@@ -4537,7 +4537,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, launchPlanMaxParallelism, execConfig.MaxParallelism)
 		assert.Equal(t, rmInterruptible, execConfig.Interruptible.Value)
-		assert.Equal(t, rmSkipCache, execConfig.SkipCache)
+		assert.Equal(t, rmOverwriteCache, execConfig.OverwriteCache)
 		assert.Equal(t, launchPlanK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Equal(t, launchPlanOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, launchPlanLabels, execConfig.GetLabels().Values)
@@ -4556,7 +4556,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, rmMaxParallelism, execConfig.MaxParallelism)
 		assert.Equal(t, rmInterruptible, execConfig.Interruptible.Value)
-		assert.Equal(t, rmSkipCache, execConfig.SkipCache)
+		assert.Equal(t, rmOverwriteCache, execConfig.OverwriteCache)
 		assert.Equal(t, rmK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Equal(t, rmOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, rmLabels, execConfig.GetLabels().Values)
@@ -4602,7 +4602,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, rmMaxParallelism, execConfig.MaxParallelism)
 		assert.Nil(t, execConfig.GetInterruptible())
-		assert.False(t, execConfig.SkipCache)
+		assert.False(t, execConfig.OverwriteCache)
 		assert.Equal(t, rmK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Nil(t, execConfig.GetRawOutputDataConfig())
 		assert.Nil(t, execConfig.GetLabels())
@@ -4639,7 +4639,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
 		assert.Nil(t, execConfig.GetInterruptible())
-		assert.False(t, execConfig.SkipCache)
+		assert.False(t, execConfig.OverwriteCache)
 		assert.Equal(t, defaultK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Nil(t, execConfig.GetRawOutputDataConfig())
 		assert.Nil(t, execConfig.GetLabels())
@@ -4681,7 +4681,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
 		assert.Nil(t, execConfig.GetInterruptible())
-		assert.False(t, execConfig.SkipCache)
+		assert.False(t, execConfig.OverwriteCache)
 		assert.Equal(t, deprecatedLaunchPlanK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Nil(t, execConfig.GetRawOutputDataConfig())
 		assert.Nil(t, execConfig.GetLabels())
@@ -4707,7 +4707,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 						WorkflowExecutionConfig: &admin.WorkflowExecutionConfig{
 							MaxParallelism: 300,
 							Interruptible:  &wrappers.BoolValue{Value: true},
-							SkipCache:      true,
+							OverwriteCache: true,
 							SecurityContext: &core.SecurityContext{
 								RunAs: &core.Identity{
 									K8SServiceAccount: "workflowDefault",
@@ -4734,7 +4734,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, int32(300), execConfig.MaxParallelism)
 		assert.True(t, execConfig.Interruptible.Value)
-		assert.True(t, execConfig.SkipCache)
+		assert.True(t, execConfig.OverwriteCache)
 		assert.Equal(t, "workflowDefault", execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Nil(t, execConfig.GetRawOutputDataConfig())
 		assert.Nil(t, execConfig.GetLabels())
@@ -4764,7 +4764,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
 		assert.Equal(t, fmt.Errorf("failed to fetch the resources"), err)
 		assert.Nil(t, execConfig.GetInterruptible())
-		assert.False(t, execConfig.GetSkipCache())
+		assert.False(t, execConfig.GetOverwriteCache())
 		assert.Nil(t, execConfig.GetSecurityContext())
 		assert.Nil(t, execConfig.GetRawOutputDataConfig())
 		assert.Nil(t, execConfig.GetLabels())
@@ -4791,7 +4791,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		}
 
 		executionManager.config.ApplicationConfiguration().GetTopLevelConfig().Interruptible = true
-		executionManager.config.ApplicationConfiguration().GetTopLevelConfig().SkipCache = true
+		executionManager.config.ApplicationConfiguration().GetTopLevelConfig().OverwriteCache = true
 
 		t.Run("request with interruptible override disabled", func(t *testing.T) {
 			request := &admin.ExecutionCreateRequest{
@@ -4938,14 +4938,14 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 				Project: workflowIdentifier.Project,
 				Domain:  workflowIdentifier.Domain,
 				Spec: &admin.ExecutionSpec{
-					SkipCache: true,
+					OverwriteCache: true,
 				},
 			}
 
 			execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, nil)
 			assert.NoError(t, err)
 			assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
-			assert.True(t, execConfig.SkipCache)
+			assert.True(t, execConfig.OverwriteCache)
 			assert.Equal(t, defaultK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 			assert.Nil(t, execConfig.GetRawOutputDataConfig())
 			assert.Nil(t, execConfig.GetLabels())
@@ -4961,7 +4961,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 			execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, nil)
 			assert.NoError(t, err)
 			assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
-			assert.True(t, execConfig.SkipCache)
+			assert.True(t, execConfig.OverwriteCache)
 			assert.Equal(t, defaultK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 			assert.Nil(t, execConfig.GetRawOutputDataConfig())
 			assert.Nil(t, execConfig.GetLabels())
@@ -4976,14 +4976,14 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 
 			launchPlan := &admin.LaunchPlan{
 				Spec: &admin.LaunchPlanSpec{
-					SkipCache: true,
+					OverwriteCache: true,
 				},
 			}
 
 			execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
 			assert.NoError(t, err)
 			assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
-			assert.True(t, execConfig.SkipCache)
+			assert.True(t, execConfig.OverwriteCache)
 			assert.Equal(t, defaultK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 			assert.Nil(t, execConfig.GetRawOutputDataConfig())
 			assert.Nil(t, execConfig.GetLabels())
@@ -5003,7 +5003,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 			execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
 			assert.NoError(t, err)
 			assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
-			assert.True(t, execConfig.SkipCache)
+			assert.True(t, execConfig.OverwriteCache)
 			assert.Equal(t, defaultK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 			assert.Nil(t, execConfig.GetRawOutputDataConfig())
 			assert.Nil(t, execConfig.GetLabels())
@@ -5014,20 +5014,20 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 				Project: workflowIdentifier.Project,
 				Domain:  workflowIdentifier.Domain,
 				Spec: &admin.ExecutionSpec{
-					SkipCache: true,
+					OverwriteCache: true,
 				},
 			}
 
 			launchPlan := &admin.LaunchPlan{
 				Spec: &admin.LaunchPlanSpec{
-					SkipCache: false,
+					OverwriteCache: false,
 				},
 			}
 
 			execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
 			assert.NoError(t, err)
 			assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
-			assert.True(t, execConfig.SkipCache)
+			assert.True(t, execConfig.OverwriteCache)
 			assert.Equal(t, defaultK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 			assert.Nil(t, execConfig.GetRawOutputDataConfig())
 			assert.Nil(t, execConfig.GetLabels())
@@ -5053,7 +5053,7 @@ func TestGetExecutionConfig(t *testing.T) {
 				Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
 					WorkflowExecutionConfig: &admin.WorkflowExecutionConfig{
 						MaxParallelism: 100,
-						SkipCache:      true,
+						OverwriteCache: true,
 					},
 				},
 			},
@@ -5072,7 +5072,7 @@ func TestGetExecutionConfig(t *testing.T) {
 	}, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, execConfig.MaxParallelism, int32(100))
-	assert.True(t, execConfig.SkipCache)
+	assert.True(t, execConfig.OverwriteCache)
 }
 
 func TestGetExecutionConfig_Spec(t *testing.T) {
@@ -5091,17 +5091,17 @@ func TestGetExecutionConfig_Spec(t *testing.T) {
 		Domain:  workflowIdentifier.Domain,
 		Spec: &admin.ExecutionSpec{
 			MaxParallelism: 100,
-			SkipCache:      true,
+			OverwriteCache: true,
 		},
 	}, &admin.LaunchPlan{
 		Spec: &admin.LaunchPlanSpec{
 			MaxParallelism: 50,
-			SkipCache:      false, // explicitly set to false for clarity
+			OverwriteCache: false, // explicitly set to false for clarity
 		},
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, int32(100), execConfig.MaxParallelism)
-	assert.True(t, execConfig.SkipCache)
+	assert.True(t, execConfig.OverwriteCache)
 
 	execConfig, err = executionManager.getExecutionConfig(context.TODO(), &admin.ExecutionCreateRequest{
 		Project: workflowIdentifier.Project,
@@ -5110,12 +5110,12 @@ func TestGetExecutionConfig_Spec(t *testing.T) {
 	}, &admin.LaunchPlan{
 		Spec: &admin.LaunchPlanSpec{
 			MaxParallelism: 50,
-			SkipCache:      true,
+			OverwriteCache: true,
 		},
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, int32(50), execConfig.MaxParallelism)
-	assert.True(t, execConfig.SkipCache)
+	assert.True(t, execConfig.OverwriteCache)
 
 	resourceManager = managerMocks.MockResourceManager{}
 	resourceManager.GetResourceFunc = func(ctx context.Context,
@@ -5127,7 +5127,7 @@ func TestGetExecutionConfig_Spec(t *testing.T) {
 		config:          applicationConfig,
 	}
 
-	executionManager.config.ApplicationConfiguration().GetTopLevelConfig().SkipCache = true
+	executionManager.config.ApplicationConfiguration().GetTopLevelConfig().OverwriteCache = true
 
 	execConfig, err = executionManager.getExecutionConfig(context.TODO(), &admin.ExecutionCreateRequest{
 		Project: workflowIdentifier.Project,
@@ -5138,7 +5138,7 @@ func TestGetExecutionConfig_Spec(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, execConfig.MaxParallelism, int32(25))
-	assert.True(t, execConfig.SkipCache)
+	assert.True(t, execConfig.OverwriteCache)
 }
 
 func TestGetClusterAssignment(t *testing.T) {
