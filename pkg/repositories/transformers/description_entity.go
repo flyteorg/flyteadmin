@@ -68,6 +68,13 @@ func FromDescriptionEntityModel(descriptionEntityModel models.DescriptionEntity)
 	}
 
 	return &admin.DescriptionEntity{
+		Id: &core.Identifier{
+			ResourceType: descriptionEntityModel.ResourceType,
+			Project:      descriptionEntityModel.Project,
+			Domain:       descriptionEntityModel.Domain,
+			Name:         descriptionEntityModel.Name,
+			Version:      descriptionEntityModel.Version,
+		},
 		ShortDescription: descriptionEntityModel.ShortDescription,
 		LongDescription:  &longDescription,
 		SourceCode:       &admin.SourceCode{Link: descriptionEntityModel.Link},
