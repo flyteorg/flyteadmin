@@ -6,11 +6,9 @@ package core
 import (
 	"context"
 	"fmt"
-	"sync"
 	"testing"
 	"time"
 
-	"github.com/robfig/cron/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"golang.org/x/time/rate"
@@ -291,75 +289,4 @@ func TestCatchUpAllSchedule(t *testing.T) {
 	toTime := time.Date(2022, time.January, 29, 0, 0, 0, 0, time.UTC)
 	catchupSuccess := g.CatchupAll(ctx, toTime)
 	assert.True(t, catchupSuccess)
-}
-
-func TestScheduleJob(t *testing.T) {
-	ctx := context.Background()
-	True := true
-	lastTime := time.Now()
-	scheduleFixed = models.SchedulableEntity{
-		BaseModel: adminModels.BaseModel{
-			UpdatedAt: time.Now(),
-		},
-		SchedulableEntityKey: models.SchedulableEntityKey{
-			Project: "project",
-			Domain:  "domain",
-			Name:    "fixed1",
-			Version: "version1",
-		},
-		FixedRateValue: 1,
-		Unit:           admin.FixedRateUnit_MINUTE,
-		Active:         &True,
-	}
-	t.Run("using schedule time", func(t *testing.T) {
-		wg := &sync.WaitGroup{}
-		wg.Add(1)
-		timedFuncWithSchedule := func(jobCtx context.Context, schedule models.SchedulableEntity, scheduleTime time.Time) error {
-			assert.Equal(t, lastTime, scheduleTime)
-			wg.Done()
-			return nil
-		}
-		c := cron.New()
-		g := GoCronScheduler{cron: c, jobStore: sync.Map{}}
-		err := g.ScheduleJob(ctx, scheduleFixed, timedFuncWithSchedule, &lastTime)
-		c.Start()
-		assert.NoError(t, err)
-		select {
-		case <-time.After(time.Minute * 2):
-			assert.Fail(t, "timed job didn't get triggered")
-		case <-wait(wg):
-			break
-		}
-	})
-
-	t.Run("without schedule time", func(t *testing.T) {
-		wg := &sync.WaitGroup{}
-		wg.Add(1)
-		timedFuncWithSchedule := func(jobCtx context.Context, schedule models.SchedulableEntity, scheduleTime time.Time) error {
-			assert.NotEqual(t, lastTime, scheduleTime)
-			wg.Done()
-			return nil
-		}
-		c := cron.New()
-		g := GoCronScheduler{cron: c, jobStore: sync.Map{}}
-		err := g.ScheduleJob(ctx, scheduleFixed, timedFuncWithSchedule, nil)
-		c.Start()
-		assert.NoError(t, err)
-		select {
-		case <-time.After(time.Minute * 2):
-			assert.Fail(t, "timed job didn't get triggered")
-		case <-wait(wg):
-			break
-		}
-	})
-
-}
-
-func wait(wg *sync.WaitGroup) chan bool {
-	ch := make(chan bool)
-	go func() {
-		wg.Wait()
-		ch <- true
-	}()
-	return ch
 }
