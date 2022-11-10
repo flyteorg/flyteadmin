@@ -152,7 +152,7 @@ func TestCalculateSnapshot(t *testing.T) {
 		g.jobStore.Range(func(key, value interface{}) bool {
 			currTime := time.Now()
 			job := value.(*GoCronJob)
-			job.lastTime = &currTime
+			job.lastExecTime = &currTime
 			return true
 		})
 		snapshot := g.CalculateSnapshot(ctx)

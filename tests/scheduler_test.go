@@ -1,6 +1,3 @@
-//go:build integration
-// +build integration
-
 package tests
 
 import (
@@ -56,11 +53,11 @@ func TestScheduleJob(t *testing.T) {
 
 	tests := []struct {
 		testName      string
-		lastT         *time.Time
+		lastExecTime  *time.Time
 		assertionFunc func(t assert.TestingT, expected, actual interface{}, msgAndArgs ...interface{}) bool
 	}{
-		{testName: "using_schedule_time", lastT: &now, assertionFunc: assert.Equal},
-		{testName: "without_schedule_time", lastT: nil, assertionFunc: assert.NotEqual},
+		{testName: "using_schedule_time", lastExecTime: &now, assertionFunc: assert.Equal},
+		{testName: "without_schedule_time", lastExecTime: nil, assertionFunc: assert.NotEqual},
 	}
 	wg := &sync.WaitGroup{}
 	for _, tc := range tests {
@@ -71,7 +68,7 @@ func TestScheduleJob(t *testing.T) {
 				wg.Done()
 				return nil
 			}
-			err := g.ScheduleJob(ctx, scheduleFixed, timedFuncWithSchedule, tc.lastT)
+			err := g.ScheduleJob(ctx, scheduleFixed, timedFuncWithSchedule, tc.lastExecTime)
 			assert.NoError(t, err)
 		})
 	}
