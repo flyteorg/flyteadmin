@@ -110,7 +110,7 @@ func (g *GoCronScheduler) CalculateSnapshot(ctx context.Context) snapshoter.Snap
 
 // ScheduleJob allows to schedule a job using the implemented scheduler
 func (g *GoCronScheduler) ScheduleJob(ctx context.Context, schedule models.SchedulableEntity,
-	funcWithSchedule TimedFuncWithSchedule, lastExecTime *time.Time) error {
+	funcWithSchedule TimedFuncWithSchedule, lastTime *time.Time) error {
 
 	nameOfSchedule := identifier.GetScheduleName(ctx, schedule)
 
@@ -120,11 +120,11 @@ func (g *GoCronScheduler) ScheduleJob(ctx context.Context, schedule models.Sched
 		return nil
 	}
 
-	// Update the catchupFrom time as the lastExecTime.
-	// Here lastExecTime is passed to this function only from BootStrapSchedulesFromSnapShot which is during bootup
+	// Update the catchupFrom time as the lastTime.
+	// Here lastTime is passed to this function only from BootStrapSchedulesFromSnapShot which is during bootup
 	// Once initialized we wont be changing the catchupTime until the next boot
 	job := &GoCronJob{nameOfSchedule: nameOfSchedule, schedule: schedule, funcWithSchedule: funcWithSchedule,
-		catchupFromTime: lastExecTime, lastTime: lastExecTime, ctx: ctx}
+		catchupFromTime: lastTime, lastTime: lastTime, ctx: ctx}
 
 	// Define the timed job function to be used for the callback at the scheduled time
 	//jobFunc := job.GetTimedFunc(ctx, g.metrics)
