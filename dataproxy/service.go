@@ -101,23 +101,19 @@ func (s Service) CreateDownloadLink(ctx context.Context, req *service.CreateDown
 	// Lookup task, node, workflow execution
 	var nativeURL string
 	switch o := req.GetSource().(type) {
-	case *service.CreateDownloadLinkRequest_TaskId:
-		return nil, fmt.Errorf("not implemented for task")
-	case *service.CreateDownloadLinkRequest_NodeId:
+	case *service.CreateDownloadLinkRequest_NodeExecutionId:
 		node, err := s.nodeExecutionManager.GetNodeExecution(ctx, admin.NodeExecutionGetRequest{
-			Id: o.NodeId,
+			Id: o.NodeExecutionId,
 		})
 
 		if err != nil {
-			return nil, fmt.Errorf("failed to find node execution [%v]. Error: %w", o.NodeId, err)
+			return nil, fmt.Errorf("failed to find node execution [%v]. Error: %w", o.NodeExecutionId, err)
 		}
 
 		switch req.GetArtifactType() {
 		case service.ArtifactType_ARTIFACT_TYPE_DECK:
 			nativeURL = node.Closure.DeckUri
 		}
-	case *service.CreateDownloadLinkRequest_ExecutionId:
-		return nil, fmt.Errorf("not implemented for workflow")
 	}
 
 	if len(nativeURL) == 0 {
