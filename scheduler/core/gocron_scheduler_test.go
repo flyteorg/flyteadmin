@@ -149,6 +149,12 @@ func TestCalculateSnapshot(t *testing.T) {
 	t.Run("non empty snapshot", func(t *testing.T) {
 		ctx := context.Background()
 		g := setup(t, "non_empty_snapshot", false)
+		g.jobStore.Range(func(key, value interface{}) bool {
+			currTime := time.Now()
+			job := value.(*GoCronJob)
+			job.lastTime = &currTime
+			return true
+		})
 		snapshot := g.CalculateSnapshot(ctx)
 		assert.NotNil(t, snapshot)
 		assert.False(t, snapshot.IsEmpty())
