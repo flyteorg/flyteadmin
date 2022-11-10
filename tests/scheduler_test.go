@@ -42,62 +42,47 @@ func TestScheduleJob(t *testing.T) {
 		Unit:           admin.FixedRateUnit_MINUTE,
 		Active:         &True,
 	}
-	t.Run("using schedule time", func(t *testing.T) {
-		wg := &sync.WaitGroup{}
-		wg.Add(1)
-		timedFuncWithSchedule := func(jobCtx context.Context, schedule models.SchedulableEntity, scheduleTime time.Time) error {
-			assert.Equal(t, now, scheduleTime)
-			wg.Done()
-			return nil
-		}
-		c := cron.New()
-		configuration := runtime.NewConfigurationProvider()
-		applicationConfiguration := configuration.ApplicationConfiguration().GetTopLevelConfig()
-		schedulerScope := promutils.NewScope(applicationConfiguration.MetricsScope).NewSubScope("schedule_time")
-		rateLimiter := rate.NewLimiter(1, 10)
-		executor := new(mocks.Executor)
-		snapshot := &snapshoter.SnapshotV1{}
-		executor.OnExecuteMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		g := scheduler.NewGoCronScheduler(context.Background(), []models.SchedulableEntity{}, schedulerScope, snapshot, rateLimiter, executor, false)
-		err := g.ScheduleJob(ctx, scheduleFixed, timedFuncWithSchedule, &now)
-		c.Start()
-		assert.NoError(t, err)
-		select {
-		case <-time.After(time.Minute * 2):
-			assert.Fail(t, "timed job didn't get triggered")
-		case <-wait(wg):
-			break
-		}
-	})
 
-	t.Run("without schedule time", func(t *testing.T) {
-		wg := &sync.WaitGroup{}
-		wg.Add(1)
-		timedFuncWithSchedule := func(jobCtx context.Context, schedule models.SchedulableEntity, scheduleTime time.Time) error {
-			assert.NotEqual(t, now, scheduleTime)
-			wg.Done()
-			return nil
-		}
-		c := cron.New()
-		configuration := runtime.NewConfigurationProvider()
-		applicationConfiguration := configuration.ApplicationConfiguration().GetTopLevelConfig()
-		schedulerScope := promutils.NewScope(applicationConfiguration.MetricsScope).NewSubScope("schedule_time")
-		rateLimiter := rate.NewLimiter(1, 10)
-		executor := new(mocks.Executor)
-		snapshot := &snapshoter.SnapshotV1{}
-		executor.OnExecuteMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		g := scheduler.NewGoCronScheduler(context.Background(), []models.SchedulableEntity{}, schedulerScope, snapshot, rateLimiter, executor, false)
-		err := g.ScheduleJob(ctx, scheduleFixed, timedFuncWithSchedule, nil)
-		c.Start()
-		assert.NoError(t, err)
-		select {
-		case <-time.After(time.Minute * 2):
-			assert.Fail(t, "timed job didn't get triggered")
-		case <-wait(wg):
-			break
-		}
-	})
+	c := cron.New()
+	configuration := runtime.NewConfigurationProvider()
+	applicationConfiguration := configuration.ApplicationConfiguration().GetTopLevelConfig()
+	schedulerScope := promutils.NewScope(applicationConfiguration.MetricsScope).NewSubScope("schedule_job")
+	rateLimiter := rate.NewLimiter(1, 10)
+	executor := new(mocks.Executor)
+	snapshot := &snapshoter.SnapshotV1{}
+	executor.OnExecuteMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	g := scheduler.NewGoCronScheduler(context.Background(), []models.SchedulableEntity{}, schedulerScope, snapshot, rateLimiter, executor, false)
+	c.Start()
 
+	tests := []struct {
+		testName      string
+		lastT         *time.Time
+		assertionFunc func(t assert.TestingT, expected, actual interface{}, msgAndArgs ...interface{}) bool
+	}{
+		{testName: "using_schedule_time", lastT: &now, assertionFunc: assert.Equal},
+		{testName: "without_schedule_time", lastT: nil, assertionFunc: assert.NotEqual},
+	}
+	wg := &sync.WaitGroup{}
+	for _, tc := range tests {
+		t.Run(tc.testName, func(t *testing.T) {
+			wg.Add(1)
+			timedFuncWithSchedule := func(jobCtx context.Context, schedule models.SchedulableEntity, scheduleTime time.Time) error {
+				tc.assertionFunc(t, now, scheduleTime)
+				wg.Done()
+				return nil
+			}
+			err := g.ScheduleJob(ctx, scheduleFixed, timedFuncWithSchedule, tc.lastT)
+			assert.NoError(t, err)
+		})
+	}
+
+	select {
+	case <-time.After(time.Minute * 2):
+		assert.Fail(t, "timed job didn't get triggered")
+	case <-wait(wg):
+		c.Stop()
+		break
+	}
 }
 
 func wait(wg *sync.WaitGroup) chan bool {
