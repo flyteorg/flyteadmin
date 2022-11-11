@@ -85,7 +85,7 @@ func (s Service) CreateUploadLocation(ctx context.Context, req *service.CreateUp
 	})
 
 	if err != nil {
-		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to create a signed url. Error: %w", err)
+		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to create a signed url. Error: %v", err)
 	}
 
 	return &service.CreateUploadLocationResponse{
@@ -111,7 +111,7 @@ func (s Service) CreateDownloadLink(ctx context.Context, req *service.CreateDown
 		})
 
 		if err != nil {
-			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "failed to find node execution [%v]. Error: %w", o.NodeExecutionId, err)
+			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "failed to find node execution [%v]. Error: %v", o.NodeExecutionId, err)
 		}
 
 		switch req.GetArtifactType() {
@@ -132,7 +132,7 @@ func (s Service) CreateDownloadLink(ctx context.Context, req *service.CreateDown
 	})
 
 	if err != nil {
-		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to create a signed url. Error: %w", err)
+		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to create a signed url. Error: %v", err)
 	}
 
 	return &service.CreateDownloadLinkResponse{
@@ -155,7 +155,7 @@ func (s Service) CreateDownloadLocation(ctx context.Context, req *service.Create
 	})
 
 	if err != nil {
-		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to create a signed url. Error: %w", err)
+		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to create a signed url. Error: %v", err)
 	}
 
 	return &service.CreateDownloadLocationResponse{

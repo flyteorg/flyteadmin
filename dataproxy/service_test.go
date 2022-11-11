@@ -109,8 +109,8 @@ func TestCreateDownloadLink(t *testing.T) {
 	t.Run("valid config", func(t *testing.T) {
 		_, err = s.CreateDownloadLink(context.Background(), &service.CreateDownloadLinkRequest{
 			ArtifactType: service.ArtifactType_ARTIFACT_TYPE_DECK,
-			Source: &service.CreateDownloadLinkRequest_NodeId{
-				NodeId: &core.NodeExecutionIdentifier{},
+			Source: &service.CreateDownloadLinkRequest_NodeExecutionId{
+				NodeExecutionId: &core.NodeExecutionIdentifier{},
 			},
 			ExpiresIn: durationpb.New(time.Hour),
 		})
@@ -120,31 +120,11 @@ func TestCreateDownloadLink(t *testing.T) {
 	t.Run("use default ExpiresIn", func(t *testing.T) {
 		_, err = s.CreateDownloadLink(context.Background(), &service.CreateDownloadLinkRequest{
 			ArtifactType: service.ArtifactType_ARTIFACT_TYPE_DECK,
-			Source: &service.CreateDownloadLinkRequest_NodeId{
-				NodeId: &core.NodeExecutionIdentifier{},
+			Source: &service.CreateDownloadLinkRequest_NodeExecutionId{
+				NodeExecutionId: &core.NodeExecutionIdentifier{},
 			},
 		})
 		assert.NoError(t, err)
-	})
-
-	t.Run("not implemented", func(t *testing.T) {
-		_, err = s.CreateDownloadLink(context.Background(), &service.CreateDownloadLinkRequest{
-			ArtifactType: service.ArtifactType_ARTIFACT_TYPE_DECK,
-			Source: &service.CreateDownloadLinkRequest_TaskId{
-				TaskId: &core.TaskExecutionIdentifier{},
-			},
-		})
-		assert.Error(t, err)
-	})
-
-	t.Run("not implemented", func(t *testing.T) {
-		_, err = s.CreateDownloadLink(context.Background(), &service.CreateDownloadLinkRequest{
-			ArtifactType: service.ArtifactType_ARTIFACT_TYPE_DECK,
-			Source: &service.CreateDownloadLinkRequest_ExecutionId{
-				ExecutionId: &core.WorkflowExecutionIdentifier{},
-			},
-		})
-		assert.Error(t, err)
 	})
 }
 
