@@ -169,7 +169,8 @@ func (a *ApplicationConfig) GetOverwriteCache() bool {
 
 // GetAsWorkflowExecutionConfig returns the WorkflowExecutionConfig as extracted from this object
 func (a *ApplicationConfig) GetAsWorkflowExecutionConfig() admin.WorkflowExecutionConfig {
-	// These three should always be set, the first two are a number/bool, and the other returns nil when empty.
+	// These values should always be set as their fallback values equals to their zero value or nil,
+	// providing a sensible default even if the actual value was not set.
 	wec := admin.WorkflowExecutionConfig{
 		MaxParallelism: a.GetMaxParallelism(),
 		OverwriteCache: a.GetOverwriteCache(),
