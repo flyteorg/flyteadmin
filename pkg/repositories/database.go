@@ -62,7 +62,7 @@ func GetDB(ctx context.Context, dbConfig *database.DbConfig, logConfig *logger.C
 		panic("Cannot initialize database repository from empty db config")
 	}
 	gormConfig := &gorm.Config{
-		Logger:                                   database.GetGormLogger(ctx, logConfig),
+		Logger:                                   database.GetGormLogger(ctx, nil),
 		DisableForeignKeyConstraintWhenMigrating: !dbConfig.EnableForeignKeyConstraintWhenMigrating,
 	}
 
