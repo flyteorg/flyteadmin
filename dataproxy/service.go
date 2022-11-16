@@ -103,22 +103,21 @@ func (s Service) CreateDownloadLink(ctx context.Context, req *service.CreateDown
 
 	// Lookup task, node, workflow execution
 	var nativeURL string
-	switch o := req.GetSource().(type) {
-	case *service.CreateDownloadLinkRequest_NodeExecutionId:
+	if nodeExecutionId, casted := req.GetSource().(*service.CreateDownloadLinkRequest_NodeExecutionId); casted {
 		node, err := s.nodeExecutionManager.GetNodeExecution(ctx, admin.NodeExecutionGetRequest{
-			Id: o.NodeExecutionId,
+			Id: nodeExecutionId.NodeExecutionId,
 		})
 
 		if err != nil {
-			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "failed to find node execution [%v]. Error: %v", o.NodeExecutionId, err)
+			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "failed to find node execution [%v]. Error: %v", nodeExecutionId.NodeExecutionId, err)
 		}
 
 		switch req.GetArtifactType() {
 		case service.ArtifactType_ARTIFACT_TYPE_DECK:
 			nativeURL = node.Closure.DeckUri
 		}
-	default:
-		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "unsupported source [%v]", reflect.TypeOf(o))
+	} else {
+		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "unsupported source [%v]", reflect.TypeOf(req.GetSource()))
 	}
 
 	if len(nativeURL) == 0 {
