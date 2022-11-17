@@ -103,13 +103,13 @@ func (s Service) CreateDownloadLink(ctx context.Context, req *service.CreateDown
 
 	// Lookup task, node, workflow execution
 	var nativeURL string
-	if nodeExecutionId, casted := req.GetSource().(*service.CreateDownloadLinkRequest_NodeExecutionId); casted {
+	if nodeExecutionIDEnvelope, casted := req.GetSource().(*service.CreateDownloadLinkRequest_NodeExecutionId); casted {
 		node, err := s.nodeExecutionManager.GetNodeExecution(ctx, admin.NodeExecutionGetRequest{
-			Id: nodeExecutionId.NodeExecutionId,
+			Id: nodeExecutionIDEnvelope.NodeExecutionId,
 		})
 
 		if err != nil {
-			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "failed to find node execution [%v]. Error: %v", nodeExecutionId.NodeExecutionId, err)
+			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "failed to find node execution [%v]. Error: %v", nodeExecutionIDEnvelope.NodeExecutionId, err)
 		}
 
 		switch req.GetArtifactType() {
