@@ -2,7 +2,7 @@ package clusterresource
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/md5" // #nosec
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -305,7 +305,7 @@ func (c *controller) syncNamespace(ctx context.Context, project *admin.Project, 
 			continue
 		}
 
-		checksum := md5.Sum([]byte(k8sManifest))
+		checksum := md5.Sum([]byte(k8sManifest)) // #nosec
 		if c.templateAlreadyApplied(namespace, templateFileName, checksum) {
 			// nothing to do.
 			logger.Debugf(ctx, "syncing namespace [%s]: templateFile [%s] already applied, nothing to do.", namespace, templateFile.Name())

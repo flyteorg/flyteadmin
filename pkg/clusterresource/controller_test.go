@@ -2,11 +2,10 @@ package clusterresource
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/md5" // #nosec
 	"io/ioutil"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -28,43 +27,14 @@ const domain = "domain-bar"
 
 var testScope = mockScope.NewTestScope()
 
-type mockFileInfo struct {
-	name    string
-	modTime time.Time
-}
-
-func (i *mockFileInfo) Name() string {
-	return i.name
-}
-
-func (i *mockFileInfo) Size() int64 {
-	return 0
-}
-
-func (i *mockFileInfo) Mode() os.FileMode {
-	return os.ModeExclusive
-}
-
-func (i *mockFileInfo) ModTime() time.Time {
-	return i.modTime
-}
-
-func (i *mockFileInfo) IsDir() bool {
-	return false
-}
-
-func (i *mockFileInfo) Sys() interface{} {
-	return nil
-}
-
 func TestTemplateAlreadyApplied(t *testing.T) {
 	const namespace = "namespace"
 	const fileName = "fileName"
 	testController := controller{
 		metrics: newMetrics(testScope),
 	}
-	checksum1 := md5.Sum([]byte("template1"))
-	checksum2 := md5.Sum([]byte("template2"))
+	checksum1 := md5.Sum([]byte("template1")) // #nosec
+	checksum2 := md5.Sum([]byte("template2")) // #nosec
 	assert.False(t, testController.templateAlreadyApplied(namespace, fileName, checksum1))
 
 	testController.appliedTemplates = make(map[string]TemplateChecksums)
