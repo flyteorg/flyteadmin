@@ -2,6 +2,7 @@ package clusterresource
 
 import (
 	"context"
+	"crypto/md5"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -59,25 +60,20 @@ func (i *mockFileInfo) Sys() interface{} {
 func TestTemplateAlreadyApplied(t *testing.T) {
 	const namespace = "namespace"
 	const fileName = "fileName"
-	var lastModifiedTime = time.Now()
 	testController := controller{
 		metrics: newMetrics(testScope),
 	}
-	mockFile := mockFileInfo{
-		name:    fileName,
-		modTime: lastModifiedTime,
-	}
-	assert.False(t, testController.templateAlreadyApplied(namespace, &mockFile))
+	checksum1 := md5.Sum([]byte("template1"))
+	checksum2 := md5.Sum([]byte("template2"))
+	assert.False(t, testController.templateAlreadyApplied(namespace, fileName, checksum1))
 
-	testController.appliedTemplates = make(map[string]map[string]time.Time)
-	testController.appliedTemplates[namespace] = make(map[string]time.Time)
-	assert.False(t, testController.templateAlreadyApplied(namespace, &mockFile))
+	testController.appliedTemplates = make(map[string]TemplateChecksums)
+	testController.setTemplateChecksum(namespace, fileName, checksum1)
+	assert.True(t, testController.templateAlreadyApplied(namespace, fileName, checksum1))
+	assert.False(t, testController.templateAlreadyApplied(namespace, fileName, checksum2))
 
-	testController.appliedTemplates[namespace][fileName] = lastModifiedTime.Add(-10 * time.Minute)
-	assert.False(t, testController.templateAlreadyApplied(namespace, &mockFile))
-
-	testController.appliedTemplates[namespace][fileName] = lastModifiedTime
-	assert.True(t, testController.templateAlreadyApplied(namespace, &mockFile))
+	testController.setTemplateChecksum(namespace, fileName, checksum2)
+	assert.True(t, testController.templateAlreadyApplied(namespace, fileName, checksum2))
 }
 
 func TestPopulateTemplateValues(t *testing.T) {
