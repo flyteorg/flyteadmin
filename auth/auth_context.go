@@ -133,6 +133,11 @@ func NewAuthenticationContext(ctx context.Context, sm core.SecretManager, oauth2
 		Timeout: IdpConnectionTimeout,
 	}
 
+	logger.Infof(ctx, "HTTP Proxy URL is: %s", options.UserAuth.OpenID.HTTPProxyURL.URL)
+	if options.UserAuth.OpenID.HTTPProxyURL.String() != "" {
+		httpClient.Transport = &http.Transport{Proxy: http.ProxyURL(&options.UserAuth.OpenID.HTTPProxyURL.URL)}
+	}
+
 	// Construct an oidc Provider, which needs its own http Client.
 	oidcCtx := oidc.ClientContext(ctx, httpClient)
 	baseURL := options.UserAuth.OpenID.BaseURL.String()

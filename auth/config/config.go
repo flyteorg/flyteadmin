@@ -256,6 +256,10 @@ type OpenIDOptions struct {
 	// be supported by any OIdC server. Refer to https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims for
 	// a complete list. Other providers might support additional scopes that you can define in a config.
 	Scopes []string `json:"scopes"`
+
+	// HTTP proxy to be used for openID
+	// This allows operators to allow certain URLs to access external Idps through proxy.
+	HTTPProxyURL config.URL `json:"httpProxyURL"`
 }
 
 func GetConfig() *Config {
