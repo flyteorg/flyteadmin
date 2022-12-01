@@ -15,10 +15,7 @@ type Workflow struct {
 	TypedInterface          []byte
 	RemoteClosureIdentifier string `gorm:"not null" valid:"length(0|255)"`
 	// Hash of the compiled workflow closure
-	Digest        []byte
-	DescriptionID uint `gorm:"index"`
-	// ShortDescription is saved in the description entity table. set this to read only so we won't create this column.
-	// Adding ShortDescription because we want to unmarshal the short description in the
-	// descriptionEntity table to workflow object.
-	ShortDescription string `gorm:"<-:false"`
+	Digest            []byte
+	DescriptionEntity DescriptionEntity `gorm:"foreignkey:ID;references:ID"`
+	ShortDescription  string
 }
