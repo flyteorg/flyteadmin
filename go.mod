@@ -14,9 +14,9 @@ require (
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/evanphx/json-patch v4.12.0+incompatible
 	github.com/flyteorg/flyteidl v1.2.5
-	github.com/flyteorg/flyteplugins v1.0.18
-	github.com/flyteorg/flytepropeller v1.1.47
-	github.com/flyteorg/flytestdlib v1.0.12
+	github.com/flyteorg/flyteplugins v1.0.20
+	github.com/flyteorg/flytepropeller v1.1.51
+	github.com/flyteorg/flytestdlib v1.0.14
 	github.com/flyteorg/stow v0.3.6
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-gormigrate/gormigrate/v2 v2.0.0
@@ -208,9 +208,3 @@ require (
 )
 
 replace github.com/robfig/cron/v3 => github.com/unionai/cron/v3 v3.0.2-0.20210825070134-bfc34418fe84
-
-replace github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v1.1.18-0.20220927153545-0f00abe03700
-
-replace github.com/flyteorg/flytepropeller => github.com/flyteorg/flytepropeller v1.1.36-0.20220928002731-c844a9c7bc2c
-
-replace github.com/flyteorg/flytestdlib => github.com/flyteorg/flytestdlib v1.0.5-0.20220617151826-6368b4ff587c
