@@ -35,18 +35,16 @@ func GetDB(ctx context.Context, dbConfig *database.DbConfig, logConfig *logger.C
 		if err != nil {
 			return nil, err
 		}
-	case !(dbConfig.Postgres.IsEmpty()):
-		gormDb, err = database.CreatePostgresDbIfNotExists(ctx, gormConfig, dbConfig.Postgres)
-		if err != nil {
-			return nil, err
-		}
-
 	case !(dbConfig.Mysql.IsEmpty()):
 		gormDb, err = database.CreateMysqlDbIfNotExists(ctx, gormConfig, dbConfig.Mysql)
 		if err != nil {
 			return nil, err
 		}
-
+	case !(dbConfig.Postgres.IsEmpty()):
+		gormDb, err = database.CreatePostgresDbIfNotExists(ctx, gormConfig, dbConfig.Postgres)
+		if err != nil {
+			return nil, err
+		}
 	case len(dbConfig.DeprecatedHost) > 0 || len(dbConfig.DeprecatedUser) > 0 || len(dbConfig.DeprecatedDbName) > 0:
 		pgConfig := database.PostgresConfig{
 			Host:         dbConfig.DeprecatedHost,
