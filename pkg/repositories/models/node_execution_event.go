@@ -9,5 +9,5 @@ type NodeExecutionEvent struct {
 	NodeExecutionKey
 	RequestID  string
 	OccurredAt time.Time
-	Phase      string `gorm:"primary_key"`
+	Phase      string `gorm:"size:128;primary_key"`
 }
