@@ -215,6 +215,9 @@ type UserAuthConfig struct {
 	OpenID OpenIDOptions `json:"openId" pflag:",OpenID Configuration for User Auth"`
 	// Possibly add basicAuth & SAML/p support.
 
+	// HTTPProxyURL allows operators to access external OAuth2 servers using an external HTTP Proxy
+	HTTPProxyURL config.URL `json:"httpProxyURL"`
+
 	// Secret names, defaults are set in DefaultConfig variable above but are possible to override through configs.
 	CookieHashKeySecretName  string         `json:"cookieHashKeySecretName" pflag:",OPTIONAL: Secret name to use for cookie hash key."`
 	CookieBlockKeySecretName string         `json:"cookieBlockKeySecretName" pflag:",OPTIONAL: Secret name to use for cookie block key."`
@@ -256,10 +259,6 @@ type OpenIDOptions struct {
 	// be supported by any OIdC server. Refer to https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims for
 	// a complete list. Other providers might support additional scopes that you can define in a config.
 	Scopes []string `json:"scopes"`
-
-	// HTTP proxy to be used for openID
-	// This allows operators to allow certain URLs to access external Idps through proxy.
-	HTTPProxyURL config.URL `json:"httpProxyURL"`
 }
 
 func GetConfig() *Config {
