@@ -199,7 +199,7 @@ type KafkaConfig struct {
 	// kafka broker addresses
 	Brokers []string `json:"brokers"`
 	// The version of Kafka, e.g. 2.1.0, 0.8.2.0
-	KafkaVersion string
+	KafkaVersion string `json:"kafkaVersion"`
 }
 
 // This section holds configuration for the event scheduler used to schedule workflow executions.
