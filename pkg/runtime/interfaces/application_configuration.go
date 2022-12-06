@@ -194,9 +194,12 @@ type GCPConfig struct {
 }
 
 type KafkaConfig struct {
+	// Deprecated : The version in sarama.KafkaVersion isn't exported, so json decoder can't assign a value to it. Use KafkaVersion instead.
 	Version sarama.KafkaVersion
 	// kafka broker addresses
 	Brokers []string `json:"brokers"`
+	// The version of Kafka, e.g. 2.1.0, 0.8.2.0
+	KafkaVersion string
 }
 
 // This section holds configuration for the event scheduler used to schedule workflow executions.
