@@ -133,7 +133,7 @@ func NewAuthenticationContext(ctx context.Context, sm core.SecretManager, oauth2
 		Timeout: IdpConnectionTimeout,
 	}
 
-	if options.UserAuth.HTTPProxyURL.String() != "" {
+	if len(options.UserAuth.HTTPProxyURL.String()) > 0 {
 		logger.Infof(ctx, "HTTPProxy URL for OAuth2 is: %s", options.UserAuth.HTTPProxyURL.String())
 		httpClient.Transport = &http.Transport{Proxy: http.ProxyURL(&options.UserAuth.HTTPProxyURL.URL)}
 	}
