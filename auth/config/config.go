@@ -216,7 +216,7 @@ type UserAuthConfig struct {
 	// Possibly add basicAuth & SAML/p support.
 
 	// HTTPProxyURL allows operators to access external OAuth2 servers using an external HTTP Proxy
-	HTTPProxyURL config.URL `json:"httpProxyURL"`
+	HTTPProxyURL config.URL `json:"httpProxyURL" pflag:",OPTIONAL: HTTP Proxy to be used for OAuth requests."`
 
 	// Secret names, defaults are set in DefaultConfig variable above but are possible to override through configs.
 	CookieHashKeySecretName  string         `json:"cookieHashKeySecretName" pflag:",OPTIONAL: Secret name to use for cookie hash key."`
