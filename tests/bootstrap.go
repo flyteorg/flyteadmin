@@ -72,7 +72,7 @@ func truncateAllTablesForTestingOnly() {
 	TruncateSchedulableEntities := fmt.Sprintf("TRUNCATE TABLE schedulable_entities;")
 	TruncateSchedulableEntitiesSnapshots := fmt.Sprintf("TRUNCATE TABLE schedule_entities_snapshots;")
 	ctx := context.Background()
-	db, err := repositories.GetDB(ctx, getDbConfig(), getLoggerConfig())
+	db, err := repositories.GetDB(ctx, getLocalDbConfig(), getLoggerConfig())
 	if err != nil {
 		logger.Fatal(ctx, "Failed to open DB connection due to %v", err)
 	}
@@ -102,7 +102,7 @@ func truncateAllTablesForTestingOnly() {
 
 func populateWorkflowExecutionForTestingOnly(project, domain, name string) {
 	InsertExecution := fmt.Sprintf(insertExecutionQueryStr, project, domain, name, "UNDEFINED", 1, 2)
-	db, err := repositories.GetDB(context.Background(), getDbConfig(), getLoggerConfig())
+	db, err := repositories.GetDB(context.Background(), getLocalDbConfig(), getLoggerConfig())
 	ctx := context.Background()
 	if err != nil {
 		logger.Fatal(ctx, "Failed to open DB connection due to %v", err)
