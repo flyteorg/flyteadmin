@@ -64,7 +64,7 @@ func NewCloudEventsPublisher(ctx context.Context, config runtimeInterfaces.Cloud
 	case cloudEventImplementations.Kafka:
 		saramaConfig := sarama.NewConfig()
 		var err error
-		saramaConfig.Version, err = sarama.ParseKafkaVersion(config.KafkaConfig.KafkaVersion)
+		saramaConfig.Version, err = sarama.ParseKafkaVersion(config.KafkaConfig.Version)
 		if err != nil {
 			logger.Fatalf(ctx, "failed to parse kafka version, %v", err)
 			panic(err)

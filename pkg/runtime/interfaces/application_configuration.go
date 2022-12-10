@@ -1,7 +1,6 @@
 package interfaces
 
 import (
-	"github.com/Shopify/sarama"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/config"
@@ -194,12 +193,10 @@ type GCPConfig struct {
 }
 
 type KafkaConfig struct {
-	// Deprecated : The version in sarama.KafkaVersion isn't exported, so json decoder can't assign a value to it. Use KafkaVersion instead.
-	Version sarama.KafkaVersion
+	// The version of Kafka, e.g. 2.1.0, 0.8.2.0
+	Version string `json:"kafkaVersion"`
 	// kafka broker addresses
 	Brokers []string `json:"brokers"`
-	// The version of Kafka, e.g. 2.1.0, 0.8.2.0
-	KafkaVersion string `json:"kafkaVersion"`
 }
 
 // This section holds configuration for the event scheduler used to schedule workflow executions.
