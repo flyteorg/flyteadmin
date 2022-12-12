@@ -194,7 +194,7 @@ type GCPConfig struct {
 
 type KafkaConfig struct {
 	// The version of Kafka, e.g. 2.1.0, 0.8.2.0
-	Version string `json:"kafkaVersion"`
+	Version string `json:"version"`
 	// kafka broker addresses
 	Brokers []string `json:"brokers"`
 }
