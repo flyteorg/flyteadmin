@@ -3,6 +3,7 @@ package implementations
 import (
 	"context"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"strings"
 
@@ -65,12 +66,16 @@ func (s SendgridEmailer) SendEmail(ctx context.Context, email admin.EmailMessage
 	s.systemMetrics.SendTotal.Inc()
 	response, err := s.client.Send(m)
 	if err != nil {
-		logger.Errorf(ctx, "Sendgrid error sending %s", err)
+		logger.Errorf(ctx, "Sendgrid error sending email [%+v] %w", email, err)
 		s.systemMetrics.SendError.Inc()
 		return err
 	}
 	s.systemMetrics.SendSuccess.Inc()
-	logger.Debugf(ctx, "Sendgrid sent email %s", response.Body)
+	if response.StatusCode != http.StatusOK {
+		logger.Errorf(ctx, "Sendgrid error sending email [%+v]: non-200 response received %d [%+v]",
+			email, response.StatusCode, response.Body)
+	}
+	logger.Debugf(ctx, "Sendgrid sent email [%+v] %s", email, response.Body)
 
 	return nil
 }
