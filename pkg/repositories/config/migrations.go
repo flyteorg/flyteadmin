@@ -400,6 +400,16 @@ var Migrations = []*gormigrate.Migration{
 			return tx.Migrator().DropTable("signals")
 		},
 	},
+	// Add the launch_type resource to the execution model
+	{
+		ID: "2022-12-09-execution-launch-type",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&models.Execution{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Model(&models.Execution{}).Migrator().DropColumn(&models.Execution{}, "launch_entity")
+		},
+	},
 }
 
 func alterTableColumnType(db *sql.DB, columnName, columnType string) error {
