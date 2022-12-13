@@ -52,7 +52,7 @@ type SignalService struct {
 
 func NewSignalServer(ctx context.Context, configuration runtimeIfaces.Configuration, adminScope promutils.Scope) *SignalService {
 	panicCounter := adminScope.MustNewCounter("initialization_panic",
-		"panics encountered initializing the admin service")
+		"panics encountered initializing the signal service")
 
 	defer func() {
 		if err := recover(); err != nil {
