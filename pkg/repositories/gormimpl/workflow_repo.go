@@ -22,11 +22,10 @@ func (r *WorkflowRepo) Create(_ context.Context, input models.Workflow, descript
 	timer := r.metrics.CreateDuration.Start()
 	err := r.db.Transaction(func(_ *gorm.DB) error {
 		if descriptionEntity != nil {
-			tx := r.db.Omit("id").FirstOrCreate(descriptionEntity)
+			tx := r.db.Omit("id").Create(descriptionEntity)
 			if tx.Error != nil {
 				return r.errorTransformer.ToFlyteAdminError(tx.Error)
 			}
-			input.DescriptionEntity.ID = descriptionEntity.ID
 		}
 		tx := r.db.Omit("id").Create(&input)
 		if tx.Error != nil {
