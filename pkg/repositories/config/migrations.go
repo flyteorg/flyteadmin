@@ -3,7 +3,6 @@ package config
 import (
 	"database/sql"
 	"fmt"
-
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	schedulerModels "github.com/flyteorg/flyteadmin/scheduler/repositories/models"
 	"github.com/go-gormigrate/gormigrate/v2"
@@ -418,6 +417,8 @@ var Migrations = []*gormigrate.Migration{
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return tx.Exec("ALTER TABLE workflows DROP COLUMN IF EXISTS description_id").Error
+		},
+	},
 	// Create signals table.
 	{
 		ID: "2022-04-11-signals",
