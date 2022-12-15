@@ -14,7 +14,7 @@ type ClusterConfig struct {
 	Endpoint         string                   `json:"endpoint"`
 	Auth             Auth                     `json:"auth"`
 	Enabled          bool                     `json:"enabled"`
-	KubeClientConfig *config.KubeClientConfig `json:"kube-client-config,omitempty"`
+	KubeClientConfig *config.KubeClientConfig `json:"kubeClientConfig,omitempty"`
 }
 
 type Auth struct {

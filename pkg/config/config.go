@@ -27,7 +27,7 @@ type ServerConfig struct {
 
 	DataProxy                DataProxyConfig  `json:"dataProxy" pflag:",Defines data proxy configuration."`
 	ReadHeaderTimeoutSeconds int              `json:"readHeaderTimeoutSeconds" pflag:",The amount of time allowed to read request headers."`
-	KubeClientConfig         KubeClientConfig `json:"kube-client-config" pflag:",Configuration to control the Kubernetes client"`
+	KubeClientConfig         KubeClientConfig `json:"kubeClientConfig" pflag:",Configuration to control the Kubernetes client"`
 }
 
 type DataProxyConfig struct {
@@ -52,7 +52,7 @@ type GrpcConfig struct {
 	MaxMessageSizeBytes int  `json:"maxMessageSizeBytes" pflag:",The max size in bytes for incoming gRPC messages"`
 }
 
-// KubeClientConfig contains the configuration used by flytepropeller to configure its internal Kubernetes Client.
+// KubeClientConfig contains the configuration used by flyteadmin to configure its internal Kubernetes Client.
 type KubeClientConfig struct {
 	// QPS indicates the maximum QPS to the master from this client.
 	// If it's zero, the created RESTClient will use DefaultQPS: 5

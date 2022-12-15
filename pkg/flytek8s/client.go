@@ -40,20 +40,20 @@ func RemoteClusterConfig(host string, auth runtimeInterfaces.Auth) (*restclient.
 
 // Initializes a config using a variety of configurable or default fallback options that can be passed to a Kubernetes client on
 // initialization.
-func GetRestClientConfig(kubeConfig, master string,
+func GetRestClientConfig(kubeConfigPathString, master string,
 	k8sCluster *runtimeInterfaces.ClusterConfig) (*restclient.Config, error) {
 	var kubeConfiguration *restclient.Config
 	var err error
 
 	kubeClientConfig := &config.GetConfig().KubeClientConfig
-	if kubeConfig != "" {
+	if kubeConfigPathString != "" {
 		// ExpandEnv allows using $HOME in the path and it will automatically map to the right OS's user home
-		kubeConfigPath := os.ExpandEnv(kubeConfig)
+		kubeConfigPath := os.ExpandEnv(kubeConfigPathString)
 		kubeConfiguration, err = clientcmd.BuildConfigFromFlags(master, kubeConfigPath)
 		if err != nil {
 			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "Error building kubeconfig: %v", err)
 		}
-		logger.Debugf(context.Background(), "successfully loaded kube config from %s", kubeConfig)
+		logger.Debugf(context.Background(), "successfully loaded kube config from %s", kubeConfigPathString)
 	} else if k8sCluster != nil {
 		kubeConfiguration, err = RemoteClusterConfig(k8sCluster.Endpoint, k8sCluster.Auth)
 		if err != nil {
@@ -62,6 +62,7 @@ func GetRestClientConfig(kubeConfig, master string,
 		logger.Debugf(context.Background(), "successfully loaded kube configuration from %v", k8sCluster)
 
 		if k8sCluster.KubeClientConfig != nil {
+			logger.Debugf(context.Background(), "using rest config from remote cluster override for k8s cluster %s", k8sCluster.Name)
 			kubeClientConfig = k8sCluster.KubeClientConfig
 		}
 	} else {
