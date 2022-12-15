@@ -403,20 +403,20 @@ var Migrations = []*gormigrate.Migration{
 	{
 		ID: "2020-09-13-task-description_id",
 		Migrate: func(tx *gorm.DB) error {
-			return tx.Exec("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS description_id integer;").Error
+			return tx.Exec("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS description_id integer, ADD COLUMN IF NOT EXISTS short_description varchar(4000)").Error
 		},
 		Rollback: func(tx *gorm.DB) error {
-			return tx.Exec("ALTER TABLE tasks DROP COLUMN IF EXISTS description_id").Error
+			return tx.Exec("ALTER TABLE tasks DROP COLUMN IF EXISTS description_id, DROP COLUMN IF EXISTS short_description").Error
 		},
 	},
 	// Modify the workflows table, if necessary
 	{
 		ID: "2020-09-13-workflow-description_id",
 		Migrate: func(tx *gorm.DB) error {
-			return tx.Exec("ALTER TABLE workflows ADD COLUMN IF NOT EXISTS description_id integer;").Error
+			return tx.Exec("ALTER TABLE workflows ADD COLUMN IF NOT EXISTS description_id integer, ADD COLUMN IF NOT EXISTS short_description varchar(4000)").Error
 		},
 		Rollback: func(tx *gorm.DB) error {
-			return tx.Exec("ALTER TABLE workflows DROP COLUMN IF EXISTS description_id").Error
+			return tx.Exec("ALTER TABLE workflows DROP COLUMN IF EXISTS description_id, DROP COLUMN IF EXISTS short_description").Error
 		},
 	},
 	// Create signals table.

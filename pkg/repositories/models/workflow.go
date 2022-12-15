@@ -15,7 +15,7 @@ type Workflow struct {
 	TypedInterface          []byte
 	RemoteClosureIdentifier string `gorm:"not null" valid:"length(0|255)"`
 	// Hash of the compiled workflow closure
-	Digest            []byte
-	DescriptionEntity DescriptionEntity `gorm:"foreignkey:ID;references:ID"`
-	ShortDescription  string
+	Digest []byte
+	// ShortDescription for the workflow.
+	ShortDescription string
 }

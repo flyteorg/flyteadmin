@@ -20,17 +20,6 @@ type DescriptionEntityRepo struct {
 	metrics          gormMetrics
 }
 
-func (r *DescriptionEntityRepo) Create(ctx context.Context, input models.DescriptionEntity) (uint, error) {
-	timer := r.metrics.CreateDuration.Start()
-	tx := r.db.Omit("id").Create(&input)
-	timer.Stop()
-	if tx.Error != nil {
-		return 0, r.errorTransformer.ToFlyteAdminError(tx.Error)
-	}
-	r.db.Last(&input)
-	return input.ID, nil
-}
-
 func (r *DescriptionEntityRepo) Get(ctx context.Context, input interfaces.GetDescriptionEntityInput) (models.DescriptionEntity, error) {
 	var descriptionEntity models.DescriptionEntity
 

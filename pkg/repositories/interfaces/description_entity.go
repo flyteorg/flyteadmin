@@ -21,10 +21,8 @@ type DescriptionEntityCollectionOutput struct {
 
 // DescriptionEntityRepoInterface Defines the interface for interacting with Description models.
 type DescriptionEntityRepoInterface interface {
-	// Create Inserts a DescriptionEntity model into the database store.
-	Create(ctx context.Context, input models.DescriptionEntity) (uint, error)
 	// Get Returns a matching DescriptionEntity if it exists.
 	Get(ctx context.Context, input GetDescriptionEntityInput) (models.DescriptionEntity, error)
-
+	// List Returns DescriptionEntity matching query parameters. A limit must be provided for the results page size
 	List(ctx context.Context, input ListResourceInput) (DescriptionEntityCollectionOutput, error)
 }

@@ -115,6 +115,7 @@ func (t *TaskManager) CreateTask(
 		return nil, err
 	}
 
+	taskModel.ShortDescription = descriptionModel.ShortDescription
 	err = t.db.TaskRepo().Create(ctx, taskModel, descriptionModel)
 	if err != nil {
 		logger.Debugf(ctx, "Failed to create task model with id [%+v] with err %v", request.Id, err)

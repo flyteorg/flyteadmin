@@ -3,8 +3,6 @@ package gormimpl
 import (
 	"context"
 	"errors"
-	"fmt"
-
 	flyteAdminDbErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
@@ -24,11 +22,10 @@ func (r *WorkflowRepo) Create(_ context.Context, input models.Workflow, descript
 	timer := r.metrics.CreateDuration.Start()
 	err := r.db.Transaction(func(_ *gorm.DB) error {
 		if descriptionEntity != nil {
-			tx := r.db.Omit("id").Create(descriptionEntity)
+			tx := r.db.Omit("id").FirstOrCreate(descriptionEntity)
 			if tx.Error != nil {
 				return r.errorTransformer.ToFlyteAdminError(tx.Error)
 			}
-			r.db.Last(descriptionEntity)
 			input.DescriptionEntity.ID = descriptionEntity.ID
 		}
 		tx := r.db.Omit("id").Create(&input)
@@ -54,11 +51,7 @@ func (r *WorkflowRepo) Get(ctx context.Context, input interfaces.Identifier) (mo
 		},
 	})
 
-	tx = tx.Joins(leftJoinWorkflowToDescription)
-	tx = tx.Select([]string{
-		fmt.Sprintf("%s.*", workflowTableName),
-		fmt.Sprintf("%s.%s", descriptionEntityTableName, ShortDescription),
-	}).Take(&workflow)
+	tx = tx.Take(&workflow)
 	timer.Stop()
 
 	if tx.Error != nil && errors.Is(tx.Error, gorm.ErrRecordNotFound) {
@@ -84,7 +77,7 @@ func (r *WorkflowRepo) List(
 	tx := r.db.Limit(input.Limit).Offset(input.Offset)
 
 	// Apply filters
-	tx, err := applyScopedFilters(tx, input.InlineFilters, input.MapFilters)
+	tx, err := applyFilters(tx, input.InlineFilters, input.MapFilters)
 	if err != nil {
 		return interfaces.WorkflowCollectionOutput{}, err
 	}
@@ -93,10 +86,7 @@ func (r *WorkflowRepo) List(
 		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
 	}
 	timer := r.metrics.ListDuration.Start()
-	tx = tx.Joins(leftJoinWorkflowToDescription).Select([]string{
-		fmt.Sprintf("%s.*", workflowTableName),
-		fmt.Sprintf("%s.%s", descriptionEntityTableName, ShortDescription),
-	}).Find(&workflows)
+	tx = tx.Find(&workflows)
 	timer.Stop()
 	if tx.Error != nil {
 		return interfaces.WorkflowCollectionOutput{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
@@ -140,11 +130,6 @@ func (r *WorkflowRepo) ListIdentifiers(ctx context.Context, input interfaces.Lis
 		Workflows: workflows,
 	}, nil
 }
-
-var leftJoinWorkflowToDescription = fmt.Sprintf(
-	"LEFT JOIN %s ON %s.project = %s.project AND %s.domain = %s.domain AND %s.id = %s.description_id", descriptionEntityTableName, descriptionEntityTableName, workflowTableName,
-	descriptionEntityTableName, workflowTableName,
-	descriptionEntityTableName, workflowTableName)
 
 // Returns an instance of WorkflowRepoInterface
 func NewWorkflowRepo(
