@@ -26,6 +26,7 @@ type GormRepo struct {
 	descriptionEntityRepo        interfaces.DescriptionEntityRepoInterface
 	schedulableEntityRepo        schedulerInterfaces.SchedulableEntityRepoInterface
 	scheduleEntitiesSnapshotRepo schedulerInterfaces.ScheduleEntitiesSnapShotRepoInterface
+	signalRepo                   interfaces.SignalRepoInterface
 }
 
 func (r *GormRepo) ExecutionRepo() interfaces.ExecutionRepoInterface {
@@ -84,6 +85,10 @@ func (r *GormRepo) ScheduleEntitiesSnapshotRepo() schedulerInterfaces.ScheduleEn
 	return r.scheduleEntitiesSnapshotRepo
 }
 
+func (r *GormRepo) SignalRepo() interfaces.SignalRepoInterface {
+	return r.signalRepo
+}
+
 func (r *GormRepo) GetGormDB() *gorm.DB {
 	return r.db
 }
@@ -105,5 +110,6 @@ func NewGormRepo(db *gorm.DB, errorTransformer errors.ErrorTransformer, scope pr
 		descriptionEntityRepo:        gormimpl.NewDescriptionEntityRepo(db, errorTransformer, scope.NewSubScope("description_entities")),
 		schedulableEntityRepo:        schedulerGormImpl.NewSchedulableEntityRepo(db, errorTransformer, scope.NewSubScope("schedulable_entity")),
 		scheduleEntitiesSnapshotRepo: schedulerGormImpl.NewScheduleEntitiesSnapshotRepo(db, errorTransformer, scope.NewSubScope("schedule_entities_snapshot")),
+		signalRepo:                   gormimpl.NewSignalRepo(db, errorTransformer, scope.NewSubScope("signals")),
 	}
 }

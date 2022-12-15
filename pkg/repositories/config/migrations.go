@@ -418,6 +418,24 @@ var Migrations = []*gormigrate.Migration{
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return tx.Exec("ALTER TABLE workflows DROP COLUMN IF EXISTS description_id").Error
+	// Create signals table.
+	{
+		ID: "2022-04-11-signals",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&models.Signal{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Migrator().DropTable("signals")
+		},
+	},
+	// Add the launch_type resource to the execution model
+	{
+		ID: "2022-12-09-execution-launch-type",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&models.Execution{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Model(&models.Execution{}).Migrator().DropColumn(&models.Execution{}, "launch_entity")
 		},
 	},
 }
