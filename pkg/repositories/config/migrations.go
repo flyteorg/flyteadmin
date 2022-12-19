@@ -3,6 +3,7 @@ package config
 import (
 	"database/sql"
 	"fmt"
+
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	schedulerModels "github.com/flyteorg/flyteadmin/scheduler/repositories/models"
 	"github.com/go-gormigrate/gormigrate/v2"
