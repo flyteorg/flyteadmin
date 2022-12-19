@@ -208,7 +208,9 @@ func (w *WorkflowManager) CreateWorkflow(
 			"Failed to transform description model [%+v] with err: %v", request.Spec.Description, err)
 		return nil, err
 	}
-	workflowModel.ShortDescription = descriptionModel.ShortDescription
+	if descriptionModel != nil {
+		workflowModel.ShortDescription = descriptionModel.ShortDescription
+	}
 	if err = w.db.WorkflowRepo().Create(ctx, workflowModel, descriptionModel); err != nil {
 		logger.Infof(ctx, "Failed to create workflow model [%+v] with err %v", request.Id, err)
 		return nil, err

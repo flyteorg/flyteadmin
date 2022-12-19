@@ -48,9 +48,7 @@ func (r *WorkflowRepo) Get(ctx context.Context, input interfaces.Identifier) (mo
 			Name:    input.Name,
 			Version: input.Version,
 		},
-	})
-
-	tx = tx.Take(&workflow)
+	}).Take(&workflow)
 	timer.Stop()
 
 	if tx.Error != nil && errors.Is(tx.Error, gorm.ErrRecordNotFound) {
@@ -85,7 +83,7 @@ func (r *WorkflowRepo) List(
 		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
 	}
 	timer := r.metrics.ListDuration.Start()
-	tx = tx.Find(&workflows)
+	tx.Find(&workflows)
 	timer.Stop()
 	if tx.Error != nil {
 		return interfaces.WorkflowCollectionOutput{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
