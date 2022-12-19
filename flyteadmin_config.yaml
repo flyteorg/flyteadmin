@@ -6,7 +6,7 @@ server:
   httpPort: 8088
   grpcPort: 8089
   grpcServerReflection: true
-  kube-config: /Users/ytong/.kube/config
+  kube-config: /Users/ytong/.flyte/state/kubeconfig
   security:
     secure: false
     useAuth: false
