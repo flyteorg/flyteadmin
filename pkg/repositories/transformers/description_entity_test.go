@@ -58,11 +58,9 @@ func TestFromDescriptionEntityExecutionModel(t *testing.T) {
 		SourceCode:       models.SourceCode{Link: "https://github/flyte"},
 	})
 	assert.Nil(t, err)
-	assert.True(t, proto.Equal(&admin.DescriptionEntity{
-		ShortDescription: shortDescription,
-		LongDescription:  longDescription,
-		SourceCode:       sourceCode,
-	}, descriptionEntity))
+	assert.Equal(t, descriptionEntity.ShortDescription, shortDescription)
+	assert.Equal(t, descriptionEntity.LongDescription.IconLink, longDescription.IconLink)
+	assert.Equal(t, descriptionEntity.SourceCode, sourceCode)
 }
 
 func TestFromDescriptionEntityExecutionModels(t *testing.T) {
@@ -86,9 +84,7 @@ func TestFromDescriptionEntityExecutionModels(t *testing.T) {
 		},
 	})
 	assert.Nil(t, err)
-	assert.True(t, proto.Equal(&admin.DescriptionEntity{
-		ShortDescription: shortDescription,
-		LongDescription:  longDescription,
-		SourceCode:       sourceCode,
-	}, descriptionEntity[0]))
+	assert.Equal(t, descriptionEntity[0].ShortDescription, shortDescription)
+	assert.Equal(t, descriptionEntity[0].LongDescription.IconLink, longDescription.IconLink)
+	assert.Equal(t, descriptionEntity[0].SourceCode, sourceCode)
 }
