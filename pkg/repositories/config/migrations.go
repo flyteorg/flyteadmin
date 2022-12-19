@@ -401,7 +401,7 @@ var Migrations = []*gormigrate.Migration{
 	},
 	// Modify the tasks table, if necessary
 	{
-		ID: "2020-09-13-task-description_id",
+		ID: "2020-09-13-task-short_description",
 		Migrate: func(tx *gorm.DB) error {
 			return tx.Exec("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS short_description varchar(4000)").Error
 		},
@@ -411,7 +411,7 @@ var Migrations = []*gormigrate.Migration{
 	},
 	// Modify the workflows table, if necessary
 	{
-		ID: "2020-09-13-workflow-description_id",
+		ID: "2020-09-13-workflow-short_description",
 		Migrate: func(tx *gorm.DB) error {
 			return tx.Exec("ALTER TABLE workflows ADD COLUMN IF NOT EXISTS short_description varchar(4000)").Error
 		},
