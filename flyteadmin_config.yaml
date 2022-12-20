@@ -31,7 +31,6 @@ auth:
         - offline_access # Uncomment if OIdC supports issuing refresh tokens.
       # Replace with the client id created for Flyte.
       clientId: 0oakkheteNjCMERst5d6
-
 # Okta OIdC and OAuth2
 #auth:
 #  authorizedUris:
