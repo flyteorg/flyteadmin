@@ -102,7 +102,7 @@ func TestDescriptionEntityManager_List(t *testing.T) {
 		assert.Nil(t, response)
 	})
 
-	t.Run("list description entities", func(t *testing.T) {
+	t.Run("list description entities in the task", func(t *testing.T) {
 		response, err := manager.ListDescriptionEntity(context.Background(), admin.DescriptionEntityListRequest{
 			ResourceType: core.ResourceType_TASK,
 			Id: &admin.NamedEntityIdentifier{
@@ -114,5 +114,33 @@ func TestDescriptionEntityManager_List(t *testing.T) {
 		})
 		assert.NoError(t, err)
 		assert.NotNil(t, response)
+	})
+
+	t.Run("list description entities in the workflow", func(t *testing.T) {
+		response, err := manager.ListDescriptionEntity(context.Background(), admin.DescriptionEntityListRequest{
+			ResourceType: core.ResourceType_WORKFLOW,
+			Id: &admin.NamedEntityIdentifier{
+				Name:    "flyte",
+				Project: "project",
+				Domain:  "domain",
+			},
+			Limit: 1,
+		})
+		assert.NoError(t, err)
+		assert.NotNil(t, response)
+	})
+
+	t.Run("failed to get filter", func(t *testing.T) {
+		response, err := manager.ListDescriptionEntity(context.Background(), admin.DescriptionEntityListRequest{
+			ResourceType: core.ResourceType_WORKFLOW,
+			Id: &admin.NamedEntityIdentifier{
+				Name:    "flyte",
+				Project: "project",
+				Domain:  "domain",
+			},
+			Filters: "wrong",
+		})
+		assert.Error(t, err)
+		assert.Nil(t, response)
 	})
 }
