@@ -151,6 +151,13 @@ func TestValidateDescriptionEntityListRequest(t *testing.T) {
 	assert.NotNil(t, ValidateDescriptionEntityListRequest(admin.DescriptionEntityListRequest{
 		ResourceType: core.ResourceType_WORKFLOW,
 		Id: &admin.NamedEntityIdentifier{
+			Domain: "domain",
+		},
+	}))
+
+	assert.NotNil(t, ValidateDescriptionEntityListRequest(admin.DescriptionEntityListRequest{
+		ResourceType: core.ResourceType_WORKFLOW,
+		Id: &admin.NamedEntityIdentifier{
 			Project: "project",
 		},
 	}))

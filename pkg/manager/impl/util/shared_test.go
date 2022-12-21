@@ -633,6 +633,21 @@ func TestGetDescriptionEntity(t *testing.T) {
 			})
 		assert.Error(t, err)
 		assert.Nil(t, entity)
+
+		getFunction = func(input interfaces.GetDescriptionEntityInput) (models.DescriptionEntity, error) {
+			return models.DescriptionEntity{LongDescription: []byte("???")}, nil
+		}
+		repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetGetCallback(getFunction)
+		entity, err = GetDescriptionEntity(context.Background(), repository,
+			core.Identifier{
+				ResourceType: core.ResourceType_TASK,
+				Project:      project,
+				Domain:       domain,
+				Name:         name,
+				Version:      version,
+			})
+		assert.Error(t, err)
+		assert.Nil(t, entity)
 	})
 }
 

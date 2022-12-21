@@ -150,6 +150,13 @@ func TestCreateWorkflow(t *testing.T) {
 	expectedResponse := &admin.WorkflowCreateResponse{}
 	assert.Equal(t, expectedResponse, response)
 	assert.True(t, createCalled)
+
+	repository.WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetCreateCallback(func(input models.Workflow, descriptionEntity *models.DescriptionEntity) error {
+		return errors.New("failed to insert record into workflow table")
+	})
+	response, err = workflowManager.CreateWorkflow(context.Background(), request)
+	assert.Error(t, err)
+	assert.Nil(t, response)
 }
 
 func TestCreateWorkflow_ValidationError(t *testing.T) {
