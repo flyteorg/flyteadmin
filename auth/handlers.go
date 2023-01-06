@@ -446,11 +446,15 @@ func GetLogoutEndpointHandler(ctx context.Context, authCtx interfaces.Authentica
 }
 
 func GetUserInfoForwardResponseHandler() UserInfoForwardResponseHandler {
+	logger.Infof(context.TODO(), "Running UserInfoForwardResponseHandler")
 	return func(ctx context.Context, w http.ResponseWriter, m protoiface.MessageV1) error {
 		info, ok := m.(*service.UserInfoResponse)
 		if ok {
+			logger.Infof(context.TODO(), "Setting subject [%s] and name [%s] from user info", )
 			w.Header().Set("X-User-Subject", info.Subject)
 			w.Header().Set("X-User-Name", info.Name)
+		} else {
+			logger.Infof(context.TODO(), "Failed to cast m [%+v] to UserInfoResponse", m)
 		}
 		return nil
 	}
