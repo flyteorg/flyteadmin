@@ -450,7 +450,7 @@ func GetUserInfoForwardResponseHandler() UserInfoForwardResponseHandler {
 	return func(ctx context.Context, w http.ResponseWriter, m protoiface.MessageV1) error {
 		info, ok := m.(*service.UserInfoResponse)
 		if ok {
-			logger.Infof(context.TODO(), "Setting subject [%s] and name [%s] from user info", )
+			logger.Infof(context.TODO(), "Setting subject [%s] and name [%s] from user info", info.Subject, info.Name)
 			w.Header().Set("X-User-Subject", info.Subject)
 			w.Header().Set("X-User-Name", info.Name)
 		} else {
