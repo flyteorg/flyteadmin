@@ -453,6 +453,8 @@ func GetUserInfoForwardResponseHandler() UserInfoForwardResponseHandler {
 			logger.Infof(context.TODO(), "Setting subject [%s] and name [%s] from user info", info.Subject, info.Name)
 			w.Header().Set("X-User-Subject", info.Subject)
 			w.Header().Set("X-User-Name", info.Name)
+			w.Header().Set("Grpc-Metadata-X-User-Subject", info.Subject)
+			w.Header().Set("Grpc-Metadata-X-User-Name", info.Name)
 		} else {
 			logger.Infof(context.TODO(), "Failed to cast m [%+v] to UserInfoResponse", m)
 		}
