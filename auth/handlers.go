@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"net/http"
 	"strings"
 	"time"
@@ -29,6 +31,8 @@ const (
 	FromHTTPKey          = "from_http"
 	FromHTTPVal          = "true"
 )
+
+var titleCaser = cases.Title(language.English)
 
 type HTTPRequestToMetadataAnnotator func(ctx context.Context, request *http.Request) metadata.MD
 type UserInfoForwardResponseHandler func(ctx context.Context, w http.ResponseWriter, m protoiface.MessageV1) error
@@ -448,32 +452,17 @@ func GetLogoutEndpointHandler(ctx context.Context, authCtx interfaces.Authentica
 
 func GetUserInfoForwardResponseHandler() UserInfoForwardResponseHandler {
 	return func(ctx context.Context, w http.ResponseWriter, m protoiface.MessageV1) error {
-		//logger.Infof(ctx, "**In GetUserInfoForwardResponseHandler")
-		//identityContext := IdentityContextFromContext(ctx)
-		//logger.Infof(ctx, "**Identity context [%s]", identityContext)
-		//if identityContext == (IdentityContext{}) {
-		//	logger.Infof(ctx, "**Identity context is empty")
-		//}
-		//claims := identityContext.Claims()
-		//logger.Infof(ctx, "**Identity context claims [%+v]", claims)
-		//for k, v := range claims {
-		//	logger.Infof(ctx, "** claims key [%s], value [%+v] of type %T", k, v, v)
-		//
-		//}
-
 		info, ok := m.(*service.UserInfoResponse)
 		if ok {
 			logger.Infof(ctx, "**Cast m to [%+v]", info)
 			if info.AdditionalClaims != nil {
-				logger.Infof(ctx, "**User info claims are not nil: %+v", info.AdditionalClaims)
 				for k, v := range info.AdditionalClaims.GetFields() {
-					logger.Infof(ctx, "**Looking at claim key [%s], with value [%+v] of type [%T]", k, v, v)
 					jsonBytes, _ := v.MarshalJSON()
-					logger.Infof(ctx, "**Claim key [%s] as json [%+v]", k, string(jsonBytes))
+					logger.Infof(ctx, "**Setting header [%s] as json [%+v]", fmt.Sprintf("X-User-Claim-%s", titleCaser.String(k)), string(jsonBytes))
+					w.Header().Set(fmt.Sprintf("X-User-Claim-%s", titleCaser.String(k)), string(jsonBytes))
 				}
 			}
 			w.Header().Set("X-User-Subject", info.Subject)
-			w.Header().Set("X-User-Name", info.Name)
 		}
 		return nil
 	}
