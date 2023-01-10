@@ -20,4 +20,6 @@ func TestGetClaims(t *testing.T) {
 	withClaimsCtx, err := NewIdentityContext("", "", "", time.Now(), nil, nil, claims)
 	assert.NoError(t, err)
 	assert.EqualValues(t, claims, withClaimsCtx.Claims())
+
+	assert.NotEmpty(t, withClaimsCtx.UserInfo().AdditionalClaims)
 }
