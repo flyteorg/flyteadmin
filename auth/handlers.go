@@ -10,7 +10,6 @@ import (
 
 	"github.com/flyteorg/flyteadmin/auth/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/common"
-	"github.com/flyteorg/flyteadmin/auth"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 	"github.com/flyteorg/flytestdlib/errors"
 	"github.com/flyteorg/flytestdlib/logger"
@@ -450,7 +449,7 @@ func GetLogoutEndpointHandler(ctx context.Context, authCtx interfaces.Authentica
 func GetUserInfoForwardResponseHandler() UserInfoForwardResponseHandler {
 	return func(ctx context.Context, w http.ResponseWriter, m protoiface.MessageV1) error {
 		logger.Infof(ctx, "**In GetUserInfoForwardResponseHandler")
-		identityContext := auth.IdentityContextFromContext(ctx)
+		identityContext := IdentityContextFromContext(ctx)
 		logger.Infof(ctx, "**Identity context [%s]", identityContext)
 		if identityContext == (IdentityContext{}) {
 			logger.Infof(ctx, "**Identity context is empty")
