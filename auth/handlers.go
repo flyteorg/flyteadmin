@@ -10,6 +10,7 @@ import (
 
 	"github.com/flyteorg/flyteadmin/auth/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteadmin/auth"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 	"github.com/flyteorg/flytestdlib/errors"
 	"github.com/flyteorg/flytestdlib/logger"
@@ -21,6 +22,7 @@ import (
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/runtime/protoiface"
+
 )
 
 const (
@@ -447,6 +449,18 @@ func GetLogoutEndpointHandler(ctx context.Context, authCtx interfaces.Authentica
 
 func GetUserInfoForwardResponseHandler() UserInfoForwardResponseHandler {
 	return func(ctx context.Context, w http.ResponseWriter, m protoiface.MessageV1) error {
+		logger.Infof(ctx, "**In GetUserInfoForwardResponseHandler")
+		identityContext := auth.IdentityContextFromContext(ctx)
+		logger.Infof(ctx, "**Identity context [%s]", identityContext)
+		if identityContext == (IdentityContext{}) {
+			logger.Infof(ctx, "**Identity context is empty")
+		}
+		claims := identityContext.Claims()
+		logger.Infof(ctx, "**Identity context claims [%+v]", claims)
+		for k, v := range claims {
+			logger.Infof(ctx, "** claims key [%s], value [%+v] of type %T", k, v, v)
+		}
+
 		info, ok := m.(*service.UserInfoResponse)
 		if ok {
 			w.Header().Set("X-User-Subject", info.Subject)
