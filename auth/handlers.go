@@ -448,17 +448,18 @@ func GetLogoutEndpointHandler(ctx context.Context, authCtx interfaces.Authentica
 
 func GetUserInfoForwardResponseHandler() UserInfoForwardResponseHandler {
 	return func(ctx context.Context, w http.ResponseWriter, m protoiface.MessageV1) error {
-		logger.Infof(ctx, "**In GetUserInfoForwardResponseHandler")
-		identityContext := IdentityContextFromContext(ctx)
-		logger.Infof(ctx, "**Identity context [%s]", identityContext)
-		if identityContext == (IdentityContext{}) {
-			logger.Infof(ctx, "**Identity context is empty")
-		}
-		claims := identityContext.Claims()
-		logger.Infof(ctx, "**Identity context claims [%+v]", claims)
-		for k, v := range claims {
-			logger.Infof(ctx, "** claims key [%s], value [%+v] of type %T", k, v, v)
-		}
+		//logger.Infof(ctx, "**In GetUserInfoForwardResponseHandler")
+		//identityContext := IdentityContextFromContext(ctx)
+		//logger.Infof(ctx, "**Identity context [%s]", identityContext)
+		//if identityContext == (IdentityContext{}) {
+		//	logger.Infof(ctx, "**Identity context is empty")
+		//}
+		//claims := identityContext.Claims()
+		//logger.Infof(ctx, "**Identity context claims [%+v]", claims)
+		//for k, v := range claims {
+		//	logger.Infof(ctx, "** claims key [%s], value [%+v] of type %T", k, v, v)
+		//
+		//}
 
 		info, ok := m.(*service.UserInfoResponse)
 		if ok {
@@ -467,6 +468,8 @@ func GetUserInfoForwardResponseHandler() UserInfoForwardResponseHandler {
 				logger.Infof(ctx, "**User info claims are not nil: %+v", info.AdditionalClaims)
 				for k, v := range info.AdditionalClaims.GetFields() {
 					logger.Infof(ctx, "**Looking at claim key [%s], with value [%+v] of type [%T]", k, v, v)
+					jsonBytes, _ := v.MarshalJSON()
+					logger.Infof(ctx, "**Claim key [%s] as json [%+v]", k, string(jsonBytes))
 				}
 			}
 			w.Header().Set("X-User-Subject", info.Subject)
