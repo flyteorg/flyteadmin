@@ -8,9 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
-
 	"github.com/flyteorg/flyteadmin/auth/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
@@ -31,8 +28,6 @@ const (
 	FromHTTPKey          = "from_http"
 	FromHTTPVal          = "true"
 )
-
-var titleCaser = cases.Title(language.English)
 
 type HTTPRequestToMetadataAnnotator func(ctx context.Context, request *http.Request) metadata.MD
 type UserInfoForwardResponseHandler func(ctx context.Context, w http.ResponseWriter, m protoiface.MessageV1) error
@@ -456,7 +451,11 @@ func GetUserInfoForwardResponseHandler() UserInfoForwardResponseHandler {
 		if ok {
 			if info.AdditionalClaims != nil {
 				for k, v := range info.AdditionalClaims.GetFields() {
-					jsonBytes, _ := v.MarshalJSON()
+					jsonBytes, err := v.MarshalJSON()
+					if err != nil {
+						logger.Warningf(ctx, "failed to marshal claim [%s] to json: %v", k, err)
+						continue
+					}
 					header := fmt.Sprintf("X-User-Claim-%s", strings.ReplaceAll(k, "_", "-"))
 					w.Header().Set(header, string(jsonBytes))
 				}
