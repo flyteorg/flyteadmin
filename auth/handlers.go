@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	"net/http"
 	"strings"
 	"time"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/flyteorg/flyteadmin/auth/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/common"
@@ -23,7 +24,6 @@ import (
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/runtime/protoiface"
-
 )
 
 const (
@@ -454,12 +454,11 @@ func GetUserInfoForwardResponseHandler() UserInfoForwardResponseHandler {
 	return func(ctx context.Context, w http.ResponseWriter, m protoiface.MessageV1) error {
 		info, ok := m.(*service.UserInfoResponse)
 		if ok {
-			logger.Infof(ctx, "**Cast m to [%+v]", info)
 			if info.AdditionalClaims != nil {
 				for k, v := range info.AdditionalClaims.GetFields() {
 					jsonBytes, _ := v.MarshalJSON()
-					logger.Infof(ctx, "**Setting header [%s] as json [%+v]", fmt.Sprintf("X-User-Claim-%s", titleCaser.String(k)), string(jsonBytes))
-					w.Header().Set(fmt.Sprintf("X-User-Claim-%s", titleCaser.String(k)), string(jsonBytes))
+					header := fmt.Sprintf("X-User-Claim-%s", strings.ReplaceAll(k, "_", "-"))
+					w.Header().Set(header, string(jsonBytes))
 				}
 			}
 			w.Header().Set("X-User-Subject", info.Subject)

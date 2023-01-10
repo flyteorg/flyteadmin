@@ -2,9 +2,10 @@ package auth
 
 import (
 	"context"
+	"time"
+
 	"github.com/flyteorg/flytestdlib/logger"
 	"google.golang.org/protobuf/types/known/structpb"
-	"time"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 

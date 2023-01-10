@@ -3,13 +3,14 @@ package auth
 import (
 	"context"
 	"fmt"
-	"google.golang.org/protobuf/types/known/structpb"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
+
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/flyteorg/flyteadmin/auth/config"
 	"github.com/flyteorg/flyteadmin/auth/interfaces/mocks"
@@ -308,7 +309,7 @@ func TestUserInfoForwardResponseHander(t *testing.T) {
 	additionalClaimsStruct, err := structpb.NewStruct(additionalClaims)
 	assert.NoError(t, err)
 	resp := service.UserInfoResponse{
-		Subject: "user-id",
+		Subject:          "user-id",
 		AdditionalClaims: additionalClaimsStruct,
 	}
 	assert.NoError(t, handler(ctx, w, &resp))
@@ -324,4 +325,3 @@ func TestUserInfoForwardResponseHander(t *testing.T) {
 	assert.NoError(t, handler(ctx, w, &unrelatedResp))
 	assert.NotContains(t, w.Result().Header, "X-User-Subject")
 }
-

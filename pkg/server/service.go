@@ -182,7 +182,6 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, _ *authConfig.
 	// This option means that http requests are served with protobufs, instead of json. We always want this.
 	gwmuxOptions = append(gwmuxOptions, runtime.WithMarshalerOption("application/octet-stream", &runtime.ProtoMarshaller{}))
 
-
 	if cfg.Security.UseAuth {
 		// Add HTTP handlers for OIDC endpoints
 		auth.RegisterHandlers(ctx, mux, authCtx)
