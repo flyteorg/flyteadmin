@@ -182,6 +182,9 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, _ *authConfig.
 	// This option means that http requests are served with protobufs, instead of json. We always want this.
 	gwmuxOptions = append(gwmuxOptions, runtime.WithMarshalerOption("application/octet-stream", &runtime.ProtoMarshaller{}))
 
+	// This option sets subject in the user info response
+	gwmuxOptions = append(gwmuxOptions, runtime.WithForwardResponseOption(auth.GetUserInfoForwardResponseHandler()))
+
 	if cfg.Security.UseAuth {
 		// Add HTTP handlers for OIDC endpoints
 		auth.RegisterHandlers(ctx, mux, authCtx)
@@ -196,9 +199,6 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, _ *authConfig.
 		// the requests that come from the HTTP gateway. See the enforceHttp/Grpc options for more information.
 		gwmuxOptions = append(gwmuxOptions, runtime.WithMetadata(auth.GetHTTPMetadataTaggingHandler()))
 	}
-
-	// This option sets subject in the user info response
-	gwmuxOptions = append(gwmuxOptions, runtime.WithForwardResponseOption(auth.GetUserInfoForwardResponseHandler()))
 
 	// Create the grpc-gateway server with the options specified
 	gwmux := runtime.NewServeMux(gwmuxOptions...)
