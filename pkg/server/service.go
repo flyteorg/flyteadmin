@@ -88,7 +88,6 @@ func newGRPCServer(ctx context.Context, pluginRegistry *plugins.Registry, cfg *c
 			auth.GetAuthenticationCustomMetadataInterceptor(authCtx),
 			grpcauth.UnaryServerInterceptor(auth.GetAuthenticationInterceptor(authCtx)),
 			auth.AuthenticationLoggingInterceptor,
-			auth.AuthenticationClaimsInterceptor,
 			middlewareInterceptors,
 		)
 	} else {

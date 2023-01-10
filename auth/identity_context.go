@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+	"github.com/flyteorg/flytestdlib/logger"
+	"google.golang.org/protobuf/types/known/structpb"
 	"time"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
@@ -48,6 +50,16 @@ func (c IdentityContext) UserInfo() *service.UserInfoResponse {
 		return &service.UserInfoResponse{}
 	}
 
+	userInfo := c.userInfo
+	if c.claims != nil {
+		logger.Infof(context.TODO(), "**Marshalling claims [%+v]", *c.claims)
+		m, err := structpb.NewStruct(*c.claims)
+		if err != nil {
+			logger.Errorf(context.TODO(), "Failed to marshal claims [%+v] to struct: %v", c.claims, err)
+		}
+		logger.Infof(context.TODO(), "Setting claims to [%+v]", m)
+		userInfo.AdditionalClaims = m
+	}
 	return c.userInfo
 }
 
