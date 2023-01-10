@@ -2,6 +2,13 @@ module github.com/flyteorg/flyteadmin
 
 go 1.18
 
+replace (
+	github.com/flyteorg/flyteidl => github.com/blackshark-ai/flyteidl v0.24.22-0.20230104143947-9cc1f12a643f
+	github.com/flyteorg/flyteplugins => github.com/blackshark-ai/flyteplugins v1.0.2-0.20230104150443-bda210ef6073
+	github.com/flyteorg/flytepropeller => github.com/blackshark-ai/flytepropeller v0.16.48-0.20230104152227-93eb7b4cc558
+	github.com/flyteorg/flytestdlib => github.com/blackshark-ai/flytestdlib v1.0.1-0.20230104151410-d6ec6dba8697
+)
+
 require (
 	cloud.google.com/go/iam v0.3.0
 	cloud.google.com/go/storage v1.22.0
@@ -13,8 +20,8 @@ require (
 	github.com/cloudevents/sdk-go/v2 v2.8.0
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/evanphx/json-patch v4.12.0+incompatible
-	github.com/flyteorg/flyteidl v1.2.5
-	github.com/flyteorg/flyteplugins v1.0.20
+	github.com/flyteorg/flyteidl v1.3.1
+	github.com/flyteorg/flyteplugins v1.0.26
 	github.com/flyteorg/flytepropeller v1.1.51
 	github.com/flyteorg/flytestdlib v1.0.14
 	github.com/flyteorg/stow v0.3.6
@@ -198,9 +205,9 @@ require (
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/pquerna/cachecontrol v0.0.0-20171018203845-0dec1b30a021 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
-	go.uber.org/atomic v1.7.0 // indirect
-	go.uber.org/multierr v1.6.0 // indirect
-	go.uber.org/zap v1.19.1 // indirect
+	go.uber.org/atomic v1.9.0 // indirect
+	go.uber.org/multierr v1.8.0 // indirect
+	go.uber.org/zap v1.21.0 // indirect
 	k8s.io/klog/v2 v2.60.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20220328201542-3ee0da9b0b42 // indirect
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
