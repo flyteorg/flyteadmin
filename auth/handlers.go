@@ -196,6 +196,35 @@ func AuthenticationLoggingInterceptor(ctx context.Context, req interface{}, info
 	return handler(ctx, req)
 }
 
+func AuthenticationClaimsInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+logger.Infof(ctx, "**In AuthenticationClaimsInterceptor")
+	identityContext := IdentityContextFromContext(ctx)
+	logger.Infof(ctx, "**Identity context [%s]", identityContext)
+	if identityContext == (IdentityContext{}) {
+		logger.Infof(ctx, "**Identity context is empty")
+	}
+	claims := identityContext.Claims()
+	logger.Infof(ctx, "**Identity context claims [%+v]", claims)
+	for k, v := range claims {
+		logger.Infof(ctx, "** claims key [%s], value [%+v] of type %T", k, v, v)
+	}
+	//md := metadata.Pairs("testclaims", "katrina")
+	//ctx = metadata.NewOutgoingContext(ctx, md)
+
+	// create and send header
+	header := metadata.Pairs("X-User-Subject", "katrina")
+	logger.Infof(ctx, "***Setting user subject to 'katrina'")
+	err := grpc.SetHeader(ctx, header)
+	if err != nil {
+		logger.Infof(ctx,"**failed to set header %v", err)
+		return nil, err
+	}
+
+
+	logger.Infof(ctx, "**Adding test header to outgoing context")
+	return handler(ctx, req)
+}
+
 // GetAuthenticationCustomMetadataInterceptor produces a gRPC middleware interceptor intended to be used when running
 // authentication with non-default gRPC headers (metadata). Because the default `authorization` header is reserved for
 // use by Envoy, clients wishing to pass tokens to Admin will need to use a different string, specified in this
@@ -462,7 +491,7 @@ func GetUserInfoForwardResponseHandler() UserInfoForwardResponseHandler {
 
 		info, ok := m.(*service.UserInfoResponse)
 		if ok {
-			w.Header().Set("X-User-Subject", info.Subject)
+			//w.Header().Set("X-User-Subject", info.Subject)
 			w.Header().Set("X-User-Name", info.Name)
 		}
 		return nil
