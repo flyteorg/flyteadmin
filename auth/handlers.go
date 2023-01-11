@@ -321,6 +321,8 @@ func GetHTTPRequestCookieToMetadataHandler(authCtx interfaces.AuthenticationCont
 			logger.Infof(ctx, "Failed to retrieve user info cookie. Ignoring. Error: %v", err)
 		}
 
+		logger.Debugf(ctx, "Retrieved [%v] Additional Claims: [%+v]", len(userInfo.AdditionalClaims.AsMap()), userInfo.AdditionalClaims.AsMap())
+
 		raw, err := json.Marshal(userInfo)
 		if err != nil {
 			logger.Infof(ctx, "Failed to marshal user info. Ignoring. Error: %v", err)
@@ -376,6 +378,8 @@ func IdentityContextFromRequest(ctx context.Context, req *http.Request, authCtx 
 		return nil, fmt.Errorf("unauthenticated request. Error: %w", err)
 	}
 
+	logger.Debugf(ctx, "Retrieved2 [%v] Additional Claims: [%+v]", len(userInfo.AdditionalClaims.AsMap()), userInfo.AdditionalClaims.AsMap())
+
 	return IdentityContextFromIDTokenToken(ctx, idToken, authCtx.Options().UserAuth.OpenID.ClientID,
 		authCtx.OidcProvider(), userInfo)
 }
@@ -430,10 +434,14 @@ func QueryUserInfoUsingAccessToken(ctx context.Context, originalRequest *http.Re
 		return &service.UserInfoResponse{}, fmt.Errorf("error unmarshalling raw claims. Error: %w", err)
 	}
 
+	logger.Debugf(ctx, "Unmarshalled a total of [%v] claims: [%+v]", len(allClaims), allClaims)
+
 	alreadyRead := []string{"subject", "name", "preferred_username", "given_name", "family_name", "email", "picture"}
 	for _, existing := range alreadyRead {
 		delete(allClaims, existing)
 	}
+
+	logger.Debugf(ctx, "Remaining a total of [%v] additional claims: [%+v]", len(allClaims), allClaims)
 
 	var response _struct.Struct
 	b, err := json.Marshal(allClaims)
