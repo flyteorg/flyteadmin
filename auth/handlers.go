@@ -485,6 +485,7 @@ func GetUserInfoForwardResponseHandler() UserInfoForwardResponseHandler {
 	return func(ctx context.Context, w http.ResponseWriter, m protoiface.MessageV1) error {
 		info, ok := m.(*service.UserInfoResponse)
 		if ok {
+			logger.Debugf(ctx, "GetUserInfoForwardResponseHandler: Additional claims: [%+v]", info.AdditionalClaims)
 			if info.AdditionalClaims != nil {
 				for k, v := range info.AdditionalClaims.GetFields() {
 					jsonBytes, err := v.MarshalJSON()
