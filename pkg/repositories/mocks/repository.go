@@ -19,8 +19,10 @@ type MockRepository struct {
 	resourceRepo                  interfaces.ResourceRepoInterface
 	taskExecutionRepo             interfaces.TaskExecutionRepoInterface
 	namedEntityRepo               interfaces.NamedEntityRepoInterface
+	descriptionEntityRepo         interfaces.DescriptionEntityRepoInterface
 	schedulableEntityRepo         sIface.SchedulableEntityRepoInterface
 	schedulableEntitySnapshotRepo sIface.ScheduleEntitiesSnapShotRepoInterface
+	signalRepo                    interfaces.SignalRepoInterface
 }
 
 func (r *MockRepository) GetGormDB() *gorm.DB {
@@ -79,6 +81,14 @@ func (r *MockRepository) NamedEntityRepo() interfaces.NamedEntityRepoInterface {
 	return r.namedEntityRepo
 }
 
+func (r *MockRepository) DescriptionEntityRepo() interfaces.DescriptionEntityRepoInterface {
+	return r.descriptionEntityRepo
+}
+
+func (r *MockRepository) SignalRepo() interfaces.SignalRepoInterface {
+	return r.signalRepo
+}
+
 func NewMockRepository() interfaces.Repository {
 	return &MockRepository{
 		taskRepo:                      NewMockTaskRepo(),
@@ -90,9 +100,11 @@ func NewMockRepository() interfaces.Repository {
 		resourceRepo:                  NewMockResourceRepo(),
 		taskExecutionRepo:             NewMockTaskExecutionRepo(),
 		namedEntityRepo:               NewMockNamedEntityRepo(),
+		descriptionEntityRepo:         NewMockDescriptionEntityRepo(),
 		ExecutionEventRepoIface:       &ExecutionEventRepoInterface{},
 		NodeExecutionEventRepoIface:   &NodeExecutionEventRepoInterface{},
 		schedulableEntityRepo:         &sMocks.SchedulableEntityRepoInterface{},
 		schedulableEntitySnapshotRepo: &sMocks.ScheduleEntitiesSnapShotRepoInterface{},
+		signalRepo:                    &SignalRepoInterface{},
 	}
 }

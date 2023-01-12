@@ -575,6 +575,18 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		return nil, nil, err
 	}
 
+	executionInputs, err := validation.CheckAndFetchInputsForExecution(
+		request.Inputs,
+		launchPlan.Spec.FixedInputs,
+		launchPlan.Closure.ExpectedInputs,
+	)
+	if err != nil {
+		logger.Debugf(ctx, "Failed to CheckAndFetchInputsForExecution with request.Inputs: %+v"+
+			"fixed inputs: %+v and expected inputs: %+v with err %v",
+			request.Inputs, launchPlan.Spec.FixedInputs, launchPlan.Closure.ExpectedInputs, err)
+		return nil, nil, err
+	}
+
 	name := util.GetExecutionName(request)
 	workflowExecutionID := core.WorkflowExecutionIdentifier{
 		Project: request.Project,
@@ -647,7 +659,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	}
 
 	executionParameters := workflowengineInterfaces.ExecutionParameters{
-		Inputs:              request.Inputs,
+		Inputs:              executionInputs,
 		AcceptedAt:          requestedAt,
 		Labels:              labels,
 		Annotations:         annotations,
@@ -721,6 +733,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		InputsURI:             inputsURI,
 		UserInputsURI:         userInputsURI,
 		SecurityContext:       executionConfig.SecurityContext,
+		LaunchEntity:          taskIdentifier.ResourceType,
 	})
 	if err != nil {
 		logger.Infof(ctx, "Failed to create execution model in transformer for id: [%+v] with err: %v",
@@ -974,6 +987,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		InputsURI:             inputsURI,
 		UserInputsURI:         userInputsURI,
 		SecurityContext:       executionConfig.SecurityContext,
+		LaunchEntity:          launchPlan.Id.ResourceType,
 	})
 	if err != nil {
 		logger.Infof(ctx, "Failed to create execution model in transformer for id: [%+v] with err: %v",

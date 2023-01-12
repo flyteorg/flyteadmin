@@ -286,6 +286,7 @@ func TestCreateExecution(t *testing.T) {
 			assert.Equal(t, principal, spec.Metadata.Principal)
 			assert.Equal(t, rawOutput, spec.RawOutputDataConfig.OutputLocationPrefix)
 			assert.True(t, proto.Equal(spec.ClusterAssignment, &clusterAssignment))
+			assert.Equal(t, "launch_plan", input.LaunchEntity)
 			return nil
 		})
 	setDefaultLpCallbackForExecTest(repository)
@@ -357,7 +358,8 @@ func TestCreateExecution(t *testing.T) {
 	request.Spec.RawOutputDataConfig = &admin.RawOutputDataConfig{OutputLocationPrefix: rawOutput}
 	request.Spec.ClusterAssignment = &clusterAssignment
 
-	identity := auth.NewIdentityContext("", principal, "", time.Now(), sets.NewString(), nil, nil)
+	identity, err := auth.NewIdentityContext("", principal, "", time.Now(), sets.NewString(), nil, nil)
+	assert.NoError(t, err)
 	ctx := identity.WithContext(context.Background())
 	response, err := execManager.CreateExecution(ctx, request, requestedAt)
 	assert.Nil(t, err)
@@ -3121,7 +3123,8 @@ func TestTerminateExecution(t *testing.T) {
 	r.RegisterDefault(plugins.PluginIDWorkflowExecutor, &mockExecutor)
 	execManager := NewExecutionManager(repository, r, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
 
-	identity := auth.NewIdentityContext("", principal, "", time.Now(), sets.NewString(), nil, nil)
+	identity, err := auth.NewIdentityContext("", principal, "", time.Now(), sets.NewString(), nil, nil)
+	assert.NoError(t, err)
 	ctx := identity.WithContext(context.Background())
 	resp, err := execManager.TerminateExecution(ctx, admin.ExecutionTerminateRequest{
 		Id: &core.WorkflowExecutionIdentifier{
@@ -4084,11 +4087,11 @@ func TestCreateSingleTaskExecution(t *testing.T) {
 	repository := getMockRepositoryForExecTest()
 	var getCalledCount = 0
 	var newlyCreatedWorkflow models.Workflow
-	workflowcreateFunc := func(input models.Workflow) error {
+	workflowCreateFunc := func(input models.Workflow, descriptionEntity *models.DescriptionEntity) error {
 		newlyCreatedWorkflow = input
 		return nil
 	}
-	repository.WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetCreateCallback(workflowcreateFunc)
+	repository.WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetCreateCallback(workflowCreateFunc)
 
 	workflowGetFunc := func(input interfaces.Identifier) (models.Workflow, error) {
 		if getCalledCount <= 1 {
@@ -4099,6 +4102,13 @@ func TestCreateSingleTaskExecution(t *testing.T) {
 		return newlyCreatedWorkflow, nil
 	}
 	repository.WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetGetCallback(workflowGetFunc)
+	taskIdentifier := &core.Identifier{
+		ResourceType: core.ResourceType_TASK,
+		Project:      "flytekit",
+		Domain:       "production",
+		Name:         "simple_task",
+		Version:      "12345",
+	}
 	repository.TaskRepo().(*repositoryMocks.MockTaskRepo).SetGetCallback(
 		func(input interfaces.Identifier) (models.Task, error) {
 			createdAt := time.Now()
@@ -4106,13 +4116,7 @@ func TestCreateSingleTaskExecution(t *testing.T) {
 			taskClosure := &admin.TaskClosure{
 				CompiledTask: &core.CompiledTask{
 					Template: &core.TaskTemplate{
-						Id: &core.Identifier{
-							ResourceType: core.ResourceType_TASK,
-							Project:      "flytekit",
-							Domain:       "production",
-							Name:         "simple_task",
-							Version:      "12345",
-						},
+						Id:   taskIdentifier,
 						Type: "python-task",
 						Metadata: &core.TaskMetadata{
 							Runtime: &core.RuntimeMetadata{
@@ -4199,6 +4203,33 @@ func TestCreateSingleTaskExecution(t *testing.T) {
 				Type:    "python",
 			}, nil
 		})
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(
+		func(ctx context.Context, input models.Execution) error {
+			var spec admin.ExecutionSpec
+			err := proto.Unmarshal(input.Spec, &spec)
+			assert.NoError(t, err)
+			assert.Equal(t, models.ExecutionKey{
+				Project: "flytekit",
+				Domain:  "production",
+				Name:    "singletaskexec",
+			}, input.ExecutionKey)
+			assert.Equal(t, "task", input.LaunchEntity)
+			assert.Equal(t, "UNDEFINED", input.Phase)
+			assert.True(t, proto.Equal(taskIdentifier, spec.LaunchPlan))
+			return nil
+		})
+
+	var launchplan *models.LaunchPlan
+	repository.LaunchPlanRepo().(*repositoryMocks.MockLaunchPlanRepo).SetCreateCallback(func(input models.LaunchPlan) error {
+		launchplan = &input
+		return nil
+	})
+	repository.LaunchPlanRepo().(*repositoryMocks.MockLaunchPlanRepo).SetGetCallback(func(input interfaces.Identifier) (models.LaunchPlan, error) {
+		if launchplan == nil {
+			return models.LaunchPlan{}, flyteAdminErrors.NewFlyteAdminError(codes.NotFound, "launchplan not found")
+		}
+		return *launchplan, nil
+	})
 
 	mockStorage := getMockStorageForExecTest(context.Background())
 	workflowManager := NewWorkflowManager(
@@ -4218,13 +4249,7 @@ func TestCreateSingleTaskExecution(t *testing.T) {
 		Domain:  "production",
 		Name:    "singletaskexec",
 		Spec: &admin.ExecutionSpec{
-			LaunchPlan: &core.Identifier{
-				Project:      "flytekit",
-				Domain:       "production",
-				Name:         "simple_task",
-				Version:      "12345",
-				ResourceType: core.ResourceType_TASK,
-			},
+			LaunchPlan: taskIdentifier,
 		},
 		Inputs: &core.LiteralMap{
 			Literals: map[string]*core.Literal{
@@ -4244,45 +4269,17 @@ func TestCreateSingleTaskExecution(t *testing.T) {
 			},
 		},
 	}
-	marshaller := jsonpb.Marshaler{}
-	stringReq, ferr := marshaller.MarshalToString(&request)
-	assert.NoError(t, ferr)
-	println(fmt.Sprintf("req: %+v", stringReq))
-	_, err := execManager.CreateExecution(context.TODO(), admin.ExecutionCreateRequest{
-		Project: "flytekit",
-		Domain:  "production",
-		Name:    "singletaskexec",
-		Spec: &admin.ExecutionSpec{
-			LaunchPlan: &core.Identifier{
-				Project:      "flytekit",
-				Domain:       "production",
-				Name:         "simple_task",
-				Version:      "12345",
-				ResourceType: core.ResourceType_TASK,
-			},
-			AuthRole: &admin.AuthRole{
-				KubernetesServiceAccount: "foo",
-			},
-		},
-		Inputs: &core.LiteralMap{
-			Literals: map[string]*core.Literal{
-				"a": {
-					Value: &core.Literal_Scalar{
-						Scalar: &core.Scalar{
-							Value: &core.Scalar_Primitive{
-								Primitive: &core.Primitive{
-									Value: &core.Primitive_Integer{
-										Integer: 999,
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}, time.Now())
 
+	marshaller := jsonpb.Marshaler{}
+	_, ferr := marshaller.MarshalToString(&request)
+	assert.NoError(t, ferr)
+
+	// test once to create an initial launchplan
+	_, err := execManager.CreateExecution(context.TODO(), request, time.Now())
+	assert.NoError(t, err)
+
+	// test again to ensure existing launchplan retrieval works
+	_, err = execManager.CreateExecution(context.TODO(), request, time.Now())
 	assert.NoError(t, err)
 }
 

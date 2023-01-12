@@ -25,6 +25,7 @@ import (
 	"github.com/flyteorg/flyteadmin/auth/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/config"
+	"github.com/flyteorg/flyteadmin/pkg/rpc"
 	"github.com/flyteorg/flyteadmin/pkg/rpc/adminservice"
 	runtimeIfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
@@ -126,6 +127,8 @@ func newGRPCServer(ctx context.Context, pluginRegistry *plugins.Registry, cfg *c
 	pluginRegistry.RegisterDefault(plugins.PluginIDDataProxy, dataProxySvc)
 	service.RegisterDataProxyServiceServer(grpcServer, plugins.Get[service.DataProxyServiceServer](pluginRegistry, plugins.PluginIDDataProxy))
 
+	service.RegisterSignalServiceServer(grpcServer, rpc.NewSignalServer(ctx, configuration, scope.NewSubScope("signal")))
+
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus("flyteadmin", grpc_health_v1.HealthCheckResponse_SERVING)
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
@@ -218,6 +221,11 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, _ *authConfig.
 	err = service.RegisterDataProxyServiceHandlerFromEndpoint(ctx, gwmux, grpcAddress, grpcConnectionOpts)
 	if err != nil {
 		return nil, errors.Wrap(err, "error registering data proxy service")
+	}
+
+	err = service.RegisterSignalServiceHandlerFromEndpoint(ctx, gwmux, grpcAddress, grpcConnectionOpts)
+	if err != nil {
+		return nil, errors.Wrap(err, "error registering signal service")
 	}
 
 	mux.Handle("/", gwmux)
