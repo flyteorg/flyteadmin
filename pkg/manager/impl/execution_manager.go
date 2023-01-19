@@ -18,17 +18,20 @@ import (
 
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/resources"
 
-	dataInterfaces "github.com/flyteorg/flyteadmin/pkg/data/interfaces"
-	"github.com/flyteorg/flytestdlib/contextutils"
-	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/prometheus/client_golang/prometheus"
+
+	dataInterfaces "github.com/flyteorg/flyteadmin/pkg/data/interfaces"
+	"github.com/flyteorg/flytestdlib/contextutils"
+	"github.com/flyteorg/flytestdlib/promutils"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
 
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/storage"
+
+	"google.golang.org/grpc/codes"
 
 	cloudeventInterfaces "github.com/flyteorg/flyteadmin/pkg/async/cloudevent/interfaces"
 	eventWriter "github.com/flyteorg/flyteadmin/pkg/async/events/interfaces"
@@ -46,11 +49,11 @@ import (
 	workflowengineInterfaces "github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"google.golang.org/grpc/codes"
 
 	"github.com/benbjohnson/clock"
-	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
 	"github.com/golang/protobuf/proto"
+
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
 )
 
 const childContainerQueueKey = "child_queue"
@@ -1526,8 +1529,10 @@ func (m *ExecutionManager) ListExecutions(
 	}
 
 	// Check if state filter exists and if not then add filter to fetch only ACTIVE executions
-	if filters, err = addStateFilter(filters); err != nil {
-		return nil, err
+	if !request.IncludeArchived {
+		if filters, err = addStateFilter(filters); err != nil {
+			return nil, err
+		}
 	}
 
 	listExecutionsInput := repositoryInterfaces.ListResourceInput{
