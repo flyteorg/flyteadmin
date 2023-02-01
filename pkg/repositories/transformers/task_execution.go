@@ -458,7 +458,7 @@ func handleTaskExecutionInputs(ctx context.Context, taskExecutionModel *models.T
 			request.Event.ParentNodeExecutionId.ExecutionId.Project, request.Event.ParentNodeExecutionId.ExecutionId.Domain,
 			request.Event.ParentNodeExecutionId.ExecutionId.Name, request.Event.ParentNodeExecutionId.NodeId,
 			request.Event.TaskId.Project, request.Event.TaskId.Domain, request.Event.TaskId.Name, request.Event.TaskId.Version,
-			strconv.FormatUint(uint64(request.Event.RetryAttempt), 10), OutputsObjectSuffix)
+			strconv.FormatUint(uint64(request.Event.RetryAttempt), 10), InputsObjectSuffix)
 		if err != nil {
 			return err
 		}

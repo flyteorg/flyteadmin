@@ -336,7 +336,7 @@ func handleNodeExecutionInputs(ctx context.Context,
 	if request.Event.GetInputData() != nil {
 		uri, err := common.OffloadLiteralMap(ctx, storageClient, request.Event.GetInputData(),
 			request.Event.Id.ExecutionId.Project, request.Event.Id.ExecutionId.Domain, request.Event.Id.ExecutionId.Name,
-			request.Event.Id.NodeId, OutputsObjectSuffix)
+			request.Event.Id.NodeId, InputsObjectSuffix)
 		if err != nil {
 			return err
 		}
