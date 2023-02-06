@@ -2,16 +2,50 @@ package util
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	workflowengineInterfaces "github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/logger"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
-func ParseQuantityNoError(ctx context.Context, ownerID, name, value string) resource.Quantity {
+func getTaskResourcesAsSet(ctx context.Context, identifier *core.Identifier,
+	resourceEntries []*core.Resources_ResourceEntry, resourceName string) runtimeInterfaces.TaskResourceSet {
+
+	result := runtimeInterfaces.TaskResourceSet{}
+	for _, entry := range resourceEntries {
+		switch entry.Name {
+		case core.Resources_CPU:
+			result.CPU = parseQuantityNoError(ctx, identifier.String(), fmt.Sprintf("%v.cpu", resourceName), entry.Value)
+		case core.Resources_MEMORY:
+			result.Memory = parseQuantityNoError(ctx, identifier.String(), fmt.Sprintf("%v.memory", resourceName), entry.Value)
+		case core.Resources_EPHEMERAL_STORAGE:
+			result.EphemeralStorage = parseQuantityNoError(ctx, identifier.String(),
+				fmt.Sprintf("%v.ephemeral storage", resourceName), entry.Value)
+		case core.Resources_GPU:
+			result.GPU = parseQuantityNoError(ctx, identifier.String(), "gpu", entry.Value)
+		}
+	}
+
+	return result
+}
+
+func GetCompleteTaskResourceRequirements(ctx context.Context, identifier *core.Identifier, task *core.CompiledTask) workflowengineInterfaces.TaskResources {
+	/*return completeTaskResources{
+		Defaults: getTaskResourcesAsSet(ctx, identifier, task.GetTemplate().GetContainer().Resources.Requests, "requests"),
+		Limits:   getTaskResourcesAsSet(ctx, identifier, task.GetTemplate().GetContainer().Resources.Limits, "limits"),
+	}*/
+	return workflowengineInterfaces.TaskResources{
+		Defaults: getTaskResourcesAsSet(ctx, identifier, task.GetTemplate().GetContainer().Resources.Requests, "requests"),
+		Limits:   getTaskResourcesAsSet(ctx, identifier, task.GetTemplate().GetContainer().Resources.Limits, "limits"),
+	}
+}
+
+func parseQuantityNoError(ctx context.Context, ownerID, name, value string) resource.Quantity {
 	q, err := resource.ParseQuantity(value)
 	if err != nil {
 		logger.Infof(ctx, "Failed to parse owner's [%s] resource [%s]'s value [%s] with err: %v", ownerID, name, value, err)
@@ -23,23 +57,23 @@ func ParseQuantityNoError(ctx context.Context, ownerID, name, value string) reso
 func fromAdminProtoTaskResourceSpec(ctx context.Context, spec *admin.TaskResourceSpec) runtimeInterfaces.TaskResourceSet {
 	result := runtimeInterfaces.TaskResourceSet{}
 	if len(spec.Cpu) > 0 {
-		result.CPU = ParseQuantityNoError(ctx, "project", "cpu", spec.Cpu)
+		result.CPU = parseQuantityNoError(ctx, "project", "cpu", spec.Cpu)
 	}
 
 	if len(spec.Memory) > 0 {
-		result.Memory = ParseQuantityNoError(ctx, "project", "memory", spec.Memory)
+		result.Memory = parseQuantityNoError(ctx, "project", "memory", spec.Memory)
 	}
 
 	if len(spec.Storage) > 0 {
-		result.Storage = ParseQuantityNoError(ctx, "project", "storage", spec.Storage)
+		result.Storage = parseQuantityNoError(ctx, "project", "storage", spec.Storage)
 	}
 
 	if len(spec.EphemeralStorage) > 0 {
-		result.EphemeralStorage = ParseQuantityNoError(ctx, "project", "ephemeral storage", spec.EphemeralStorage)
+		result.EphemeralStorage = parseQuantityNoError(ctx, "project", "ephemeral storage", spec.EphemeralStorage)
 	}
 
 	if len(spec.Gpu) > 0 {
-		result.GPU = ParseQuantityNoError(ctx, "project", "gpu", spec.Gpu)
+		result.GPU = parseQuantityNoError(ctx, "project", "gpu", spec.Gpu)
 	}
 
 	return result

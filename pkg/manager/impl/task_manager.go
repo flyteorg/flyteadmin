@@ -43,7 +43,7 @@ type TaskManager struct {
 	config          runtimeInterfaces.Configuration
 	compiler        workflowengine.Compiler
 	metrics         taskMetrics
-	resourceManager interfaces.ResourceInterface
+	ResourceManager interfaces.ResourceInterface
 }
 
 func getTaskContext(ctx context.Context, identifier *core.Identifier) context.Context {
@@ -64,7 +64,7 @@ func setDefaults(request admin.TaskCreateRequest) (admin.TaskCreateRequest, erro
 func (t *TaskManager) CreateTask(
 	ctx context.Context,
 	request admin.TaskCreateRequest) (*admin.TaskCreateResponse, error) {
-	platformTaskResources := util.GetTaskResources(ctx, request.Id.Project, request.Id.Domain, "", t.resourceManager, t.config.TaskResourceConfiguration())
+	platformTaskResources := util.GetTaskResources(ctx, request.Id.Project, request.Id.Domain, "", t.ResourceManager, t.config.TaskResourceConfiguration())
 	if err := validation.ValidateTask(ctx, request, t.db, platformTaskResources,
 		t.config.WhitelistConfiguration(), t.config.ApplicationConfiguration()); err != nil {
 		logger.Debugf(ctx, "Task [%+v] failed validation with err: %v", request.Id, err)
@@ -278,6 +278,6 @@ func NewTaskManager(
 		config:          config,
 		compiler:        compiler,
 		metrics:         metrics,
-		resourceManager: resourceManager,
+		ResourceManager: resourceManager,
 	}
 }
