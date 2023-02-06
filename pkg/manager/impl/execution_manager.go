@@ -515,7 +515,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	}
 
 	// Dynamically assign task resource defaults.
-	platformTaskResources := util.GetTaskResources(ctx, workflow.Id.Project, workflow.Id.Domain, workflow.Id.Name, m.resourceManager, m.config.TaskResourceConfiguration())
+	platformTaskResources := util.GetTaskResources(ctx, workflow.Id, m.resourceManager, m.config.TaskResourceConfiguration())
 	for _, t := range workflow.Closure.CompiledWorkflow.Tasks {
 		m.setCompiledTaskDefaults(ctx, t, platformTaskResources)
 	}
@@ -767,7 +767,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 	}
 
 	// Dynamically assign task resource defaults.
-	platformTaskResources := util.GetTaskResources(ctx, workflow.Id.Project, workflow.Id.Domain, workflow.Id.Name, m.resourceManager, m.config.TaskResourceConfiguration())
+	platformTaskResources := util.GetTaskResources(ctx, workflow.Id, m.resourceManager, m.config.TaskResourceConfiguration())
 	for _, task := range workflow.Closure.CompiledWorkflow.Tasks {
 		m.setCompiledTaskDefaults(ctx, task, platformTaskResources)
 	}

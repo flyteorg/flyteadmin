@@ -26,7 +26,7 @@ func getMockTaskResources() workflowengineInterfaces.TaskResources {
 			Memory: resource.MustParse("500Mi"),
 			CPU:    resource.MustParse("200m"),
 			GPU:    resource.MustParse("8"),
-		}
+		},
 	}
 }
 

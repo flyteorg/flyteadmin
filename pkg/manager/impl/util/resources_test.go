@@ -66,7 +66,7 @@ func TestGetTaskResources(t *testing.T) {
 			return &managerInterfaces.ResourceResponse{}, nil
 		}
 
-		taskResourceAttrs := GetTaskResources(context.TODO(), workflowIdentifier.Project, workflowIdentifier.Domain, workflowIdentifier.Name, &resourceManager, &taskConfig)
+		taskResourceAttrs := GetTaskResources(context.TODO(), &workflowIdentifier, &resourceManager, &taskConfig)
 		assert.EqualValues(t, taskResourceAttrs, workflowengineInterfaces.TaskResources{
 			Defaults: runtimeInterfaces.TaskResourceSet{
 				CPU:              resource.MustParse("200m"),
@@ -122,7 +122,7 @@ func TestGetTaskResources(t *testing.T) {
 			config:          mockConfig,
 		}
 		taskResourceAttrs := executionManager.getTaskResources(context.TODO(), &workflowIdentifier)*/
-		taskResourceAttrs := GetTaskResources(context.TODO(), workflowIdentifier.Project, workflowIdentifier.Domain, workflowIdentifier.Name, &resourceManager, &taskConfig)
+		taskResourceAttrs := GetTaskResources(context.TODO(), &workflowIdentifier, &resourceManager, &taskConfig)
 		assert.EqualValues(t, taskResourceAttrs, workflowengineInterfaces.TaskResources{
 			Defaults: runtimeInterfaces.TaskResourceSet{
 				CPU:              resource.MustParse("1200m"),

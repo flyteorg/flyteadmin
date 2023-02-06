@@ -80,22 +80,29 @@ func fromAdminProtoTaskResourceSpec(ctx context.Context, spec *admin.TaskResourc
 }
 
 // TODO @hamersaw - docs
-func GetTaskResources(ctx context.Context, project, domain, workflowName string, resourceManager interfaces.ResourceInterface,
+func GetTaskResources(ctx context.Context, id *core.Identifier, resourceManager interfaces.ResourceInterface,
 	taskResourceConfig runtimeInterfaces.TaskResourceConfiguration) workflowengineInterfaces.TaskResources {
 
-	resource, err := resourceManager.GetResource(ctx, interfaces.ResourceRequest{
-		Project:      project,
-		Domain:       domain,
-		Workflow:     workflowName,
+	request := interfaces.ResourceRequest{
 		ResourceType: admin.MatchableResource_TASK_RESOURCE,
-	})
-
-	if err != nil {
-		logger.Warningf(ctx, "Failed to fetch override values when assigning task resource default values for [%s:%s:%s]: %v",
-			project, domain, workflowName, err)
+	}
+	if id != nil && len(id.Project) > 0 {
+		request.Project = id.Project
+	}
+	if id != nil && len(id.Domain) > 0 {
+		request.Domain = id.Domain
+	}
+	if id != nil && id.ResourceType == core.ResourceType_WORKFLOW && len(id.Name) > 0 {
+		request.Workflow = id.Name
 	}
 
-	logger.Debugf(ctx, "Assigning task requested resources for [%s:%s:%s]", project, domain, workflowName)
+	resource, err := resourceManager.GetResource(ctx, request)
+	if err != nil {
+		logger.Warningf(ctx, "Failed to fetch override values when assigning task resource default values for [%+v]: %v",
+			id, err)
+	}
+
+	logger.Debugf(ctx, "Assigning task requested resources for [%+v]", id)
 	var taskResourceAttributes = workflowengineInterfaces.TaskResources{}
 	if resource != nil && resource.Attributes != nil && resource.Attributes.GetTaskResourceAttributes() != nil {
 		taskResourceAttributes.Defaults = fromAdminProtoTaskResourceSpec(ctx, resource.Attributes.GetTaskResourceAttributes().Defaults)
