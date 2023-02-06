@@ -14,8 +14,6 @@ import (
 
 	"github.com/flyteorg/flyteadmin/auth"
 
-	"k8s.io/apimachinery/pkg/api/resource"
-
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/resources"
 
 	dataInterfaces "github.com/flyteorg/flyteadmin/pkg/data/interfaces"
@@ -198,14 +196,14 @@ func getTaskResourcesAsSet(ctx context.Context, identifier *core.Identifier,
 	for _, entry := range resourceEntries {
 		switch entry.Name {
 		case core.Resources_CPU:
-			result.CPU = parseQuantityNoError(ctx, identifier.String(), fmt.Sprintf("%v.cpu", resourceName), entry.Value)
+			result.CPU = util.ParseQuantityNoError(ctx, identifier.String(), fmt.Sprintf("%v.cpu", resourceName), entry.Value)
 		case core.Resources_MEMORY:
-			result.Memory = parseQuantityNoError(ctx, identifier.String(), fmt.Sprintf("%v.memory", resourceName), entry.Value)
+			result.Memory = util.ParseQuantityNoError(ctx, identifier.String(), fmt.Sprintf("%v.memory", resourceName), entry.Value)
 		case core.Resources_EPHEMERAL_STORAGE:
-			result.EphemeralStorage = parseQuantityNoError(ctx, identifier.String(),
+			result.EphemeralStorage = util.ParseQuantityNoError(ctx, identifier.String(),
 				fmt.Sprintf("%v.ephemeral storage", resourceName), entry.Value)
 		case core.Resources_GPU:
-			result.GPU = parseQuantityNoError(ctx, identifier.String(), "gpu", entry.Value)
+			result.GPU = util.ParseQuantityNoError(ctx, identifier.String(), "gpu", entry.Value)
 		}
 	}
 
@@ -334,7 +332,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 	}
 }
 
-func parseQuantityNoError(ctx context.Context, ownerID, name, value string) resource.Quantity {
+/*func parseQuantityNoError(ctx context.Context, ownerID, name, value string) resource.Quantity {
 	q, err := resource.ParseQuantity(value)
 	if err != nil {
 		logger.Infof(ctx, "Failed to parse owner's [%s] resource [%s]'s value [%s] with err: %v", ownerID, name, value, err)
@@ -366,9 +364,9 @@ func fromAdminProtoTaskResourceSpec(ctx context.Context, spec *admin.TaskResourc
 	}
 
 	return result
-}
+}*/
 
-func (m *ExecutionManager) getTaskResources(ctx context.Context, workflow *core.Identifier) workflowengineInterfaces.TaskResources {
+/*func (m *ExecutionManager) getTaskResources(ctx context.Context, workflow *core.Identifier) workflowengineInterfaces.TaskResources {
 	resource, err := m.resourceManager.GetResource(ctx, interfaces.ResourceRequest{
 		Project:      workflow.Project,
 		Domain:       workflow.Domain,
@@ -394,7 +392,7 @@ func (m *ExecutionManager) getTaskResources(ctx context.Context, workflow *core.
 	}
 
 	return taskResourceAttributes
-}
+}*/
 
 // Fetches inherited execution metadata including the parent node execution db model id and the source execution model id
 // as well as sets request spec metadata with the inherited principal and adjusted nesting data.
@@ -612,7 +610,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	}
 
 	// Dynamically assign task resource defaults.
-	platformTaskResources := m.getTaskResources(ctx, workflow.Id)
+	platformTaskResources := util.GetTaskResources(ctx, workflow.Id.Project, workflow.Id.Domain, workflow.Id.Name, m.resourceManager, m.config.TaskResourceConfiguration())
 	for _, t := range workflow.Closure.CompiledWorkflow.Tasks {
 		m.setCompiledTaskDefaults(ctx, t, platformTaskResources)
 	}
@@ -863,8 +861,8 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		return nil, nil, err
 	}
 
-	platformTaskResources := m.getTaskResources(ctx, workflow.Id)
 	// Dynamically assign task resource defaults.
+	platformTaskResources := util.GetTaskResources(ctx, workflow.Id.Project, workflow.Id.Domain, workflow.Id.Name, m.resourceManager, m.config.TaskResourceConfiguration())
 	for _, task := range workflow.Closure.CompiledWorkflow.Tasks {
 		m.setCompiledTaskDefaults(ctx, task, platformTaskResources)
 	}
