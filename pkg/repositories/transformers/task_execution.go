@@ -453,7 +453,10 @@ func handleTaskExecutionInputs(ctx context.Context, taskExecutionModel *models.T
 		// Inputs are static over the duration of the task execution, no need to update them when they're already set
 		return nil
 	}
-	if request.GetEvent().GetInputData() != nil {
+	switch request.Event.GetInputValue().(type) {
+	case *event.TaskExecutionEvent_InputUri:
+		taskExecutionModel.InputURI = request.GetEvent().GetInputUri()
+	case *event.TaskExecutionEvent_InputData:
 		uri, err := common.OffloadLiteralMap(ctx, storageClient, request.GetEvent().GetInputData(),
 			request.Event.ParentNodeExecutionId.ExecutionId.Project, request.Event.ParentNodeExecutionId.ExecutionId.Domain,
 			request.Event.ParentNodeExecutionId.ExecutionId.Name, request.Event.ParentNodeExecutionId.NodeId,
@@ -464,10 +467,9 @@ func handleTaskExecutionInputs(ctx context.Context, taskExecutionModel *models.T
 		}
 		logger.Debugf(ctx, "offloaded task execution inputs to [%s]", uri)
 		taskExecutionModel.InputURI = uri.String()
-	} else if len(request.GetEvent().GetInputUri()) > 0 {
-		taskExecutionModel.InputURI = request.GetEvent().GetInputUri()
-	} else {
+	default:
 		logger.Debugf(ctx, "request contained no input data")
+
 	}
 	return nil
 }

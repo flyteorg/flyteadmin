@@ -3,6 +3,8 @@ package transformers
 import (
 	"context"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+
 	"github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flytestdlib/storage"
 
@@ -333,7 +335,11 @@ func handleNodeExecutionInputs(ctx context.Context,
 		// Inputs are static over the duration of the node execution, no need to update them when they're already set
 		return nil
 	}
-	if request.Event.GetInputData() != nil {
+	switch request.Event.GetInputValue().(type) {
+	case *event.NodeExecutionEvent_InputUri:
+		logger.Debugf(ctx, "saving node execution input URI [%s]", request.Event.GetInputUri())
+		nodeExecutionModel.InputURI = request.Event.GetInputUri()
+	case *event.NodeExecutionEvent_InputData:
 		uri, err := common.OffloadLiteralMap(ctx, storageClient, request.Event.GetInputData(),
 			request.Event.Id.ExecutionId.Project, request.Event.Id.ExecutionId.Domain, request.Event.Id.ExecutionId.Name,
 			request.Event.Id.NodeId, InputsObjectSuffix)
@@ -342,11 +348,9 @@ func handleNodeExecutionInputs(ctx context.Context,
 		}
 		logger.Debugf(ctx, "offloaded node execution inputs to [%s]", uri)
 		nodeExecutionModel.InputURI = uri.String()
-	} else if len(request.Event.GetInputUri()) > 0 {
-		logger.Debugf(ctx, "saving node execution input URI [%s]", request.Event.GetInputUri())
-		nodeExecutionModel.InputURI = request.Event.GetInputUri()
-	} else {
+	default:
 		logger.Debugf(ctx, "request contained no input data")
+
 	}
 	return nil
 }
