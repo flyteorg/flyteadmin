@@ -13,6 +13,17 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
+// parseQuantityNoError parses the k8s defined resource quantity gracefully masking errors.
+func parseQuantityNoError(ctx context.Context, ownerID, name, value string) resource.Quantity {
+	q, err := resource.ParseQuantity(value)
+	if err != nil {
+		logger.Infof(ctx, "Failed to parse owner's [%s] resource [%s]'s value [%s] with err: %v", ownerID, name, value, err)
+	}
+
+	return q
+}
+
+// getTaskResourcesAsSet converts a list of flyteidl `ResourceEntry` messages into a singular `TaskResourceSet`.
 func getTaskResourcesAsSet(ctx context.Context, identifier *core.Identifier,
 	resourceEntries []*core.Resources_ResourceEntry, resourceName string) runtimeInterfaces.TaskResourceSet {
 
@@ -34,26 +45,15 @@ func getTaskResourcesAsSet(ctx context.Context, identifier *core.Identifier,
 	return result
 }
 
+// GetCompleteTaskResourceRequirements parses the resource requests and limits from the `TaskTemplate` Container.
 func GetCompleteTaskResourceRequirements(ctx context.Context, identifier *core.Identifier, task *core.CompiledTask) workflowengineInterfaces.TaskResources {
-	/*return completeTaskResources{
-		Defaults: getTaskResourcesAsSet(ctx, identifier, task.GetTemplate().GetContainer().Resources.Requests, "requests"),
-		Limits:   getTaskResourcesAsSet(ctx, identifier, task.GetTemplate().GetContainer().Resources.Limits, "limits"),
-	}*/
 	return workflowengineInterfaces.TaskResources{
 		Defaults: getTaskResourcesAsSet(ctx, identifier, task.GetTemplate().GetContainer().Resources.Requests, "requests"),
 		Limits:   getTaskResourcesAsSet(ctx, identifier, task.GetTemplate().GetContainer().Resources.Limits, "limits"),
 	}
 }
 
-func parseQuantityNoError(ctx context.Context, ownerID, name, value string) resource.Quantity {
-	q, err := resource.ParseQuantity(value)
-	if err != nil {
-		logger.Infof(ctx, "Failed to parse owner's [%s] resource [%s]'s value [%s] with err: %v", ownerID, name, value, err)
-	}
-
-	return q
-}
-
+// fromAdminProtoTaskResourceSpec parses the flyteidl `TaskResourceSpec` message into a `TaskResourceSet`.
 func fromAdminProtoTaskResourceSpec(ctx context.Context, spec *admin.TaskResourceSpec) runtimeInterfaces.TaskResourceSet {
 	result := runtimeInterfaces.TaskResourceSet{}
 	if len(spec.Cpu) > 0 {
@@ -79,7 +79,9 @@ func fromAdminProtoTaskResourceSpec(ctx context.Context, spec *admin.TaskResourc
 	return result
 }
 
-// TODO @hamersaw - docs
+// GetTaskResources returns the most specific default and limit task resources for the specified id. This first checks
+// if there is a matchable resource(s) defined, and uses the highest priority one, otherwise it falls back to using the
+// flyteadmin default configured values.
 func GetTaskResources(ctx context.Context, id *core.Identifier, resourceManager interfaces.ResourceInterface,
 	taskResourceConfig runtimeInterfaces.TaskResourceConfiguration) workflowengineInterfaces.TaskResources {
 

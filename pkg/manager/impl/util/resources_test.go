@@ -4,14 +4,11 @@ import (
 	"context"
 	"testing"
 
-	//"github.com/flyteorg/flyteadmin/pkg/common/testutils"
-	//"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
 	managerInterfaces "github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 	managerMocks "github.com/flyteorg/flyteadmin/pkg/manager/mocks"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	runtimeMocks "github.com/flyteorg/flyteadmin/pkg/runtime/mocks"
 	workflowengineInterfaces "github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
-	//"github.com/flyteorg/flyteadmin/plugins"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -45,15 +42,8 @@ func TestGetTaskResources(t *testing.T) {
 		EphemeralStorage: resource.MustParse("501Mi"),
 		Storage:          resource.MustParse("450Mi"),
 	}
-	/*mockConfig := runtimeMocks.NewMockConfigurationProvider(
-		testutils.GetApplicationConfigWithDefaultDomains(), nil, nil, &taskConfig,
-		runtimeMocks.NewMockWhitelistConfiguration(), nil)*/
 
 	t.Run("use runtime application values", func(t *testing.T) {
-		//r := plugins.NewRegistry()
-		//r.RegisterDefault(plugins.PluginIDWorkflowExecutor, &defaultTestExecutor)
-		//execManager := NewExecutionManager(repositoryMocks.NewMockRepository(), r, mockConfig, getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
-		//taskResourceAttrs := execManager.(*ExecutionManager).getTaskResources(context.TODO(), &workflowIdentifier)
 		resourceManager := managerMocks.MockResourceManager{}
 		resourceManager.GetResourceFunc = func(ctx context.Context,
 			request managerInterfaces.ResourceRequest) (*managerInterfaces.ResourceResponse, error) {
@@ -117,11 +107,6 @@ func TestGetTaskResources(t *testing.T) {
 				},
 			}, nil
 		}
-		/*executionManager := ExecutionManager{
-			resourceManager: &resourceManager,
-			config:          mockConfig,
-		}
-		taskResourceAttrs := executionManager.getTaskResources(context.TODO(), &workflowIdentifier)*/
 		taskResourceAttrs := GetTaskResources(context.TODO(), &workflowIdentifier, &resourceManager, &taskConfig)
 		assert.EqualValues(t, taskResourceAttrs, workflowengineInterfaces.TaskResources{
 			Defaults: runtimeInterfaces.TaskResourceSet{
