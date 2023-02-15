@@ -326,13 +326,11 @@ func FromExecutionModel(executionModel models.Execution, opts *ExecutionTransfor
 	if err = proto.Unmarshal(executionModel.Closure, &closure); err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal closure")
 	}
-	if opts != nil && opts.TrimErrorMessage {
-		if closure.GetError() != nil && len(closure.GetError().Message) > 0 {
-			trimmedErrOutputResult := closure.GetError()
-			trimmedErrOutputResult.Message = trimmedErrOutputResult.Message[0:trimmedErrMessageLen]
-			closure.OutputResult = &admin.ExecutionClosure_Error{
-				Error: trimmedErrOutputResult,
-			}
+	if closure.GetError() != nil && opts != nil && opts.TrimErrorMessage && len(closure.GetError().Message) > 0 {
+		trimmedErrOutputResult := closure.GetError()
+		trimmedErrOutputResult.Message = trimmedErrOutputResult.Message[0:trimmedErrMessageLen]
+		closure.OutputResult = &admin.ExecutionClosure_Error{
+			Error: trimmedErrOutputResult,
 		}
 	}
 
