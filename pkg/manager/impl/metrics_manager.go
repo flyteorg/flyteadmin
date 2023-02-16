@@ -2,11 +2,13 @@ package impl
 
 import (
 	"context"
-	"fmt"
+	//"fmt"
+	"reflect"
 	"time"
 
 	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 	repoInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	"github.com/pkg/errors"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -140,7 +142,6 @@ func (m *MetricsManager) parseExecution(ctx context.Context, execution *admin.Ex
 
 func (m *MetricsManager) parseNodeExecutions(ctx context.Context, nodeExecutions map[string]*admin.NodeExecution, spans *[]*admin.Span, depth int) error {
 	for _, nodeExecution := range nodeExecutions {
-		fmt.Printf("HAMERSAW - %s\n", nodeExecution.Id.NodeId)
 		if nodeExecution.Id.NodeId == "start-node" || nodeExecution.Id.NodeId == "end-node" {
 			continue
 		}
@@ -222,17 +223,25 @@ func (m *MetricsManager) parseNodeExecution(ctx context.Context, nodeExecution *
 		}
 
 		if !nodeExecution.Metadata.IsParentNode && len(taskExecutions) > 0 {
-			// parse task node
+			// handle task node
 			m.parseTaskNodeExecution(ctx, nodeExecution, taskExecutions, &spans, depth-1)
 		} else if nodeExecution.Metadata.IsParentNode && len(taskExecutions) > 0 {
-			// dynamic node
+			// handle dynamic node
 			if err := m.parseDynamicNodeExecution(ctx, nodeExecution, taskExecutions, nodeExecutions, &spans, depth-1); err != nil {
 				return nil, err
 			}
-		//} else if nodeExecution.Metadata.IsParentNode && nodeExecution.Closure.Target? is a WorkflowNode
-		//} else if nodeExecution.Metadata.IsParentNode && HAS_UNDERLYING_NODE_EXECUTIONS
+		} else if !nodeExecution.Metadata.IsParentNode && nodeExecution.Closure.GetWorkflowNodeMetadata() != nil {
+			// handle launch plan
+			if err := m.parseLaunchPlanNodeExecution(ctx, nodeExecution, &spans, depth-1); err != nil {
+				return nil, err
+			}
+		} else if nodeExecution.Metadata.IsParentNode && len(nodeExecutions) > 0 {
+			// handle subworkflow
+			if err := m.parseSubworkflowNodeExecution(ctx, nodeExecution, nodeExecutions, &spans, depth-1); err != nil {
+				return nil, err
+			}
 		} else {
-			// TODO @hamersaw process branch, gate, launchplan, subworkflow
+			// TODO @hamersaw process branch and gate nodes
 		}
 
 		referenceSpan.Spans = spans
@@ -276,6 +285,101 @@ func (m *MetricsManager) parseDynamicNodeExecution(ctx context.Context, nodeExec
 	// backened overhead
 	latestUpstreamNode, err := m.getLatestUpstreamNodeExecution(ctx, "end-node",
 		nodeExecutionData.DynamicWorkflow.CompiledWorkflow.Primary.Connections.Upstream, nodeExecutions)
+	if err != nil {
+		return err
+	}
+
+	*spans = append(*spans, createCategoricalSpan(latestUpstreamNode.Closure.UpdatedAt,
+		nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+
+	return nil
+}
+
+func (m *MetricsManager) parseLaunchPlanNodeExecution(ctx context.Context,
+	nodeExecution *admin.NodeExecution, spans *[]*admin.Span, depth int) error {
+
+	// retrieve execution
+	workflowNode := nodeExecution.Closure.GetWorkflowNodeMetadata()
+
+	executionRequest := admin.WorkflowExecutionGetRequest{Id: workflowNode.ExecutionId}
+	execution, err := m.executionManager.GetExecution(ctx, executionRequest)
+	if err != nil {
+		return err
+	}
+
+	// frontend overhead
+	*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
+		execution.Closure.CreatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+
+	// execution
+	span, err := m.parseExecution(ctx, execution, depth)
+	if err != nil {
+		return err
+	}
+
+	*spans = append(*spans, span)
+
+	// backend overhead
+	*spans = append(*spans, createCategoricalSpan(execution.Closure.UpdatedAt,
+		nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+
+	return nil
+}
+
+func (m *MetricsManager) parseSubworkflowNodeExecution(ctx context.Context,
+	nodeExecution *admin.NodeExecution, nodeExecutions map[string]*admin.NodeExecution, spans *[]*admin.Span, depth int) error {
+
+	// TODO - retrieve subworkflow
+	executionRequest := admin.WorkflowExecutionGetRequest{Id: nodeExecution.Id.ExecutionId}
+	execution, err := m.executionManager.GetExecution(ctx, executionRequest)
+	if err != nil {
+		return err
+	}
+
+	workflowRequest := admin.ObjectGetRequest{Id: execution.Closure.WorkflowId}
+	workflow, err := m.workflowManager.GetWorkflow(ctx, workflowRequest)
+	if err != nil {
+		return err
+	}
+
+	// identify subworkflow from node id
+	var node *core.Node
+	for _, n := range workflow.Closure.CompiledWorkflow.Primary.Template.Nodes {
+		if n.Id == nodeExecution.Id.NodeId {
+			node = n
+		}
+	}
+
+	if node == nil {
+		return errors.New("failed to identify subworkflow node") // TODO @hamersaw - do gooder
+	}
+
+	subworkflowId := node.GetWorkflowNode().GetSubWorkflowRef()
+
+	var subworkflow *core.CompiledWorkflow
+	for _, subworkflowRef := range workflow.Closure.CompiledWorkflow.SubWorkflows {
+		if reflect.DeepEqual(subworkflowId, subworkflowRef.Template.Id) {
+			subworkflow = subworkflowRef
+		}
+	}
+
+	if subworkflow == nil {
+		return errors.New("failed to identify subworkflow") // TODO @hamersaw - do gooder
+	}
+
+	// frontend overhead
+	startNode := nodeExecutions["start-node"]
+	*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
+		startNode.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+
+	// node execution(s)
+	if err := m.parseNodeExecutions(ctx, nodeExecutions, spans, depth); err != nil {
+		return err
+	}
+
+	// backened overhead
+	latestUpstreamNode, err := m.getLatestUpstreamNodeExecution(ctx, "end-node",
+		subworkflow.Connections.Upstream, nodeExecutions)
 	if err != nil {
 		return err
 	}
