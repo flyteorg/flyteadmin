@@ -2,8 +2,8 @@ package impl
 
 import (
 	"context"
-	//"fmt"
-	"reflect"
+	"fmt"
+	//"reflect"
 	"time"
 
 	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
@@ -66,194 +66,48 @@ func (m *MetricsManager) getLatestUpstreamNodeExecution(ctx context.Context, nod
 	return nodeExecution, nil
 }
 
-func (m *MetricsManager) parseExecution(ctx context.Context, execution *admin.Execution, depth int) (*admin.Span, error) {
-	referenceSpan := &admin.ReferenceSpanInfo{
-		Id: &admin.ReferenceSpanInfo_WorkflowId{
-			WorkflowId: execution.Id,
-		},
-	}
-
-	if depth != 0 {
-		spans := make([]*admin.Span, 0) // TODO @hamersaw how to make an array
-
-		// retrieve workflow, execution, and node executions
-		workflowRequest := admin.ObjectGetRequest{Id: execution.Closure.WorkflowId}
-		workflow, err := m.workflowManager.GetWorkflow(ctx, workflowRequest)
+func (m *MetricsManager) getNodeExecutions(ctx context.Context, request admin.NodeExecutionListRequest) (map[string]*admin.NodeExecution, error) {
+	nodeExecutions := make(map[string]*admin.NodeExecution)
+	for {
+		response, err := m.nodeExecutionManager.ListNodeExecutions(ctx, request)
 		if err != nil {
 			return nil, err
 		}
 
-		nodeExecutions := make(map[string]*admin.NodeExecution)
-		nodeListRequest := admin.NodeExecutionListRequest{
-			WorkflowExecutionId: execution.Id,
-			Limit: 20, // TODO @hamersaw - parameterize?
+		for _, nodeExecution := range response.NodeExecutions {
+			nodeExecutions[nodeExecution.Metadata.SpecNodeId] = nodeExecution
 		}
 
-		for {
-			nodeListResponse, err := m.nodeExecutionManager.ListNodeExecutions(ctx, nodeListRequest)
-			if err != nil {
-				return nil, err
-			}
-
-			for _, nodeExecution := range nodeListResponse.NodeExecutions {
-				nodeExecutions[nodeExecution.Metadata.SpecNodeId] = nodeExecution
-			}
-
-			if len(nodeListResponse.NodeExecutions) < int(nodeListRequest.Limit) {
-				break
-			}
-
-			nodeListRequest.Token = nodeListResponse.Token
+		if len(response.NodeExecutions) < int(request.Limit) {
+			break
 		}
 
-		// TODO @hamersaw - sort nodeExecutions by CreatedAt
-
-		// compute frontend overhead
-		startNode := nodeExecutions["start-node"]
-		spans = append(spans, createCategoricalSpan(execution.Closure.CreatedAt,
-			startNode.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
-		
-		// iterate over nodes and compute overhead
-		if err := m.parseNodeExecutions(ctx, nodeExecutions, &spans, depth); err != nil {
-			return nil, err
-		}
-
-		// compute backend overhead
-		latestUpstreamNode, err := m.getLatestUpstreamNodeExecution(ctx, "end-node",
-			workflow.Closure.CompiledWorkflow.Primary.Connections.Upstream, nodeExecutions)
-		if err != nil {
-			return nil, err
-		}
-
-		spans = append(spans, createCategoricalSpan(latestUpstreamNode.Closure.UpdatedAt,
-			execution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
-
-		referenceSpan.Spans = spans
+		request.Token = response.Token
 	}
 
-	return &admin.Span{
-		StartTime: execution.Closure.CreatedAt,
-		EndTime: execution.Closure.UpdatedAt,
-		Info: &admin.Span_Reference{
-			Reference: referenceSpan,
-		},
-	}, nil
+	return nodeExecutions, nil
 }
 
-func (m *MetricsManager) parseNodeExecutions(ctx context.Context, nodeExecutions map[string]*admin.NodeExecution, spans *[]*admin.Span, depth int) error {
-	for _, nodeExecution := range nodeExecutions {
-		if nodeExecution.Id.NodeId == "start-node" || nodeExecution.Id.NodeId == "end-node" {
-			continue
-		}
-
-		nodeExecutionSpan, err := m.parseNodeExecution(ctx, nodeExecution, depth-1)
+func (m *MetricsManager) getTaskExecutions(ctx context.Context, request admin.TaskExecutionListRequest) ([]*admin.TaskExecution, error) {
+	taskExecutions := make([]*admin.TaskExecution, 0)
+	for {
+		response, err := m.taskExecutionManager.ListTaskExecutions(ctx, request)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		// TODO @hamersaw - prepend nodeExecution spans with NODE_TRANSITION time
 
-		*spans = append(*spans, nodeExecutionSpan)
+		for _, taskExecution := range response.TaskExecutions {
+			taskExecutions = append(taskExecutions, taskExecution)
+		}
+
+		if len(response.TaskExecutions) < int(request.Limit) {
+			break
+		}
+
+		request.Token = response.Token
 	}
 
-	return nil
-}
-
-func (m *MetricsManager) parseNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution, depth int) (*admin.Span, error) {
-	referenceSpan := &admin.ReferenceSpanInfo{
-		Id: &admin.ReferenceSpanInfo_NodeId{
-			NodeId: nodeExecution.Id,
-		},
-	}
-
-	if depth != 0 {
-		spans := make([]*admin.Span, 0) // TODO @hamersaw how to make an array
-
-		taskExecutions := make([]*admin.TaskExecution, 0)
-		taskListRequest := admin.TaskExecutionListRequest{
-			NodeExecutionId: nodeExecution.Id,
-			Limit: 20, // TODO @hamersaw - parameterize?
-		}
-
-		// TODO @hamersaw - refactor out task and node execution retrieval
-		for {
-			taskListResponse, err := m.taskExecutionManager.ListTaskExecutions(ctx, taskListRequest)
-			if err != nil {
-				return nil, err
-			}
-
-			for _, taskExecution := range taskListResponse.TaskExecutions {
-				taskExecutions = append(taskExecutions, taskExecution)
-			}
-
-			if len(taskListResponse.TaskExecutions) < int(taskListRequest.Limit) {
-				break
-			}
-
-			taskListRequest.Token = taskListResponse.Token
-		}
-
-		// TODO @hamersaw - sort taskExecutions by CreatedAt
-		/*sort.Slice(a, func(i, j int) bool {
-			return a[i] < a[j]
-		})*/
-
-		nodeExecutions := make(map[string]*admin.NodeExecution)
-		nodeListRequest := admin.NodeExecutionListRequest{
-			WorkflowExecutionId: nodeExecution.Id.ExecutionId,
-			Limit: 20, // TODO @hamersaw - parameterize?
-			UniqueParentId: nodeExecution.Id.NodeId,
-		}
-
-		// TODO - refactor this out!
-		for {
-			nodeListResponse, err := m.nodeExecutionManager.ListNodeExecutions(ctx, nodeListRequest)
-			if err != nil {
-				return nil, err
-			}
-
-			for _, nodeExecution := range nodeListResponse.NodeExecutions {
-				nodeExecutions[nodeExecution.Metadata.SpecNodeId] = nodeExecution
-			}
-
-			if len(nodeListResponse.NodeExecutions) < int(nodeListRequest.Limit) {
-				break
-			}
-
-			nodeListRequest.Token = nodeListResponse.Token
-		}
-
-		if !nodeExecution.Metadata.IsParentNode && len(taskExecutions) > 0 {
-			// handle task node
-			m.parseTaskNodeExecution(ctx, nodeExecution, taskExecutions, &spans, depth-1)
-		} else if nodeExecution.Metadata.IsParentNode && len(taskExecutions) > 0 {
-			// handle dynamic node
-			if err := m.parseDynamicNodeExecution(ctx, nodeExecution, taskExecutions, nodeExecutions, &spans, depth-1); err != nil {
-				return nil, err
-			}
-		} else if !nodeExecution.Metadata.IsParentNode && nodeExecution.Closure.GetWorkflowNodeMetadata() != nil {
-			// handle launch plan
-			if err := m.parseLaunchPlanNodeExecution(ctx, nodeExecution, &spans, depth-1); err != nil {
-				return nil, err
-			}
-		} else if nodeExecution.Metadata.IsParentNode && len(nodeExecutions) > 0 {
-			// handle subworkflow
-			if err := m.parseSubworkflowNodeExecution(ctx, nodeExecution, nodeExecutions, &spans, depth-1); err != nil {
-				return nil, err
-			}
-		} else {
-			// TODO @hamersaw process branch and gate nodes
-		}
-
-		referenceSpan.Spans = spans
-	}
-
-	return &admin.Span{
-		StartTime: nodeExecution.Closure.CreatedAt,
-		EndTime: nodeExecution.Closure.UpdatedAt,
-		Info: &admin.Span_Reference{
-			Reference: referenceSpan,
-		},
-	}, nil
+	return taskExecutions, nil
 }
 
 func (m *MetricsManager) parseDynamicNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution,
@@ -278,7 +132,7 @@ func (m *MetricsManager) parseDynamicNodeExecution(ctx context.Context, nodeExec
 		startNode.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
 
 	// node execution(s)
-	if err := m.parseNodeExecutions(ctx, nodeExecutions, spans, depth); err != nil {
+	if err := m.parseNodeExecutions(ctx, nodeExecutions, nodeExecutionData.DynamicWorkflow.CompiledWorkflow, spans, depth); err != nil {
 		return err
 	}
 
@@ -293,6 +147,64 @@ func (m *MetricsManager) parseDynamicNodeExecution(ctx context.Context, nodeExec
 		nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
 
 	return nil
+}
+
+func (m *MetricsManager) parseExecution(ctx context.Context, execution *admin.Execution, depth int) (*admin.Span, error) {
+	referenceSpan := &admin.ReferenceSpanInfo{
+		Id: &admin.ReferenceSpanInfo_WorkflowId{
+			WorkflowId: execution.Id,
+		},
+	}
+
+	if depth != 0 {
+		spans := make([]*admin.Span, 0)
+
+		// retrieve workflow and node executions
+		workflowRequest := admin.ObjectGetRequest{Id: execution.Closure.WorkflowId}
+		workflow, err := m.workflowManager.GetWorkflow(ctx, workflowRequest)
+		if err != nil {
+			return nil, err
+		}
+
+		nodeListRequest := admin.NodeExecutionListRequest{
+			WorkflowExecutionId: execution.Id,
+			Limit: 20, // TODO @hamersaw - parameterize?
+		}
+		nodeExecutions, err := m.getNodeExecutions(ctx, nodeListRequest)
+		if err != nil {
+			return nil, err
+		}
+
+		// compute frontend overhead
+		startNode := nodeExecutions["start-node"]
+		spans = append(spans, createCategoricalSpan(execution.Closure.CreatedAt,
+			startNode.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+		
+		// iterate over nodes and compute overhead
+		if err := m.parseNodeExecutions(ctx, nodeExecutions, workflow.Closure.CompiledWorkflow, &spans, depth-1); err != nil {
+			return nil, err
+		}
+
+		// compute backend overhead
+		latestUpstreamNode, err := m.getLatestUpstreamNodeExecution(ctx, "end-node",
+			workflow.Closure.CompiledWorkflow.Primary.Connections.Upstream, nodeExecutions)
+		if err != nil {
+			return nil, err
+		}
+
+		spans = append(spans, createCategoricalSpan(latestUpstreamNode.Closure.UpdatedAt,
+			execution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+
+		referenceSpan.Spans = spans
+	}
+
+	return &admin.Span{
+		StartTime: execution.Closure.CreatedAt,
+		EndTime: execution.Closure.UpdatedAt,
+		Info: &admin.Span_Reference{
+			Reference: referenceSpan,
+		},
+	}, nil
 }
 
 func (m *MetricsManager) parseLaunchPlanNodeExecution(ctx context.Context,
@@ -326,45 +238,130 @@ func (m *MetricsManager) parseLaunchPlanNodeExecution(ctx context.Context,
 	return nil
 }
 
-func (m *MetricsManager) parseSubworkflowNodeExecution(ctx context.Context,
-	nodeExecution *admin.NodeExecution, nodeExecutions map[string]*admin.NodeExecution, spans *[]*admin.Span, depth int) error {
-
-	// TODO - retrieve subworkflow
-	executionRequest := admin.WorkflowExecutionGetRequest{Id: nodeExecution.Id.ExecutionId}
-	execution, err := m.executionManager.GetExecution(ctx, executionRequest)
-	if err != nil {
-		return err
+func (m *MetricsManager) parseNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution, node *core.Node, depth int) (*admin.Span, error) {
+	referenceSpan := &admin.ReferenceSpanInfo{
+		Id: &admin.ReferenceSpanInfo_NodeId{
+			NodeId: nodeExecution.Id,
+		},
 	}
 
-	workflowRequest := admin.ObjectGetRequest{Id: execution.Closure.WorkflowId}
+	if depth != 0 {
+		spans := make([]*admin.Span, 0)
+
+		// TODO @hamersaw - move these into the node parsing functions
+		//   no need to get node executions for a taskNode / etc
+		// retrieve task and node executions
+		taskListRequest := admin.TaskExecutionListRequest{
+			NodeExecutionId: nodeExecution.Id,
+			Limit: 20, // TODO @hamersaw - parameterize?
+		}
+		taskExecutions, err := m.getTaskExecutions(ctx, taskListRequest)
+		if err != nil {
+			return nil, err
+		}
+
+		nodeListRequest := admin.NodeExecutionListRequest{
+			WorkflowExecutionId: nodeExecution.Id.ExecutionId,
+			Limit: 20, // TODO @hamersaw - parameterize?
+			UniqueParentId: nodeExecution.Id.NodeId,
+		}
+		nodeExecutions, err := m.getNodeExecutions(ctx, nodeListRequest)
+		if err != nil {
+			return nil, err
+		}
+
+		// parse node
+		switch target := node.Target.(type) {
+			case *core.Node_BranchNode:
+			case *core.Node_GateNode:
+			case *core.Node_TaskNode:
+				if nodeExecution.Metadata.IsParentNode {
+					// handle dynamic node
+					if err := m.parseDynamicNodeExecution(ctx, nodeExecution, taskExecutions, nodeExecutions, &spans, depth-1); err != nil {
+						return nil, err
+					}
+				} else {
+					// handle task node
+					m.parseTaskNodeExecution(ctx, nodeExecution, taskExecutions, &spans, depth-1)
+				}
+			case *core.Node_WorkflowNode:
+				switch workflow := target.WorkflowNode.Reference.(type) {
+					case *core.WorkflowNode_LaunchplanRef:
+						// handle launch plan
+						if err := m.parseLaunchPlanNodeExecution(ctx, nodeExecution, &spans, depth-1); err != nil {
+							return nil, err
+						}
+					case *core.WorkflowNode_SubWorkflowRef:
+						// handle subworkflow
+						if err := m.parseSubworkflowNodeExecution(ctx, nodeExecution, workflow.SubWorkflowRef, nodeExecutions, &spans, depth-1); err != nil {
+							return nil, err
+						}
+				}
+			default:
+				fmt.Printf("unsupported node type %+v\n", target)
+		}
+
+		referenceSpan.Spans = spans
+	}
+
+	return &admin.Span{
+		StartTime: nodeExecution.Closure.CreatedAt,
+		EndTime: nodeExecution.Closure.UpdatedAt,
+		Info: &admin.Span_Reference{
+			Reference: referenceSpan,
+		},
+	}, nil
+}
+
+func (m *MetricsManager) parseNodeExecutions(ctx context.Context, nodeExecutions map[string]*admin.NodeExecution,
+	compiledWorkflowClosure *core.CompiledWorkflowClosure, spans *[]*admin.Span, depth int) error {
+
+	// TODO @hamersaw - sort nodeExecutions by CreatedAt
+	/*sort.Slice(a, func(i, j int) bool {
+		return a[i] < a[j]
+	})*/
+
+	for specNodeId, nodeExecution := range nodeExecutions {
+		if nodeExecution.Id.NodeId == "start-node" || nodeExecution.Id.NodeId == "end-node" {
+			continue
+		}
+
+		// identify subworkflow from node id
+		var node *core.Node
+		for _, n := range compiledWorkflowClosure.Primary.Template.Nodes {
+			if n.Id == specNodeId{
+				node = n
+			}
+		}
+
+		if node == nil {
+			return errors.New("failed to identify workflow node") // TODO @hamersaw - do gooder
+		}
+
+		// parse node execution
+		nodeExecutionSpan, err := m.parseNodeExecution(ctx, nodeExecution, node, depth)
+		if err != nil {
+			return err
+		}
+
+		// TODO @hamersaw - prepend nodeExecution spans with NODE_TRANSITION time
+		//latestUpstreamNode, err := m.getLatestUpstreamNodeExecution(ctx, nodeExecution.Id.NodeId,
+		//	compiledWorkflowClosure.Primary.Connections.Upstream, nodeExecutions)
+
+		*spans = append(*spans, nodeExecutionSpan)
+	}
+
+	return nil
+}
+
+func (m *MetricsManager) parseSubworkflowNodeExecution(ctx context.Context,
+	nodeExecution *admin.NodeExecution, identifier *core.Identifier, nodeExecutions map[string]*admin.NodeExecution, spans *[]*admin.Span, depth int) error {
+
+	// retrieve workflow
+	workflowRequest := admin.ObjectGetRequest{Id: identifier}
 	workflow, err := m.workflowManager.GetWorkflow(ctx, workflowRequest)
 	if err != nil {
 		return err
-	}
-
-	// identify subworkflow from node id
-	var node *core.Node
-	for _, n := range workflow.Closure.CompiledWorkflow.Primary.Template.Nodes {
-		if n.Id == nodeExecution.Id.NodeId {
-			node = n
-		}
-	}
-
-	if node == nil {
-		return errors.New("failed to identify subworkflow node") // TODO @hamersaw - do gooder
-	}
-
-	subworkflowId := node.GetWorkflowNode().GetSubWorkflowRef()
-
-	var subworkflow *core.CompiledWorkflow
-	for _, subworkflowRef := range workflow.Closure.CompiledWorkflow.SubWorkflows {
-		if reflect.DeepEqual(subworkflowId, subworkflowRef.Template.Id) {
-			subworkflow = subworkflowRef
-		}
-	}
-
-	if subworkflow == nil {
-		return errors.New("failed to identify subworkflow") // TODO @hamersaw - do gooder
 	}
 
 	// frontend overhead
@@ -373,13 +370,13 @@ func (m *MetricsManager) parseSubworkflowNodeExecution(ctx context.Context,
 		startNode.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
 
 	// node execution(s)
-	if err := m.parseNodeExecutions(ctx, nodeExecutions, spans, depth); err != nil {
+	if err := m.parseNodeExecutions(ctx, nodeExecutions, workflow.Closure.CompiledWorkflow, spans, depth); err != nil {
 		return err
 	}
 
 	// backened overhead
 	latestUpstreamNode, err := m.getLatestUpstreamNodeExecution(ctx, "end-node",
-		subworkflow.Connections.Upstream, nodeExecutions)
+		workflow.Closure.CompiledWorkflow.Primary.Connections.Upstream, nodeExecutions)
 	if err != nil {
 		return err
 	}
@@ -388,31 +385,6 @@ func (m *MetricsManager) parseSubworkflowNodeExecution(ctx context.Context,
 		nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
 
 	return nil
-}
-
-func (m *MetricsManager) parseTaskNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution,
-	taskExecutions []*admin.TaskExecution, spans *[]*admin.Span, depth int) {
-
-	*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
-		taskExecutions[0].Closure.CreatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
-
-	parseTaskExecutions(taskExecutions, spans, depth)
-
-	*spans = append(*spans, createCategoricalSpan(taskExecutions[len(taskExecutions)-1].Closure.UpdatedAt,
-		nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
-}
-
-func parseTaskExecutions(taskExecutions []*admin.TaskExecution, spans *[]*admin.Span, depth int) {
-	for index, taskExecution := range taskExecutions {
-		if index > 0 {
-			*spans = append(*spans, createCategoricalSpan(taskExecutions[index-1].Closure.UpdatedAt,
-				taskExecution.Closure.CreatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
-		}
-
-		if depth != 0 {
-			*spans = append(*spans, parseTaskExecution(taskExecution))
-		}
-	}
 }
 
 func parseTaskExecution(taskExecution *admin.TaskExecution) *admin.Span {
@@ -441,6 +413,36 @@ func parseTaskExecution(taskExecution *admin.TaskExecution) *admin.Span {
 	}
 }
 
+func parseTaskExecutions(taskExecutions []*admin.TaskExecution, spans *[]*admin.Span, depth int) {
+	// TODO @hamersaw - sort taskExecutions by CreatedAt
+	/*sort.Slice(a, func(i, j int) bool {
+		return a[i] < a[j]
+	})*/
+
+	for index, taskExecution := range taskExecutions {
+		if index > 0 {
+			*spans = append(*spans, createCategoricalSpan(taskExecutions[index-1].Closure.UpdatedAt,
+				taskExecution.Closure.CreatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+		}
+
+		if depth != 0 {
+			*spans = append(*spans, parseTaskExecution(taskExecution))
+		}
+	}
+}
+
+func (m *MetricsManager) parseTaskNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution,
+	taskExecutions []*admin.TaskExecution, spans *[]*admin.Span, depth int) {
+
+	*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
+		taskExecutions[0].Closure.CreatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+
+	parseTaskExecutions(taskExecutions, spans, depth)
+
+	*spans = append(*spans, createCategoricalSpan(taskExecutions[len(taskExecutions)-1].Closure.UpdatedAt,
+		nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+}
+
 // TODO @hamersaw - docs
 func (m *MetricsManager) GetExecutionMetrics(ctx context.Context,
 	request admin.WorkflowExecutionGetMetricsRequest) (*admin.WorkflowExecutionGetMetricsResponse, error) {
@@ -464,14 +466,14 @@ func (m *MetricsManager) GetExecutionMetrics(ctx context.Context,
 func (m *MetricsManager) GetNodeExecutionMetrics(ctx context.Context,
 	request admin.NodeExecutionGetMetricsRequest) (*admin.NodeExecutionGetMetricsResponse, error) {
 
-	// retrieve node executions
+	// retrieve node execution
 	nodeRequest := admin.NodeExecutionGetRequest{Id: request.Id}
 	nodeExecution, err := m.nodeExecutionManager.GetNodeExecution(ctx, nodeRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	span, err := m.parseNodeExecution(ctx, nodeExecution, int(request.Depth))
+	span, err := m.parseNodeExecution(ctx, nodeExecution, nil, int(request.Depth)) // TODO @hamersaw can NOT pass nil for Node - FIX IMMEDIATELY
 	if err != nil {
 		return nil, err
 	}
