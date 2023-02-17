@@ -3,7 +3,6 @@ package impl
 import (
 	"context"
 	"fmt"
-	//"reflect"
 	"time"
 
 	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
@@ -54,6 +53,7 @@ func (m *MetricsManager) getLatestUpstreamNodeExecution(ctx context.Context, nod
 	if connectionSet, exists := upstreamNodeIds[nodeId]; exists {
 		for _, upstreamNodeId := range connectionSet.Ids {
 			upstreamNodeExecution := nodeExecutions[upstreamNodeId]
+			fmt.Printf("  HAMERSAW - found upstream node '%+v'\n", upstreamNodeId)
 
 			t := upstreamNodeExecution.Closure.UpdatedAt.AsTime()
 			if t.After(latestUpstreamUpdatedAt) {
@@ -322,7 +322,7 @@ func (m *MetricsManager) parseNodeExecutions(ctx context.Context, nodeExecutions
 	})*/
 
 	for specNodeId, nodeExecution := range nodeExecutions {
-		if nodeExecution.Id.NodeId == "start-node" || nodeExecution.Id.NodeId == "end-node" {
+		if specNodeId == "start-node" || specNodeId == "end-node" {
 			continue
 		}
 
@@ -344,9 +344,18 @@ func (m *MetricsManager) parseNodeExecutions(ctx context.Context, nodeExecutions
 			return err
 		}
 
-		// TODO @hamersaw - prepend nodeExecution spans with NODE_TRANSITION time
-		//latestUpstreamNode, err := m.getLatestUpstreamNodeExecution(ctx, nodeExecution.Id.NodeId,
-		//	compiledWorkflowClosure.Primary.Connections.Upstream, nodeExecutions)
+		// prepend nodeExecution spans with NODE_TRANSITION time
+		if referenceSpan, ok := nodeExecutionSpan.Info.(*admin.Span_Reference); ok {
+			latestUpstreamNode, err := m.getLatestUpstreamNodeExecution(ctx, specNodeId,
+				compiledWorkflowClosure.Primary.Connections.Upstream, nodeExecutions)
+			if err != nil {
+				return err
+			}
+
+			// TODO @hamersaw - check if latestUpstreamNode is nil
+			referenceSpan.Reference.Spans = append([]*admin.Span{createCategoricalSpan(latestUpstreamNode.Closure.UpdatedAt,
+				nodeExecution.Closure.CreatedAt, admin.CategoricalSpanInfo_NODE_TRANSITION)}, referenceSpan.Reference.Spans...)
+		}
 
 		*spans = append(*spans, nodeExecutionSpan)
 	}
