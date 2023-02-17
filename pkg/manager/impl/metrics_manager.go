@@ -253,6 +253,21 @@ func (m *MetricsManager) parseExecution(ctx context.Context, execution *admin.Ex
 	}, nil
 }
 
+func (m *MetricsManager) parseGateNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution, spans *[]*admin.Span, depth int) {
+	// frontend overhead
+	*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
+		nodeExecution.Closure.StartedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+
+	// idle time
+	nodeEndTime := timestamppb.New(nodeExecution.Closure.StartedAt.AsTime().Add(nodeExecution.Closure.Duration.AsDuration()))
+	*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.StartedAt,
+		nodeEndTime, admin.CategoricalSpanInfo_EXECUTION_IDLE))
+
+	// backend overhead
+	*spans = append(*spans, createCategoricalSpan(nodeEndTime,
+		nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+}
+
 func (m *MetricsManager) parseLaunchPlanNodeExecution(ctx context.Context,
 	nodeExecution *admin.NodeExecution, spans *[]*admin.Span, depth int) error {
 
@@ -324,6 +339,8 @@ func (m *MetricsManager) parseNodeExecution(ctx context.Context, nodeExecution *
 					return nil, err
 				}
 			case *core.Node_GateNode:
+				// handle gate node
+				m.parseGateNodeExecution(ctx, nodeExecution, &spans, depth-1)
 			case *core.Node_TaskNode:
 				if nodeExecution.Metadata.IsParentNode {
 					// handle dynamic node
