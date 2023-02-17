@@ -110,6 +110,52 @@ func (m *MetricsManager) getTaskExecutions(ctx context.Context, request admin.Ta
 	return taskExecutions, nil
 }
 
+func (m *MetricsManager) parseBranchNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution,
+	branchNode *core.BranchNode, nodeExecutions map[string]*admin.NodeExecution, spans *[]*admin.Span, depth int) error {
+
+	// TODO @hamersaw - len(nodeExecutions) will always be 1 -> do we need to call parseNodeExecutions .. or can we just call parseNodeExecution?
+	var branchNodeExecution *admin.NodeExecution
+	for _, n := range nodeExecutions {
+		branchNodeExecution = n
+	}
+
+	// lookup node - TODO @hamersaw probably refactor this out and add a check for nil
+	var node *core.Node
+	if branchNode.IfElse.Case.ThenNode.Id == branchNodeExecution.Metadata.SpecNodeId {
+		node = branchNode.IfElse.Case.ThenNode
+	}
+
+	for _, other := range branchNode.IfElse.Other {
+		if other.ThenNode.Id == branchNodeExecution.Metadata.SpecNodeId {
+			node = other.ThenNode
+		}
+	}
+
+	if elseNode, ok := branchNode.IfElse.Default.(*core.IfElseBlock_ElseNode); ok {
+		if elseNode.ElseNode.Id == branchNodeExecution.Metadata.SpecNodeId {
+			node = elseNode.ElseNode
+		}
+	}
+
+	// frontend overhead
+	*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
+		branchNodeExecution.Closure.CreatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+
+	// node execution
+	nodeExecutionSpan, err := m.parseNodeExecution(ctx, branchNodeExecution, node, depth)
+	if err != nil {
+		return err
+	}
+
+	*spans = append(*spans, nodeExecutionSpan)
+
+	// backened overhead
+	*spans = append(*spans, createCategoricalSpan(branchNodeExecution.Closure.UpdatedAt,
+		nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+
+	return nil
+}
+
 func (m *MetricsManager) parseDynamicNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution,
 	taskExecutions []*admin.TaskExecution, nodeExecutions map[string]*admin.NodeExecution, spans *[]*admin.Span, depth int) error {
 
@@ -273,6 +319,10 @@ func (m *MetricsManager) parseNodeExecution(ctx context.Context, nodeExecution *
 		// parse node
 		switch target := node.Target.(type) {
 			case *core.Node_BranchNode:
+				// handle branch node
+				if err := m.parseBranchNodeExecution(ctx, nodeExecution, target.BranchNode, nodeExecutions, &spans, depth-1); err != nil {
+					return nil, err
+				}
 			case *core.Node_GateNode:
 			case *core.Node_TaskNode:
 				if nodeExecution.Metadata.IsParentNode {
@@ -334,12 +384,10 @@ func (m *MetricsManager) parseNodeExecutions(ctx context.Context, nodeExecutions
 			continue
 		}
 
-		fmt.Printf("HAMERSAW - parsing node %s\n", specNodeId)
-
-		// identify subworkflow from node id
+		// get node defintion from workflow
 		var node *core.Node
 		for _, n := range compiledWorkflowClosure.Primary.Template.Nodes {
-			if n.Id == specNodeId{
+			if n.Id == specNodeId {
 				node = n
 			}
 		}
@@ -408,13 +456,17 @@ func (m *MetricsManager) parseSubworkflowNodeExecution(ctx context.Context,
 
 func parseTaskExecution(taskExecution *admin.TaskExecution) *admin.Span {
 	spans := make([]*admin.Span, 0)
+
+	// frontend overhead
 	spans = append(spans, createCategoricalSpan(taskExecution.Closure.CreatedAt,
 		taskExecution.Closure.StartedAt, admin.CategoricalSpanInfo_PLUGIN_OVERHEAD))
 
+	// plugin execution
 	taskEndTime := timestamppb.New(taskExecution.Closure.StartedAt.AsTime().Add(taskExecution.Closure.Duration.AsDuration()))
 	spans = append(spans, createCategoricalSpan(taskExecution.Closure.StartedAt,
 		taskEndTime, admin.CategoricalSpanInfo_PLUGIN_EXECUTION))
 
+	// backend overhead
 	spans = append(spans, createCategoricalSpan(taskEndTime,
 		taskExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_PLUGIN_OVERHEAD))
 
