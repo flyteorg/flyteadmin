@@ -164,7 +164,7 @@ func InitMetrics(adminScope promutils.Scope) AdminMetrics {
 			createEvent:  util.NewRequestMetrics(adminScope, "create_node_execution_event"),
 			get:          util.NewRequestMetrics(adminScope, "get_node_execution"),
 			getData:      util.NewRequestMetrics(adminScope, "get_node_execution_data"),
-			getMetrics:  util.NewRequestMetrics(adminScope, "get_execution_metrics"),
+			getMetrics:   util.NewRequestMetrics(adminScope, "get_node_execution_metrics"),
 			list:         util.NewRequestMetrics(adminScope, "list_node_execution"),
 			listChildren: util.NewRequestMetrics(adminScope, "list_children_node_executions"),
 		},
