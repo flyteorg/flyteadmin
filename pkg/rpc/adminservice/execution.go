@@ -131,7 +131,7 @@ func (m *AdminService) GetExecutionData(
 	}
 	var response *admin.WorkflowExecutionGetDataResponse
 	var err error
-	m.Metrics.executionEndpointMetrics.get.Time(func() {
+	m.Metrics.executionEndpointMetrics.getData.Time(func() {
 		response, err = m.ExecutionManager.GetExecutionData(ctx, *request)
 	})
 	if err != nil {
@@ -149,13 +149,13 @@ func (m *AdminService) GetExecutionMetrics(
 	}
 	var response *admin.WorkflowExecutionGetMetricsResponse
 	var err error
-	m.Metrics.executionEndpointMetrics.get.Time(func() {
+	m.Metrics.executionEndpointMetrics.getMetrics.Time(func() {
 		response, err = m.MetricsManager.GetExecutionMetrics(ctx, *request)
 	})
 	if err != nil {
-		return nil, util.TransformAndRecordError(err, &m.Metrics.executionEndpointMetrics.getData)
+		return nil, util.TransformAndRecordError(err, &m.Metrics.executionEndpointMetrics.getMetrics)
 	}
-	m.Metrics.executionEndpointMetrics.getData.Success()
+	m.Metrics.executionEndpointMetrics.getMetrics.Success()
 	return response, nil
 }
 

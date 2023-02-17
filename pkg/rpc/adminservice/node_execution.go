@@ -117,12 +117,12 @@ func (m *AdminService) GetNodeExecutionMetrics(
 	}
 	var response *admin.NodeExecutionGetMetricsResponse
 	var err error
-	m.Metrics.nodeExecutionEndpointMetrics.getData.Time(func() {
+	m.Metrics.nodeExecutionEndpointMetrics.getMetrics.Time(func() {
 		response, err = m.MetricsManager.GetNodeExecutionMetrics(ctx, *request)
 	})
 	if err != nil {
-		return nil, util.TransformAndRecordError(err, &m.Metrics.nodeExecutionEndpointMetrics.getData)
+		return nil, util.TransformAndRecordError(err, &m.Metrics.nodeExecutionEndpointMetrics.getMetrics)
 	}
-	m.Metrics.nodeExecutionEndpointMetrics.getData.Success()
+	m.Metrics.nodeExecutionEndpointMetrics.getMetrics.Success()
 	return response, nil
 }
