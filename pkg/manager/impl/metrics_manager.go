@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
@@ -53,7 +54,6 @@ func (m *MetricsManager) getLatestUpstreamNodeExecution(ctx context.Context, nod
 	if connectionSet, exists := upstreamNodeIds[nodeId]; exists {
 		for _, upstreamNodeId := range connectionSet.Ids {
 			upstreamNodeExecution := nodeExecutions[upstreamNodeId]
-			fmt.Printf("  HAMERSAW - found upstream node '%+v'\n", upstreamNodeId)
 
 			t := upstreamNodeExecution.Closure.UpdatedAt.AsTime()
 			if t.After(latestUpstreamUpdatedAt) {
@@ -316,15 +316,25 @@ func (m *MetricsManager) parseNodeExecution(ctx context.Context, nodeExecution *
 func (m *MetricsManager) parseNodeExecutions(ctx context.Context, nodeExecutions map[string]*admin.NodeExecution,
 	compiledWorkflowClosure *core.CompiledWorkflowClosure, spans *[]*admin.Span, depth int) error {
 
-	// TODO @hamersaw - sort nodeExecutions by CreatedAt
-	/*sort.Slice(a, func(i, j int) bool {
-		return a[i] < a[j]
-	})*/
+	// sort node executions
+	sortedNodeExecutions := make([]*admin.NodeExecution, 0, len(nodeExecutions))
+    for _, nodeExecution := range nodeExecutions {
+        sortedNodeExecutions = append(sortedNodeExecutions, nodeExecution)
+    }
+	sort.Slice(sortedNodeExecutions, func(i, j int) bool {
+		x := sortedNodeExecutions[i].Closure.CreatedAt.AsTime()
+		y := sortedNodeExecutions[j].Closure.CreatedAt.AsTime()
+		return x.Before(y)
+	})
 
-	for specNodeId, nodeExecution := range nodeExecutions {
+	// iterate over sorted node executions
+	for _, nodeExecution := range sortedNodeExecutions {
+		specNodeId := nodeExecution.Metadata.SpecNodeId
 		if specNodeId == "start-node" || specNodeId == "end-node" {
 			continue
 		}
+
+		fmt.Printf("HAMERSAW - parsing node %s\n", specNodeId)
 
 		// identify subworkflow from node id
 		var node *core.Node
@@ -423,11 +433,14 @@ func parseTaskExecution(taskExecution *admin.TaskExecution) *admin.Span {
 }
 
 func parseTaskExecutions(taskExecutions []*admin.TaskExecution, spans *[]*admin.Span, depth int) {
-	// TODO @hamersaw - sort taskExecutions by CreatedAt
-	/*sort.Slice(a, func(i, j int) bool {
-		return a[i] < a[j]
-	})*/
+	// sort task executions
+	sort.Slice(taskExecutions, func(i, j int) bool {
+		x := taskExecutions[i].Closure.CreatedAt.AsTime()
+		y := taskExecutions[j].Closure.CreatedAt.AsTime()
+		return x.Before(y)
+	})
 
+	// iterate over task executions
 	for index, taskExecution := range taskExecutions {
 		if index > 0 {
 			*spans = append(*spans, createCategoricalSpan(taskExecutions[index-1].Closure.UpdatedAt,
