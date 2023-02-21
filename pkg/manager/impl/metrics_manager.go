@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sort"
 	"time"
 
@@ -15,9 +16,23 @@ import (
 
 	"github.com/flyteorg/flytestdlib/promutils"
 
+	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/golang/protobuf/ptypes/timestamp"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
+)
+
+const REQUEST_LIMIT uint32 = 50
+
+var (
+	nilDuration *duration.Duration = &duration.Duration{
+		Seconds: 0,
+		Nanos: 0,
+	}
+	nilTimestamp *timestamp.Timestamp = &timestamp.Timestamp{
+		Seconds: 0,
+		Nanos: 0,
+	}
 )
 
 type metrics struct {
@@ -46,6 +61,27 @@ func createCategoricalSpan(startTime, endTime *timestamp.Timestamp, category adm
 	}
 }
 
+func getBranchNode(nodeId string, branchNode *core.BranchNode) *core.Node {
+	if branchNode.IfElse.Case.ThenNode.Id == nodeId {
+		return branchNode.IfElse.Case.ThenNode
+	}
+
+	for _, other := range branchNode.IfElse.Other {
+		if other.ThenNode.Id == nodeId {
+			return other.ThenNode
+		}
+	}
+
+	if elseNode, ok := branchNode.IfElse.Default.(*core.IfElseBlock_ElseNode); ok {
+		if elseNode.ElseNode.Id == nodeId {
+			return elseNode.ElseNode
+		}
+	}
+
+	return nil
+}
+
+
 func (m *MetricsManager) getLatestUpstreamNodeExecution(ctx context.Context, nodeId string,
 	upstreamNodeIds map[string]*core.ConnectionSet_IdList, nodeExecutions map[string]*admin.NodeExecution) (*admin.NodeExecution, error) {
 
@@ -53,7 +89,10 @@ func (m *MetricsManager) getLatestUpstreamNodeExecution(ctx context.Context, nod
 	var latestUpstreamUpdatedAt = time.Unix(0, 0)
 	if connectionSet, exists := upstreamNodeIds[nodeId]; exists {
 		for _, upstreamNodeId := range connectionSet.Ids {
-			upstreamNodeExecution := nodeExecutions[upstreamNodeId]
+			upstreamNodeExecution, exists := nodeExecutions[upstreamNodeId]
+			if !exists {
+				continue
+			}
 
 			t := upstreamNodeExecution.Closure.UpdatedAt.AsTime()
 			if t.After(latestUpstreamUpdatedAt) {
@@ -110,87 +149,127 @@ func (m *MetricsManager) getTaskExecutions(ctx context.Context, request admin.Ta
 	return taskExecutions, nil
 }
 
-func (m *MetricsManager) parseBranchNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution,
-	branchNode *core.BranchNode, nodeExecutions map[string]*admin.NodeExecution, spans *[]*admin.Span, depth int) error {
+func (m *MetricsManager) parseBranchNodeExecution(ctx context.Context,
+	nodeExecution *admin.NodeExecution, branchNode *core.BranchNode, spans *[]*admin.Span, depth int) error {
 
-	// TODO @hamersaw - len(nodeExecutions) will always be 1 -> do we need to call parseNodeExecutions .. or can we just call parseNodeExecution?
-	var branchNodeExecution *admin.NodeExecution
-	for _, n := range nodeExecutions {
-		branchNodeExecution = n
-	}
-
-	// lookup node - TODO @hamersaw probably refactor this out and add a check for nil
-	var node *core.Node
-	if branchNode.IfElse.Case.ThenNode.Id == branchNodeExecution.Metadata.SpecNodeId {
-		node = branchNode.IfElse.Case.ThenNode
-	}
-
-	for _, other := range branchNode.IfElse.Other {
-		if other.ThenNode.Id == branchNodeExecution.Metadata.SpecNodeId {
-			node = other.ThenNode
-		}
-	}
-
-	if elseNode, ok := branchNode.IfElse.Default.(*core.IfElseBlock_ElseNode); ok {
-		if elseNode.ElseNode.Id == branchNodeExecution.Metadata.SpecNodeId {
-			node = elseNode.ElseNode
-		}
-	}
-
-	// frontend overhead
-	*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
-		branchNodeExecution.Closure.CreatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
-
-	// node execution
-	nodeExecutionSpan, err := m.parseNodeExecution(ctx, branchNodeExecution, node, depth)
+	// retrieve node execution(s)
+	nodeExecutions, err := m.getNodeExecutions(ctx, admin.NodeExecutionListRequest{
+		WorkflowExecutionId: nodeExecution.Id.ExecutionId,
+		Limit: REQUEST_LIMIT,
+		UniqueParentId: nodeExecution.Id.NodeId,
+	})
 	if err != nil {
 		return err
 	}
 
-	*spans = append(*spans, nodeExecutionSpan)
+	// check if the node started
+	if len(nodeExecutions) == 0 {
+		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
+			nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+	} else {
+		// parse branchNode
+		if len(nodeExecutions) != 1 {
+			// TODO @hamersaw throw error - branch nodes execute a single node
+		}
 
-	// backened overhead
-	*spans = append(*spans, createCategoricalSpan(branchNodeExecution.Closure.UpdatedAt,
-		nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+		var branchNodeExecution *admin.NodeExecution
+		for _, e := range nodeExecutions {
+			branchNodeExecution = e
+		}
+
+		node := getBranchNode(branchNodeExecution.Metadata.SpecNodeId, branchNode)
+		if node != nil {
+			// TODO @hamersaw throw error - failed to parse node
+		}
+
+		// frontend overhead
+		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
+			branchNodeExecution.Closure.CreatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+
+		// node execution
+		nodeExecutionSpan, err := m.parseNodeExecution(ctx, branchNodeExecution, node, depth)
+		if err != nil {
+			return err
+		}
+
+		*spans = append(*spans, nodeExecutionSpan)
+
+		// backened overhead
+		if !nodeExecution.Closure.UpdatedAt.AsTime().Before(branchNodeExecution.Closure.UpdatedAt.AsTime()) {
+			*spans = append(*spans, createCategoricalSpan(branchNodeExecution.Closure.UpdatedAt,
+				nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+		}
+	}
 
 	return nil
 }
 
-func (m *MetricsManager) parseDynamicNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution,
-	taskExecutions []*admin.TaskExecution, nodeExecutions map[string]*admin.NodeExecution, spans *[]*admin.Span, depth int) error {
-
-	getDataRequest := admin.NodeExecutionGetDataRequest{Id: nodeExecution.Id}
-	nodeExecutionData, err := m.nodeExecutionManager.GetNodeExecutionData(ctx, getDataRequest)
+func (m *MetricsManager) parseDynamicNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution, spans *[]*admin.Span, depth int) error {
+	taskExecutions, err := m.getTaskExecutions(ctx, admin.TaskExecutionListRequest{
+		NodeExecutionId: nodeExecution.Id,
+		Limit: REQUEST_LIMIT,
+	})
 	if err != nil {
 		return err
 	}
 
-	// frontend overhead
-	*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
-		taskExecutions[0].Closure.CreatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+	// if no task executions then everything is execution overhead
+	if len(taskExecutions) == 0 {
+		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
+			nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+	} else {
+		// frontend overhead
+		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
+			taskExecutions[0].Closure.CreatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
 
-	// task execution(s)
-	parseTaskExecutions(taskExecutions, spans, depth)
+		// task execution(s)
+		parseTaskExecutions(taskExecutions, spans, depth)
 
-	// between task execution(s) and node execution(s) overhead
-	startNode := nodeExecutions["start-node"]
-	*spans = append(*spans, createCategoricalSpan(taskExecutions[len(taskExecutions)-1].Closure.UpdatedAt,
-		startNode.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+		nodeExecutions, err := m.getNodeExecutions(ctx, admin.NodeExecutionListRequest{
+			WorkflowExecutionId: nodeExecution.Id.ExecutionId,
+			Limit: REQUEST_LIMIT,
+			UniqueParentId: nodeExecution.Id.NodeId,
+		})
+		if err != nil {
+			return err
+		}
 
-	// node execution(s)
-	if err := m.parseNodeExecutions(ctx, nodeExecutions, nodeExecutionData.DynamicWorkflow.CompiledWorkflow, spans, depth); err != nil {
-		return err
+		lastTask := taskExecutions[len(taskExecutions)-1]
+		if len(nodeExecutions) == 0 {
+			if !nodeExecution.Closure.UpdatedAt.AsTime().Before(lastTask.Closure.UpdatedAt.AsTime()) {
+				*spans = append(*spans, createCategoricalSpan(lastTask.Closure.UpdatedAt,
+					nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+			}
+		} else {
+			// between task execution(s) and node execution(s) overhead
+			startNode := nodeExecutions["start-node"]
+			*spans = append(*spans, createCategoricalSpan(taskExecutions[len(taskExecutions)-1].Closure.UpdatedAt,
+				startNode.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+
+			// node execution(s)
+			getDataRequest := admin.NodeExecutionGetDataRequest{Id: nodeExecution.Id}
+			nodeExecutionData, err := m.nodeExecutionManager.GetNodeExecutionData(ctx, getDataRequest)
+			if err != nil {
+				return err
+			}
+
+			if err := m.parseNodeExecutions(ctx, nodeExecutions, nodeExecutionData.DynamicWorkflow.CompiledWorkflow, spans, depth); err != nil {
+				return err
+			}
+
+			// backened overhead
+			latestUpstreamNode, err := m.getLatestUpstreamNodeExecution(ctx, "end-node",
+				nodeExecutionData.DynamicWorkflow.CompiledWorkflow.Primary.Connections.Upstream, nodeExecutions)
+			if err != nil {
+				return err
+			}
+
+			if latestUpstreamNode != nil && !nodeExecution.Closure.UpdatedAt.AsTime().Before(latestUpstreamNode.Closure.UpdatedAt.AsTime()) {
+				*spans = append(*spans, createCategoricalSpan(latestUpstreamNode.Closure.UpdatedAt,
+					nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+			}
+		}
 	}
-
-	// backened overhead
-	latestUpstreamNode, err := m.getLatestUpstreamNodeExecution(ctx, "end-node",
-		nodeExecutionData.DynamicWorkflow.CompiledWorkflow.Primary.Connections.Upstream, nodeExecutions)
-	if err != nil {
-		return err
-	}
-
-	*spans = append(*spans, createCategoricalSpan(latestUpstreamNode.Closure.UpdatedAt,
-		nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
 
 	return nil
 }
@@ -212,34 +291,41 @@ func (m *MetricsManager) parseExecution(ctx context.Context, execution *admin.Ex
 			return nil, err
 		}
 
-		nodeListRequest := admin.NodeExecutionListRequest{
+		nodeExecutions, err := m.getNodeExecutions(ctx, admin.NodeExecutionListRequest{
 			WorkflowExecutionId: execution.Id,
-			Limit: 20, // TODO @hamersaw - parameterize?
-		}
-		nodeExecutions, err := m.getNodeExecutions(ctx, nodeListRequest)
+			Limit: REQUEST_LIMIT,
+		})
 		if err != nil {
 			return nil, err
 		}
 
-		// compute frontend overhead
+		// check if workflow has started
 		startNode := nodeExecutions["start-node"]
-		spans = append(spans, createCategoricalSpan(execution.Closure.CreatedAt,
-			startNode.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
-		
-		// iterate over nodes and compute overhead
-		if err := m.parseNodeExecutions(ctx, nodeExecutions, workflow.Closure.CompiledWorkflow, &spans, depth-1); err != nil {
-			return nil, err
-		}
+		if startNode.Closure.UpdatedAt == nil || reflect.DeepEqual(startNode.Closure.UpdatedAt, nilTimestamp) {
+			spans = append(spans, createCategoricalSpan(execution.Closure.CreatedAt,
+				execution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+		} else {
+			// compute frontend overhead
+			spans = append(spans, createCategoricalSpan(execution.Closure.CreatedAt,
+				startNode.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+			
+			// iterate over nodes and compute overhead
+			if err := m.parseNodeExecutions(ctx, nodeExecutions, workflow.Closure.CompiledWorkflow, &spans, depth-1); err != nil {
+				return nil, err
+			}
 
-		// compute backend overhead
-		latestUpstreamNode, err := m.getLatestUpstreamNodeExecution(ctx, "end-node",
-			workflow.Closure.CompiledWorkflow.Primary.Connections.Upstream, nodeExecutions)
-		if err != nil {
-			return nil, err
-		}
+			// compute backend overhead
+			latestUpstreamNode, err := m.getLatestUpstreamNodeExecution(ctx, "end-node",
+				workflow.Closure.CompiledWorkflow.Primary.Connections.Upstream, nodeExecutions)
+			if err != nil {
+				return nil, err
+			}
 
-		spans = append(spans, createCategoricalSpan(latestUpstreamNode.Closure.UpdatedAt,
-			execution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+			if latestUpstreamNode != nil && !execution.Closure.UpdatedAt.AsTime().Before(latestUpstreamNode.Closure.UpdatedAt.AsTime()) {
+				spans = append(spans, createCategoricalSpan(latestUpstreamNode.Closure.UpdatedAt,
+					execution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+			}
+		}
 
 		referenceSpan.Spans = spans
 	}
@@ -254,47 +340,64 @@ func (m *MetricsManager) parseExecution(ctx context.Context, execution *admin.Ex
 }
 
 func (m *MetricsManager) parseGateNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution, spans *[]*admin.Span, depth int) {
-	// frontend overhead
-	*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
-		nodeExecution.Closure.StartedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+	// check if node has started yet
+	if nodeExecution.Closure.StartedAt == nil || reflect.DeepEqual(nodeExecution.Closure.StartedAt, nilTimestamp) {
+		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
+			nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_PLUGIN_OVERHEAD))
+	} else {
+		// frontend overhead
+		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
+			nodeExecution.Closure.StartedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
 
-	// idle time
-	nodeEndTime := timestamppb.New(nodeExecution.Closure.StartedAt.AsTime().Add(nodeExecution.Closure.Duration.AsDuration()))
-	*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.StartedAt,
-		nodeEndTime, admin.CategoricalSpanInfo_EXECUTION_IDLE))
+		// check if plugin has completed yet
+		if nodeExecution.Closure.Duration == nil || reflect.DeepEqual(nodeExecution.Closure.Duration, nilDuration) {
+			*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.StartedAt,
+				nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_IDLE))
+		} else {
+			// idle time
+			nodeEndTime := timestamppb.New(nodeExecution.Closure.StartedAt.AsTime().Add(nodeExecution.Closure.Duration.AsDuration()))
+			*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.StartedAt,
+				nodeEndTime, admin.CategoricalSpanInfo_EXECUTION_IDLE))
 
-	// backend overhead
-	*spans = append(*spans, createCategoricalSpan(nodeEndTime,
-		nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+			// backend overhead
+			*spans = append(*spans, createCategoricalSpan(nodeEndTime,
+				nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+		}
+	}
 }
 
-func (m *MetricsManager) parseLaunchPlanNodeExecution(ctx context.Context,
-	nodeExecution *admin.NodeExecution, spans *[]*admin.Span, depth int) error {
-
-	// retrieve execution
+func (m *MetricsManager) parseLaunchPlanNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution, spans *[]*admin.Span, depth int) error {
+	// check if workflow started yet
 	workflowNode := nodeExecution.Closure.GetWorkflowNodeMetadata()
+	if workflowNode == nil {
+		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
+			nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+	} else {
+		// retrieve execution
+		executionRequest := admin.WorkflowExecutionGetRequest{Id: workflowNode.ExecutionId}
+		execution, err := m.executionManager.GetExecution(ctx, executionRequest)
+		if err != nil {
+			return err
+		}
 
-	executionRequest := admin.WorkflowExecutionGetRequest{Id: workflowNode.ExecutionId}
-	execution, err := m.executionManager.GetExecution(ctx, executionRequest)
-	if err != nil {
-		return err
+		// frontend overhead
+		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
+			execution.Closure.CreatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+
+		// execution
+		span, err := m.parseExecution(ctx, execution, depth)
+		if err != nil {
+			return err
+		}
+
+		*spans = append(*spans, span)
+
+		// backend overhead
+		if !nodeExecution.Closure.UpdatedAt.AsTime().Before(execution.Closure.UpdatedAt.AsTime()) {
+			*spans = append(*spans, createCategoricalSpan(execution.Closure.UpdatedAt,
+				nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+		}
 	}
-
-	// frontend overhead
-	*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
-		execution.Closure.CreatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
-
-	// execution
-	span, err := m.parseExecution(ctx, execution, depth)
-	if err != nil {
-		return err
-	}
-
-	*spans = append(*spans, span)
-
-	// backend overhead
-	*spans = append(*spans, createCategoricalSpan(execution.Closure.UpdatedAt,
-		nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
 
 	return nil
 }
@@ -309,63 +412,40 @@ func (m *MetricsManager) parseNodeExecution(ctx context.Context, nodeExecution *
 	if depth != 0 {
 		spans := make([]*admin.Span, 0)
 
-		// TODO @hamersaw - move these into the node parsing functions
-		//   no need to get node executions for a taskNode / etc
-		// retrieve task and node executions
-		taskListRequest := admin.TaskExecutionListRequest{
-			NodeExecutionId: nodeExecution.Id,
-			Limit: 20, // TODO @hamersaw - parameterize?
-		}
-		taskExecutions, err := m.getTaskExecutions(ctx, taskListRequest)
-		if err != nil {
-			return nil, err
-		}
-
-		nodeListRequest := admin.NodeExecutionListRequest{
-			WorkflowExecutionId: nodeExecution.Id.ExecutionId,
-			Limit: 20, // TODO @hamersaw - parameterize?
-			UniqueParentId: nodeExecution.Id.NodeId,
-		}
-		nodeExecutions, err := m.getNodeExecutions(ctx, nodeListRequest)
-		if err != nil {
-			return nil, err
-		}
-
 		// parse node
+		var err error
 		switch target := node.Target.(type) {
 			case *core.Node_BranchNode:
 				// handle branch node
-				if err := m.parseBranchNodeExecution(ctx, nodeExecution, target.BranchNode, nodeExecutions, &spans, depth-1); err != nil {
-					return nil, err
-				}
+				err = m.parseBranchNodeExecution(ctx, nodeExecution, target.BranchNode, &spans, depth-1)
 			case *core.Node_GateNode:
 				// handle gate node
 				m.parseGateNodeExecution(ctx, nodeExecution, &spans, depth-1)
 			case *core.Node_TaskNode:
 				if nodeExecution.Metadata.IsParentNode {
 					// handle dynamic node
-					if err := m.parseDynamicNodeExecution(ctx, nodeExecution, taskExecutions, nodeExecutions, &spans, depth-1); err != nil {
-						return nil, err
-					}
+					err = m.parseDynamicNodeExecution(ctx, nodeExecution, &spans, depth-1)
 				} else {
 					// handle task node
-					m.parseTaskNodeExecution(ctx, nodeExecution, taskExecutions, &spans, depth-1)
+					err = m.parseTaskNodeExecution(ctx, nodeExecution, &spans, depth-1)
 				}
 			case *core.Node_WorkflowNode:
 				switch workflow := target.WorkflowNode.Reference.(type) {
 					case *core.WorkflowNode_LaunchplanRef:
 						// handle launch plan
-						if err := m.parseLaunchPlanNodeExecution(ctx, nodeExecution, &spans, depth-1); err != nil {
-							return nil, err
-						}
+						err = m.parseLaunchPlanNodeExecution(ctx, nodeExecution, &spans, depth-1)
 					case *core.WorkflowNode_SubWorkflowRef:
 						// handle subworkflow
-						if err := m.parseSubworkflowNodeExecution(ctx, nodeExecution, workflow.SubWorkflowRef, nodeExecutions, &spans, depth-1); err != nil {
-							return nil, err
-						}
+						err = m.parseSubworkflowNodeExecution(ctx, nodeExecution, workflow.SubWorkflowRef, &spans, depth-1)
+					default:
+						err = fmt.Errorf("unsupported node type %+v\n", target)
 				}
 			default:
-				fmt.Printf("unsupported node type %+v\n", target)
+				err = fmt.Errorf("unsupported node type %+v\n", target)
+		}
+
+		if err != nil {
+			return nil, err
 		}
 
 		referenceSpan.Spans = spans
@@ -427,9 +507,10 @@ func (m *MetricsManager) parseNodeExecutions(ctx context.Context, nodeExecutions
 				return err
 			}
 
-			// TODO @hamersaw - check if latestUpstreamNode is nil
-			referenceSpan.Reference.Spans = append([]*admin.Span{createCategoricalSpan(latestUpstreamNode.Closure.UpdatedAt,
-				nodeExecution.Closure.CreatedAt, admin.CategoricalSpanInfo_NODE_TRANSITION)}, referenceSpan.Reference.Spans...)
+			if latestUpstreamNode != nil {
+				referenceSpan.Reference.Spans = append([]*admin.Span{createCategoricalSpan(latestUpstreamNode.Closure.UpdatedAt,
+					nodeExecution.Closure.CreatedAt, admin.CategoricalSpanInfo_NODE_TRANSITION)}, referenceSpan.Reference.Spans...)
+			}
 		}
 
 		*spans = append(*spans, nodeExecutionSpan)
@@ -439,34 +520,52 @@ func (m *MetricsManager) parseNodeExecutions(ctx context.Context, nodeExecutions
 }
 
 func (m *MetricsManager) parseSubworkflowNodeExecution(ctx context.Context,
-	nodeExecution *admin.NodeExecution, identifier *core.Identifier, nodeExecutions map[string]*admin.NodeExecution, spans *[]*admin.Span, depth int) error {
+	nodeExecution *admin.NodeExecution, identifier *core.Identifier, spans *[]*admin.Span, depth int) error {
 
-	// retrieve workflow
-	workflowRequest := admin.ObjectGetRequest{Id: identifier}
-	workflow, err := m.workflowManager.GetWorkflow(ctx, workflowRequest)
+	// retrieve node execution(s)
+	nodeExecutions, err := m.getNodeExecutions(ctx, admin.NodeExecutionListRequest{
+		WorkflowExecutionId: nodeExecution.Id.ExecutionId,
+		Limit: REQUEST_LIMIT,
+		UniqueParentId: nodeExecution.Id.NodeId,
+	})
 	if err != nil {
 		return err
 	}
 
-	// frontend overhead
-	startNode := nodeExecutions["start-node"]
-	*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
-		startNode.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+	// check if the subworkflow started
+	if len(nodeExecutions) == 0 {
+		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
+			nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+	} else {
+		// frontend overhead
+		startNode := nodeExecutions["start-node"]
+		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
+			startNode.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
 
-	// node execution(s)
-	if err := m.parseNodeExecutions(ctx, nodeExecutions, workflow.Closure.CompiledWorkflow, spans, depth); err != nil {
-		return err
+		// retrieve workflow
+		workflowRequest := admin.ObjectGetRequest{Id: identifier}
+		workflow, err := m.workflowManager.GetWorkflow(ctx, workflowRequest)
+		if err != nil {
+			return err
+		}
+
+		// node execution(s)
+		if err := m.parseNodeExecutions(ctx, nodeExecutions, workflow.Closure.CompiledWorkflow, spans, depth); err != nil {
+			return err
+		}
+
+		// backened overhead
+		latestUpstreamNode, err := m.getLatestUpstreamNodeExecution(ctx, "end-node",
+			workflow.Closure.CompiledWorkflow.Primary.Connections.Upstream, nodeExecutions)
+		if err != nil {
+			return err
+		}
+
+		if latestUpstreamNode != nil && !nodeExecution.Closure.UpdatedAt.AsTime().Before(latestUpstreamNode.Closure.UpdatedAt.AsTime()) {
+			*spans = append(*spans, createCategoricalSpan(latestUpstreamNode.Closure.UpdatedAt,
+				nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+		}
 	}
-
-	// backened overhead
-	latestUpstreamNode, err := m.getLatestUpstreamNodeExecution(ctx, "end-node",
-		workflow.Closure.CompiledWorkflow.Primary.Connections.Upstream, nodeExecutions)
-	if err != nil {
-		return err
-	}
-
-	*spans = append(*spans, createCategoricalSpan(latestUpstreamNode.Closure.UpdatedAt,
-		nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
 
 	return nil
 }
@@ -474,18 +573,32 @@ func (m *MetricsManager) parseSubworkflowNodeExecution(ctx context.Context,
 func parseTaskExecution(taskExecution *admin.TaskExecution) *admin.Span {
 	spans := make([]*admin.Span, 0)
 
-	// frontend overhead
-	spans = append(spans, createCategoricalSpan(taskExecution.Closure.CreatedAt,
-		taskExecution.Closure.StartedAt, admin.CategoricalSpanInfo_PLUGIN_OVERHEAD))
+	// check if plugin has started yet
+	if taskExecution.Closure.StartedAt == nil || reflect.DeepEqual(taskExecution.Closure.StartedAt, nilTimestamp) {
+		spans = append(spans, createCategoricalSpan(taskExecution.Closure.CreatedAt,
+			taskExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_PLUGIN_OVERHEAD))
+	} else {
+		// frontend overhead
+		spans = append(spans, createCategoricalSpan(taskExecution.Closure.CreatedAt,
+			taskExecution.Closure.StartedAt, admin.CategoricalSpanInfo_PLUGIN_OVERHEAD))
 
-	// plugin execution
-	taskEndTime := timestamppb.New(taskExecution.Closure.StartedAt.AsTime().Add(taskExecution.Closure.Duration.AsDuration()))
-	spans = append(spans, createCategoricalSpan(taskExecution.Closure.StartedAt,
-		taskEndTime, admin.CategoricalSpanInfo_PLUGIN_EXECUTION))
+		// check if plugin has completed yet
+		if taskExecution.Closure.Duration == nil || reflect.DeepEqual(taskExecution.Closure.Duration, nilDuration) {
+			spans = append(spans, createCategoricalSpan(taskExecution.Closure.StartedAt,
+				taskExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_PLUGIN_RUNTIME))
+		} else {
+			// plugin execution
+			taskEndTime := timestamppb.New(taskExecution.Closure.StartedAt.AsTime().Add(taskExecution.Closure.Duration.AsDuration()))
+			spans = append(spans, createCategoricalSpan(taskExecution.Closure.StartedAt,
+				taskEndTime, admin.CategoricalSpanInfo_PLUGIN_RUNTIME))
 
-	// backend overhead
-	spans = append(spans, createCategoricalSpan(taskEndTime,
-		taskExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_PLUGIN_OVERHEAD))
+			// backend overhead
+			if !taskEndTime.AsTime().Before(taskExecution.Closure.UpdatedAt.AsTime()) {
+				spans = append(spans, createCategoricalSpan(taskEndTime,
+					taskExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_PLUGIN_OVERHEAD))
+			}
+		}
+	}
 
 	return &admin.Span{
 		StartTime: taskExecution.Closure.CreatedAt,
@@ -522,16 +635,37 @@ func parseTaskExecutions(taskExecutions []*admin.TaskExecution, spans *[]*admin.
 	}
 }
 
-func (m *MetricsManager) parseTaskNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution,
-	taskExecutions []*admin.TaskExecution, spans *[]*admin.Span, depth int) {
+func (m *MetricsManager) parseTaskNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution, spans *[]*admin.Span, depth int) error {
+	// retrieve task executions
+	taskExecutions, err := m.getTaskExecutions(ctx, admin.TaskExecutionListRequest{
+		NodeExecutionId: nodeExecution.Id,
+		Limit: REQUEST_LIMIT,
+	})
+	if err != nil {
+		return err
+	}
 
-	*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
-		taskExecutions[0].Closure.CreatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+	// if no task executions then everything is execution overhead
+	if len(taskExecutions) == 0 {
+		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
+			nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+	} else {
+		// frontend overhead
+		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
+			taskExecutions[0].Closure.CreatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
 
-	parseTaskExecutions(taskExecutions, spans, depth)
+		// parse task executions
+		parseTaskExecutions(taskExecutions, spans, depth)
 
-	*spans = append(*spans, createCategoricalSpan(taskExecutions[len(taskExecutions)-1].Closure.UpdatedAt,
-		nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+		// backend overhead
+		lastTask := taskExecutions[len(taskExecutions)-1]
+		if !nodeExecution.Closure.UpdatedAt.AsTime().Before(lastTask.Closure.UpdatedAt.AsTime()) {
+			*spans = append(*spans, createCategoricalSpan(taskExecutions[len(taskExecutions)-1].Closure.UpdatedAt,
+				nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
+		}
+	}
+
+	return nil
 }
 
 // TODO @hamersaw - docs
