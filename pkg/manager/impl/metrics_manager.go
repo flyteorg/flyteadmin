@@ -181,8 +181,9 @@ func (m *MetricsManager) parseBranchNodeExecution(ctx context.Context,
 		}
 
 		node := getBranchNode(branchNodeExecution.Metadata.SpecNodeId, branchNode)
-		if node != nil {
-			return fmt.Errorf("failed to identify branch node final node definition")
+		if node == nil {
+			return fmt.Errorf("failed to identify branch node final node definition for nodeID '%s' and branchNode '%+v'",
+				branchNodeExecution.Metadata.SpecNodeId, branchNode)
 		}
 
 		// frontend overhead
