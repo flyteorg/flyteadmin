@@ -18,21 +18,12 @@ import (
 )
 
 var (
-	emptyTimestamp = &timestamp.Timestamp{
-		Seconds: 0,
+	baseDuration = &duration.Duration{
+		Seconds: 400,
 		Nanos:   0,
 	}
 	baseTimestamp = &timestamp.Timestamp{
 		Seconds: 643852800,
-		Nanos:   0,
-	}
-
-	emptyDuration = &duration.Duration{
-		Seconds: 0,
-		Nanos:   0,
-	}
-	baseDuration = &duration.Duration{
-		Seconds: 400,
 		Nanos:   0,
 	}
 )
@@ -115,10 +106,6 @@ func parseSpansInfo(spans []*admin.Span) (map[admin.CategoricalSpanInfo_Category
 	}
 
 	return categoryDurations, referenceCount
-}
-
-func TestGetLatestUpstreamNodeExecution(t *testing.T) {
-	// TODO @hamersaw
 }
 
 func TestParseBranchNodeExecution(t *testing.T) {
@@ -455,10 +442,6 @@ func TestParseDynamicNodeExecution(t *testing.T) {
 	}
 }
 
-func TestParseExecution(t *testing.T) {
-	// TODO @hamersaw
-}
-
 func TestParseGateNodeExecution(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -684,14 +667,6 @@ func TestParseLaunchPlanNodeExecution(t *testing.T) {
 			assert.Equal(t, test.referenceCount, referenceCount)
 		})
 	}
-}
-
-func TestParseNodeExecution(t *testing.T) {
-	// TODO @hamersaw
-}
-
-func TestParseNodeExecutions(t *testing.T) {
-	// TODO @hamersaw
 }
 
 func TestParseSubworkflowNodeExecution(t *testing.T) {

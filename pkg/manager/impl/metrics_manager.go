@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
-	"github.com/pkg/errors"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -24,11 +23,11 @@ import (
 const RequestLimit uint32 = 50
 
 var (
-	nilDuration *duration.Duration = &duration.Duration{
+	emptyDuration *duration.Duration = &duration.Duration{
 		Seconds: 0,
 		Nanos:   0,
 	}
-	nilTimestamp *timestamp.Timestamp = &timestamp.Timestamp{
+	emptyTimestamp *timestamp.Timestamp = &timestamp.Timestamp{
 		Seconds: 0,
 		Nanos:   0,
 	}
@@ -163,7 +162,7 @@ func (m *MetricsManager) parseBranchNodeExecution(ctx context.Context,
 	} else {
 		// parse branchNode
 		if len(nodeExecutions) != 1 {
-			// TODO @hamersaw throw error - branch nodes execute a single node
+			return fmt.Errorf("invalid branch node execution: expected 1 but found %d node execution(s)", len(nodeExecutions))
 		}
 
 		var branchNodeExecution *admin.NodeExecution
@@ -173,7 +172,7 @@ func (m *MetricsManager) parseBranchNodeExecution(ctx context.Context,
 
 		node := getBranchNode(branchNodeExecution.Metadata.SpecNodeId, branchNode)
 		if node != nil {
-			// TODO @hamersaw throw error - failed to parse node
+			return fmt.Errorf("failed to identify branch node final node definition")
 		}
 
 		// frontend overhead
@@ -291,7 +290,7 @@ func (m *MetricsManager) parseExecution(ctx context.Context, execution *admin.Ex
 
 		// check if workflow has started
 		startNode := nodeExecutions["start-node"]
-		if startNode.Closure.UpdatedAt == nil || reflect.DeepEqual(startNode.Closure.UpdatedAt, nilTimestamp) {
+		if startNode.Closure.UpdatedAt == nil || reflect.DeepEqual(startNode.Closure.UpdatedAt, emptyTimestamp) {
 			spans = append(spans, createCategoricalSpan(execution.Closure.CreatedAt,
 				execution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
 		} else {
@@ -327,7 +326,7 @@ func (m *MetricsManager) parseExecution(ctx context.Context, execution *admin.Ex
 
 func (m *MetricsManager) parseGateNodeExecution(_ context.Context, nodeExecution *admin.NodeExecution, spans *[]*admin.Span) {
 	// check if node has started yet
-	if nodeExecution.Closure.StartedAt == nil || reflect.DeepEqual(nodeExecution.Closure.StartedAt, nilTimestamp) {
+	if nodeExecution.Closure.StartedAt == nil || reflect.DeepEqual(nodeExecution.Closure.StartedAt, emptyTimestamp) {
 		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
 			nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
 	} else {
@@ -336,7 +335,7 @@ func (m *MetricsManager) parseGateNodeExecution(_ context.Context, nodeExecution
 			nodeExecution.Closure.StartedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
 
 		// check if plugin has completed yet
-		if nodeExecution.Closure.Duration == nil || reflect.DeepEqual(nodeExecution.Closure.Duration, nilDuration) {
+		if nodeExecution.Closure.Duration == nil || reflect.DeepEqual(nodeExecution.Closure.Duration, emptyDuration) {
 			*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.StartedAt,
 				nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_IDLE))
 		} else {
@@ -424,10 +423,10 @@ func (m *MetricsManager) parseNodeExecution(ctx context.Context, nodeExecution *
 				// handle subworkflow
 				err = m.parseSubworkflowNodeExecution(ctx, nodeExecution, workflow.SubWorkflowRef, &spans, depth-1)
 			default:
-				err = fmt.Errorf("unsupported node type %+v", target)
+				err = fmt.Errorf("failed to identify workflow node type for node: %+v", target)
 			}
 		default:
-			err = fmt.Errorf("unsupported node type %+v", target)
+			err = fmt.Errorf("failed to identify node type for node: %+v", target)
 		}
 
 		if err != nil {
@@ -476,7 +475,8 @@ func (m *MetricsManager) parseNodeExecutions(ctx context.Context, nodeExecutions
 		}
 
 		if node == nil {
-			return errors.New("failed to identify workflow node") // TODO @hamersaw - do gooder
+			return fmt.Errorf("failed to discover workflow node '%s' in workflow '%+v'",
+				specNodeID, compiledWorkflowClosure.Primary.Template.Id)
 		}
 
 		// parse node execution
@@ -552,7 +552,7 @@ func parseTaskExecution(taskExecution *admin.TaskExecution) *admin.Span {
 	spans := make([]*admin.Span, 0)
 
 	// check if plugin has started yet
-	if taskExecution.Closure.StartedAt == nil || reflect.DeepEqual(taskExecution.Closure.StartedAt, nilTimestamp) {
+	if taskExecution.Closure.StartedAt == nil || reflect.DeepEqual(taskExecution.Closure.StartedAt, emptyTimestamp) {
 		spans = append(spans, createCategoricalSpan(taskExecution.Closure.CreatedAt,
 			taskExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_PLUGIN_OVERHEAD))
 	} else {
@@ -561,7 +561,7 @@ func parseTaskExecution(taskExecution *admin.TaskExecution) *admin.Span {
 			taskExecution.Closure.StartedAt, admin.CategoricalSpanInfo_PLUGIN_OVERHEAD))
 
 		// check if plugin has completed yet
-		if taskExecution.Closure.Duration == nil || reflect.DeepEqual(taskExecution.Closure.Duration, nilDuration) {
+		if taskExecution.Closure.Duration == nil || reflect.DeepEqual(taskExecution.Closure.Duration, emptyDuration) {
 			spans = append(spans, createCategoricalSpan(taskExecution.Closure.StartedAt,
 				taskExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_PLUGIN_RUNTIME))
 		} else {
@@ -669,14 +669,40 @@ func (m *MetricsManager) GetExecutionMetrics(ctx context.Context,
 func (m *MetricsManager) GetNodeExecutionMetrics(ctx context.Context,
 	request admin.NodeExecutionGetMetricsRequest) (*admin.NodeExecutionGetMetricsResponse, error) {
 
-	// retrieve node execution
+	// retrieve node execution, workflow execution, and workflow
 	nodeRequest := admin.NodeExecutionGetRequest{Id: request.Id}
 	nodeExecution, err := m.nodeExecutionManager.GetNodeExecution(ctx, nodeRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	span, err := m.parseNodeExecution(ctx, nodeExecution, nil, int(request.Depth)) // TODO @hamersaw can NOT pass nil for Node - FIX IMMEDIATELY
+	executionRequest := admin.WorkflowExecutionGetRequest{Id: nodeExecution.Id.ExecutionId}
+	execution, err := m.executionManager.GetExecution(ctx, executionRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	workflowRequest := admin.ObjectGetRequest{Id: execution.Closure.WorkflowId}
+	workflow, err := m.workflowManager.GetWorkflow(ctx, workflowRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	// get node definition from workflow
+	var node *core.Node
+	for _, n := range workflow.Closure.CompiledWorkflow.Primary.Template.Nodes {
+		if n.Id == nodeExecution.Metadata.SpecNodeId {
+			node = n
+		}
+	}
+
+	if node == nil {
+		return nil, fmt.Errorf("failed to discover workflow node '%s' in workflow '%+v'",
+			nodeExecution.Metadata.SpecNodeId, workflow.Closure.CompiledWorkflow.Primary.Template.Id)
+	}
+
+	// parse node execution
+	span, err := m.parseNodeExecution(ctx, nodeExecution, node, int(request.Depth))
 	if err != nil {
 		return nil, err
 	}
