@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
-	repoInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/pkg/errors"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
@@ -41,7 +40,6 @@ type metrics struct {
 }
 
 type MetricsManager struct {
-	db                   repoInterfaces.Repository
 	workflowManager      interfaces.WorkflowInterface
 	executionManager     interfaces.ExecutionInterface
 	nodeExecutionManager interfaces.NodeExecutionInterface
@@ -343,7 +341,7 @@ func (m *MetricsManager) parseGateNodeExecution(ctx context.Context, nodeExecuti
 	// check if node has started yet
 	if nodeExecution.Closure.StartedAt == nil || reflect.DeepEqual(nodeExecution.Closure.StartedAt, nilTimestamp) {
 		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
-			nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_PLUGIN_OVERHEAD))
+			nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
 	} else {
 		// frontend overhead
 		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
@@ -593,7 +591,7 @@ func parseTaskExecution(taskExecution *admin.TaskExecution) *admin.Span {
 				taskEndTime, admin.CategoricalSpanInfo_PLUGIN_RUNTIME))
 
 			// backend overhead
-			if !taskEndTime.AsTime().Before(taskExecution.Closure.UpdatedAt.AsTime()) {
+			if !taskExecution.Closure.UpdatedAt.AsTime().Before(taskEndTime.AsTime()) {
 				spans = append(spans, createCategoricalSpan(taskEndTime,
 					taskExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_PLUGIN_OVERHEAD))
 			}
@@ -707,7 +705,6 @@ func (m *MetricsManager) GetNodeExecutionMetrics(ctx context.Context,
 }
 
 func NewMetricsManager(
-	db repoInterfaces.Repository,
 	workflowManager interfaces.WorkflowInterface,
 	executionManager interfaces.ExecutionInterface,
 	nodeExecutionManager interfaces.NodeExecutionInterface,
@@ -719,7 +716,6 @@ func NewMetricsManager(
 	}
 
 	return &MetricsManager{
-		db:                   db,
 		workflowManager:      workflowManager,
 		executionManager:     executionManager,
 		nodeExecutionManager: nodeExecutionManager,
