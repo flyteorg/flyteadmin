@@ -37,6 +37,7 @@ type metrics struct {
 	Scope promutils.Scope
 }
 
+// MetricsManager handles computation of workflow, node, and task execution metrics.
 type MetricsManager struct {
 	workflowManager      interfaces.WorkflowInterface
 	executionManager     interfaces.ExecutionInterface
@@ -45,6 +46,7 @@ type MetricsManager struct {
 	metrics              metrics
 }
 
+// createCategoricalSpan returns a Span defined by the provided arguments.
 func createCategoricalSpan(startTime, endTime *timestamp.Timestamp, category admin.CategoricalSpanInfo_Category) *admin.Span {
 	return &admin.Span{
 		StartTime: startTime,
@@ -57,6 +59,7 @@ func createCategoricalSpan(startTime, endTime *timestamp.Timestamp, category adm
 	}
 }
 
+// getBranchNode searches the provided BranchNode definition for the Node identified by nodeID.
 func getBranchNode(nodeID string, branchNode *core.BranchNode) *core.Node {
 	if branchNode.IfElse.Case.ThenNode.Id == nodeID {
 		return branchNode.IfElse.Case.ThenNode
@@ -77,6 +80,9 @@ func getBranchNode(nodeID string, branchNode *core.BranchNode) *core.Node {
 	return nil
 }
 
+// getLatestUpstreamNodeExecution returns the NodeExecution with the latest UpdatedAt timestamp that is an upstream
+// dependency of the provided nodeID. This is useful for computing the duration between when a node is first available
+// for scheduling and when it is actually scheduled.
 func (m *MetricsManager) getLatestUpstreamNodeExecution(nodeID string, upstreamNodeIds map[string]*core.ConnectionSet_IdList,
 	nodeExecutions map[string]*admin.NodeExecution) *admin.NodeExecution {
 
@@ -100,6 +106,7 @@ func (m *MetricsManager) getLatestUpstreamNodeExecution(nodeID string, upstreamN
 	return nodeExecution
 }
 
+// getNodeExecutions queries the nodeExecutionManager for NodeExecutions adhering to the specified request.
 func (m *MetricsManager) getNodeExecutions(ctx context.Context, request admin.NodeExecutionListRequest) (map[string]*admin.NodeExecution, error) {
 	nodeExecutions := make(map[string]*admin.NodeExecution)
 	for {
@@ -122,6 +129,7 @@ func (m *MetricsManager) getNodeExecutions(ctx context.Context, request admin.No
 	return nodeExecutions, nil
 }
 
+// getTaskExecutions queries the taskExecutionManager for TaskExecutions adhering to the specified request.
 func (m *MetricsManager) getTaskExecutions(ctx context.Context, request admin.TaskExecutionListRequest) ([]*admin.TaskExecution, error) {
 	taskExecutions := make([]*admin.TaskExecution, 0)
 	for {
@@ -142,6 +150,8 @@ func (m *MetricsManager) getTaskExecutions(ctx context.Context, request admin.Ta
 	return taskExecutions, nil
 }
 
+// parseBranchNodeExecution partitions the BranchNode execution into a collection of Categorical and Reference Spans
+// which are appended to the provided spans argument.
 func (m *MetricsManager) parseBranchNodeExecution(ctx context.Context,
 	nodeExecution *admin.NodeExecution, branchNode *core.BranchNode, spans *[]*admin.Span, depth int) error {
 
@@ -197,6 +207,8 @@ func (m *MetricsManager) parseBranchNodeExecution(ctx context.Context,
 	return nil
 }
 
+// parseDynamicNodeExecution partitions the DynamicNode execution into a collection of Categorical and Reference Spans
+// which are appended to the provided spans argument.
 func (m *MetricsManager) parseDynamicNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution, spans *[]*admin.Span, depth int) error {
 	taskExecutions, err := m.getTaskExecutions(ctx, admin.TaskExecutionListRequest{
 		NodeExecutionId: nodeExecution.Id,
@@ -263,6 +275,8 @@ func (m *MetricsManager) parseDynamicNodeExecution(ctx context.Context, nodeExec
 	return nil
 }
 
+// parseExecution partitions the workflow execution into a collection of Categorical and Reference Spans which are
+// returned as a hierarchical breakdown of the workflow execution.
 func (m *MetricsManager) parseExecution(ctx context.Context, execution *admin.Execution, depth int) (*admin.Span, error) {
 	referenceSpan := &admin.ReferenceSpanInfo{
 		Id: &admin.ReferenceSpanInfo_WorkflowId{
@@ -324,6 +338,8 @@ func (m *MetricsManager) parseExecution(ctx context.Context, execution *admin.Ex
 	}, nil
 }
 
+// parseGateNodeExecution partitions the GateNode execution into a collection of Categorical and Reference Spans
+// which are appended to the provided spans argument.
 func (m *MetricsManager) parseGateNodeExecution(_ context.Context, nodeExecution *admin.NodeExecution, spans *[]*admin.Span) {
 	// check if node has started yet
 	if nodeExecution.Closure.StartedAt == nil || reflect.DeepEqual(nodeExecution.Closure.StartedAt, emptyTimestamp) {
@@ -351,6 +367,8 @@ func (m *MetricsManager) parseGateNodeExecution(_ context.Context, nodeExecution
 	}
 }
 
+// parseLaunchPlanNodeExecution partitions the LaunchPlanNode execution into a collection of Categorical and Reference
+// Spans which are appended to the provided spans argument.
 func (m *MetricsManager) parseLaunchPlanNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution, spans *[]*admin.Span, depth int) error {
 	// check if workflow started yet
 	workflowNode := nodeExecution.Closure.GetWorkflowNodeMetadata()
@@ -387,6 +405,8 @@ func (m *MetricsManager) parseLaunchPlanNodeExecution(ctx context.Context, nodeE
 	return nil
 }
 
+// parseNodeExecution partitions the node execution into a collection of Categorical and Reference Spans which are
+// returned as a hierarchical breakdown of the node execution.
 func (m *MetricsManager) parseNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution, node *core.Node, depth int) (*admin.Span, error) {
 	referenceSpan := &admin.ReferenceSpanInfo{
 		Id: &admin.ReferenceSpanInfo_NodeId{
@@ -445,6 +465,8 @@ func (m *MetricsManager) parseNodeExecution(ctx context.Context, nodeExecution *
 	}, nil
 }
 
+// parseNodeExecutions partitions the node executions into a collection of Categorical and Reference Spans which are
+// appended to the provided spans argument.
 func (m *MetricsManager) parseNodeExecutions(ctx context.Context, nodeExecutions map[string]*admin.NodeExecution,
 	compiledWorkflowClosure *core.CompiledWorkflowClosure, spans *[]*admin.Span, depth int) error {
 
@@ -501,6 +523,8 @@ func (m *MetricsManager) parseNodeExecutions(ctx context.Context, nodeExecutions
 	return nil
 }
 
+// parseSubworkflowNodeExecutions partitions the SubworkflowNode execution into a collection of Categorical and
+// Reference Spans which are appended to the provided spans argument.
 func (m *MetricsManager) parseSubworkflowNodeExecution(ctx context.Context,
 	nodeExecution *admin.NodeExecution, identifier *core.Identifier, spans *[]*admin.Span, depth int) error {
 
@@ -548,6 +572,8 @@ func (m *MetricsManager) parseSubworkflowNodeExecution(ctx context.Context,
 	return nil
 }
 
+// parseTaskExecution partitions the task execution into a collection of Categorical and Reference Spans which are
+// returned as a hierarchical breakdown of the task execution.
 func parseTaskExecution(taskExecution *admin.TaskExecution) *admin.Span {
 	spans := make([]*admin.Span, 0)
 
@@ -592,6 +618,8 @@ func parseTaskExecution(taskExecution *admin.TaskExecution) *admin.Span {
 	}
 }
 
+// parseTaskExecutions partitions the task executions into a collection of Categorical and Reference Spans which are
+// appended to the provided spans argument.
 func parseTaskExecutions(taskExecutions []*admin.TaskExecution, spans *[]*admin.Span, depth int) {
 	// sort task executions
 	sort.Slice(taskExecutions, func(i, j int) bool {
@@ -613,6 +641,8 @@ func parseTaskExecutions(taskExecutions []*admin.TaskExecution, spans *[]*admin.
 	}
 }
 
+// parseTaskNodeExecutions partitions the TaskNode execution into a collection of Categorical and Reference Spans which
+// are appended to the provided spans argument.
 func (m *MetricsManager) parseTaskNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution, spans *[]*admin.Span, depth int) error {
 	// retrieve task executions
 	taskExecutions, err := m.getTaskExecutions(ctx, admin.TaskExecutionListRequest{
@@ -646,7 +676,8 @@ func (m *MetricsManager) parseTaskNodeExecution(ctx context.Context, nodeExecuti
 	return nil
 }
 
-// TODO @hamersaw - docs
+// GetExecutionMetrics returns a Span hierarchically breaking down the workflow execution into a collection of
+// Categorical and Reference Spans.
 func (m *MetricsManager) GetExecutionMetrics(ctx context.Context,
 	request admin.WorkflowExecutionGetMetricsRequest) (*admin.WorkflowExecutionGetMetricsResponse, error) {
 
@@ -665,7 +696,8 @@ func (m *MetricsManager) GetExecutionMetrics(ctx context.Context,
 	return &admin.WorkflowExecutionGetMetricsResponse{Span: span}, nil
 }
 
-// TODO @hamersaw docs
+// GetNodeExecutionMetrics returns a Span hierarchically breaking down the node execution into a collection of
+// Categorical and Reference Spans.
 func (m *MetricsManager) GetNodeExecutionMetrics(ctx context.Context,
 	request admin.NodeExecutionGetMetricsRequest) (*admin.NodeExecutionGetMetricsResponse, error) {
 
@@ -710,6 +742,7 @@ func (m *MetricsManager) GetNodeExecutionMetrics(ctx context.Context,
 	return &admin.NodeExecutionGetMetricsResponse{Span: span}, nil
 }
 
+// NewMetricsManager returns a new MetricsManager constructed with the provided arguments.
 func NewMetricsManager(
 	workflowManager interfaces.WorkflowInterface,
 	executionManager interfaces.ExecutionInterface,
