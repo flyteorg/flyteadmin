@@ -8,8 +8,8 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
-	"github.com/flyteorg/flyteadmin/pkg/manager/mocks"
 	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/manager/mocks"
 
 	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -20,27 +20,27 @@ import (
 var (
 	emptyTimestamp = &timestamp.Timestamp{
 		Seconds: 0,
-		Nanos: 0,
+		Nanos:   0,
 	}
 	baseTimestamp = &timestamp.Timestamp{
 		Seconds: 643852800,
-		Nanos: 0,
+		Nanos:   0,
 	}
 
 	emptyDuration = &duration.Duration{
 		Seconds: 0,
-		Nanos: 0,
+		Nanos:   0,
 	}
 	baseDuration = &duration.Duration{
 		Seconds: 400,
-		Nanos: 0,
+		Nanos:   0,
 	}
 )
 
 func addTimestamp(ts *timestamp.Timestamp, seconds int64) *timestamp.Timestamp {
 	return &timestamp.Timestamp{
 		Seconds: ts.Seconds + seconds,
-		Nanos: ts.Nanos,
+		Nanos:   ts.Nanos,
 	}
 }
 
@@ -61,7 +61,7 @@ func getMockNodeExecutionManager(nodeExecutions []*admin.NodeExecution,
 	mockNodeExecutionManager.SetListNodeExecutionsFunc(
 		func(ctx context.Context, request admin.NodeExecutionListRequest) (*admin.NodeExecutionList, error) {
 			return &admin.NodeExecutionList{
-				NodeExecutions: nodeExecutions, 
+				NodeExecutions: nodeExecutions,
 			}, nil
 		})
 	mockNodeExecutionManager.SetGetNodeExecutionDataFunc(
@@ -79,7 +79,7 @@ func getMockTaskExecutionManager(taskExecutions []*admin.TaskExecution) interfac
 	mockTaskExecutionManager.SetListTaskExecutionsCallback(
 		func(ctx context.Context, request admin.TaskExecutionListRequest) (*admin.TaskExecutionList, error) {
 			return &admin.TaskExecutionList{
-				TaskExecutions: taskExecutions, 
+				TaskExecutions: taskExecutions,
 			}, nil
 		})
 
@@ -122,7 +122,7 @@ func TestGetLatestUpstreamNodeExecution(t *testing.T) {
 }
 
 func TestParseBranchNodeExecution(t *testing.T) {
-	tests := []struct{
+	tests := []struct {
 		name              string
 		nodeExecution     *admin.NodeExecution
 		nodeExecutions    []*admin.NodeExecution
@@ -133,8 +133,7 @@ func TestParseBranchNodeExecution(t *testing.T) {
 			"NotStarted",
 			&admin.NodeExecution{
 				Id: &core.NodeExecutionIdentifier{
-					ExecutionId: &core.WorkflowExecutionIdentifier{
-					},
+					ExecutionId: &core.WorkflowExecutionIdentifier{},
 				},
 				Closure: &admin.NodeExecutionClosure{
 					CreatedAt: baseTimestamp,
@@ -153,8 +152,7 @@ func TestParseBranchNodeExecution(t *testing.T) {
 			"Running",
 			&admin.NodeExecution{
 				Id: &core.NodeExecutionIdentifier{
-					ExecutionId: &core.WorkflowExecutionIdentifier{
-					},
+					ExecutionId: &core.WorkflowExecutionIdentifier{},
 				},
 				Closure: &admin.NodeExecutionClosure{
 					CreatedAt: baseTimestamp,
@@ -165,7 +163,7 @@ func TestParseBranchNodeExecution(t *testing.T) {
 			},
 			[]*admin.NodeExecution{
 				&admin.NodeExecution{
-					Metadata: &admin.NodeExecutionMetaData {
+					Metadata: &admin.NodeExecutionMetaData{
 						SpecNodeId: "foo",
 					},
 					Closure: &admin.NodeExecutionClosure{
@@ -185,8 +183,7 @@ func TestParseBranchNodeExecution(t *testing.T) {
 			"Completed",
 			&admin.NodeExecution{
 				Id: &core.NodeExecutionIdentifier{
-					ExecutionId: &core.WorkflowExecutionIdentifier{
-					},
+					ExecutionId: &core.WorkflowExecutionIdentifier{},
 				},
 				Closure: &admin.NodeExecutionClosure{
 					CreatedAt: baseTimestamp,
@@ -197,7 +194,7 @@ func TestParseBranchNodeExecution(t *testing.T) {
 			},
 			[]*admin.NodeExecution{
 				&admin.NodeExecution{
-					Metadata: &admin.NodeExecutionMetaData {
+					Metadata: &admin.NodeExecutionMetaData{
 						SpecNodeId: "foo",
 					},
 					Closure: &admin.NodeExecutionClosure{
@@ -214,7 +211,7 @@ func TestParseBranchNodeExecution(t *testing.T) {
 			1,
 		},
 	}
-			
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// initialize mocks
@@ -230,7 +227,7 @@ func TestParseBranchNodeExecution(t *testing.T) {
 				IfElse: &core.IfElseBlock{
 					Case: &core.IfBlock{
 						ThenNode: &core.Node{
-							Id: "foo",
+							Id:     "foo",
 							Target: &core.Node_TaskNode{},
 						},
 					},
@@ -250,7 +247,7 @@ func TestParseBranchNodeExecution(t *testing.T) {
 }
 
 func TestParseDynamicNodeExecution(t *testing.T) {
-	tests := []struct{
+	tests := []struct {
 		name              string
 		nodeExecution     *admin.NodeExecution
 		taskExecutions    []*admin.TaskExecution
@@ -279,8 +276,7 @@ func TestParseDynamicNodeExecution(t *testing.T) {
 			"TaskRunning",
 			&admin.NodeExecution{
 				Id: &core.NodeExecutionIdentifier{
-					ExecutionId: &core.WorkflowExecutionIdentifier{
-					},
+					ExecutionId: &core.WorkflowExecutionIdentifier{},
 				},
 				Closure: &admin.NodeExecutionClosure{
 					CreatedAt: baseTimestamp,
@@ -309,8 +305,7 @@ func TestParseDynamicNodeExecution(t *testing.T) {
 			"NodesRunning",
 			&admin.NodeExecution{
 				Id: &core.NodeExecutionIdentifier{
-					ExecutionId: &core.WorkflowExecutionIdentifier{
-					},
+					ExecutionId: &core.WorkflowExecutionIdentifier{},
 				},
 				Closure: &admin.NodeExecutionClosure{
 					CreatedAt: baseTimestamp,
@@ -331,7 +326,7 @@ func TestParseDynamicNodeExecution(t *testing.T) {
 			},
 			[]*admin.NodeExecution{
 				&admin.NodeExecution{
-					Metadata: &admin.NodeExecutionMetaData {
+					Metadata: &admin.NodeExecutionMetaData{
 						SpecNodeId: "start-node",
 					},
 					Closure: &admin.NodeExecutionClosure{
@@ -342,7 +337,7 @@ func TestParseDynamicNodeExecution(t *testing.T) {
 					},
 				},
 				&admin.NodeExecution{
-					Metadata: &admin.NodeExecutionMetaData {
+					Metadata: &admin.NodeExecutionMetaData{
 						SpecNodeId: "foo",
 					},
 					Closure: &admin.NodeExecutionClosure{
@@ -362,8 +357,7 @@ func TestParseDynamicNodeExecution(t *testing.T) {
 			"Completed",
 			&admin.NodeExecution{
 				Id: &core.NodeExecutionIdentifier{
-					ExecutionId: &core.WorkflowExecutionIdentifier{
-					},
+					ExecutionId: &core.WorkflowExecutionIdentifier{},
 				},
 				Closure: &admin.NodeExecutionClosure{
 					CreatedAt: baseTimestamp,
@@ -384,7 +378,7 @@ func TestParseDynamicNodeExecution(t *testing.T) {
 			},
 			[]*admin.NodeExecution{
 				&admin.NodeExecution{
-					Metadata: &admin.NodeExecutionMetaData {
+					Metadata: &admin.NodeExecutionMetaData{
 						SpecNodeId: "start-node",
 					},
 					Closure: &admin.NodeExecutionClosure{
@@ -395,7 +389,7 @@ func TestParseDynamicNodeExecution(t *testing.T) {
 					},
 				},
 				&admin.NodeExecution{
-					Metadata: &admin.NodeExecutionMetaData {
+					Metadata: &admin.NodeExecutionMetaData{
 						SpecNodeId: "foo",
 					},
 					Closure: &admin.NodeExecutionClosure{
@@ -412,7 +406,7 @@ func TestParseDynamicNodeExecution(t *testing.T) {
 			2,
 		},
 	}
-			
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// initialize mocks
@@ -434,7 +428,7 @@ func TestParseDynamicNodeExecution(t *testing.T) {
 							Template: &core.WorkflowTemplate{
 								Nodes: []*core.Node{
 									&core.Node{
-										Id: "foo",
+										Id:     "foo",
 										Target: &core.Node_TaskNode{},
 									},
 								},
@@ -466,7 +460,7 @@ func TestParseExecution(t *testing.T) {
 }
 
 func TestParseGateNodeExecution(t *testing.T) {
-	tests := []struct{
+	tests := []struct {
 		name              string
 		nodeExecution     *admin.NodeExecution
 		categoryDurations map[admin.CategoricalSpanInfo_Category][]int64
@@ -497,7 +491,7 @@ func TestParseGateNodeExecution(t *testing.T) {
 			},
 			map[admin.CategoricalSpanInfo_Category][]int64{
 				admin.CategoricalSpanInfo_EXECUTION_OVERHEAD: []int64{10},
-				admin.CategoricalSpanInfo_EXECUTION_IDLE: []int64{5},
+				admin.CategoricalSpanInfo_EXECUTION_IDLE:     []int64{5},
 			},
 		},
 		{
@@ -512,11 +506,11 @@ func TestParseGateNodeExecution(t *testing.T) {
 			},
 			map[admin.CategoricalSpanInfo_Category][]int64{
 				admin.CategoricalSpanInfo_EXECUTION_OVERHEAD: []int64{10, 15},
-				admin.CategoricalSpanInfo_EXECUTION_IDLE: []int64{400},
+				admin.CategoricalSpanInfo_EXECUTION_IDLE:     []int64{400},
 			},
 		},
 	}
-			
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// initialize mocks
@@ -524,7 +518,7 @@ func TestParseGateNodeExecution(t *testing.T) {
 
 			// parse node execution
 			spans := make([]*admin.Span, 0)
-			metricsManager.parseGateNodeExecution(context.TODO(), test.nodeExecution, &spans, -1)
+			metricsManager.parseGateNodeExecution(context.TODO(), test.nodeExecution, &spans)
 
 			// validate spans
 			categoryDurations, _ := parseSpansInfo(spans)
@@ -534,7 +528,7 @@ func TestParseGateNodeExecution(t *testing.T) {
 }
 
 func TestParseLaunchPlanNodeExecution(t *testing.T) {
-	tests := []struct{
+	tests := []struct {
 		name              string
 		nodeExecution     *admin.NodeExecution
 		execution         *admin.Execution
@@ -567,8 +561,7 @@ func TestParseLaunchPlanNodeExecution(t *testing.T) {
 					UpdatedAt: baseTimestamp,
 					TargetMetadata: &admin.NodeExecutionClosure_WorkflowNodeMetadata{
 						WorkflowNodeMetadata: &admin.WorkflowNodeMetadata{
-							ExecutionId: &core.WorkflowExecutionIdentifier{
-							},
+							ExecutionId: &core.WorkflowExecutionIdentifier{},
 						},
 					},
 				},
@@ -596,8 +589,7 @@ func TestParseLaunchPlanNodeExecution(t *testing.T) {
 					UpdatedAt: addTimestamp(baseTimestamp, 440),
 					TargetMetadata: &admin.NodeExecutionClosure_WorkflowNodeMetadata{
 						WorkflowNodeMetadata: &admin.WorkflowNodeMetadata{
-							ExecutionId: &core.WorkflowExecutionIdentifier{
-							},
+							ExecutionId: &core.WorkflowExecutionIdentifier{},
 						},
 					},
 				},
@@ -616,7 +608,7 @@ func TestParseLaunchPlanNodeExecution(t *testing.T) {
 			1,
 		},
 	}
-			
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// initialize mocks
@@ -624,7 +616,7 @@ func TestParseLaunchPlanNodeExecution(t *testing.T) {
 			mockNodeExecutionManager := getMockNodeExecutionManager(
 				[]*admin.NodeExecution{
 					&admin.NodeExecution{
-						Metadata: &admin.NodeExecutionMetaData {
+						Metadata: &admin.NodeExecutionMetaData{
 							SpecNodeId: "start-node",
 						},
 						Closure: &admin.NodeExecutionClosure{
@@ -635,7 +627,7 @@ func TestParseLaunchPlanNodeExecution(t *testing.T) {
 						},
 					},
 					&admin.NodeExecution{
-						Metadata: &admin.NodeExecutionMetaData {
+						Metadata: &admin.NodeExecutionMetaData{
 							SpecNodeId: "foo",
 						},
 						Closure: &admin.NodeExecutionClosure{
@@ -665,7 +657,7 @@ func TestParseLaunchPlanNodeExecution(t *testing.T) {
 								Template: &core.WorkflowTemplate{
 									Nodes: []*core.Node{
 										&core.Node{
-											Id: "foo",
+											Id:     "foo",
 											Target: &core.Node_TaskNode{},
 										},
 									},
@@ -703,7 +695,7 @@ func TestParseNodeExecutions(t *testing.T) {
 }
 
 func TestParseSubworkflowNodeExecution(t *testing.T) {
-	tests := []struct{
+	tests := []struct {
 		name              string
 		nodeExecution     *admin.NodeExecution
 		nodeExecutions    []*admin.NodeExecution
@@ -714,8 +706,7 @@ func TestParseSubworkflowNodeExecution(t *testing.T) {
 			"NotStarted",
 			&admin.NodeExecution{
 				Id: &core.NodeExecutionIdentifier{
-					ExecutionId: &core.WorkflowExecutionIdentifier{
-					},
+					ExecutionId: &core.WorkflowExecutionIdentifier{},
 				},
 				Closure: &admin.NodeExecutionClosure{
 					CreatedAt: baseTimestamp,
@@ -734,8 +725,7 @@ func TestParseSubworkflowNodeExecution(t *testing.T) {
 			"Running",
 			&admin.NodeExecution{
 				Id: &core.NodeExecutionIdentifier{
-					ExecutionId: &core.WorkflowExecutionIdentifier{
-					},
+					ExecutionId: &core.WorkflowExecutionIdentifier{},
 				},
 				Closure: &admin.NodeExecutionClosure{
 					CreatedAt: baseTimestamp,
@@ -746,7 +736,7 @@ func TestParseSubworkflowNodeExecution(t *testing.T) {
 			},
 			[]*admin.NodeExecution{
 				&admin.NodeExecution{
-					Metadata: &admin.NodeExecutionMetaData {
+					Metadata: &admin.NodeExecutionMetaData{
 						SpecNodeId: "start-node",
 					},
 					Closure: &admin.NodeExecutionClosure{
@@ -757,7 +747,7 @@ func TestParseSubworkflowNodeExecution(t *testing.T) {
 					},
 				},
 				&admin.NodeExecution{
-					Metadata: &admin.NodeExecutionMetaData {
+					Metadata: &admin.NodeExecutionMetaData{
 						SpecNodeId: "foo",
 					},
 					Closure: &admin.NodeExecutionClosure{
@@ -777,8 +767,7 @@ func TestParseSubworkflowNodeExecution(t *testing.T) {
 			"Completed",
 			&admin.NodeExecution{
 				Id: &core.NodeExecutionIdentifier{
-					ExecutionId: &core.WorkflowExecutionIdentifier{
-					},
+					ExecutionId: &core.WorkflowExecutionIdentifier{},
 				},
 				Closure: &admin.NodeExecutionClosure{
 					CreatedAt: baseTimestamp,
@@ -789,7 +778,7 @@ func TestParseSubworkflowNodeExecution(t *testing.T) {
 			},
 			[]*admin.NodeExecution{
 				&admin.NodeExecution{
-					Metadata: &admin.NodeExecutionMetaData {
+					Metadata: &admin.NodeExecutionMetaData{
 						SpecNodeId: "start-node",
 					},
 					Closure: &admin.NodeExecutionClosure{
@@ -800,7 +789,7 @@ func TestParseSubworkflowNodeExecution(t *testing.T) {
 					},
 				},
 				&admin.NodeExecution{
-					Metadata: &admin.NodeExecutionMetaData {
+					Metadata: &admin.NodeExecutionMetaData{
 						SpecNodeId: "foo",
 					},
 					Closure: &admin.NodeExecutionClosure{
@@ -817,7 +806,7 @@ func TestParseSubworkflowNodeExecution(t *testing.T) {
 			1,
 		},
 	}
-			
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// initialize mocks
@@ -841,7 +830,7 @@ func TestParseSubworkflowNodeExecution(t *testing.T) {
 								Template: &core.WorkflowTemplate{
 									Nodes: []*core.Node{
 										&core.Node{
-											Id: "foo",
+											Id:     "foo",
 											Target: &core.Node_TaskNode{},
 										},
 									},
@@ -870,7 +859,7 @@ func TestParseSubworkflowNodeExecution(t *testing.T) {
 }
 
 func TestParseTaskExecution(t *testing.T) {
-	tests := []struct{
+	tests := []struct {
 		name              string
 		taskExecution     *admin.TaskExecution
 		categoryDurations map[admin.CategoricalSpanInfo_Category][]int64
@@ -901,7 +890,7 @@ func TestParseTaskExecution(t *testing.T) {
 			},
 			map[admin.CategoricalSpanInfo_Category][]int64{
 				admin.CategoricalSpanInfo_PLUGIN_OVERHEAD: []int64{5},
-				admin.CategoricalSpanInfo_PLUGIN_RUNTIME: []int64{600},
+				admin.CategoricalSpanInfo_PLUGIN_RUNTIME:  []int64{600},
 			},
 		},
 		{
@@ -916,11 +905,11 @@ func TestParseTaskExecution(t *testing.T) {
 			},
 			map[admin.CategoricalSpanInfo_Category][]int64{
 				admin.CategoricalSpanInfo_PLUGIN_OVERHEAD: []int64{5, 10},
-				admin.CategoricalSpanInfo_PLUGIN_RUNTIME: []int64{400},
+				admin.CategoricalSpanInfo_PLUGIN_RUNTIME:  []int64{400},
 			},
 		},
 	}
-			
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// parse task execution
@@ -937,7 +926,7 @@ func TestParseTaskExecution(t *testing.T) {
 }
 
 func TestParseTaskExecutions(t *testing.T) {
-	tests := []struct{
+	tests := []struct {
 		name              string
 		taskExecutions    []*admin.TaskExecution
 		categoryDurations map[admin.CategoricalSpanInfo_Category][]int64
@@ -984,7 +973,7 @@ func TestParseTaskExecutions(t *testing.T) {
 			2,
 		},
 	}
-			
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// parse task executions
@@ -1000,7 +989,7 @@ func TestParseTaskExecutions(t *testing.T) {
 }
 
 func TestParseTaskNodeExecution(t *testing.T) {
-	tests := []struct{
+	tests := []struct {
 		name              string
 		nodeExecution     *admin.NodeExecution
 		taskExecutions    []*admin.TaskExecution
@@ -1074,7 +1063,7 @@ func TestParseTaskNodeExecution(t *testing.T) {
 			1,
 		},
 	}
-			
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// initialize mocks

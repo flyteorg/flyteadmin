@@ -161,7 +161,7 @@ func NewAdminServer(ctx context.Context, pluginRegistry *plugins.Registry, confi
 	nodeExecutionManager := manager.NewNodeExecutionManager(repo, configuration, applicationConfiguration.GetMetadataStoragePrefix(), dataStorageClient,
 		adminScope.NewSubScope("node_execution_manager"), urlData, eventPublisher, cloudEventPublisher, nodeExecutionEventWriter)
 	taskExecutionManager := manager.NewTaskExecutionManager(repo, configuration, dataStorageClient,
-			adminScope.NewSubScope("task_execution_manager"), urlData, eventPublisher, cloudEventPublisher)
+		adminScope.NewSubScope("task_execution_manager"), urlData, eventPublisher, cloudEventPublisher)
 
 	logger.Info(ctx, "Initializing a new AdminService")
 	return &AdminService{
@@ -173,12 +173,12 @@ func NewAdminServer(ctx context.Context, pluginRegistry *plugins.Registry, confi
 		NamedEntityManager:       namedEntityManager,
 		DescriptionEntityManager: descriptionEntityManager,
 		VersionManager:           versionManager,
-		NodeExecutionManager: nodeExecutionManager,
-		TaskExecutionManager: taskExecutionManager,
-		ProjectManager:  manager.NewProjectManager(repo, configuration),
-		ResourceManager: resources.NewResourceManager(repo, configuration.ApplicationConfiguration()),
-		MetricsManager:  manager.NewMetricsManager(repo, workflowManager, executionManager, nodeExecutionManager,
+		NodeExecutionManager:     nodeExecutionManager,
+		TaskExecutionManager:     taskExecutionManager,
+		ProjectManager:           manager.NewProjectManager(repo, configuration),
+		ResourceManager:          resources.NewResourceManager(repo, configuration.ApplicationConfiguration()),
+		MetricsManager: manager.NewMetricsManager(workflowManager, executionManager, nodeExecutionManager,
 			taskExecutionManager, adminScope.NewSubScope("metrics_manager")),
-		Metrics:         InitMetrics(adminScope),
+		Metrics: InitMetrics(adminScope),
 	}
 }

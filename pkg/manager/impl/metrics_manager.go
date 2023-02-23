@@ -21,22 +21,21 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-const REQUEST_LIMIT uint32 = 50
+const RequestLimit uint32 = 50
 
 var (
 	nilDuration *duration.Duration = &duration.Duration{
 		Seconds: 0,
-		Nanos: 0,
+		Nanos:   0,
 	}
 	nilTimestamp *timestamp.Timestamp = &timestamp.Timestamp{
 		Seconds: 0,
-		Nanos: 0,
+		Nanos:   0,
 	}
 )
 
 type metrics struct {
 	Scope promutils.Scope
-	//Set   labeled.Counter
 }
 
 type MetricsManager struct {
@@ -50,28 +49,28 @@ type MetricsManager struct {
 func createCategoricalSpan(startTime, endTime *timestamp.Timestamp, category admin.CategoricalSpanInfo_Category) *admin.Span {
 	return &admin.Span{
 		StartTime: startTime,
-		EndTime: endTime,
+		EndTime:   endTime,
 		Info: &admin.Span_Category{
 			Category: &admin.CategoricalSpanInfo{
-				Category:    category,
+				Category: category,
 			},
 		},
 	}
 }
 
-func getBranchNode(nodeId string, branchNode *core.BranchNode) *core.Node {
-	if branchNode.IfElse.Case.ThenNode.Id == nodeId {
+func getBranchNode(nodeID string, branchNode *core.BranchNode) *core.Node {
+	if branchNode.IfElse.Case.ThenNode.Id == nodeID {
 		return branchNode.IfElse.Case.ThenNode
 	}
 
 	for _, other := range branchNode.IfElse.Other {
-		if other.ThenNode.Id == nodeId {
+		if other.ThenNode.Id == nodeID {
 			return other.ThenNode
 		}
 	}
 
 	if elseNode, ok := branchNode.IfElse.Default.(*core.IfElseBlock_ElseNode); ok {
-		if elseNode.ElseNode.Id == nodeId {
+		if elseNode.ElseNode.Id == nodeID {
 			return elseNode.ElseNode
 		}
 	}
@@ -79,15 +78,14 @@ func getBranchNode(nodeId string, branchNode *core.BranchNode) *core.Node {
 	return nil
 }
 
-
-func (m *MetricsManager) getLatestUpstreamNodeExecution(ctx context.Context, nodeId string,
-	upstreamNodeIds map[string]*core.ConnectionSet_IdList, nodeExecutions map[string]*admin.NodeExecution) (*admin.NodeExecution, error) {
+func (m *MetricsManager) getLatestUpstreamNodeExecution(nodeID string, upstreamNodeIds map[string]*core.ConnectionSet_IdList,
+	nodeExecutions map[string]*admin.NodeExecution) *admin.NodeExecution {
 
 	var nodeExecution *admin.NodeExecution
 	var latestUpstreamUpdatedAt = time.Unix(0, 0)
-	if connectionSet, exists := upstreamNodeIds[nodeId]; exists {
-		for _, upstreamNodeId := range connectionSet.Ids {
-			upstreamNodeExecution, exists := nodeExecutions[upstreamNodeId]
+	if connectionSet, exists := upstreamNodeIds[nodeID]; exists {
+		for _, upstreamNodeID := range connectionSet.Ids {
+			upstreamNodeExecution, exists := nodeExecutions[upstreamNodeID]
 			if !exists {
 				continue
 			}
@@ -100,7 +98,7 @@ func (m *MetricsManager) getLatestUpstreamNodeExecution(ctx context.Context, nod
 		}
 	}
 
-	return nodeExecution, nil
+	return nodeExecution
 }
 
 func (m *MetricsManager) getNodeExecutions(ctx context.Context, request admin.NodeExecutionListRequest) (map[string]*admin.NodeExecution, error) {
@@ -133,9 +131,7 @@ func (m *MetricsManager) getTaskExecutions(ctx context.Context, request admin.Ta
 			return nil, err
 		}
 
-		for _, taskExecution := range response.TaskExecutions {
-			taskExecutions = append(taskExecutions, taskExecution)
-		}
+		taskExecutions = append(taskExecutions, response.TaskExecutions...)
 
 		if len(response.TaskExecutions) < int(request.Limit) {
 			break
@@ -153,8 +149,8 @@ func (m *MetricsManager) parseBranchNodeExecution(ctx context.Context,
 	// retrieve node execution(s)
 	nodeExecutions, err := m.getNodeExecutions(ctx, admin.NodeExecutionListRequest{
 		WorkflowExecutionId: nodeExecution.Id.ExecutionId,
-		Limit: REQUEST_LIMIT,
-		UniqueParentId: nodeExecution.Id.NodeId,
+		Limit:               RequestLimit,
+		UniqueParentId:      nodeExecution.Id.NodeId,
 	})
 	if err != nil {
 		return err
@@ -205,7 +201,7 @@ func (m *MetricsManager) parseBranchNodeExecution(ctx context.Context,
 func (m *MetricsManager) parseDynamicNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution, spans *[]*admin.Span, depth int) error {
 	taskExecutions, err := m.getTaskExecutions(ctx, admin.TaskExecutionListRequest{
 		NodeExecutionId: nodeExecution.Id,
-		Limit: REQUEST_LIMIT,
+		Limit:           RequestLimit,
 	})
 	if err != nil {
 		return err
@@ -225,8 +221,8 @@ func (m *MetricsManager) parseDynamicNodeExecution(ctx context.Context, nodeExec
 
 		nodeExecutions, err := m.getNodeExecutions(ctx, admin.NodeExecutionListRequest{
 			WorkflowExecutionId: nodeExecution.Id.ExecutionId,
-			Limit: REQUEST_LIMIT,
-			UniqueParentId: nodeExecution.Id.NodeId,
+			Limit:               RequestLimit,
+			UniqueParentId:      nodeExecution.Id.NodeId,
 		})
 		if err != nil {
 			return err
@@ -256,12 +252,8 @@ func (m *MetricsManager) parseDynamicNodeExecution(ctx context.Context, nodeExec
 			}
 
 			// backened overhead
-			latestUpstreamNode, err := m.getLatestUpstreamNodeExecution(ctx, "end-node",
+			latestUpstreamNode := m.getLatestUpstreamNodeExecution("end-node",
 				nodeExecutionData.DynamicWorkflow.CompiledWorkflow.Primary.Connections.Upstream, nodeExecutions)
-			if err != nil {
-				return err
-			}
-
 			if latestUpstreamNode != nil && !nodeExecution.Closure.UpdatedAt.AsTime().Before(latestUpstreamNode.Closure.UpdatedAt.AsTime()) {
 				*spans = append(*spans, createCategoricalSpan(latestUpstreamNode.Closure.UpdatedAt,
 					nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
@@ -291,7 +283,7 @@ func (m *MetricsManager) parseExecution(ctx context.Context, execution *admin.Ex
 
 		nodeExecutions, err := m.getNodeExecutions(ctx, admin.NodeExecutionListRequest{
 			WorkflowExecutionId: execution.Id,
-			Limit: REQUEST_LIMIT,
+			Limit:               RequestLimit,
 		})
 		if err != nil {
 			return nil, err
@@ -306,19 +298,15 @@ func (m *MetricsManager) parseExecution(ctx context.Context, execution *admin.Ex
 			// compute frontend overhead
 			spans = append(spans, createCategoricalSpan(execution.Closure.CreatedAt,
 				startNode.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
-			
+
 			// iterate over nodes and compute overhead
 			if err := m.parseNodeExecutions(ctx, nodeExecutions, workflow.Closure.CompiledWorkflow, &spans, depth-1); err != nil {
 				return nil, err
 			}
 
 			// compute backend overhead
-			latestUpstreamNode, err := m.getLatestUpstreamNodeExecution(ctx, "end-node",
+			latestUpstreamNode := m.getLatestUpstreamNodeExecution("end-node",
 				workflow.Closure.CompiledWorkflow.Primary.Connections.Upstream, nodeExecutions)
-			if err != nil {
-				return nil, err
-			}
-
 			if latestUpstreamNode != nil && !execution.Closure.UpdatedAt.AsTime().Before(latestUpstreamNode.Closure.UpdatedAt.AsTime()) {
 				spans = append(spans, createCategoricalSpan(latestUpstreamNode.Closure.UpdatedAt,
 					execution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
@@ -330,14 +318,14 @@ func (m *MetricsManager) parseExecution(ctx context.Context, execution *admin.Ex
 
 	return &admin.Span{
 		StartTime: execution.Closure.CreatedAt,
-		EndTime: execution.Closure.UpdatedAt,
+		EndTime:   execution.Closure.UpdatedAt,
 		Info: &admin.Span_Reference{
 			Reference: referenceSpan,
 		},
 	}, nil
 }
 
-func (m *MetricsManager) parseGateNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution, spans *[]*admin.Span, depth int) {
+func (m *MetricsManager) parseGateNodeExecution(_ context.Context, nodeExecution *admin.NodeExecution, spans *[]*admin.Span) {
 	// check if node has started yet
 	if nodeExecution.Closure.StartedAt == nil || reflect.DeepEqual(nodeExecution.Closure.StartedAt, nilTimestamp) {
 		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
@@ -413,33 +401,33 @@ func (m *MetricsManager) parseNodeExecution(ctx context.Context, nodeExecution *
 		// parse node
 		var err error
 		switch target := node.Target.(type) {
-			case *core.Node_BranchNode:
-				// handle branch node
-				err = m.parseBranchNodeExecution(ctx, nodeExecution, target.BranchNode, &spans, depth-1)
-			case *core.Node_GateNode:
-				// handle gate node
-				m.parseGateNodeExecution(ctx, nodeExecution, &spans, depth-1)
-			case *core.Node_TaskNode:
-				if nodeExecution.Metadata.IsParentNode {
-					// handle dynamic node
-					err = m.parseDynamicNodeExecution(ctx, nodeExecution, &spans, depth-1)
-				} else {
-					// handle task node
-					err = m.parseTaskNodeExecution(ctx, nodeExecution, &spans, depth-1)
-				}
-			case *core.Node_WorkflowNode:
-				switch workflow := target.WorkflowNode.Reference.(type) {
-					case *core.WorkflowNode_LaunchplanRef:
-						// handle launch plan
-						err = m.parseLaunchPlanNodeExecution(ctx, nodeExecution, &spans, depth-1)
-					case *core.WorkflowNode_SubWorkflowRef:
-						// handle subworkflow
-						err = m.parseSubworkflowNodeExecution(ctx, nodeExecution, workflow.SubWorkflowRef, &spans, depth-1)
-					default:
-						err = fmt.Errorf("unsupported node type %+v\n", target)
-				}
+		case *core.Node_BranchNode:
+			// handle branch node
+			err = m.parseBranchNodeExecution(ctx, nodeExecution, target.BranchNode, &spans, depth-1)
+		case *core.Node_GateNode:
+			// handle gate node
+			m.parseGateNodeExecution(ctx, nodeExecution, &spans)
+		case *core.Node_TaskNode:
+			if nodeExecution.Metadata.IsParentNode {
+				// handle dynamic node
+				err = m.parseDynamicNodeExecution(ctx, nodeExecution, &spans, depth-1)
+			} else {
+				// handle task node
+				err = m.parseTaskNodeExecution(ctx, nodeExecution, &spans, depth-1)
+			}
+		case *core.Node_WorkflowNode:
+			switch workflow := target.WorkflowNode.Reference.(type) {
+			case *core.WorkflowNode_LaunchplanRef:
+				// handle launch plan
+				err = m.parseLaunchPlanNodeExecution(ctx, nodeExecution, &spans, depth-1)
+			case *core.WorkflowNode_SubWorkflowRef:
+				// handle subworkflow
+				err = m.parseSubworkflowNodeExecution(ctx, nodeExecution, workflow.SubWorkflowRef, &spans, depth-1)
 			default:
-				err = fmt.Errorf("unsupported node type %+v\n", target)
+				err = fmt.Errorf("unsupported node type %+v", target)
+			}
+		default:
+			err = fmt.Errorf("unsupported node type %+v", target)
 		}
 
 		if err != nil {
@@ -451,7 +439,7 @@ func (m *MetricsManager) parseNodeExecution(ctx context.Context, nodeExecution *
 
 	return &admin.Span{
 		StartTime: nodeExecution.Closure.CreatedAt,
-		EndTime: nodeExecution.Closure.UpdatedAt,
+		EndTime:   nodeExecution.Closure.UpdatedAt,
 		Info: &admin.Span_Reference{
 			Reference: referenceSpan,
 		},
@@ -463,9 +451,9 @@ func (m *MetricsManager) parseNodeExecutions(ctx context.Context, nodeExecutions
 
 	// sort node executions
 	sortedNodeExecutions := make([]*admin.NodeExecution, 0, len(nodeExecutions))
-    for _, nodeExecution := range nodeExecutions {
-        sortedNodeExecutions = append(sortedNodeExecutions, nodeExecution)
-    }
+	for _, nodeExecution := range nodeExecutions {
+		sortedNodeExecutions = append(sortedNodeExecutions, nodeExecution)
+	}
 	sort.Slice(sortedNodeExecutions, func(i, j int) bool {
 		x := sortedNodeExecutions[i].Closure.CreatedAt.AsTime()
 		y := sortedNodeExecutions[j].Closure.CreatedAt.AsTime()
@@ -474,15 +462,15 @@ func (m *MetricsManager) parseNodeExecutions(ctx context.Context, nodeExecutions
 
 	// iterate over sorted node executions
 	for _, nodeExecution := range sortedNodeExecutions {
-		specNodeId := nodeExecution.Metadata.SpecNodeId
-		if specNodeId == "start-node" || specNodeId == "end-node" {
+		specNodeID := nodeExecution.Metadata.SpecNodeId
+		if specNodeID == "start-node" || specNodeID == "end-node" {
 			continue
 		}
 
-		// get node defintion from workflow
+		// get node definition from workflow
 		var node *core.Node
 		for _, n := range compiledWorkflowClosure.Primary.Template.Nodes {
-			if n.Id == specNodeId {
+			if n.Id == specNodeID {
 				node = n
 			}
 		}
@@ -499,12 +487,8 @@ func (m *MetricsManager) parseNodeExecutions(ctx context.Context, nodeExecutions
 
 		// prepend nodeExecution spans with NODE_TRANSITION time
 		if referenceSpan, ok := nodeExecutionSpan.Info.(*admin.Span_Reference); ok {
-			latestUpstreamNode, err := m.getLatestUpstreamNodeExecution(ctx, specNodeId,
+			latestUpstreamNode := m.getLatestUpstreamNodeExecution(specNodeID,
 				compiledWorkflowClosure.Primary.Connections.Upstream, nodeExecutions)
-			if err != nil {
-				return err
-			}
-
 			if latestUpstreamNode != nil {
 				referenceSpan.Reference.Spans = append([]*admin.Span{createCategoricalSpan(latestUpstreamNode.Closure.UpdatedAt,
 					nodeExecution.Closure.CreatedAt, admin.CategoricalSpanInfo_NODE_TRANSITION)}, referenceSpan.Reference.Spans...)
@@ -523,8 +507,8 @@ func (m *MetricsManager) parseSubworkflowNodeExecution(ctx context.Context,
 	// retrieve node execution(s)
 	nodeExecutions, err := m.getNodeExecutions(ctx, admin.NodeExecutionListRequest{
 		WorkflowExecutionId: nodeExecution.Id.ExecutionId,
-		Limit: REQUEST_LIMIT,
-		UniqueParentId: nodeExecution.Id.NodeId,
+		Limit:               RequestLimit,
+		UniqueParentId:      nodeExecution.Id.NodeId,
 	})
 	if err != nil {
 		return err
@@ -553,12 +537,8 @@ func (m *MetricsManager) parseSubworkflowNodeExecution(ctx context.Context,
 		}
 
 		// backened overhead
-		latestUpstreamNode, err := m.getLatestUpstreamNodeExecution(ctx, "end-node",
+		latestUpstreamNode := m.getLatestUpstreamNodeExecution("end-node",
 			workflow.Closure.CompiledWorkflow.Primary.Connections.Upstream, nodeExecutions)
-		if err != nil {
-			return err
-		}
-
 		if latestUpstreamNode != nil && !nodeExecution.Closure.UpdatedAt.AsTime().Before(latestUpstreamNode.Closure.UpdatedAt.AsTime()) {
 			*spans = append(*spans, createCategoricalSpan(latestUpstreamNode.Closure.UpdatedAt,
 				nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_EXECUTION_OVERHEAD))
@@ -601,7 +581,7 @@ func parseTaskExecution(taskExecution *admin.TaskExecution) *admin.Span {
 	return &admin.Span{
 		StartTime: taskExecution.Closure.CreatedAt,
 		EndTime:   taskExecution.Closure.UpdatedAt,
-		Info:      &admin.Span_Reference{
+		Info: &admin.Span_Reference{
 			Reference: &admin.ReferenceSpanInfo{
 				Id: &admin.ReferenceSpanInfo_TaskId{
 					TaskId: taskExecution.Id,
@@ -637,7 +617,7 @@ func (m *MetricsManager) parseTaskNodeExecution(ctx context.Context, nodeExecuti
 	// retrieve task executions
 	taskExecutions, err := m.getTaskExecutions(ctx, admin.TaskExecutionListRequest{
 		NodeExecutionId: nodeExecution.Id,
-		Limit: REQUEST_LIMIT,
+		Limit:           RequestLimit,
 	})
 	if err != nil {
 		return err
@@ -669,7 +649,7 @@ func (m *MetricsManager) parseTaskNodeExecution(ctx context.Context, nodeExecuti
 // TODO @hamersaw - docs
 func (m *MetricsManager) GetExecutionMetrics(ctx context.Context,
 	request admin.WorkflowExecutionGetMetricsRequest) (*admin.WorkflowExecutionGetMetricsResponse, error) {
-	
+
 	// retrieve workflow execution
 	executionRequest := admin.WorkflowExecutionGetRequest{Id: request.Id}
 	execution, err := m.executionManager.GetExecution(ctx, executionRequest)
@@ -712,7 +692,6 @@ func NewMetricsManager(
 	scope promutils.Scope) interfaces.MetricsInterface {
 	metrics := metrics{
 		Scope: scope,
-		//Set:   labeled.NewCounter("num_set", "count of set metricss", scope),
 	}
 
 	return &MetricsManager{
