@@ -697,52 +697,6 @@ func (m *MetricsManager) GetExecutionMetrics(ctx context.Context,
 	return &admin.WorkflowExecutionGetMetricsResponse{Span: span}, nil
 }
 
-// GetNodeExecutionMetrics returns a Span hierarchically breaking down the node execution into a collection of
-// Categorical and Reference Spans.
-func (m *MetricsManager) GetNodeExecutionMetrics(ctx context.Context,
-	request admin.NodeExecutionGetMetricsRequest) (*admin.NodeExecutionGetMetricsResponse, error) {
-
-	// retrieve node execution, workflow execution, and workflow
-	nodeRequest := admin.NodeExecutionGetRequest{Id: request.Id}
-	nodeExecution, err := m.nodeExecutionManager.GetNodeExecution(ctx, nodeRequest)
-	if err != nil {
-		return nil, err
-	}
-
-	executionRequest := admin.WorkflowExecutionGetRequest{Id: nodeExecution.Id.ExecutionId}
-	execution, err := m.executionManager.GetExecution(ctx, executionRequest)
-	if err != nil {
-		return nil, err
-	}
-
-	workflowRequest := admin.ObjectGetRequest{Id: execution.Closure.WorkflowId}
-	workflow, err := m.workflowManager.GetWorkflow(ctx, workflowRequest)
-	if err != nil {
-		return nil, err
-	}
-
-	// get node definition from workflow
-	var node *core.Node
-	for _, n := range workflow.Closure.CompiledWorkflow.Primary.Template.Nodes {
-		if n.Id == nodeExecution.Metadata.SpecNodeId {
-			node = n
-		}
-	}
-
-	if node == nil {
-		return nil, fmt.Errorf("failed to discover workflow node '%s' in workflow '%+v'",
-			nodeExecution.Metadata.SpecNodeId, workflow.Closure.CompiledWorkflow.Primary.Template.Id)
-	}
-
-	// parse node execution
-	span, err := m.parseNodeExecution(ctx, nodeExecution, node, int(request.Depth))
-	if err != nil {
-		return nil, err
-	}
-
-	return &admin.NodeExecutionGetMetricsResponse{Span: span}, nil
-}
-
 // NewMetricsManager returns a new MetricsManager constructed with the provided arguments.
 func NewMetricsManager(
 	workflowManager interfaces.WorkflowInterface,

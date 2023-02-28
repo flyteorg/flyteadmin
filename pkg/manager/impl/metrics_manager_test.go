@@ -214,6 +214,18 @@ func TestParseBranchNodeExecution(t *testing.T) {
 				IfElse: &core.IfElseBlock{
 					Case: &core.IfBlock{
 						ThenNode: &core.Node{
+							Id:     "bar",
+						},
+					},
+					Other: []*core.IfBlock{
+						&core.IfBlock{
+							ThenNode: &core.Node{
+								Id:     "baz",
+							},
+						},
+					},
+					Default: &core.IfElseBlock_ElseNode{
+						&core.Node{
 							Id:     "foo",
 							Target: &core.Node_TaskNode{},
 						},
