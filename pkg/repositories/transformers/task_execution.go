@@ -140,7 +140,7 @@ func CreateTaskExecutionModel(ctx context.Context, input CreateTaskExecutionMode
 	}
 
 	reportedAt := input.Request.Event.ReportedAt
-	if reportedAt == nil || (reportedAt.Seconds == 0 && reportedAt.Nanos == 0){
+	if reportedAt == nil || (reportedAt.Seconds == 0 && reportedAt.Nanos == 0) {
 		reportedAt = input.Request.Event.OccurredAt
 	}
 
@@ -369,7 +369,7 @@ func UpdateTaskExecutionModel(ctx context.Context, request *admin.TaskExecutionE
 	taskExecutionModel.PhaseVersion = request.Event.PhaseVersion
 	taskExecutionClosure.Phase = request.Event.Phase
 	reportedAt := request.Event.ReportedAt
-	if reportedAt == nil || (reportedAt.Seconds == 0 && reportedAt.Nanos == 0){
+	if reportedAt == nil || (reportedAt.Seconds == 0 && reportedAt.Nanos == 0) {
 		reportedAt = request.Event.OccurredAt
 	}
 	taskExecutionClosure.UpdatedAt = reportedAt
