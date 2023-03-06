@@ -633,6 +633,7 @@ func TestFromTaskExecutionModel_Error(t *testing.T) {
 	expectedExecErr = execErr
 	expectedExecErr.Message = string(make([]byte, 10))
 	assert.Nil(t, err)
+	assert.True(t, proto.Equal(expectedExecErr, taskExecution.Closure.GetError()))
 }
 
 func TestFromTaskExecutionModels(t *testing.T) {
