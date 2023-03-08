@@ -284,7 +284,7 @@ func (m *TaskExecutionManager) ListTaskExecutions(
 		return nil, err
 	}
 
-	taskExecutionList, err := transformers.FromTaskExecutionModels(output.TaskExecutions, transformers.ListExecutionTransformerOptions)
+	taskExecutionList, err := transformers.FromTaskExecutionModels(output.TaskExecutions, transformers.DefaultExecutionTransformerOptions)
 	if err != nil {
 		logger.Debugf(ctx, "failed to transform task execution models for request [%+v] with err: %v", request, err)
 		return nil, err
