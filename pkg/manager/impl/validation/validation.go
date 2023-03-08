@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -131,6 +132,10 @@ func ValidateResourceType(resourceType core.ResourceType) error {
 func ValidateVersion(version string) error {
 	if err := ValidateEmptyStringField(version, shared.Version); err != nil {
 		return err
+	}
+	sanitizedVersion := url.QueryEscape(version)
+	if !strings.EqualFold(sanitizedVersion, version) {
+		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "version [%s] must be url safe", version)
 	}
 	return nil
 }

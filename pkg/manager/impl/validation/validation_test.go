@@ -174,6 +174,14 @@ func TestValidateDescriptionEntityListRequest(t *testing.T) {
 func TestValidateVersion(t *testing.T) {
 	err := ValidateVersion("")
 	assert.EqualError(t, err, "missing version")
+
+	t.Run("url safe versions only", func(t *testing.T) {
+		assert.NoError(t, ValidateVersion("foo"))
+		reservedChars := rune("!*'();:@&=+$,/?#[]")
+		assert.NotNil(t, ValidateVersion("foo."))
+		assert.NotNil(t, ValidateVersion("foo/"))
+		assert.NotNil(t, ValidateVersion("foo/"))
+	})
 }
 
 func TestValidateListTaskRequest(t *testing.T) {
