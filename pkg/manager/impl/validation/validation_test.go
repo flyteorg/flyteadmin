@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -177,10 +178,12 @@ func TestValidateVersion(t *testing.T) {
 
 	t.Run("url safe versions only", func(t *testing.T) {
 		assert.NoError(t, ValidateVersion("foo"))
-		reservedChars := rune("!*'();:@&=+$,/?#[]")
-		assert.NotNil(t, ValidateVersion("foo."))
-		assert.NotNil(t, ValidateVersion("foo/"))
-		assert.NotNil(t, ValidateVersion("foo/"))
+		// See https://www.rfc-editor.org/rfc/rfc3986#section-2.2
+		reservedChars := []rune("!*'();:@&=+$,/?#[]")
+		for _, reservedChar := range reservedChars {
+			invalidVersion := fmt.Sprintf("foo%c", reservedChar)
+			assert.NotNil(t, ValidateVersion(invalidVersion))
+		}
 	})
 }
 
