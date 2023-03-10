@@ -23,6 +23,9 @@ var entityToResourceType = map[common.Entity]core.ResourceType{
 	common.LaunchPlan: core.ResourceType_LAUNCH_PLAN,
 }
 
+// See https://www.rfc-editor.org/rfc/rfc3986#section-2.2
+var reservedChars = "!*'();:@&=+$,/?#[]"
+
 func ValidateEmptyStringField(field, fieldName string) error {
 	if field == "" {
 		return shared.GetMissingArgumentError(fieldName)
@@ -135,7 +138,7 @@ func ValidateVersion(version string) error {
 	}
 	sanitizedVersion := url.QueryEscape(version)
 	if !strings.EqualFold(sanitizedVersion, version) {
-		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "version [%s] must be url safe", version)
+		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "version [%s] must be url safe, cannot contains chars [%s]", version, reservedChars)
 	}
 	return nil
 }

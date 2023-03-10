@@ -177,9 +177,7 @@ func TestValidateVersion(t *testing.T) {
 	assert.EqualError(t, err, "missing version")
 
 	t.Run("url safe versions only", func(t *testing.T) {
-		assert.NoError(t, ValidateVersion("foo"))
-		// See https://www.rfc-editor.org/rfc/rfc3986#section-2.2
-		reservedChars := []rune("!*'();:@&=+$,/?#[]")
+		assert.NoError(t, ValidateVersion("Foo123"))
 		for _, reservedChar := range reservedChars {
 			invalidVersion := fmt.Sprintf("foo%c", reservedChar)
 			assert.NotNil(t, ValidateVersion(invalidVersion))
