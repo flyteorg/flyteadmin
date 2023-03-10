@@ -178,7 +178,7 @@ func TestValidateVersion(t *testing.T) {
 
 	t.Run("url safe versions only", func(t *testing.T) {
 		assert.NoError(t, ValidateVersion("Foo123"))
-		for _, reservedChar := range reservedChars {
+		for _, reservedChar := range uriReservedChars {
 			invalidVersion := fmt.Sprintf("foo%c", reservedChar)
 			assert.NotNil(t, ValidateVersion(invalidVersion))
 		}
