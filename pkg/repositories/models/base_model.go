@@ -7,7 +7,7 @@ import "time"
 // own primary keys rather than use the ID as the primary key
 type BaseModel struct {
 	ID        uint `gorm:"index;autoIncrement"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	CreatedAt time.Time `gorm:"type:time"`
+	UpdatedAt time.Time `gorm:"type:time"`
 	DeletedAt *time.Time `gorm:"index"`
 }

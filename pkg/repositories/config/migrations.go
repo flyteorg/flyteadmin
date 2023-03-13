@@ -17,6 +17,11 @@ var (
 		"schedule_entities_snapshots", "task_executions", "tasks", "workflows", "description_entities"}
 )
 
+// var gorm_models = map[string]interface{}{
+// 		"execution_events": &models.ExecutionEvent{},
+// }
+
+
 var Migrations = []*gormigrate.Migration{
 	// Create projects table.
 	{
@@ -200,13 +205,26 @@ var Migrations = []*gormigrate.Migration{
 			return tx.Exec("UPDATE named_entity_metadata set state = NULL").Error
 		},
 	},
+	// FIXME: the syntax ALTER TABLE T DROP COLUMN IF EXISTS c is invalid in mysql.
+	// TODO: remove mentions to that from other queries ((including rollbacks))
 	// Modify the workflows table, if necessary
 	{
 		ID: "2020-04-03-workflow-state",
 		Migrate: func(tx *gorm.DB) error {
-			return tx.Exec("ALTER TABLE workflows DROP COLUMN IF EXISTS state").Error
+			if !tx.Model(&models.Workflow{}).Migrator().HasColumn(&models.Workflow{}, "state") {
+				return nil
+			}
+			if err := tx.Model(&models.Workflow{}).Migrator().DropColumn(&models.Workflow{}, "state"); err != nil {
+				return err
+			}
+			return nil;
 		},
 		Rollback: func(tx *gorm.DB) error {
+			// TODO: the column state is not going to be present in the model. Does this mean that we cannot
+			// rely on gorm to restore the column?
+			// if err := tx.Model(&models.Workflow{}).Migrator().AddColumn(&models.Workflow{}, "state"); err != nil {
+			// 	return err
+			// }
 			return tx.Exec("ALTER TABLE workflows ADD COLUMN IF NOT EXISTS state integer;").Error
 		},
 	},
@@ -339,17 +357,17 @@ var Migrations = []*gormigrate.Migration{
 			return tx.Migrator().DropTable(&schedulerModels.ScheduleEntitiesSnapshot{}, "schedulable_entities_snapshot")
 		},
 	},
-
 	// For any new table, Please use the following pattern due to a bug
 	// in the postgres gorm layer https://github.com/go-gorm/postgres/issues/65
 	{
 		ID: "2022-01-11-id-to-bigint",
 		Migrate: func(tx *gorm.DB) error {
-			db, err := tx.DB()
-			if err != nil {
-				return err
-			}
-			return alterTableColumnType(db, "id", "bigint")
+			return nil
+			// db, err := tx.DB()
+			// if err != nil {
+			// 	return err
+			// }
+			// return alterTableColumnType(db, "id", "bigint")
 		},
 		Rollback: func(tx *gorm.DB) error {
 			db, err := tx.DB()
@@ -400,27 +418,27 @@ var Migrations = []*gormigrate.Migration{
 			return tx.Migrator().DropTable("description_entities")
 		},
 	},
-	// Modify the tasks table, if necessary
-	{
-		ID: "2020-09-13-task-short_description",
-		Migrate: func(tx *gorm.DB) error {
-			return tx.Exec("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS short_description varchar(4000)").Error
-		},
-		Rollback: func(tx *gorm.DB) error {
-			return tx.Exec("ALTER TABLE tasks DROP COLUMN IF EXISTS short_description").Error
-		},
-	},
-	// Modify the workflows table, if necessary
-	{
-		ID: "2020-09-13-workflow-short_description",
-		Migrate: func(tx *gorm.DB) error {
-			return tx.Exec("ALTER TABLE workflows ADD COLUMN IF NOT EXISTS short_description varchar(4000)").Error
-		},
-		Rollback: func(tx *gorm.DB) error {
-			return tx.Exec("ALTER TABLE workflows DROP COLUMN IF EXISTS short_description").Error
-		},
-	},
-	// Create signals table.
+	// // Modify the tasks table, if necessary
+	// {
+	// 	ID: "2020-09-13-task-short_description",
+	// 	Migrate: func(tx *gorm.DB) error {
+	// 		return tx.Exec("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS short_description varchar(4000)").Error
+	// 	},
+	// 	Rollback: func(tx *gorm.DB) error {
+	// 		return tx.Exec("ALTER TABLE tasks DROP COLUMN IF EXISTS short_description").Error
+	// 	},
+	// },
+	// // Modify the workflows table, if necessary
+	// {
+	// 	ID: "2020-09-13-workflow-short_description",
+	// 	Migrate: func(tx *gorm.DB) error {
+	// 		return tx.Exec("ALTER TABLE workflows ADD COLUMN IF NOT EXISTS short_description varchar(4000)").Error
+	// 	},
+	// 	Rollback: func(tx *gorm.DB) error {
+	// 		return tx.Exec("ALTER TABLE workflows DROP COLUMN IF EXISTS short_description").Error
+	// 	},
+	// },
+	// // Create signals table.
 	{
 		ID: "2022-04-11-signals",
 		Migrate: func(tx *gorm.DB) error {
@@ -446,10 +464,22 @@ func alterTableColumnType(db *sql.DB, columnName, columnType string) error {
 
 	var err error
 	for _, table := range tables {
-		if _, err = db.Exec(fmt.Sprintf(`ALTER TABLE IF EXISTS %s ALTER COLUMN "%s" TYPE %s`, table, columnName,
-			columnType)); err != nil {
+		// if _, err = db.Exec(fmt.Sprintf(`ALTER TABLE IF EXISTS %s ALTER COLUMN "%s" TYPE %s`, table, columnName,
+		// 	columnType)); err != nil {
+		// 	return err
+		// }
+		// TODO: figure out how to get the driver name
+		if _, err = db.Exec(fmt.Sprintf(`ALTER TABLE %s MODIFY COLUMN %s %s`, table, columnName, columnType)); err != nil {
 			return err
 		}
 	}
 	return nil
 }
+
+// func alterTableColumnTypeGorm(tx *gorm.DB, columnName, columnType string) error {
+// 	for tableName, model := range gorm_models {
+// 		if tx.Model(model).Migrator().HasColumn(model, "columnName") {
+// 			tx.Migrator().MigrateColumn(model, field *schema.Field, columnType gorm.ColumnType)
+// 		}
+// 	}
+// }
