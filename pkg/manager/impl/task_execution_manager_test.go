@@ -57,7 +57,9 @@ var taskEventRequest = admin.TaskExecutionEventRequest{
 		OccurredAt:            sampleTaskEventOccurredAt,
 		Phase:                 core.TaskExecution_RUNNING,
 		RetryAttempt:          uint32(1),
-		InputUri:              "input uri",
+		InputValue: &event.TaskExecutionEvent_InputUri{
+			InputUri: "input uri",
+		},
 	},
 }
 
@@ -616,8 +618,11 @@ func TestListTaskExecutions(t *testing.T) {
 	repository := repositoryMocks.NewMockRepository()
 
 	expectedLogs := []*core.TaskLog{{Uri: "test-log1.txt"}}
-	expectedOutputResult := &admin.TaskExecutionClosure_OutputUri{
-		OutputUri: "test-output.pb",
+	extraLongErrMsg := string(make([]byte, 2*100))
+	expectedOutputResult := &admin.TaskExecutionClosure_Error{
+		Error: &core.ExecutionError{
+			Message: extraLongErrMsg,
+		},
 	}
 	expectedClosure := &admin.TaskExecutionClosure{
 		StartedAt:    sampleTaskEventOccurredAt,

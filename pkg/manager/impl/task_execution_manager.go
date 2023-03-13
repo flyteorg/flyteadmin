@@ -233,7 +233,7 @@ func (m *TaskExecutionManager) GetTaskExecution(
 	if err != nil {
 		return nil, err
 	}
-	taskExecution, err := transformers.FromTaskExecutionModel(*taskExecutionModel)
+	taskExecution, err := transformers.FromTaskExecutionModel(*taskExecutionModel, transformers.DefaultExecutionTransformerOptions)
 	if err != nil {
 		logger.Debugf(ctx, "Failed to transform task execution model [%+v] to proto: %v", request.Id, err)
 		return nil, err
@@ -284,7 +284,8 @@ func (m *TaskExecutionManager) ListTaskExecutions(
 		return nil, err
 	}
 
-	taskExecutionList, err := transformers.FromTaskExecutionModels(output.TaskExecutions)
+	// Use default transformer options so that error messages shown for task execution attempts in the console sidebar show the full error stack trace.
+	taskExecutionList, err := transformers.FromTaskExecutionModels(output.TaskExecutions, transformers.DefaultExecutionTransformerOptions)
 	if err != nil {
 		logger.Debugf(ctx, "failed to transform task execution models for request [%+v] with err: %v", request, err)
 		return nil, err

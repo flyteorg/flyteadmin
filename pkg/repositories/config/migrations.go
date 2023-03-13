@@ -3,11 +3,11 @@ package config
 import (
 	"database/sql"
 	"fmt"
-
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	schedulerModels "github.com/flyteorg/flyteadmin/scheduler/repositories/models"
 	"github.com/go-gormigrate/gormigrate/v2"
 	"gorm.io/gorm"
+	"time"
 )
 
 // TODO: add a way to get these list of tables directly from the gorm loaded models
@@ -21,8 +21,7 @@ var (
 // 		"execution_events": &models.ExecutionEvent{},
 // }
 
-
-var Migrations = []*gormigrate.Migration{
+var LegacyMigrations = []*gormigrate.Migration{
 	// Create projects table.
 	{
 		ID: "2019-05-22-projects",
@@ -217,7 +216,7 @@ var Migrations = []*gormigrate.Migration{
 			if err := tx.Model(&models.Workflow{}).Migrator().DropColumn(&models.Workflow{}, "state"); err != nil {
 				return err
 			}
-			return nil;
+			return nil
 		},
 		Rollback: func(tx *gorm.DB) error {
 			// TODO: the column state is not going to be present in the model. Does this mean that we cannot
@@ -419,25 +418,25 @@ var Migrations = []*gormigrate.Migration{
 		},
 	},
 	// // Modify the tasks table, if necessary
-	// {
-	// 	ID: "2020-09-13-task-short_description",
-	// 	Migrate: func(tx *gorm.DB) error {
-	// 		return tx.Exec("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS short_description varchar(4000)").Error
-	// 	},
-	// 	Rollback: func(tx *gorm.DB) error {
-	// 		return tx.Exec("ALTER TABLE tasks DROP COLUMN IF EXISTS short_description").Error
-	// 	},
-	// },
-	// // Modify the workflows table, if necessary
-	// {
-	// 	ID: "2020-09-13-workflow-short_description",
-	// 	Migrate: func(tx *gorm.DB) error {
-	// 		return tx.Exec("ALTER TABLE workflows ADD COLUMN IF NOT EXISTS short_description varchar(4000)").Error
-	// 	},
-	// 	Rollback: func(tx *gorm.DB) error {
-	// 		return tx.Exec("ALTER TABLE workflows DROP COLUMN IF EXISTS short_description").Error
-	// 	},
-	// },
+	{
+		ID: "2020-09-13-task-short_description",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.Exec("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS short_description varchar(4000)").Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Exec("ALTER TABLE tasks DROP COLUMN IF EXISTS short_description").Error
+		},
+	},
+	// Modify the workflows table, if necessary
+	{
+		ID: "2020-09-13-workflow-short_description",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.Exec("ALTER TABLE workflows ADD COLUMN IF NOT EXISTS short_description varchar(4000)").Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Exec("ALTER TABLE workflows DROP COLUMN IF EXISTS short_description").Error
+		},
+	},
 	// // Create signals table.
 	{
 		ID: "2022-04-11-signals",
@@ -483,3 +482,29 @@ func alterTableColumnType(db *sql.DB, columnName, columnType string) error {
 // 		}
 // 	}
 // }
+
+type NewProject struct {
+	ID          uint       `gorm:"index;autoIncrement"`
+	CreatedAt   time.Time  `gorm:"type:time"`
+	UpdatedAt   time.Time  `gorm:"type:time"`
+	DeletedAt   *time.Time `gorm:"index"`
+	Identifier  string     `gorm:"primary_key"`
+	Name        string     `gorm:"type:varchar(64);size:255"` // Human-readable name, not a unique identifier.
+	Description string     `gorm:"type:varchar(300)"`
+	Labels      []byte
+	// GORM doesn't save the zero value for ints, so we use a pointer for the State field
+	State *int32 `gorm:"default:0;index"`
+}
+
+var Migrations = []*gormigrate.Migration{
+	// Create projects table.
+	{
+		ID: "2022-12-09-execution-launch-typefdsafdsa",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&models.Execution{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+}

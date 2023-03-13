@@ -121,7 +121,10 @@ func CreateTaskExecutionModel(ctx context.Context, input CreateTaskExecutionMode
 
 		Phase:        input.Request.Event.Phase.String(),
 		PhaseVersion: input.Request.Event.PhaseVersion,
-		InputURI:     input.Request.Event.InputUri,
+	}
+	err := handleTaskExecutionInputs(ctx, taskExecution, input.Request, input.StorageClient)
+	if err != nil {
+		return nil, err
 	}
 
 	metadata := input.Request.Event.Metadata
@@ -342,8 +345,12 @@ func mergeMetadata(existing, latest *event.TaskExecutionMetadata) *event.TaskExe
 
 func UpdateTaskExecutionModel(ctx context.Context, request *admin.TaskExecutionEventRequest, taskExecutionModel *models.TaskExecution,
 	inlineEventDataPolicy interfaces.InlineEventDataPolicy, storageClient *storage.DataStore) error {
+	err := handleTaskExecutionInputs(ctx, taskExecutionModel, request, storageClient)
+	if err != nil {
+		return err
+	}
 	var taskExecutionClosure admin.TaskExecutionClosure
-	err := proto.Unmarshal(taskExecutionModel.Closure, &taskExecutionClosure)
+	err = proto.Unmarshal(taskExecutionModel.Closure, &taskExecutionClosure)
 	if err != nil {
 		return errors.NewFlyteAdminErrorf(codes.Internal,
 			"failed to unmarshal task execution closure with error: %+v", err)
@@ -392,11 +399,20 @@ func UpdateTaskExecutionModel(ctx context.Context, request *admin.TaskExecutionE
 	return nil
 }
 
-func FromTaskExecutionModel(taskExecutionModel models.TaskExecution) (*admin.TaskExecution, error) {
+func FromTaskExecutionModel(taskExecutionModel models.TaskExecution, opts *ExecutionTransformerOptions) (*admin.TaskExecution, error) {
 	var closure admin.TaskExecutionClosure
 	err := proto.Unmarshal(taskExecutionModel.Closure, &closure)
 	if err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal closure")
+	}
+	if closure.GetError() != nil && opts != nil && opts.TrimErrorMessage && len(closure.GetError().Message) > 0 {
+		trimmedErrOutputResult := closure.GetError()
+		if len(trimmedErrOutputResult.Message) > trimmedErrMessageLen {
+			trimmedErrOutputResult.Message = trimmedErrOutputResult.Message[0:trimmedErrMessageLen]
+		}
+		closure.OutputResult = &admin.TaskExecutionClosure_Error{
+			Error: trimmedErrOutputResult,
+		}
 	}
 
 	taskExecution := &admin.TaskExecution{
@@ -428,14 +444,41 @@ func FromTaskExecutionModel(taskExecutionModel models.TaskExecution) (*admin.Tas
 	return taskExecution, nil
 }
 
-func FromTaskExecutionModels(taskExecutionModels []models.TaskExecution) ([]*admin.TaskExecution, error) {
+func FromTaskExecutionModels(taskExecutionModels []models.TaskExecution, opts *ExecutionTransformerOptions) ([]*admin.TaskExecution, error) {
 	taskExecutions := make([]*admin.TaskExecution, len(taskExecutionModels))
 	for idx, taskExecutionModel := range taskExecutionModels {
-		taskExecution, err := FromTaskExecutionModel(taskExecutionModel)
+		taskExecution, err := FromTaskExecutionModel(taskExecutionModel, opts)
 		if err != nil {
 			return nil, err
 		}
 		taskExecutions[idx] = taskExecution
 	}
 	return taskExecutions, nil
+}
+
+func handleTaskExecutionInputs(ctx context.Context, taskExecutionModel *models.TaskExecution,
+	request *admin.TaskExecutionEventRequest, storageClient *storage.DataStore) error {
+	if len(taskExecutionModel.InputURI) > 0 {
+		// Inputs are static over the duration of the task execution, no need to update them when they're already set
+		return nil
+	}
+	switch request.Event.GetInputValue().(type) {
+	case *event.TaskExecutionEvent_InputUri:
+		taskExecutionModel.InputURI = request.GetEvent().GetInputUri()
+	case *event.TaskExecutionEvent_InputData:
+		uri, err := common.OffloadLiteralMap(ctx, storageClient, request.GetEvent().GetInputData(),
+			request.Event.ParentNodeExecutionId.ExecutionId.Project, request.Event.ParentNodeExecutionId.ExecutionId.Domain,
+			request.Event.ParentNodeExecutionId.ExecutionId.Name, request.Event.ParentNodeExecutionId.NodeId,
+			request.Event.TaskId.Project, request.Event.TaskId.Domain, request.Event.TaskId.Name, request.Event.TaskId.Version,
+			strconv.FormatUint(uint64(request.Event.RetryAttempt), 10), InputsObjectSuffix)
+		if err != nil {
+			return err
+		}
+		logger.Debugf(ctx, "offloaded task execution inputs to [%s]", uri)
+		taskExecutionModel.InputURI = uri.String()
+	default:
+		logger.Debugf(ctx, "request contained no input data")
+
+	}
+	return nil
 }

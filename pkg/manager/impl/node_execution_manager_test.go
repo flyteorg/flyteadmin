@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
+
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/util"
 
 	genModel "github.com/flyteorg/flyteadmin/pkg/repositories/gen/models"
@@ -64,7 +66,9 @@ var request = admin.NodeExecutionEventRequest{
 		},
 		OccurredAt: occurredAtProto,
 		Phase:      core.NodeExecution_RUNNING,
-		InputUri:   "input uri",
+		InputValue: &event.NodeExecutionEvent_InputUri{
+			InputUri: "input uri",
+		},
 		TargetMetadata: &event.NodeExecutionEvent_TaskNodeMetadata{
 			TaskNodeMetadata: &event.TaskNodeMetadata{
 				DynamicWorkflow: &event.DynamicWorkflowNodeMetadata{
@@ -394,7 +398,9 @@ func TestCreateNodeEvent_FirstEventIsTerminal(t *testing.T) {
 			},
 			OccurredAt: occurredAtProto,
 			Phase:      core.NodeExecution_SUCCEEDED,
-			InputUri:   "input uri",
+			InputValue: &event.NodeExecutionEvent_InputUri{
+				InputUri: "input uri",
+			},
 		},
 	}
 	mockDbEventWriter := &eventWriterMocks.NodeExecutionEventWriter{}
@@ -440,7 +446,7 @@ func TestTransformNodeExecutionModel(t *testing.T) {
 		manager := NodeExecutionManager{
 			db: repository,
 		}
-		nodeExecution, err := manager.transformNodeExecutionModel(ctx, models.NodeExecution{}, nodeExecID)
+		nodeExecution, err := manager.transformNodeExecutionModel(ctx, models.NodeExecution{}, nodeExecID, transformers.DefaultExecutionTransformerOptions)
 		assert.NoError(t, err)
 		assert.True(t, proto.Equal(nodeExecID, nodeExecution.Id))
 		assert.True(t, nodeExecution.Metadata.IsParentNode)
@@ -470,7 +476,7 @@ func TestTransformNodeExecutionModel(t *testing.T) {
 			Closure:               closureBytes,
 			NodeExecutionMetadata: nodeExecutionMetadataBytes,
 			InternalData:          internalDataBytes,
-		}, nodeExecID)
+		}, nodeExecID, transformers.DefaultExecutionTransformerOptions)
 		assert.NoError(t, err)
 		assert.True(t, nodeExecution.Metadata.IsParentNode)
 		assert.True(t, nodeExecution.Metadata.IsDynamic)
@@ -481,7 +487,7 @@ func TestTransformNodeExecutionModel(t *testing.T) {
 		}
 		_, err := manager.transformNodeExecutionModel(ctx, models.NodeExecution{
 			InternalData: []byte("i'm invalid"),
-		}, nodeExecID)
+		}, nodeExecID, transformers.DefaultExecutionTransformerOptions)
 		assert.NotNil(t, err)
 		assert.Equal(t, err.(flyteAdminErrors.FlyteAdminError).Code(), codes.Internal)
 	})
@@ -496,7 +502,7 @@ func TestTransformNodeExecutionModel(t *testing.T) {
 		manager := NodeExecutionManager{
 			db: repository,
 		}
-		_, err := manager.transformNodeExecutionModel(ctx, models.NodeExecution{}, nodeExecID)
+		_, err := manager.transformNodeExecutionModel(ctx, models.NodeExecution{}, nodeExecID, transformers.DefaultExecutionTransformerOptions)
 		assert.Equal(t, err, expectedErr)
 	})
 }
