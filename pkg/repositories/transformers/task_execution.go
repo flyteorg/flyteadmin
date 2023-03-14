@@ -151,6 +151,15 @@ func CreateTaskExecutionModel(ctx context.Context, input CreateTaskExecutionMode
 		EventVersion: input.Request.Event.EventVersion,
 	}
 
+	if len(input.Request.Event.Reason) > 0 {
+		closure.Reasons = []*admin.Reason{
+			&admin.Reason{
+				OccurredAt: input.Request.Event.OccurredAt,
+				Message:    input.Request.Event.Reason,
+			},
+		}
+	}
+
 	eventPhase := input.Request.Event.Phase
 
 	// Different tasks may report different phases as their first event.
@@ -362,6 +371,15 @@ func UpdateTaskExecutionModel(ctx context.Context, request *admin.TaskExecutionE
 	taskExecutionClosure.UpdatedAt = request.Event.OccurredAt
 	taskExecutionClosure.Logs = mergeLogs(taskExecutionClosure.Logs, request.Event.Logs)
 	if len(request.Event.Reason) > 0 {
+		if taskExecutionClosure.Reason != request.Event.Reason {
+			taskExecutionClosure.Reasons = append(
+				taskExecutionClosure.Reasons,
+				&admin.Reason{
+					OccurredAt: request.Event.OccurredAt,
+					Message:    request.Event.Reason,
+				})
+		}
+
 		taskExecutionClosure.Reason = request.Event.Reason
 	}
 	if existingTaskPhase != core.TaskExecution_RUNNING.String() && taskExecutionModel.Phase == core.TaskExecution_RUNNING.String() {
