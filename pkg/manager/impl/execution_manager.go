@@ -14,8 +14,6 @@ import (
 
 	"github.com/flyteorg/flyteadmin/auth"
 
-	"k8s.io/apimachinery/pkg/api/resource"
-
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/resources"
 
 	dataInterfaces "github.com/flyteorg/flyteadmin/pkg/data/interfaces"
@@ -186,39 +184,6 @@ func (m *ExecutionManager) addPluginOverrides(ctx context.Context, executionID *
 	return nil, nil
 }
 
-type completeTaskResources struct {
-	Defaults runtimeInterfaces.TaskResourceSet
-	Limits   runtimeInterfaces.TaskResourceSet
-}
-
-func getTaskResourcesAsSet(ctx context.Context, identifier *core.Identifier,
-	resourceEntries []*core.Resources_ResourceEntry, resourceName string) runtimeInterfaces.TaskResourceSet {
-
-	result := runtimeInterfaces.TaskResourceSet{}
-	for _, entry := range resourceEntries {
-		switch entry.Name {
-		case core.Resources_CPU:
-			result.CPU = parseQuantityNoError(ctx, identifier.String(), fmt.Sprintf("%v.cpu", resourceName), entry.Value)
-		case core.Resources_MEMORY:
-			result.Memory = parseQuantityNoError(ctx, identifier.String(), fmt.Sprintf("%v.memory", resourceName), entry.Value)
-		case core.Resources_EPHEMERAL_STORAGE:
-			result.EphemeralStorage = parseQuantityNoError(ctx, identifier.String(),
-				fmt.Sprintf("%v.ephemeral storage", resourceName), entry.Value)
-		case core.Resources_GPU:
-			result.GPU = parseQuantityNoError(ctx, identifier.String(), "gpu", entry.Value)
-		}
-	}
-
-	return result
-}
-
-func getCompleteTaskResourceRequirements(ctx context.Context, identifier *core.Identifier, task *core.CompiledTask) completeTaskResources {
-	return completeTaskResources{
-		Defaults: getTaskResourcesAsSet(ctx, identifier, task.GetTemplate().GetContainer().Resources.Requests, "requests"),
-		Limits:   getTaskResourcesAsSet(ctx, identifier, task.GetTemplate().GetContainer().Resources.Limits, "limits"),
-	}
-}
-
 // TODO: Delete this code usage after the flyte v0.17.0 release
 // Assumes input contains a compiled task with a valid container resource execConfig.
 //
@@ -254,7 +219,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 	// The IDL representation for container-type tasks represents resources as a list with string quantities.
 	// In order to easily reason about them we convert them to a set where we can O(1) fetch specific resources (e.g. CPU)
 	// and represent them as comparable quantities rather than strings.
-	taskResourceRequirements := getCompleteTaskResourceRequirements(ctx, task.Template.Id, task)
+	taskResourceRequirements := util.GetCompleteTaskResourceRequirements(ctx, task.Template.Id, task)
 
 	cpu := flytek8s.AdjustOrDefaultResource(taskResourceRequirements.Defaults.CPU, taskResourceRequirements.Limits.CPU,
 		platformTaskResources.Defaults.CPU, platformTaskResources.Limits.CPU)
@@ -334,68 +299,6 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 	}
 }
 
-func parseQuantityNoError(ctx context.Context, ownerID, name, value string) resource.Quantity {
-	q, err := resource.ParseQuantity(value)
-	if err != nil {
-		logger.Infof(ctx, "Failed to parse owner's [%s] resource [%s]'s value [%s] with err: %v", ownerID, name, value, err)
-	}
-
-	return q
-}
-
-func fromAdminProtoTaskResourceSpec(ctx context.Context, spec *admin.TaskResourceSpec) runtimeInterfaces.TaskResourceSet {
-	result := runtimeInterfaces.TaskResourceSet{}
-	if len(spec.Cpu) > 0 {
-		result.CPU = parseQuantityNoError(ctx, "project", "cpu", spec.Cpu)
-	}
-
-	if len(spec.Memory) > 0 {
-		result.Memory = parseQuantityNoError(ctx, "project", "memory", spec.Memory)
-	}
-
-	if len(spec.Storage) > 0 {
-		result.Storage = parseQuantityNoError(ctx, "project", "storage", spec.Storage)
-	}
-
-	if len(spec.EphemeralStorage) > 0 {
-		result.EphemeralStorage = parseQuantityNoError(ctx, "project", "ephemeral storage", spec.EphemeralStorage)
-	}
-
-	if len(spec.Gpu) > 0 {
-		result.GPU = parseQuantityNoError(ctx, "project", "gpu", spec.Gpu)
-	}
-
-	return result
-}
-
-func (m *ExecutionManager) getTaskResources(ctx context.Context, workflow *core.Identifier) workflowengineInterfaces.TaskResources {
-	resource, err := m.resourceManager.GetResource(ctx, interfaces.ResourceRequest{
-		Project:      workflow.Project,
-		Domain:       workflow.Domain,
-		Workflow:     workflow.Name,
-		ResourceType: admin.MatchableResource_TASK_RESOURCE,
-	})
-
-	if err != nil {
-		logger.Warningf(ctx, "Failed to fetch override values when assigning task resource default values for [%+v]: %v",
-			workflow, err)
-	}
-
-	logger.Debugf(ctx, "Assigning task requested resources for [%+v]", workflow)
-	var taskResourceAttributes = workflowengineInterfaces.TaskResources{}
-	if resource != nil && resource.Attributes != nil && resource.Attributes.GetTaskResourceAttributes() != nil {
-		taskResourceAttributes.Defaults = fromAdminProtoTaskResourceSpec(ctx, resource.Attributes.GetTaskResourceAttributes().Defaults)
-		taskResourceAttributes.Limits = fromAdminProtoTaskResourceSpec(ctx, resource.Attributes.GetTaskResourceAttributes().Limits)
-	} else {
-		taskResourceAttributes = workflowengineInterfaces.TaskResources{
-			Defaults: m.config.TaskResourceConfiguration().GetDefaults(),
-			Limits:   m.config.TaskResourceConfiguration().GetLimits(),
-		}
-	}
-
-	return taskResourceAttributes
-}
-
 // Fetches inherited execution metadata including the parent node execution db model id and the source execution model id
 // as well as sets request spec metadata with the inherited principal and adjusted nesting data.
 func (m *ExecutionManager) getInheritedExecMetadata(ctx context.Context, requestSpec *admin.ExecutionSpec,
@@ -420,7 +323,7 @@ func (m *ExecutionManager) getInheritedExecMetadata(ctx context.Context, request
 	}
 	sourceExecutionID = sourceExecutionModel.ID
 	requestSpec.Metadata.Principal = sourceExecutionModel.User
-	sourceExecution, err := transformers.FromExecutionModel(*sourceExecutionModel)
+	sourceExecution, err := transformers.FromExecutionModel(*sourceExecutionModel, transformers.DefaultExecutionTransformerOptions)
 	if err != nil {
 		logger.Errorf(ctx, "Failed transform parent execution model for child execution [%+v] with err: %v", workflowExecutionID, err)
 		return parentNodeExecutionID, sourceExecutionID, err
@@ -490,11 +393,8 @@ func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admi
 	// K8sServiceAccount and  IamRole is empty then get the values from the deprecated fields.
 	resolvedAuthRole := resolveAuthRole(request, launchPlan)
 	resolvedSecurityCtx := resolveSecurityCtx(ctx, workflowExecConfig.GetSecurityContext(), resolvedAuthRole)
-	if workflowExecConfig.GetSecurityContext() == nil &&
-		(len(resolvedSecurityCtx.GetRunAs().GetK8SServiceAccount()) > 0 ||
-			len(resolvedSecurityCtx.GetRunAs().GetIamRole()) > 0) {
-		workflowExecConfig.SecurityContext = resolvedSecurityCtx
-	}
+	workflowExecConfig.SecurityContext = resolvedSecurityCtx
+
 	// Merge the application config into workflowExecConfig. If even the deprecated fields are not set
 	workflowExecConfig = util.MergeIntoExecConfig(workflowExecConfig, m.config.ApplicationConfiguration().GetTopLevelConfig())
 	// Explicitly set the security context if its nil since downstream we expect this settings to be available
@@ -612,7 +512,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	}
 
 	// Dynamically assign task resource defaults.
-	platformTaskResources := m.getTaskResources(ctx, workflow.Id)
+	platformTaskResources := util.GetTaskResources(ctx, workflow.Id, m.resourceManager, m.config.TaskResourceConfiguration())
 	for _, t := range workflow.Closure.CompiledWorkflow.Tasks {
 		m.setCompiledTaskDefaults(ctx, t, platformTaskResources)
 	}
@@ -863,8 +763,8 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		return nil, nil, err
 	}
 
-	platformTaskResources := m.getTaskResources(ctx, workflow.Id)
 	// Dynamically assign task resource defaults.
+	platformTaskResources := util.GetTaskResources(ctx, workflow.Id, m.resourceManager, m.config.TaskResourceConfiguration())
 	for _, task := range workflow.Closure.CompiledWorkflow.Tasks {
 		m.setCompiledTaskDefaults(ctx, task, platformTaskResources)
 	}
@@ -1048,7 +948,7 @@ func (m *ExecutionManager) RelaunchExecution(
 		logger.Debugf(ctx, "Failed to get execution model for request [%+v] with err %v", request, err)
 		return nil, err
 	}
-	existingExecution, err := transformers.FromExecutionModel(*existingExecutionModel)
+	existingExecution, err := transformers.FromExecutionModel(*existingExecutionModel, transformers.DefaultExecutionTransformerOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -1105,7 +1005,7 @@ func (m *ExecutionManager) RecoverExecution(
 		logger.Debugf(ctx, "Failed to get execution model for request [%+v] with err %v", request, err)
 		return nil, err
 	}
-	existingExecution, err := transformers.FromExecutionModel(*existingExecutionModel)
+	existingExecution, err := transformers.FromExecutionModel(*existingExecutionModel, transformers.DefaultExecutionTransformerOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -1156,7 +1056,7 @@ func (m *ExecutionManager) emitScheduledWorkflowMetrics(
 		return
 	}
 	// Find the reference launch plan to get the kickoff time argument
-	execution, err := transformers.FromExecutionModel(*executionModel)
+	execution, err := transformers.FromExecutionModel(*executionModel, transformers.DefaultExecutionTransformerOptions)
 	if err != nil {
 		logger.Warningf(context.Background(),
 			"failed to transform execution model when emitting scheduled workflow execution stats with for "+
@@ -1399,7 +1299,7 @@ func (m *ExecutionManager) GetExecution(
 		logger.Debugf(ctx, "Failed to get execution model for request [%+v] with err: %v", request, err)
 		return nil, err
 	}
-	execution, transformerErr := transformers.FromExecutionModel(*executionModel)
+	execution, transformerErr := transformers.FromExecutionModel(*executionModel, transformers.DefaultExecutionTransformerOptions)
 	if transformerErr != nil {
 		logger.Debugf(ctx, "Failed to transform execution model [%+v] to proto object with err: %v", request.Id,
 			transformerErr)
@@ -1442,7 +1342,7 @@ func (m *ExecutionManager) GetExecutionData(
 		logger.Debugf(ctx, "Failed to get execution model for request [%+v] with err: %v", request, err)
 		return nil, err
 	}
-	execution, err := transformers.FromExecutionModel(*executionModel)
+	execution, err := transformers.FromExecutionModel(*executionModel, transformers.DefaultExecutionTransformerOptions)
 	if err != nil {
 		logger.Debugf(ctx, "Failed to transform execution model [%+v] to proto object with err: %v", request.Id, err)
 		return nil, err
@@ -1542,7 +1442,7 @@ func (m *ExecutionManager) ListExecutions(
 		logger.Debugf(ctx, "Failed to list executions using input [%+v] with err %v", listExecutionsInput, err)
 		return nil, err
 	}
-	executionList, err := transformers.FromExecutionModels(output.Executions)
+	executionList, err := transformers.FromExecutionModels(output.Executions, transformers.ListExecutionTransformerOptions)
 	if err != nil {
 		logger.Errorf(ctx,
 			"Failed to transform execution models [%+v] with err: %v", output.Executions, err)
@@ -1572,7 +1472,7 @@ func (m *ExecutionManager) ListExecutions(
 func (m *ExecutionManager) publishNotifications(ctx context.Context, request admin.WorkflowExecutionEventRequest,
 	execution models.Execution) error {
 	// Notifications are stored in the Spec object of an admin.Execution object.
-	adminExecution, err := transformers.FromExecutionModel(execution)
+	adminExecution, err := transformers.FromExecutionModel(execution, transformers.DefaultExecutionTransformerOptions)
 	if err != nil {
 		// This shouldn't happen because execution manager marshaled the data into models.Execution.
 		m.systemMetrics.TransformerError.Inc()

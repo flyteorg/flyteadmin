@@ -246,6 +246,12 @@ func UpdateNodeExecutionModel(
 			nodeExecutionModel.CacheStatus = &st
 		}
 		nodeExecutionClosure.TargetMetadata = targetMetadata
+
+		// if this is a dynamic task then maintain the DynamicJobSpecUri
+		dynamicWorkflowMetadata := request.Event.GetTaskNodeMetadata().DynamicWorkflow
+		if dynamicWorkflowMetadata != nil && len(dynamicWorkflowMetadata.DynamicJobSpecUri) > 0 {
+			nodeExecutionClosure.DynamicJobSpecUri = dynamicWorkflowMetadata.DynamicJobSpecUri
+		}
 	}
 
 	marshaledClosure, err := proto.Marshal(&nodeExecutionClosure)
@@ -291,11 +297,20 @@ func UpdateNodeExecutionModel(
 	return nil
 }
 
-func FromNodeExecutionModel(nodeExecutionModel models.NodeExecution) (*admin.NodeExecution, error) {
+func FromNodeExecutionModel(nodeExecutionModel models.NodeExecution, opts *ExecutionTransformerOptions) (*admin.NodeExecution, error) {
 	var closure admin.NodeExecutionClosure
 	err := proto.Unmarshal(nodeExecutionModel.Closure, &closure)
 	if err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal closure")
+	}
+	if closure.GetError() != nil && opts != nil && opts.TrimErrorMessage && len(closure.GetError().Message) > 0 {
+		trimmedErrOutputResult := closure.GetError()
+		if len(trimmedErrOutputResult.Message) > trimmedErrMessageLen {
+			trimmedErrOutputResult.Message = trimmedErrOutputResult.Message[0:trimmedErrMessageLen]
+		}
+		closure.OutputResult = &admin.NodeExecutionClosure_Error{
+			Error: trimmedErrOutputResult,
+		}
 	}
 
 	var nodeExecutionMetadata admin.NodeExecutionMetaData
