@@ -87,8 +87,8 @@ func getMockWorkflowManager(workflow *admin.Workflow) interfaces.WorkflowInterfa
 	return &mockWorkflowManager
 }
 
-func parseSpansInfo(spans []*admin.Span) (map[admin.CategoricalSpanInfo_Category][]int64, int) {
-	categoryDurations := make(map[admin.CategoricalSpanInfo_Category][]int64)
+func parseSpansInfo(spans []*admin.Span) (map[string][]int64, int) {
+	categoryDurations := make(map[string][]int64)
 	referenceCount := 0
 	for _, span := range spans {
 		switch info := span.Info.(type) {
@@ -113,7 +113,7 @@ func TestParseBranchNodeExecution(t *testing.T) {
 		name              string
 		nodeExecution     *admin.NodeExecution
 		nodeExecutions    []*admin.NodeExecution
-		categoryDurations map[admin.CategoricalSpanInfo_Category][]int64
+		categoryDurations map[string][]int64
 		referenceCount    int
 	}{
 		{
@@ -130,8 +130,8 @@ func TestParseBranchNodeExecution(t *testing.T) {
 				},
 			},
 			nil,
-			map[admin.CategoricalSpanInfo_Category][]int64{
-				admin.CategoricalSpanInfo_EXECUTION_OVERHEAD: []int64{5},
+			map[string][]int64{
+				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{5},
 			},
 			0,
 		},
@@ -161,8 +161,8 @@ func TestParseBranchNodeExecution(t *testing.T) {
 					},
 				},
 			},
-			map[admin.CategoricalSpanInfo_Category][]int64{
-				admin.CategoricalSpanInfo_EXECUTION_OVERHEAD: []int64{10},
+			map[string][]int64{
+				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{10},
 			},
 			1,
 		},
@@ -192,8 +192,9 @@ func TestParseBranchNodeExecution(t *testing.T) {
 					},
 				},
 			},
-			map[admin.CategoricalSpanInfo_Category][]int64{
-				admin.CategoricalSpanInfo_EXECUTION_OVERHEAD: []int64{10, 20},
+			map[string][]int64{
+				admin.CategoricalSpanInfo_NODE_SETUP.String():    []int64{10},
+				admin.CategoricalSpanInfo_NODE_TEARDOWN.String(): []int64{20},
 			},
 			1,
 		},
@@ -251,7 +252,7 @@ func TestParseDynamicNodeExecution(t *testing.T) {
 		nodeExecution     *admin.NodeExecution
 		taskExecutions    []*admin.TaskExecution
 		nodeExecutions    []*admin.NodeExecution
-		categoryDurations map[admin.CategoricalSpanInfo_Category][]int64
+		categoryDurations map[string][]int64
 		referenceCount    int
 	}{
 		{
@@ -266,8 +267,8 @@ func TestParseDynamicNodeExecution(t *testing.T) {
 			},
 			nil,
 			nil,
-			map[admin.CategoricalSpanInfo_Category][]int64{
-				admin.CategoricalSpanInfo_EXECUTION_OVERHEAD: []int64{5},
+			map[string][]int64{
+				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{5},
 			},
 			0,
 		},
@@ -295,8 +296,8 @@ func TestParseDynamicNodeExecution(t *testing.T) {
 				},
 			},
 			nil,
-			map[admin.CategoricalSpanInfo_Category][]int64{
-				admin.CategoricalSpanInfo_EXECUTION_OVERHEAD: []int64{10},
+			map[string][]int64{
+				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{10},
 			},
 			1,
 		},
@@ -347,8 +348,9 @@ func TestParseDynamicNodeExecution(t *testing.T) {
 					},
 				},
 			},
-			map[admin.CategoricalSpanInfo_Category][]int64{
-				admin.CategoricalSpanInfo_EXECUTION_OVERHEAD: []int64{10, 15},
+			map[string][]int64{
+				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{10},
+				admin.CategoricalSpanInfo_NODE_RESET.String(): []int64{15},
 			},
 			2,
 		},
@@ -399,8 +401,10 @@ func TestParseDynamicNodeExecution(t *testing.T) {
 					},
 				},
 			},
-			map[admin.CategoricalSpanInfo_Category][]int64{
-				admin.CategoricalSpanInfo_EXECUTION_OVERHEAD: []int64{10, 15, 20},
+			map[string][]int64{
+				admin.CategoricalSpanInfo_NODE_SETUP.String():    []int64{10},
+				admin.CategoricalSpanInfo_NODE_RESET.String():    []int64{15},
+				admin.CategoricalSpanInfo_NODE_TEARDOWN.String(): []int64{20},
 			},
 			2,
 		},
@@ -458,7 +462,7 @@ func TestParseGateNodeExecution(t *testing.T) {
 	tests := []struct {
 		name              string
 		nodeExecution     *admin.NodeExecution
-		categoryDurations map[admin.CategoricalSpanInfo_Category][]int64
+		categoryDurations map[string][]int64
 	}{
 		{
 			"NotStarted",
@@ -470,8 +474,8 @@ func TestParseGateNodeExecution(t *testing.T) {
 					UpdatedAt: addTimestamp(baseTimestamp, 5),
 				},
 			},
-			map[admin.CategoricalSpanInfo_Category][]int64{
-				admin.CategoricalSpanInfo_EXECUTION_OVERHEAD: []int64{5},
+			map[string][]int64{
+				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{5},
 			},
 		},
 		{
@@ -484,9 +488,9 @@ func TestParseGateNodeExecution(t *testing.T) {
 					UpdatedAt: addTimestamp(baseTimestamp, 15),
 				},
 			},
-			map[admin.CategoricalSpanInfo_Category][]int64{
-				admin.CategoricalSpanInfo_EXECUTION_OVERHEAD: []int64{10},
-				admin.CategoricalSpanInfo_EXECUTION_IDLE:     []int64{5},
+			map[string][]int64{
+				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{10},
+				admin.CategoricalSpanInfo_NODE_IDLE.String():  []int64{5},
 			},
 		},
 		{
@@ -499,9 +503,10 @@ func TestParseGateNodeExecution(t *testing.T) {
 					UpdatedAt: addTimestamp(baseTimestamp, 425),
 				},
 			},
-			map[admin.CategoricalSpanInfo_Category][]int64{
-				admin.CategoricalSpanInfo_EXECUTION_OVERHEAD: []int64{10, 15},
-				admin.CategoricalSpanInfo_EXECUTION_IDLE:     []int64{400},
+			map[string][]int64{
+				admin.CategoricalSpanInfo_NODE_SETUP.String():    []int64{10},
+				admin.CategoricalSpanInfo_NODE_IDLE.String():     []int64{400},
+				admin.CategoricalSpanInfo_NODE_TEARDOWN.String(): []int64{15},
 			},
 		},
 	}
@@ -527,7 +532,7 @@ func TestParseLaunchPlanNodeExecution(t *testing.T) {
 		name              string
 		nodeExecution     *admin.NodeExecution
 		execution         *admin.Execution
-		categoryDurations map[admin.CategoricalSpanInfo_Category][]int64
+		categoryDurations map[string][]int64
 		referenceCount    int
 	}{
 		{
@@ -541,8 +546,8 @@ func TestParseLaunchPlanNodeExecution(t *testing.T) {
 				},
 			},
 			nil,
-			map[admin.CategoricalSpanInfo_Category][]int64{
-				admin.CategoricalSpanInfo_EXECUTION_OVERHEAD: []int64{5},
+			map[string][]int64{
+				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{5},
 			},
 			0,
 		},
@@ -569,8 +574,8 @@ func TestParseLaunchPlanNodeExecution(t *testing.T) {
 					UpdatedAt: addTimestamp(baseTimestamp, 15),
 				},
 			},
-			map[admin.CategoricalSpanInfo_Category][]int64{
-				admin.CategoricalSpanInfo_EXECUTION_OVERHEAD: []int64{10},
+			map[string][]int64{
+				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{10},
 			},
 			1,
 		},
@@ -597,8 +602,9 @@ func TestParseLaunchPlanNodeExecution(t *testing.T) {
 					UpdatedAt: addTimestamp(baseTimestamp, 425),
 				},
 			},
-			map[admin.CategoricalSpanInfo_Category][]int64{
-				admin.CategoricalSpanInfo_EXECUTION_OVERHEAD: []int64{10, 15},
+			map[string][]int64{
+				admin.CategoricalSpanInfo_NODE_SETUP.String():    []int64{10},
+				admin.CategoricalSpanInfo_NODE_TEARDOWN.String(): []int64{15},
 			},
 			1,
 		},
@@ -686,7 +692,7 @@ func TestParseSubworkflowNodeExecution(t *testing.T) {
 		name              string
 		nodeExecution     *admin.NodeExecution
 		nodeExecutions    []*admin.NodeExecution
-		categoryDurations map[admin.CategoricalSpanInfo_Category][]int64
+		categoryDurations map[string][]int64
 		referenceCount    int
 	}{
 		{
@@ -703,8 +709,8 @@ func TestParseSubworkflowNodeExecution(t *testing.T) {
 				},
 			},
 			nil,
-			map[admin.CategoricalSpanInfo_Category][]int64{
-				admin.CategoricalSpanInfo_EXECUTION_OVERHEAD: []int64{5},
+			map[string][]int64{
+				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{5},
 			},
 			0,
 		},
@@ -745,8 +751,8 @@ func TestParseSubworkflowNodeExecution(t *testing.T) {
 					},
 				},
 			},
-			map[admin.CategoricalSpanInfo_Category][]int64{
-				admin.CategoricalSpanInfo_EXECUTION_OVERHEAD: []int64{10},
+			map[string][]int64{
+				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{10},
 			},
 			1,
 		},
@@ -787,8 +793,9 @@ func TestParseSubworkflowNodeExecution(t *testing.T) {
 					},
 				},
 			},
-			map[admin.CategoricalSpanInfo_Category][]int64{
-				admin.CategoricalSpanInfo_EXECUTION_OVERHEAD: []int64{10, 20},
+			map[string][]int64{
+				admin.CategoricalSpanInfo_NODE_SETUP.String():    []int64{10},
+				admin.CategoricalSpanInfo_NODE_TEARDOWN.String(): []int64{20},
 			},
 			1,
 		},
@@ -849,7 +856,7 @@ func TestParseTaskExecution(t *testing.T) {
 	tests := []struct {
 		name              string
 		taskExecution     *admin.TaskExecution
-		categoryDurations map[admin.CategoricalSpanInfo_Category][]int64
+		categoryDurations map[string][]int64
 	}{
 		{
 			"NotStarted",
@@ -861,8 +868,8 @@ func TestParseTaskExecution(t *testing.T) {
 					UpdatedAt: addTimestamp(baseTimestamp, 5),
 				},
 			},
-			map[admin.CategoricalSpanInfo_Category][]int64{
-				admin.CategoricalSpanInfo_PLUGIN_OVERHEAD: []int64{5},
+			map[string][]int64{
+				admin.CategoricalSpanInfo_TASK_SETUP.String(): []int64{5},
 			},
 		},
 		{
@@ -875,9 +882,9 @@ func TestParseTaskExecution(t *testing.T) {
 					UpdatedAt: addTimestamp(baseTimestamp, 605),
 				},
 			},
-			map[admin.CategoricalSpanInfo_Category][]int64{
-				admin.CategoricalSpanInfo_PLUGIN_OVERHEAD: []int64{5},
-				admin.CategoricalSpanInfo_PLUGIN_RUNTIME:  []int64{600},
+			map[string][]int64{
+				admin.CategoricalSpanInfo_TASK_SETUP.String():   []int64{5},
+				admin.CategoricalSpanInfo_TASK_RUNTIME.String(): []int64{600},
 			},
 		},
 		{
@@ -890,9 +897,10 @@ func TestParseTaskExecution(t *testing.T) {
 					UpdatedAt: addTimestamp(baseTimestamp, 415),
 				},
 			},
-			map[admin.CategoricalSpanInfo_Category][]int64{
-				admin.CategoricalSpanInfo_PLUGIN_OVERHEAD: []int64{5, 10},
-				admin.CategoricalSpanInfo_PLUGIN_RUNTIME:  []int64{400},
+			map[string][]int64{
+				admin.CategoricalSpanInfo_TASK_SETUP.String():    []int64{5},
+				admin.CategoricalSpanInfo_TASK_RUNTIME.String():  []int64{400},
+				admin.CategoricalSpanInfo_TASK_TEARDOWN.String(): []int64{10},
 			},
 		},
 	}
@@ -916,7 +924,7 @@ func TestParseTaskExecutions(t *testing.T) {
 	tests := []struct {
 		name              string
 		taskExecutions    []*admin.TaskExecution
-		categoryDurations map[admin.CategoricalSpanInfo_Category][]int64
+		categoryDurations map[string][]int64
 		referenceCount    int
 	}{
 		{
@@ -931,7 +939,7 @@ func TestParseTaskExecutions(t *testing.T) {
 					},
 				},
 			},
-			map[admin.CategoricalSpanInfo_Category][]int64{},
+			map[string][]int64{},
 			1,
 		},
 		{
@@ -954,8 +962,8 @@ func TestParseTaskExecutions(t *testing.T) {
 					},
 				},
 			},
-			map[admin.CategoricalSpanInfo_Category][]int64{
-				admin.CategoricalSpanInfo_EXECUTION_OVERHEAD: []int64{20},
+			map[string][]int64{
+				admin.CategoricalSpanInfo_NODE_RESET.String(): []int64{20},
 			},
 			2,
 		},
@@ -980,7 +988,7 @@ func TestParseTaskNodeExecution(t *testing.T) {
 		name              string
 		nodeExecution     *admin.NodeExecution
 		taskExecutions    []*admin.TaskExecution
-		categoryDurations map[admin.CategoricalSpanInfo_Category][]int64
+		categoryDurations map[string][]int64
 		referenceCount    int
 	}{
 		{
@@ -994,8 +1002,8 @@ func TestParseTaskNodeExecution(t *testing.T) {
 				},
 			},
 			nil,
-			map[admin.CategoricalSpanInfo_Category][]int64{
-				admin.CategoricalSpanInfo_EXECUTION_OVERHEAD: []int64{5},
+			map[string][]int64{
+				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{5},
 			},
 			0,
 		},
@@ -1019,8 +1027,8 @@ func TestParseTaskNodeExecution(t *testing.T) {
 					},
 				},
 			},
-			map[admin.CategoricalSpanInfo_Category][]int64{
-				admin.CategoricalSpanInfo_EXECUTION_OVERHEAD: []int64{10},
+			map[string][]int64{
+				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{10},
 			},
 			1,
 		},
@@ -1044,8 +1052,9 @@ func TestParseTaskNodeExecution(t *testing.T) {
 					},
 				},
 			},
-			map[admin.CategoricalSpanInfo_Category][]int64{
-				admin.CategoricalSpanInfo_EXECUTION_OVERHEAD: []int64{10, 15},
+			map[string][]int64{
+				admin.CategoricalSpanInfo_NODE_SETUP.String():    []int64{10},
+				admin.CategoricalSpanInfo_NODE_TEARDOWN.String(): []int64{15},
 			},
 			1,
 		},
