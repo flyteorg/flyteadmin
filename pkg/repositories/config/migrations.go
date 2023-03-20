@@ -3,6 +3,7 @@ package config
 import (
 	"database/sql"
 	"fmt"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/storage"
 	"time"
@@ -727,13 +728,25 @@ var NoopMigrations = []*gormigrate.Migration{
 				NodeExecutionUpdatedAt *time.Time
 				Duration               time.Duration
 				// The task execution (if any) which launched this node execution.
+				// TO BE DEPRECATED - as we have now introduced ParentID
 				ParentTaskExecutionID uint `sql:"default:null" gorm:"index"`
 				// The workflow execution (if any) which this node execution launched
 				LaunchedExecution models.Execution `gorm:"foreignKey:ParentNodeExecutionID;references:ID"`
 				// In the case of dynamic workflow nodes, the remote closure is uploaded to the path specified here.
 				DynamicWorkflowRemoteClosureReference string
 				// Metadata that is only relevant to the flyteadmin service that is used to parse the model and track additional attributes.
-				InternalData []byte
+				InternalData          []byte
+				NodeExecutionMetadata []byte
+				// Parent that spawned this node execution - value is empty for executions at level 0
+				ParentID *uint `sql:"default:null" gorm:"index"`
+				// List of child node executions - for cases like Dynamic task, sub workflow, etc
+				ChildNodeExecutions []NodeExecution `gorm:"foreignKey:ParentID;references:ID"`
+				// Execution Error Kind. nullable, can be one of core.ExecutionError_ErrorKind
+				ErrorKind *string `gorm:"index"`
+				// Execution Error Code nullable. string value, but finite set determined by the execution engine and plugins
+				ErrorCode *string
+				// If the node is of Type Task, this should always exist for a successful execution, indicating the cache status for the execution
+				CacheStatus *string
 			}
 
 			return tx.AutoMigrate(&NodeExecution{})
@@ -860,7 +873,7 @@ var NoopMigrations = []*gormigrate.Migration{
 	},
 
 	{
-		ID: "pg-noop-2023-03-31-noop-resource-3",
+		ID: "pg-noop-2023-03-31-noop-resource",
 		Migrate: func(tx *gorm.DB) error {
 			type ResourcePriority int32
 
@@ -881,6 +894,53 @@ var NoopMigrations = []*gormigrate.Migration{
 			}
 
 			return tx.AutoMigrate(&Resource{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+
+	{
+		ID: "pg-noop-2023-03-31-noop-schedulable_entities",
+		Migrate: func(tx *gorm.DB) error {
+			type SchedulableEntityKey struct {
+				Project string `gorm:"primary_key"`
+				Domain  string `gorm:"primary_key"`
+				Name    string `gorm:"primary_key"`
+				Version string `gorm:"primary_key"`
+			}
+			type SchedulableEntity struct {
+				ID        uint `gorm:"index;autoIncrement;not null"`
+				CreatedAt time.Time
+				UpdatedAt time.Time
+				DeletedAt *time.Time `gorm:"index"`
+				SchedulableEntityKey
+				CronExpression      string
+				FixedRateValue      uint32
+				Unit                admin.FixedRateUnit
+				KickoffTimeInputArg string
+				Active              *bool
+			}
+
+			return tx.AutoMigrate(&SchedulableEntity{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+
+	{
+		ID: "pg-noop-2023-03-31-noop-schedulable_entities-snapshot",
+		Migrate: func(tx *gorm.DB) error {
+			type ScheduleEntitiesSnapshot struct {
+				ID        uint `gorm:"index;autoIncrement;not null"`
+				CreatedAt time.Time
+				UpdatedAt time.Time
+				DeletedAt *time.Time `gorm:"index"`
+				Snapshot  []byte     `gorm:"column:snapshot" schema:"-"`
+			}
+
+			return tx.AutoMigrate(&ScheduleEntitiesSnapshot{})
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return nil

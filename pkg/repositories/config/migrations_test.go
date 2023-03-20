@@ -90,14 +90,14 @@ func TestMigrationReplicate(t *testing.T) {
 
 	gormConfig := &gorm.Config{
 		Logger:                                   gLogger,
-		DisableForeignKeyConstraintWhenMigrating: false,
+		DisableForeignKeyConstraintWhenMigrating: true,
 	}
 
 	var gormDb *gorm.DB
 	pgConfig := database.PostgresConfig{
 		Host:         "localhost",
 		Port:         30001,
-		DbName:       "replicator", // this should be a completely blank database
+		DbName:       "replicator2", // this should be a completely blank database
 		User:         "postgres",
 		Password:     "postgres",
 		ExtraOptions: "",
@@ -112,6 +112,44 @@ func TestMigrationReplicate(t *testing.T) {
 	fmt.Println(gormDb)
 
 	m := gormigrate.New(gormDb, gormigrate.DefaultOptions, NoopMigrations)
+	if err := m.Migrate(); err != nil {
+		fmt.Errorf("database migration failed: %v", err)
+	}
+	fmt.Println(ctx, "Migration ran successfully")
+}
+
+func TestLegacyOnlyMigrations(t *testing.T) {
+	gLogger := gormLogger.New(log.New(os.Stdout, "\r\n", log.LstdFlags), gormLogger.Config{
+		SlowThreshold:             200 * time.Millisecond,
+		LogLevel:                  gormLogger.Info,
+		IgnoreRecordNotFoundError: false,
+		Colorful:                  true,
+	})
+
+	gormConfig := &gorm.Config{
+		Logger:                                   gLogger,
+		DisableForeignKeyConstraintWhenMigrating: true,
+	}
+
+	var gormDb *gorm.DB
+	pgConfig := database.PostgresConfig{
+		Host:         "localhost",
+		Port:         30001,
+		DbName:       "currentempty",
+		User:         "postgres",
+		Password:     "postgres",
+		ExtraOptions: "",
+		Debug:        false,
+	}
+	ctx := context.Background()
+	postgresDsn := database.PostgresDsn(ctx, pgConfig)
+	dialector := postgres.Open(postgresDsn)
+	gormDb, err := gorm.Open(dialector, gormConfig)
+	assert.NoError(t, err)
+
+	fmt.Println(gormDb)
+
+	m := gormigrate.New(gormDb, gormigrate.DefaultOptions, LegacyMigrations)
 	if err := m.Migrate(); err != nil {
 		fmt.Errorf("database migration failed: %v", err)
 	}
