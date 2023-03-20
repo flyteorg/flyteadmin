@@ -19,7 +19,7 @@ var (
 		"schedule_entities_snapshots", "task_executions", "tasks", "workflows", "description_entities"}
 )
 
-var Migrations = []*gormigrate.Migration{
+var LegacyMigrations = []*gormigrate.Migration{
 	// Create projects table.
 	{
 		ID: "2019-05-22-projects",
@@ -442,7 +442,9 @@ var Migrations = []*gormigrate.Migration{
 			return tx.Model(&models.Execution{}).Migrator().DropColumn(&models.Execution{}, "launch_entity")
 		},
 	},
+}
 
+var NoopMigrations = []*gormigrate.Migration{
 	/* The following is a series of Postgres specific migrations. They should mirror the state
 	   of the database as of 2023 March. The rollback is a noop for everything because the migration itself should
 	   be a noop.
@@ -820,6 +822,8 @@ var Migrations = []*gormigrate.Migration{
 		},
 	},
 }
+
+var Migrations = append(LegacyMigrations, NoopMigrations...)
 
 func alterTableColumnType(db *sql.DB, columnName, columnType string) error {
 
