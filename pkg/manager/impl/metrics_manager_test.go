@@ -87,34 +87,34 @@ func getMockWorkflowManager(workflow *admin.Workflow) interfaces.WorkflowInterfa
 	return &mockWorkflowManager
 }
 
-func parseSpansInfo(spans []*admin.Span) (map[string][]int64, int) {
-	categoryDurations := make(map[string][]int64)
+func parseSpans(spans []*core.Span) (map[string][]int64, int) {
+	operationDurations := make(map[string][]int64)
 	referenceCount := 0
 	for _, span := range spans {
-		switch info := span.Info.(type) {
-		case *admin.Span_Category:
-			category := info.Category.Category
+		switch id := span.Id.(type) {
+		case *core.Span_OperationId:
+			operationID := id.OperationId
 			duration := span.EndTime.Seconds - span.StartTime.Seconds
-			if array, exists := categoryDurations[category]; exists {
-				categoryDurations[category] = append(array, duration)
+			if array, exists := operationDurations[operationID]; exists {
+				operationDurations[operationID] = append(array, duration)
 			} else {
-				categoryDurations[category] = []int64{duration}
+				operationDurations[operationID] = []int64{duration}
 			}
-		case *admin.Span_Reference:
+		default:
 			referenceCount++
 		}
 	}
 
-	return categoryDurations, referenceCount
+	return operationDurations, referenceCount
 }
 
 func TestParseBranchNodeExecution(t *testing.T) {
 	tests := []struct {
-		name              string
-		nodeExecution     *admin.NodeExecution
-		nodeExecutions    []*admin.NodeExecution
-		categoryDurations map[string][]int64
-		referenceCount    int
+		name               string
+		nodeExecution      *admin.NodeExecution
+		nodeExecutions     []*admin.NodeExecution
+		operationDurations map[string][]int64
+		referenceCount     int
 	}{
 		{
 			"NotStarted",
@@ -131,7 +131,7 @@ func TestParseBranchNodeExecution(t *testing.T) {
 			},
 			nil,
 			map[string][]int64{
-				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{5},
+				nodeSetup: []int64{5},
 			},
 			0,
 		},
@@ -162,7 +162,7 @@ func TestParseBranchNodeExecution(t *testing.T) {
 				},
 			},
 			map[string][]int64{
-				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{10},
+				nodeSetup: []int64{10},
 			},
 			1,
 		},
@@ -193,8 +193,8 @@ func TestParseBranchNodeExecution(t *testing.T) {
 				},
 			},
 			map[string][]int64{
-				admin.CategoricalSpanInfo_NODE_SETUP.String():    []int64{10},
-				admin.CategoricalSpanInfo_NODE_TEARDOWN.String(): []int64{20},
+				nodeSetup:    []int64{10},
+				nodeTeardown: []int64{20},
 			},
 			1,
 		},
@@ -234,13 +234,13 @@ func TestParseBranchNodeExecution(t *testing.T) {
 				},
 			}
 
-			spans := make([]*admin.Span, 0)
+			spans := make([]*core.Span, 0)
 			err := metricsManager.parseBranchNodeExecution(context.TODO(), test.nodeExecution, branchNode, &spans, -1)
 			assert.Nil(t, err)
 
 			// validate spans
-			categoryDurations, referenceCount := parseSpansInfo(spans)
-			assert.True(t, reflect.DeepEqual(test.categoryDurations, categoryDurations))
+			operationDurations, referenceCount := parseSpans(spans)
+			assert.True(t, reflect.DeepEqual(test.operationDurations, operationDurations))
 			assert.Equal(t, test.referenceCount, referenceCount)
 		})
 	}
@@ -248,12 +248,12 @@ func TestParseBranchNodeExecution(t *testing.T) {
 
 func TestParseDynamicNodeExecution(t *testing.T) {
 	tests := []struct {
-		name              string
-		nodeExecution     *admin.NodeExecution
-		taskExecutions    []*admin.TaskExecution
-		nodeExecutions    []*admin.NodeExecution
-		categoryDurations map[string][]int64
-		referenceCount    int
+		name               string
+		nodeExecution      *admin.NodeExecution
+		taskExecutions     []*admin.TaskExecution
+		nodeExecutions     []*admin.NodeExecution
+		operationDurations map[string][]int64
+		referenceCount     int
 	}{
 		{
 			"NotStarted",
@@ -268,7 +268,7 @@ func TestParseDynamicNodeExecution(t *testing.T) {
 			nil,
 			nil,
 			map[string][]int64{
-				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{5},
+				nodeSetup: []int64{5},
 			},
 			0,
 		},
@@ -297,7 +297,7 @@ func TestParseDynamicNodeExecution(t *testing.T) {
 			},
 			nil,
 			map[string][]int64{
-				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{10},
+				nodeSetup: []int64{10},
 			},
 			1,
 		},
@@ -349,8 +349,8 @@ func TestParseDynamicNodeExecution(t *testing.T) {
 				},
 			},
 			map[string][]int64{
-				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{10},
-				admin.CategoricalSpanInfo_NODE_RESET.String(): []int64{15},
+				nodeSetup: []int64{10},
+				nodeReset: []int64{15},
 			},
 			2,
 		},
@@ -402,9 +402,9 @@ func TestParseDynamicNodeExecution(t *testing.T) {
 				},
 			},
 			map[string][]int64{
-				admin.CategoricalSpanInfo_NODE_SETUP.String():    []int64{10},
-				admin.CategoricalSpanInfo_NODE_RESET.String():    []int64{15},
-				admin.CategoricalSpanInfo_NODE_TEARDOWN.String(): []int64{20},
+				nodeSetup:    []int64{10},
+				nodeReset:    []int64{15},
+				nodeTeardown: []int64{20},
 			},
 			2,
 		},
@@ -446,13 +446,13 @@ func TestParseDynamicNodeExecution(t *testing.T) {
 			}
 
 			// parse node execution
-			spans := make([]*admin.Span, 0)
+			spans := make([]*core.Span, 0)
 			err := metricsManager.parseDynamicNodeExecution(context.TODO(), test.nodeExecution, &spans, -1)
 			assert.Nil(t, err)
 
 			// validate spans
-			categoryDurations, referenceCount := parseSpansInfo(spans)
-			assert.True(t, reflect.DeepEqual(test.categoryDurations, categoryDurations))
+			operationDurations, referenceCount := parseSpans(spans)
+			assert.True(t, reflect.DeepEqual(test.operationDurations, operationDurations))
 			assert.Equal(t, test.referenceCount, referenceCount)
 		})
 	}
@@ -460,9 +460,9 @@ func TestParseDynamicNodeExecution(t *testing.T) {
 
 func TestParseGateNodeExecution(t *testing.T) {
 	tests := []struct {
-		name              string
-		nodeExecution     *admin.NodeExecution
-		categoryDurations map[string][]int64
+		name               string
+		nodeExecution      *admin.NodeExecution
+		operationDurations map[string][]int64
 	}{
 		{
 			"NotStarted",
@@ -475,7 +475,7 @@ func TestParseGateNodeExecution(t *testing.T) {
 				},
 			},
 			map[string][]int64{
-				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{5},
+				nodeSetup: []int64{5},
 			},
 		},
 		{
@@ -489,8 +489,8 @@ func TestParseGateNodeExecution(t *testing.T) {
 				},
 			},
 			map[string][]int64{
-				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{10},
-				admin.CategoricalSpanInfo_NODE_IDLE.String():  []int64{5},
+				nodeSetup: []int64{10},
+				nodeIdle:  []int64{5},
 			},
 		},
 		{
@@ -504,9 +504,9 @@ func TestParseGateNodeExecution(t *testing.T) {
 				},
 			},
 			map[string][]int64{
-				admin.CategoricalSpanInfo_NODE_SETUP.String():    []int64{10},
-				admin.CategoricalSpanInfo_NODE_IDLE.String():     []int64{400},
-				admin.CategoricalSpanInfo_NODE_TEARDOWN.String(): []int64{15},
+				nodeSetup:    []int64{10},
+				nodeIdle:     []int64{400},
+				nodeTeardown: []int64{15},
 			},
 		},
 	}
@@ -517,23 +517,23 @@ func TestParseGateNodeExecution(t *testing.T) {
 			metricsManager := MetricsManager{}
 
 			// parse node execution
-			spans := make([]*admin.Span, 0)
+			spans := make([]*core.Span, 0)
 			metricsManager.parseGateNodeExecution(context.TODO(), test.nodeExecution, &spans)
 
 			// validate spans
-			categoryDurations, _ := parseSpansInfo(spans)
-			assert.True(t, reflect.DeepEqual(test.categoryDurations, categoryDurations))
+			operationDurations, _ := parseSpans(spans)
+			assert.True(t, reflect.DeepEqual(test.operationDurations, operationDurations))
 		})
 	}
 }
 
 func TestParseLaunchPlanNodeExecution(t *testing.T) {
 	tests := []struct {
-		name              string
-		nodeExecution     *admin.NodeExecution
-		execution         *admin.Execution
-		categoryDurations map[string][]int64
-		referenceCount    int
+		name               string
+		nodeExecution      *admin.NodeExecution
+		execution          *admin.Execution
+		operationDurations map[string][]int64
+		referenceCount     int
 	}{
 		{
 			"NotStarted",
@@ -547,7 +547,7 @@ func TestParseLaunchPlanNodeExecution(t *testing.T) {
 			},
 			nil,
 			map[string][]int64{
-				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{5},
+				nodeSetup: []int64{5},
 			},
 			0,
 		},
@@ -575,7 +575,7 @@ func TestParseLaunchPlanNodeExecution(t *testing.T) {
 				},
 			},
 			map[string][]int64{
-				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{10},
+				nodeSetup: []int64{10},
 			},
 			1,
 		},
@@ -603,8 +603,8 @@ func TestParseLaunchPlanNodeExecution(t *testing.T) {
 				},
 			},
 			map[string][]int64{
-				admin.CategoricalSpanInfo_NODE_SETUP.String():    []int64{10},
-				admin.CategoricalSpanInfo_NODE_TEARDOWN.String(): []int64{15},
+				nodeSetup:    []int64{10},
+				nodeTeardown: []int64{15},
 			},
 			1,
 		},
@@ -675,13 +675,13 @@ func TestParseLaunchPlanNodeExecution(t *testing.T) {
 			}
 
 			// parse node execution
-			spans := make([]*admin.Span, 0)
+			spans := make([]*core.Span, 0)
 			err := metricsManager.parseLaunchPlanNodeExecution(context.TODO(), test.nodeExecution, &spans, -1)
 			assert.Nil(t, err)
 
 			// validate spans
-			categoryDurations, referenceCount := parseSpansInfo(spans)
-			assert.True(t, reflect.DeepEqual(test.categoryDurations, categoryDurations))
+			operationDurations, referenceCount := parseSpans(spans)
+			assert.True(t, reflect.DeepEqual(test.operationDurations, operationDurations))
 			assert.Equal(t, test.referenceCount, referenceCount)
 		})
 	}
@@ -689,11 +689,11 @@ func TestParseLaunchPlanNodeExecution(t *testing.T) {
 
 func TestParseSubworkflowNodeExecution(t *testing.T) {
 	tests := []struct {
-		name              string
-		nodeExecution     *admin.NodeExecution
-		nodeExecutions    []*admin.NodeExecution
-		categoryDurations map[string][]int64
-		referenceCount    int
+		name               string
+		nodeExecution      *admin.NodeExecution
+		nodeExecutions     []*admin.NodeExecution
+		operationDurations map[string][]int64
+		referenceCount     int
 	}{
 		{
 			"NotStarted",
@@ -710,7 +710,7 @@ func TestParseSubworkflowNodeExecution(t *testing.T) {
 			},
 			nil,
 			map[string][]int64{
-				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{5},
+				nodeSetup: []int64{5},
 			},
 			0,
 		},
@@ -752,7 +752,7 @@ func TestParseSubworkflowNodeExecution(t *testing.T) {
 				},
 			},
 			map[string][]int64{
-				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{10},
+				nodeSetup: []int64{10},
 			},
 			1,
 		},
@@ -794,8 +794,8 @@ func TestParseSubworkflowNodeExecution(t *testing.T) {
 				},
 			},
 			map[string][]int64{
-				admin.CategoricalSpanInfo_NODE_SETUP.String():    []int64{10},
-				admin.CategoricalSpanInfo_NODE_TEARDOWN.String(): []int64{20},
+				nodeSetup:    []int64{10},
+				nodeTeardown: []int64{20},
 			},
 			1,
 		},
@@ -840,13 +840,13 @@ func TestParseSubworkflowNodeExecution(t *testing.T) {
 			}
 
 			// parse node execution
-			spans := make([]*admin.Span, 0)
+			spans := make([]*core.Span, 0)
 			err := metricsManager.parseSubworkflowNodeExecution(context.TODO(), test.nodeExecution, &core.Identifier{}, &spans, -1)
 			assert.Nil(t, err)
 
 			// validate spans
-			categoryDurations, referenceCount := parseSpansInfo(spans)
-			assert.True(t, reflect.DeepEqual(test.categoryDurations, categoryDurations))
+			operationDurations, referenceCount := parseSpans(spans)
+			assert.True(t, reflect.DeepEqual(test.operationDurations, operationDurations))
 			assert.Equal(t, test.referenceCount, referenceCount)
 		})
 	}
@@ -854,9 +854,9 @@ func TestParseSubworkflowNodeExecution(t *testing.T) {
 
 func TestParseTaskExecution(t *testing.T) {
 	tests := []struct {
-		name              string
-		taskExecution     *admin.TaskExecution
-		categoryDurations map[string][]int64
+		name               string
+		taskExecution      *admin.TaskExecution
+		operationDurations map[string][]int64
 	}{
 		{
 			"NotStarted",
@@ -869,7 +869,7 @@ func TestParseTaskExecution(t *testing.T) {
 				},
 			},
 			map[string][]int64{
-				admin.CategoricalSpanInfo_TASK_SETUP.String(): []int64{5},
+				taskSetup: []int64{5},
 			},
 		},
 		{
@@ -883,8 +883,8 @@ func TestParseTaskExecution(t *testing.T) {
 				},
 			},
 			map[string][]int64{
-				admin.CategoricalSpanInfo_TASK_SETUP.String():   []int64{5},
-				admin.CategoricalSpanInfo_TASK_RUNTIME.String(): []int64{600},
+				taskSetup:   []int64{5},
+				taskRuntime: []int64{600},
 			},
 		},
 		{
@@ -898,9 +898,9 @@ func TestParseTaskExecution(t *testing.T) {
 				},
 			},
 			map[string][]int64{
-				admin.CategoricalSpanInfo_TASK_SETUP.String():    []int64{5},
-				admin.CategoricalSpanInfo_TASK_RUNTIME.String():  []int64{400},
-				admin.CategoricalSpanInfo_TASK_TEARDOWN.String(): []int64{10},
+				taskSetup:    []int64{5},
+				taskRuntime:  []int64{400},
+				taskTeardown: []int64{10},
 			},
 		},
 	}
@@ -909,12 +909,12 @@ func TestParseTaskExecution(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			// parse task execution
 			span := parseTaskExecution(test.taskExecution)
-			spanReference, ok := span.Info.(*admin.Span_Reference)
+			_, ok := span.Id.(*core.Span_TaskId)
 			assert.True(t, ok)
 
 			// validate spans
-			categoryDurations, referenceCount := parseSpansInfo(spanReference.Reference.Spans)
-			assert.True(t, reflect.DeepEqual(test.categoryDurations, categoryDurations))
+			operationDurations, referenceCount := parseSpans(span.Spans)
+			assert.True(t, reflect.DeepEqual(test.operationDurations, operationDurations))
 			assert.Equal(t, 0, referenceCount)
 		})
 	}
@@ -922,10 +922,10 @@ func TestParseTaskExecution(t *testing.T) {
 
 func TestParseTaskExecutions(t *testing.T) {
 	tests := []struct {
-		name              string
-		taskExecutions    []*admin.TaskExecution
-		categoryDurations map[string][]int64
-		referenceCount    int
+		name               string
+		taskExecutions     []*admin.TaskExecution
+		operationDurations map[string][]int64
+		referenceCount     int
 	}{
 		{
 			"SingleAttempt",
@@ -963,7 +963,7 @@ func TestParseTaskExecutions(t *testing.T) {
 				},
 			},
 			map[string][]int64{
-				admin.CategoricalSpanInfo_NODE_RESET.String(): []int64{20},
+				nodeReset: []int64{20},
 			},
 			2,
 		},
@@ -972,12 +972,12 @@ func TestParseTaskExecutions(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// parse task executions
-			spans := make([]*admin.Span, 0)
+			spans := make([]*core.Span, 0)
 			parseTaskExecutions(test.taskExecutions, &spans, -1)
 
 			// validate spans
-			categoryDurations, referenceCount := parseSpansInfo(spans)
-			assert.True(t, reflect.DeepEqual(test.categoryDurations, categoryDurations))
+			operationDurations, referenceCount := parseSpans(spans)
+			assert.True(t, reflect.DeepEqual(test.operationDurations, operationDurations))
 			assert.Equal(t, test.referenceCount, referenceCount)
 		})
 	}
@@ -985,11 +985,11 @@ func TestParseTaskExecutions(t *testing.T) {
 
 func TestParseTaskNodeExecution(t *testing.T) {
 	tests := []struct {
-		name              string
-		nodeExecution     *admin.NodeExecution
-		taskExecutions    []*admin.TaskExecution
-		categoryDurations map[string][]int64
-		referenceCount    int
+		name               string
+		nodeExecution      *admin.NodeExecution
+		taskExecutions     []*admin.TaskExecution
+		operationDurations map[string][]int64
+		referenceCount     int
 	}{
 		{
 			"NotStarted",
@@ -1003,7 +1003,7 @@ func TestParseTaskNodeExecution(t *testing.T) {
 			},
 			nil,
 			map[string][]int64{
-				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{5},
+				nodeSetup: []int64{5},
 			},
 			0,
 		},
@@ -1028,7 +1028,7 @@ func TestParseTaskNodeExecution(t *testing.T) {
 				},
 			},
 			map[string][]int64{
-				admin.CategoricalSpanInfo_NODE_SETUP.String(): []int64{10},
+				nodeSetup: []int64{10},
 			},
 			1,
 		},
@@ -1053,8 +1053,8 @@ func TestParseTaskNodeExecution(t *testing.T) {
 				},
 			},
 			map[string][]int64{
-				admin.CategoricalSpanInfo_NODE_SETUP.String():    []int64{10},
-				admin.CategoricalSpanInfo_NODE_TEARDOWN.String(): []int64{15},
+				nodeSetup:    []int64{10},
+				nodeTeardown: []int64{15},
 			},
 			1,
 		},
@@ -1069,13 +1069,13 @@ func TestParseTaskNodeExecution(t *testing.T) {
 			}
 
 			// parse node execution
-			spans := make([]*admin.Span, 0)
+			spans := make([]*core.Span, 0)
 			err := metricsManager.parseTaskNodeExecution(context.TODO(), test.nodeExecution, &spans, -1)
 			assert.Nil(t, err)
 
 			// validate spans
-			categoryDurations, referenceCount := parseSpansInfo(spans)
-			assert.True(t, reflect.DeepEqual(test.categoryDurations, categoryDurations))
+			operationDurations, referenceCount := parseSpans(spans)
+			assert.True(t, reflect.DeepEqual(test.operationDurations, operationDurations))
 			assert.Equal(t, test.referenceCount, referenceCount)
 		})
 	}

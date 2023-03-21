@@ -20,7 +20,20 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-const RequestLimit uint32 = 50
+const (
+	RequestLimit uint32 = 50
+
+	nodeIdle         = "NODE_IDLE"
+	nodeReset        = "NODE_RESET"
+	nodeSetup        = "NODE_SETUP"
+	nodeTeardown     = "NODE_TEARDOWN"
+	nodeTransition   = "NODE_TRANSITION"
+	taskRuntime      = "TASK_RUNTIME"
+	taskSetup        = "TASK_SETUP"
+	taskTeardown     = "TASK_TEARDOWN"
+	workflowSetup    = "WORKFLOW_SETUP"
+	workflowTeardown = "WORKFLOW_TEARDOWN"
+)
 
 var (
 	emptyDuration *duration.Duration = &duration.Duration{
@@ -46,15 +59,13 @@ type MetricsManager struct {
 	metrics              metrics
 }
 
-// createCategoricalSpan returns a Span defined by the provided arguments.
-func createCategoricalSpan(startTime, endTime *timestamp.Timestamp, category admin.CategoricalSpanInfo_Category) *admin.Span {
-	return &admin.Span{
+// createOperationSpan returns a Span defined by the provided arguments.
+func createOperationSpan(startTime, endTime *timestamp.Timestamp, operation string) *core.Span {
+	return &core.Span{
 		StartTime: startTime,
 		EndTime:   endTime,
-		Info: &admin.Span_Category{
-			Category: &admin.CategoricalSpanInfo{
-				Category: category.String(),
-			},
+		Id: &core.Span_OperationId{
+			OperationId: operation,
 		},
 	}
 }
@@ -153,7 +164,7 @@ func (m *MetricsManager) getTaskExecutions(ctx context.Context, request admin.Ta
 // parseBranchNodeExecution partitions the BranchNode execution into a collection of Categorical and Reference Spans
 // which are appended to the provided spans argument.
 func (m *MetricsManager) parseBranchNodeExecution(ctx context.Context,
-	nodeExecution *admin.NodeExecution, branchNode *core.BranchNode, spans *[]*admin.Span, depth int) error {
+	nodeExecution *admin.NodeExecution, branchNode *core.BranchNode, spans *[]*core.Span, depth int) error {
 
 	// retrieve node execution(s)
 	nodeExecutions, err := m.getNodeExecutions(ctx, admin.NodeExecutionListRequest{
@@ -167,8 +178,7 @@ func (m *MetricsManager) parseBranchNodeExecution(ctx context.Context,
 
 	// check if the node started
 	if len(nodeExecutions) == 0 {
-		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
-			nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_NODE_SETUP))
+		*spans = append(*spans, createOperationSpan(nodeExecution.Closure.CreatedAt, nodeExecution.Closure.UpdatedAt, nodeSetup))
 	} else {
 		// parse branchNode
 		if len(nodeExecutions) != 1 {
@@ -187,8 +197,7 @@ func (m *MetricsManager) parseBranchNodeExecution(ctx context.Context,
 		}
 
 		// frontend overhead
-		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
-			branchNodeExecution.Closure.CreatedAt, admin.CategoricalSpanInfo_NODE_SETUP))
+		*spans = append(*spans, createOperationSpan(nodeExecution.Closure.CreatedAt, branchNodeExecution.Closure.CreatedAt, nodeSetup))
 
 		// node execution
 		nodeExecutionSpan, err := m.parseNodeExecution(ctx, branchNodeExecution, node, depth)
@@ -200,8 +209,8 @@ func (m *MetricsManager) parseBranchNodeExecution(ctx context.Context,
 
 		// backened overhead
 		if !nodeExecution.Closure.UpdatedAt.AsTime().Before(branchNodeExecution.Closure.UpdatedAt.AsTime()) {
-			*spans = append(*spans, createCategoricalSpan(branchNodeExecution.Closure.UpdatedAt,
-				nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_NODE_TEARDOWN))
+			*spans = append(*spans, createOperationSpan(branchNodeExecution.Closure.UpdatedAt,
+				nodeExecution.Closure.UpdatedAt, nodeTeardown))
 		}
 	}
 
@@ -210,7 +219,7 @@ func (m *MetricsManager) parseBranchNodeExecution(ctx context.Context,
 
 // parseDynamicNodeExecution partitions the DynamicNode execution into a collection of Categorical and Reference Spans
 // which are appended to the provided spans argument.
-func (m *MetricsManager) parseDynamicNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution, spans *[]*admin.Span, depth int) error {
+func (m *MetricsManager) parseDynamicNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution, spans *[]*core.Span, depth int) error {
 	taskExecutions, err := m.getTaskExecutions(ctx, admin.TaskExecutionListRequest{
 		NodeExecutionId: nodeExecution.Id,
 		Limit:           RequestLimit,
@@ -221,12 +230,10 @@ func (m *MetricsManager) parseDynamicNodeExecution(ctx context.Context, nodeExec
 
 	// if no task executions then everything is execution overhead
 	if len(taskExecutions) == 0 {
-		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
-			nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_NODE_SETUP))
+		*spans = append(*spans, createOperationSpan(nodeExecution.Closure.CreatedAt, nodeExecution.Closure.UpdatedAt, nodeSetup))
 	} else {
 		// frontend overhead
-		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
-			taskExecutions[0].Closure.CreatedAt, admin.CategoricalSpanInfo_NODE_SETUP))
+		*spans = append(*spans, createOperationSpan(nodeExecution.Closure.CreatedAt, taskExecutions[0].Closure.CreatedAt, nodeSetup))
 
 		// task execution(s)
 		parseTaskExecutions(taskExecutions, spans, depth)
@@ -243,14 +250,13 @@ func (m *MetricsManager) parseDynamicNodeExecution(ctx context.Context, nodeExec
 		lastTask := taskExecutions[len(taskExecutions)-1]
 		if len(nodeExecutions) == 0 {
 			if !nodeExecution.Closure.UpdatedAt.AsTime().Before(lastTask.Closure.UpdatedAt.AsTime()) {
-				*spans = append(*spans, createCategoricalSpan(lastTask.Closure.UpdatedAt,
-					nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_NODE_RESET))
+				*spans = append(*spans, createOperationSpan(lastTask.Closure.UpdatedAt, nodeExecution.Closure.UpdatedAt, nodeReset))
 			}
 		} else {
 			// between task execution(s) and node execution(s) overhead
 			startNode := nodeExecutions["start-node"]
-			*spans = append(*spans, createCategoricalSpan(taskExecutions[len(taskExecutions)-1].Closure.UpdatedAt,
-				startNode.Closure.UpdatedAt, admin.CategoricalSpanInfo_NODE_RESET))
+			*spans = append(*spans, createOperationSpan(taskExecutions[len(taskExecutions)-1].Closure.UpdatedAt,
+				startNode.Closure.UpdatedAt, nodeReset))
 
 			// node execution(s)
 			getDataRequest := admin.NodeExecutionGetDataRequest{Id: nodeExecution.Id}
@@ -267,8 +273,7 @@ func (m *MetricsManager) parseDynamicNodeExecution(ctx context.Context, nodeExec
 			latestUpstreamNode := m.getLatestUpstreamNodeExecution("end-node",
 				nodeExecutionData.DynamicWorkflow.CompiledWorkflow.Primary.Connections.Upstream, nodeExecutions)
 			if latestUpstreamNode != nil && !nodeExecution.Closure.UpdatedAt.AsTime().Before(latestUpstreamNode.Closure.UpdatedAt.AsTime()) {
-				*spans = append(*spans, createCategoricalSpan(latestUpstreamNode.Closure.UpdatedAt,
-					nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_NODE_TEARDOWN))
+				*spans = append(*spans, createOperationSpan(latestUpstreamNode.Closure.UpdatedAt, nodeExecution.Closure.UpdatedAt, nodeTeardown))
 			}
 		}
 	}
@@ -278,16 +283,9 @@ func (m *MetricsManager) parseDynamicNodeExecution(ctx context.Context, nodeExec
 
 // parseExecution partitions the workflow execution into a collection of Categorical and Reference Spans which are
 // returned as a hierarchical breakdown of the workflow execution.
-func (m *MetricsManager) parseExecution(ctx context.Context, execution *admin.Execution, depth int) (*admin.Span, error) {
-	referenceSpan := &admin.ReferenceSpanInfo{
-		Id: &admin.ReferenceSpanInfo_WorkflowId{
-			WorkflowId: execution.Id,
-		},
-	}
-
+func (m *MetricsManager) parseExecution(ctx context.Context, execution *admin.Execution, depth int) (*core.Span, error) {
+	spans := make([]*core.Span, 0)
 	if depth != 0 {
-		spans := make([]*admin.Span, 0)
-
 		// retrieve workflow and node executions
 		workflowRequest := admin.ObjectGetRequest{Id: execution.Closure.WorkflowId}
 		workflow, err := m.workflowManager.GetWorkflow(ctx, workflowRequest)
@@ -306,12 +304,10 @@ func (m *MetricsManager) parseExecution(ctx context.Context, execution *admin.Ex
 		// check if workflow has started
 		startNode := nodeExecutions["start-node"]
 		if startNode.Closure.UpdatedAt == nil || reflect.DeepEqual(startNode.Closure.UpdatedAt, emptyTimestamp) {
-			spans = append(spans, createCategoricalSpan(execution.Closure.CreatedAt,
-				execution.Closure.UpdatedAt, admin.CategoricalSpanInfo_WORKFLOW_SETUP))
+			spans = append(spans, createOperationSpan(execution.Closure.CreatedAt, execution.Closure.UpdatedAt, workflowSetup))
 		} else {
 			// compute frontend overhead
-			spans = append(spans, createCategoricalSpan(execution.Closure.CreatedAt,
-				startNode.Closure.UpdatedAt, admin.CategoricalSpanInfo_WORKFLOW_SETUP))
+			spans = append(spans, createOperationSpan(execution.Closure.CreatedAt, startNode.Closure.UpdatedAt, workflowSetup))
 
 			// iterate over nodes and compute overhead
 			if err := m.parseNodeExecutions(ctx, nodeExecutions, workflow.Closure.CompiledWorkflow, &spans, depth-1); err != nil {
@@ -322,60 +318,54 @@ func (m *MetricsManager) parseExecution(ctx context.Context, execution *admin.Ex
 			latestUpstreamNode := m.getLatestUpstreamNodeExecution("end-node",
 				workflow.Closure.CompiledWorkflow.Primary.Connections.Upstream, nodeExecutions)
 			if latestUpstreamNode != nil && !execution.Closure.UpdatedAt.AsTime().Before(latestUpstreamNode.Closure.UpdatedAt.AsTime()) {
-				spans = append(spans, createCategoricalSpan(latestUpstreamNode.Closure.UpdatedAt,
-					execution.Closure.UpdatedAt, admin.CategoricalSpanInfo_WORKFLOW_TEARDOWN))
+				spans = append(spans, createOperationSpan(latestUpstreamNode.Closure.UpdatedAt,
+					execution.Closure.UpdatedAt, workflowTeardown))
 			}
 		}
-
-		referenceSpan.Spans = spans
 	}
 
-	return &admin.Span{
+	return &core.Span{
 		StartTime: execution.Closure.CreatedAt,
 		EndTime:   execution.Closure.UpdatedAt,
-		Info: &admin.Span_Reference{
-			Reference: referenceSpan,
+		Id: &core.Span_WorkflowId{
+			WorkflowId: execution.Id,
 		},
+		Spans: spans,
 	}, nil
 }
 
 // parseGateNodeExecution partitions the GateNode execution into a collection of Categorical and Reference Spans
 // which are appended to the provided spans argument.
-func (m *MetricsManager) parseGateNodeExecution(_ context.Context, nodeExecution *admin.NodeExecution, spans *[]*admin.Span) {
+func (m *MetricsManager) parseGateNodeExecution(_ context.Context, nodeExecution *admin.NodeExecution, spans *[]*core.Span) {
 	// check if node has started yet
 	if nodeExecution.Closure.StartedAt == nil || reflect.DeepEqual(nodeExecution.Closure.StartedAt, emptyTimestamp) {
-		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
-			nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_NODE_SETUP))
+		*spans = append(*spans, createOperationSpan(nodeExecution.Closure.CreatedAt, nodeExecution.Closure.UpdatedAt, nodeSetup))
 	} else {
 		// frontend overhead
-		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
-			nodeExecution.Closure.StartedAt, admin.CategoricalSpanInfo_NODE_SETUP))
+		*spans = append(*spans, createOperationSpan(nodeExecution.Closure.CreatedAt, nodeExecution.Closure.StartedAt, nodeSetup))
 
 		// check if plugin has completed yet
 		if nodeExecution.Closure.Duration == nil || reflect.DeepEqual(nodeExecution.Closure.Duration, emptyDuration) {
-			*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.StartedAt,
-				nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_NODE_IDLE))
+			*spans = append(*spans, createOperationSpan(nodeExecution.Closure.StartedAt,
+				nodeExecution.Closure.UpdatedAt, nodeIdle))
 		} else {
 			// idle time
 			nodeEndTime := timestamppb.New(nodeExecution.Closure.StartedAt.AsTime().Add(nodeExecution.Closure.Duration.AsDuration()))
-			*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.StartedAt,
-				nodeEndTime, admin.CategoricalSpanInfo_NODE_IDLE))
+			*spans = append(*spans, createOperationSpan(nodeExecution.Closure.StartedAt, nodeEndTime, nodeIdle))
 
 			// backend overhead
-			*spans = append(*spans, createCategoricalSpan(nodeEndTime,
-				nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_NODE_TEARDOWN))
+			*spans = append(*spans, createOperationSpan(nodeEndTime, nodeExecution.Closure.UpdatedAt, nodeTeardown))
 		}
 	}
 }
 
 // parseLaunchPlanNodeExecution partitions the LaunchPlanNode execution into a collection of Categorical and Reference
 // Spans which are appended to the provided spans argument.
-func (m *MetricsManager) parseLaunchPlanNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution, spans *[]*admin.Span, depth int) error {
+func (m *MetricsManager) parseLaunchPlanNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution, spans *[]*core.Span, depth int) error {
 	// check if workflow started yet
 	workflowNode := nodeExecution.Closure.GetWorkflowNodeMetadata()
 	if workflowNode == nil {
-		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
-			nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_NODE_SETUP))
+		*spans = append(*spans, createOperationSpan(nodeExecution.Closure.CreatedAt, nodeExecution.Closure.UpdatedAt, nodeSetup))
 	} else {
 		// retrieve execution
 		executionRequest := admin.WorkflowExecutionGetRequest{Id: workflowNode.ExecutionId}
@@ -385,8 +375,7 @@ func (m *MetricsManager) parseLaunchPlanNodeExecution(ctx context.Context, nodeE
 		}
 
 		// frontend overhead
-		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
-			execution.Closure.CreatedAt, admin.CategoricalSpanInfo_NODE_SETUP))
+		*spans = append(*spans, createOperationSpan(nodeExecution.Closure.CreatedAt, execution.Closure.CreatedAt, nodeSetup))
 
 		// execution
 		span, err := m.parseExecution(ctx, execution, depth)
@@ -398,8 +387,7 @@ func (m *MetricsManager) parseLaunchPlanNodeExecution(ctx context.Context, nodeE
 
 		// backend overhead
 		if !nodeExecution.Closure.UpdatedAt.AsTime().Before(execution.Closure.UpdatedAt.AsTime()) {
-			*spans = append(*spans, createCategoricalSpan(execution.Closure.UpdatedAt,
-				nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_NODE_TEARDOWN))
+			*spans = append(*spans, createOperationSpan(execution.Closure.UpdatedAt, nodeExecution.Closure.UpdatedAt, nodeTeardown))
 		}
 	}
 
@@ -408,15 +396,9 @@ func (m *MetricsManager) parseLaunchPlanNodeExecution(ctx context.Context, nodeE
 
 // parseNodeExecution partitions the node execution into a collection of Categorical and Reference Spans which are
 // returned as a hierarchical breakdown of the node execution.
-func (m *MetricsManager) parseNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution, node *core.Node, depth int) (*admin.Span, error) {
-	referenceSpan := &admin.ReferenceSpanInfo{
-		Id: &admin.ReferenceSpanInfo_NodeId{
-			NodeId: nodeExecution.Id,
-		},
-	}
-
+func (m *MetricsManager) parseNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution, node *core.Node, depth int) (*core.Span, error) {
+	spans := make([]*core.Span, 0)
 	if depth != 0 {
-		spans := make([]*admin.Span, 0)
 
 		// parse node
 		var err error
@@ -453,23 +435,22 @@ func (m *MetricsManager) parseNodeExecution(ctx context.Context, nodeExecution *
 		if err != nil {
 			return nil, err
 		}
-
-		referenceSpan.Spans = spans
 	}
 
-	return &admin.Span{
+	return &core.Span{
 		StartTime: nodeExecution.Closure.CreatedAt,
 		EndTime:   nodeExecution.Closure.UpdatedAt,
-		Info: &admin.Span_Reference{
-			Reference: referenceSpan,
+		Id: &core.Span_NodeId{
+			NodeId: nodeExecution.Id,
 		},
+		Spans: spans,
 	}, nil
 }
 
 // parseNodeExecutions partitions the node executions into a collection of Categorical and Reference Spans which are
 // appended to the provided spans argument.
 func (m *MetricsManager) parseNodeExecutions(ctx context.Context, nodeExecutions map[string]*admin.NodeExecution,
-	compiledWorkflowClosure *core.CompiledWorkflowClosure, spans *[]*admin.Span, depth int) error {
+	compiledWorkflowClosure *core.CompiledWorkflowClosure, spans *[]*core.Span, depth int) error {
 
 	// sort node executions
 	sortedNodeExecutions := make([]*admin.NodeExecution, 0, len(nodeExecutions))
@@ -508,14 +489,12 @@ func (m *MetricsManager) parseNodeExecutions(ctx context.Context, nodeExecutions
 			return err
 		}
 
-		// prepend nodeExecution spans with NODE_TRANSITION time
-		if referenceSpan, ok := nodeExecutionSpan.Info.(*admin.Span_Reference); ok {
-			latestUpstreamNode := m.getLatestUpstreamNodeExecution(specNodeID,
-				compiledWorkflowClosure.Primary.Connections.Upstream, nodeExecutions)
-			if latestUpstreamNode != nil {
-				referenceSpan.Reference.Spans = append([]*admin.Span{createCategoricalSpan(latestUpstreamNode.Closure.UpdatedAt,
-					nodeExecution.Closure.CreatedAt, admin.CategoricalSpanInfo_NODE_TRANSITION)}, referenceSpan.Reference.Spans...)
-			}
+		// prepend nodeExecution spans with node transition time
+		latestUpstreamNode := m.getLatestUpstreamNodeExecution(specNodeID,
+			compiledWorkflowClosure.Primary.Connections.Upstream, nodeExecutions)
+		if latestUpstreamNode != nil {
+			nodeExecutionSpan.Spans = append([]*core.Span{createOperationSpan(latestUpstreamNode.Closure.UpdatedAt,
+				nodeExecution.Closure.CreatedAt, nodeTransition)}, nodeExecutionSpan.Spans...)
 		}
 
 		*spans = append(*spans, nodeExecutionSpan)
@@ -527,7 +506,7 @@ func (m *MetricsManager) parseNodeExecutions(ctx context.Context, nodeExecutions
 // parseSubworkflowNodeExecutions partitions the SubworkflowNode execution into a collection of Categorical and
 // Reference Spans which are appended to the provided spans argument.
 func (m *MetricsManager) parseSubworkflowNodeExecution(ctx context.Context,
-	nodeExecution *admin.NodeExecution, identifier *core.Identifier, spans *[]*admin.Span, depth int) error {
+	nodeExecution *admin.NodeExecution, identifier *core.Identifier, spans *[]*core.Span, depth int) error {
 
 	// retrieve node execution(s)
 	nodeExecutions, err := m.getNodeExecutions(ctx, admin.NodeExecutionListRequest{
@@ -541,13 +520,11 @@ func (m *MetricsManager) parseSubworkflowNodeExecution(ctx context.Context,
 
 	// check if the subworkflow started
 	if len(nodeExecutions) == 0 {
-		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
-			nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_NODE_SETUP))
+		*spans = append(*spans, createOperationSpan(nodeExecution.Closure.CreatedAt, nodeExecution.Closure.UpdatedAt, nodeSetup))
 	} else {
 		// frontend overhead
 		startNode := nodeExecutions["start-node"]
-		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
-			startNode.Closure.UpdatedAt, admin.CategoricalSpanInfo_NODE_SETUP))
+		*spans = append(*spans, createOperationSpan(nodeExecution.Closure.CreatedAt, startNode.Closure.UpdatedAt, nodeSetup))
 
 		// retrieve workflow
 		workflowRequest := admin.ObjectGetRequest{Id: identifier}
@@ -565,8 +542,7 @@ func (m *MetricsManager) parseSubworkflowNodeExecution(ctx context.Context,
 		latestUpstreamNode := m.getLatestUpstreamNodeExecution("end-node",
 			workflow.Closure.CompiledWorkflow.Primary.Connections.Upstream, nodeExecutions)
 		if latestUpstreamNode != nil && !nodeExecution.Closure.UpdatedAt.AsTime().Before(latestUpstreamNode.Closure.UpdatedAt.AsTime()) {
-			*spans = append(*spans, createCategoricalSpan(latestUpstreamNode.Closure.UpdatedAt,
-				nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_NODE_TEARDOWN))
+			*spans = append(*spans, createOperationSpan(latestUpstreamNode.Closure.UpdatedAt, nodeExecution.Closure.UpdatedAt, nodeTeardown))
 		}
 	}
 
@@ -575,53 +551,44 @@ func (m *MetricsManager) parseSubworkflowNodeExecution(ctx context.Context,
 
 // parseTaskExecution partitions the task execution into a collection of Categorical and Reference Spans which are
 // returned as a hierarchical breakdown of the task execution.
-func parseTaskExecution(taskExecution *admin.TaskExecution) *admin.Span {
-	spans := make([]*admin.Span, 0)
+func parseTaskExecution(taskExecution *admin.TaskExecution) *core.Span {
+	spans := make([]*core.Span, 0)
 
 	// check if plugin has started yet
 	if taskExecution.Closure.StartedAt == nil || reflect.DeepEqual(taskExecution.Closure.StartedAt, emptyTimestamp) {
-		spans = append(spans, createCategoricalSpan(taskExecution.Closure.CreatedAt,
-			taskExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_TASK_SETUP))
+		spans = append(spans, createOperationSpan(taskExecution.Closure.CreatedAt, taskExecution.Closure.UpdatedAt, taskSetup))
 	} else {
 		// frontend overhead
-		spans = append(spans, createCategoricalSpan(taskExecution.Closure.CreatedAt,
-			taskExecution.Closure.StartedAt, admin.CategoricalSpanInfo_TASK_SETUP))
+		spans = append(spans, createOperationSpan(taskExecution.Closure.CreatedAt, taskExecution.Closure.StartedAt, taskSetup))
 
 		// check if plugin has completed yet
 		if taskExecution.Closure.Duration == nil || reflect.DeepEqual(taskExecution.Closure.Duration, emptyDuration) {
-			spans = append(spans, createCategoricalSpan(taskExecution.Closure.StartedAt,
-				taskExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_TASK_RUNTIME))
+			spans = append(spans, createOperationSpan(taskExecution.Closure.StartedAt, taskExecution.Closure.UpdatedAt, taskRuntime))
 		} else {
 			// plugin execution
 			taskEndTime := timestamppb.New(taskExecution.Closure.StartedAt.AsTime().Add(taskExecution.Closure.Duration.AsDuration()))
-			spans = append(spans, createCategoricalSpan(taskExecution.Closure.StartedAt,
-				taskEndTime, admin.CategoricalSpanInfo_TASK_RUNTIME))
+			spans = append(spans, createOperationSpan(taskExecution.Closure.StartedAt, taskEndTime, taskRuntime))
 
 			// backend overhead
 			if !taskExecution.Closure.UpdatedAt.AsTime().Before(taskEndTime.AsTime()) {
-				spans = append(spans, createCategoricalSpan(taskEndTime,
-					taskExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_TASK_TEARDOWN))
+				spans = append(spans, createOperationSpan(taskEndTime, taskExecution.Closure.UpdatedAt, taskTeardown))
 			}
 		}
 	}
 
-	return &admin.Span{
+	return &core.Span{
 		StartTime: taskExecution.Closure.CreatedAt,
 		EndTime:   taskExecution.Closure.UpdatedAt,
-		Info: &admin.Span_Reference{
-			Reference: &admin.ReferenceSpanInfo{
-				Id: &admin.ReferenceSpanInfo_TaskId{
-					TaskId: taskExecution.Id,
-				},
-				Spans: spans,
-			},
+		Id: &core.Span_TaskId{
+			TaskId: taskExecution.Id,
 		},
+		Spans: spans,
 	}
 }
 
 // parseTaskExecutions partitions the task executions into a collection of Categorical and Reference Spans which are
 // appended to the provided spans argument.
-func parseTaskExecutions(taskExecutions []*admin.TaskExecution, spans *[]*admin.Span, depth int) {
+func parseTaskExecutions(taskExecutions []*admin.TaskExecution, spans *[]*core.Span, depth int) {
 	// sort task executions
 	sort.Slice(taskExecutions, func(i, j int) bool {
 		x := taskExecutions[i].Closure.CreatedAt.AsTime()
@@ -632,8 +599,7 @@ func parseTaskExecutions(taskExecutions []*admin.TaskExecution, spans *[]*admin.
 	// iterate over task executions
 	for index, taskExecution := range taskExecutions {
 		if index > 0 {
-			*spans = append(*spans, createCategoricalSpan(taskExecutions[index-1].Closure.UpdatedAt,
-				taskExecution.Closure.CreatedAt, admin.CategoricalSpanInfo_NODE_RESET))
+			*spans = append(*spans, createOperationSpan(taskExecutions[index-1].Closure.UpdatedAt, taskExecution.Closure.CreatedAt, nodeReset))
 		}
 
 		if depth != 0 {
@@ -644,7 +610,7 @@ func parseTaskExecutions(taskExecutions []*admin.TaskExecution, spans *[]*admin.
 
 // parseTaskNodeExecutions partitions the TaskNode execution into a collection of Categorical and Reference Spans which
 // are appended to the provided spans argument.
-func (m *MetricsManager) parseTaskNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution, spans *[]*admin.Span, depth int) error {
+func (m *MetricsManager) parseTaskNodeExecution(ctx context.Context, nodeExecution *admin.NodeExecution, spans *[]*core.Span, depth int) error {
 	// retrieve task executions
 	taskExecutions, err := m.getTaskExecutions(ctx, admin.TaskExecutionListRequest{
 		NodeExecutionId: nodeExecution.Id,
@@ -656,12 +622,10 @@ func (m *MetricsManager) parseTaskNodeExecution(ctx context.Context, nodeExecuti
 
 	// if no task executions then everything is execution overhead
 	if len(taskExecutions) == 0 {
-		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
-			nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_NODE_SETUP))
+		*spans = append(*spans, createOperationSpan(nodeExecution.Closure.CreatedAt, nodeExecution.Closure.UpdatedAt, nodeSetup))
 	} else {
 		// frontend overhead
-		*spans = append(*spans, createCategoricalSpan(nodeExecution.Closure.CreatedAt,
-			taskExecutions[0].Closure.CreatedAt, admin.CategoricalSpanInfo_NODE_SETUP))
+		*spans = append(*spans, createOperationSpan(nodeExecution.Closure.CreatedAt, taskExecutions[0].Closure.CreatedAt, nodeSetup))
 
 		// parse task executions
 		parseTaskExecutions(taskExecutions, spans, depth)
@@ -669,8 +633,8 @@ func (m *MetricsManager) parseTaskNodeExecution(ctx context.Context, nodeExecuti
 		// backend overhead
 		lastTask := taskExecutions[len(taskExecutions)-1]
 		if !nodeExecution.Closure.UpdatedAt.AsTime().Before(lastTask.Closure.UpdatedAt.AsTime()) {
-			*spans = append(*spans, createCategoricalSpan(taskExecutions[len(taskExecutions)-1].Closure.UpdatedAt,
-				nodeExecution.Closure.UpdatedAt, admin.CategoricalSpanInfo_NODE_TEARDOWN))
+			*spans = append(*spans, createOperationSpan(taskExecutions[len(taskExecutions)-1].Closure.UpdatedAt,
+				nodeExecution.Closure.UpdatedAt, nodeTeardown))
 		}
 	}
 
