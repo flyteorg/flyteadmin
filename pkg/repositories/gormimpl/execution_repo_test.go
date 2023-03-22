@@ -215,7 +215,7 @@ func TestListExecutions_Filters(t *testing.T) {
 
 	GlobalMock := mocket.Catcher.Reset()
 	// Only match on queries that append the name filter
-	GlobalMock.NewMock().WithQuery(`SELECT * FROM "executions" WHERE executions.execution_project = $1 AND executions.execution_domain = $2 AND executions.execution_name = $3 AND (executions.workflow_id = $4) LIMIT 20`).WithReply(executions[0:1])
+	GlobalMock.NewMock().WithQuery(`SELECT * FROM "executions" WHERE executions.execution_project = $1 AND executions.execution_domain = $2 AND executions.execution_name = $3 AND executions.workflow_id = $4 LIMIT 20`).WithReply(executions[0:1])
 
 	collection, err := executionRepo.List(context.Background(), interfaces.ListResourceInput{
 		InlineFilters: []common.InlineFilter{
