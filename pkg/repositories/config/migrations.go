@@ -962,6 +962,507 @@ var NoopMigrations = []*gormigrate.Migration{
 	},
 }
 
+var FixupMigrations = []*gormigrate.Migration{
+	// These migrations modify the column types from `text` to a bounded string type (i.e. varchar). 
+	{
+		ID: "2023-03-31-fixup-project",
+		Migrate: func(tx *gorm.DB) error {
+			type Project struct {
+				ID          uint       `gorm:"index;autoIncrement;not null"`
+				CreatedAt   time.Time  `gorm:"type:time"`
+				UpdatedAt   time.Time  `gorm:"type:time"`
+				DeletedAt   *time.Time `gorm:"index"`
+				Identifier  string     `gorm:"primary_key"`
+				Name        string     `gorm:"size:64"` // Human-readable name, not a unique identifier.
+				Description string     `gorm:"type:varchar(300)"`
+				Labels      []byte
+				// GORM doesn't save the zero value for ints, so we use a pointer for the State field
+				State *int32 `gorm:"default:0;index"`
+			}
+			return tx.AutoMigrate(&Project{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-task",
+		Migrate: func(tx *gorm.DB) error {
+			type Task struct {
+				ID        uint			`gorm:"index;autoIncrement;not null"`
+				CreatedAt time.Time		`gorm:"type:time"`
+				UpdatedAt time.Time		`gorm:"type:time"`
+				DeletedAt *time.Time	`gorm:"index"`
+				Project   string		`gorm:"size:64;primary_key;index:task_project_domain_name_idx;index:task_project_domain_idx" gorm:""`
+				Domain    string		`gorm:"size:255;primary_key;index:task_project_domain_name_idx;index:task_project_domain_idx"`
+				Name      string		`gorm:"size:255;primary_key;index:task_project_domain_name_idx"`
+				Version   string		`gorm:"size:255;primary_key"`
+				Closure   []byte		`gorm:"not null"`
+				// Hash of the compiled task closure
+				Digest []byte
+				// Task type (also stored in the closure put promoted as a column for filtering).
+				Type string				`gorm:"size:255"`
+				// ShortDescription for the task.
+				ShortDescription string `gorm:"size:255"`
+			}
+			return tx.AutoMigrate(&Task{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-workflow",
+		Migrate: func(tx *gorm.DB) error {
+			type Workflow struct {
+				ID                      uint		`gorm:"index;autoIncrement;not null"`
+				CreatedAt               time.Time	`gorm:"type:time"`
+				UpdatedAt               time.Time	`gorm:"type:time"`
+				DeletedAt               *time.Time	`gorm:"index"`
+				Project                 string		`gorm:"size:64;primary_key;index:workflow_project_domain_name_idx;index:workflow_project_domain_idx"`
+				Domain                  string		`gorm:"size:255;index:workflow_project_domain_name_idx;index:workflow_project_domain_idx"`
+				Name                    string		`gorm:"size:255;primary_key;index:workflow_project_domain_name_idx"`
+				Version                 string		`gorm:"size:255;primary_key"`
+				TypedInterface          []byte
+				RemoteClosureIdentifier string		`gorm:"size:255;not null"`
+				// Hash of the compiled workflow closure
+				Digest []byte
+				// ShortDescription for the workflow.
+				ShortDescription string				`gorm:"size:255"`
+			}
+			return tx.AutoMigrate(&Workflow{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-launchplan",
+		Migrate: func(tx *gorm.DB) error {
+			type LaunchPlanScheduleType string 
+
+			type LaunchPlan struct {
+				ID         uint						`gorm:"index;autoIncrement;not null"`
+				CreatedAt  time.Time				`gorm:"type:time"`
+				UpdatedAt  time.Time				`gorm:"type:time"`
+				DeletedAt  *time.Time				`gorm:"index"`
+				Project    string					`gorm:"size:64;primary_key;index:lp_project_domain_name_idx,lp_project_domain_idx"`
+				Domain     string					`gorm:"size:255;primary_key;index:lp_project_domain_name_idx,lp_project_domain_idx"`
+				Name       string					`gorm:"size:255;primary_key;index:lp_project_domain_name_idx"`
+				Version    string					`gorm:"size:255;primary_key"`
+				Spec       []byte					`gorm:"not null"`
+				WorkflowID uint						`gorm:"index"`
+				Closure    []byte					`gorm:"not null"`
+				// GORM doesn't save the zero value for ints, so we use a pointer for the State field
+				State *int32						`gorm:"default:0"`
+				// Hash of the launch plan
+				Digest       []byte
+				ScheduleType LaunchPlanScheduleType `gorm:"size:255"`
+			}
+			return tx.AutoMigrate(&LaunchPlan{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-namedentitymetadata",
+		Migrate: func(tx *gorm.DB) error {
+			type NamedEntityMetadata struct {
+				ID           uint              `gorm:"index;autoIncrement;not null"`
+				CreatedAt    time.Time         `gorm:"type:time"`
+				UpdatedAt    time.Time         `gorm:"type:time"`
+				DeletedAt    *time.Time        `gorm:"index"`
+				ResourceType core.ResourceType `gorm:"size:255;primary_key;index:named_entity_metadata_type_project_domain_name_idx"`
+				Project      string            `gorm:"size:64;primary_key;index:named_entity_metadata_type_project_domain_name_idx"`
+				Domain       string            `gorm:"size:255;primary_key;index:named_entity_metadata_type_project_domain_name_idx"`
+				Name         string            `gorm:"size:255;primary_key;index:named_entity_metadata_type_project_domain_name_idx"`
+				Description  string            `gorm:"type:varchar(300)"`
+				// GORM doesn't save the zero value for ints, so we use a pointer for the State field
+				State *int32 `gorm:"default:0"`
+			}
+
+			return tx.AutoMigrate(&NamedEntityMetadata{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-execution",
+		Migrate: func(tx *gorm.DB) error {
+			type ExecutionKey struct {
+				Project string `gorm:"size:64;primary_key;column:execution_project"`
+				Domain  string `gorm:"size:255;primary_key;column:execution_domain"`
+				Name    string `gorm:"size:255;primary_key;column:execution_name"`
+			}
+
+			type Execution struct {
+				ID        uint `gorm:"index;autoIncrement;not null"`
+				CreatedAt time.Time `gorm:"type:time"`
+				UpdatedAt time.Time `gorm:"type:time"`
+				DeletedAt *time.Time `gorm:"index"`
+				ExecutionKey
+				LaunchPlanID uint   `gorm:"index"`
+				WorkflowID   uint   `gorm:"index"`
+				TaskID       uint   `gorm:"index"`
+				Phase        string `gorm:"size:255"`
+				Closure      []byte
+				Spec         []byte `gorm:"not null"`
+				StartedAt    *time.Time
+				// Corresponds to the CreatedAt field in the Execution closure.
+				// Prefixed with Execution to avoid clashes with gorm.Model CreatedAt
+				ExecutionCreatedAt *time.Time `gorm:"index:idx_executions_created_at"`
+				// Corresponds to the UpdatedAt field in the Execution closure
+				// Prefixed with Execution to avoid clashes with gorm.Model UpdatedAt
+				ExecutionUpdatedAt *time.Time
+				Duration           time.Duration
+				// In the case of an aborted execution this string may be non-empty.
+				// It should be ignored for any other value of phase other than aborted.
+				AbortCause string `gorm:"size:255"`
+				// Corresponds to the execution mode used to trigger this execution
+				Mode int32
+				// The "parent" execution (if there is one) that is related to this execution.
+				SourceExecutionID uint
+				// The parent node execution if this was launched by a node
+				ParentNodeExecutionID uint
+				// Cluster where execution was triggered
+				Cluster string `gorm:"size:255"`
+				// Offloaded location of inputs LiteralMap. These are the inputs evaluated and contain applied defaults.
+				InputsURI storage.DataReference
+				// User specified inputs. This map might be incomplete and not include defaults applied
+				UserInputsURI storage.DataReference
+				// Execution Error Kind. nullable
+				// TODO: This is a string representation of the enum ExecutionError.ErrorKind
+				ErrorKind *string `gorm:"size:10;index"`
+				// Execution Error Code nullable
+				// TODO: This is a string representation of the enum ExecutionError.code
+				ErrorCode *string `gorm:"size:100"`
+				// The user responsible for launching this execution.
+				// This is also stored in the spec but promoted as a column for filtering.
+				User string `gorm:"size:100;index"`
+				// GORM doesn't save the zero value for ints, so we use a pointer for the State field
+				State *int32 `gorm:"index;default:0"`
+				// The resource type of the entity used to launch the execution, one of 'launch_plan' or 'task'
+				// FIXME: By default a field without a gorm tag gets the default value for that type, which for strings
+				// is varchar(255).
+				LaunchEntity string `gorm:"size:100"`
+			}
+
+			return tx.AutoMigrate(&Execution{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-taskexecution",
+		Migrate: func(tx *gorm.DB) error {
+			type TaskKey struct {
+				Project string `gorm:"size:64;primary_key"`
+				Domain  string `gorm:"size:255;primary_key"`
+				Name    string `gorm:"size:255;primary_key"`
+				Version string `gorm:"size:255;primary_key"`
+			}
+			type TaskExecutionKey struct {
+				TaskKey
+				Project string `gorm:"size:64;primary_key;column:execution_project;index:idx_task_executions_exec"`
+				Domain  string `gorm:"size:255;primary_key;column:execution_domain;index:idx_task_executions_exec"`
+				Name    string `gorm:"size:255;primary_key;column:execution_name;index:idx_task_executions_exec"`
+				NodeID  string `gorm:"size:255;primary_key;index:idx_task_executions_exec;index"`
+				// *IMPORTANT* This is a pointer to an int in order to allow setting an empty ("0") value according to gorm convention.
+				// Because RetryAttempt is part of the TaskExecution primary key is should *never* be null.
+				RetryAttempt *uint32 `gorm:"primary_key;AUTO_INCREMENT:FALSE"`
+			}
+			type TaskExecution struct {
+				ID        uint       `gorm:"index;autoIncrement;not null"`
+				CreatedAt time.Time  `gorm:"type:time"`
+				UpdatedAt time.Time  `gorm:"type:time"`
+				DeletedAt *time.Time `gorm:"index"`
+				TaskExecutionKey
+				Phase        string `gorm:"size:255"`
+				PhaseVersion uint32
+				InputURI     string `gorm:"size:255"`
+				Closure      []byte
+				StartedAt    *time.Time
+				// Corresponds to the CreatedAt field in the TaskExecution closure
+				// This field is prefixed with TaskExecution because it signifies when
+				// the execution was createdAt, not to be confused with gorm.Model.CreatedAt
+				TaskExecutionCreatedAt *time.Time
+				// Corresponds to the UpdatedAt field in the TaskExecution closure
+				// This field is prefixed with TaskExecution because it signifies when
+				// the execution was UpdatedAt, not to be confused with gorm.Model.UpdatedAt
+				TaskExecutionUpdatedAt *time.Time
+				Duration               time.Duration
+				// The child node executions (if any) launched by this task execution.
+				// TODO: this refers to `NodeExecution` defined at the top of this file. Should this also be defined inline?
+				ChildNodeExecution []NodeExecution `gorm:"foreignkey:ParentTaskExecutionID;references:ID"`
+			}
+
+			return tx.AutoMigrate(&TaskExecution{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-nodeexecution",
+		Migrate: func(tx *gorm.DB) error {
+			type ExecutionKey struct {
+				Project string `gorm:"size:64;primary_key;column:execution_project"`
+				Domain  string `gorm:"size:255;primary_key;column:execution_domain"`
+				Name    string `gorm:"size:255;primary_key;column:execution_name"`
+			}
+
+			type NodeExecutionKey struct {
+				ExecutionKey
+				NodeID string `gorm:"size:255;primary_key;index"`
+			}
+			type NodeExecution struct {
+				ID        uint       `gorm:"index;autoIncrement;not null"`
+				CreatedAt time.Time  `gorm:"type:time"`
+				UpdatedAt time.Time  `gorm:"type:time"`
+				DeletedAt *time.Time `gorm:"index"`
+				NodeExecutionKey
+				// Also stored in the closure, but defined as a separate column because it's useful for filtering and sorting.
+				Phase     string `gorm:"size:255"`
+				InputURI  string `gorm:"size:255"`
+				Closure   []byte
+				StartedAt *time.Time
+				// Corresponds to the CreatedAt field in the NodeExecution closure
+				// Prefixed with NodeExecution to avoid clashes with gorm.Model CreatedAt
+				NodeExecutionCreatedAt *time.Time
+				// Corresponds to the UpdatedAt field in the NodeExecution closure
+				// Prefixed with NodeExecution to avoid clashes with gorm.Model UpdatedAt
+				NodeExecutionUpdatedAt *time.Time
+				Duration               time.Duration
+				// The task execution (if any) which launched this node execution.
+				// TO BE DEPRECATED - as we have now introduced ParentID
+				ParentTaskExecutionID uint `sql:"default:null" gorm:"index"`
+				// The workflow execution (if any) which this node execution launched
+				LaunchedExecution models.Execution `gorm:"foreignKey:ParentNodeExecutionID;references:ID"`
+				// In the case of dynamic workflow nodes, the remote closure is uploaded to the path specified here.
+				DynamicWorkflowRemoteClosureReference string `gorm:"size:255"`
+				// Metadata that is only relevant to the flyteadmin service that is used to parse the model and track additional attributes.
+				InternalData          []byte
+				NodeExecutionMetadata []byte
+				// Parent that spawned this node execution - value is empty for executions at level 0
+				ParentID *uint `sql:"default:null" gorm:"index"`
+				// List of child node executions - for cases like Dynamic task, sub workflow, etc
+				ChildNodeExecutions []NodeExecution `gorm:"foreignKey:ParentID;references:ID"`
+				// Execution Error Kind. nullable, can be one of core.ExecutionError_ErrorKind
+				ErrorKind *string `gorm:"size:255;index"`
+				// Execution Error Code nullable. string value, but finite set determined by the execution engine and plugins
+				ErrorCode *string `gorm:"size:255"`
+				// If the node is of Type Task, this should always exist for a successful execution, indicating the cache status for the execution
+				CacheStatus *string `gorm:"size:255"`
+			}
+
+			return tx.AutoMigrate(&NodeExecution{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-execution-event",
+		Migrate: func(tx *gorm.DB) error {
+			type ExecutionKey struct {
+				Project string `gorm:"size:64;primary_key;column:execution_project"`
+				Domain  string `gorm:"size:255;primary_key;column:execution_domain"`
+				Name    string `gorm:"size:255;primary_key;column:execution_name"`
+			}
+			type ExecutionEvent struct {
+				ID        uint       `gorm:"index;autoIncrement;not null"`
+				CreatedAt time.Time  `gorm:"type:time"`
+				UpdatedAt time.Time  `gorm:"type:time"`
+				DeletedAt *time.Time `gorm:"index"`
+				ExecutionKey
+				RequestID  string `gorm:"size:255"`
+				OccurredAt time.Time `gorm:"type:time"`
+				Phase      string `gorm:"size:255;primary_key"`
+			}
+
+			return tx.AutoMigrate(&ExecutionEvent{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-node-execution-event",
+		Migrate: func(tx *gorm.DB) error {
+			type ExecutionKey struct {
+				Project string `gorm:"size:64;primary_key;column:execution_project"`
+				Domain  string `gorm:"size:255;primary_key;column:execution_domain"`
+				Name    string `gorm:"size:255;primary_key;column:execution_name"`
+			}
+			type NodeExecutionKey struct {
+				ExecutionKey
+				NodeID string `gorm:"size:180;primary_key;index"`
+			}
+			type NodeExecutionEvent struct {
+				ID        uint       `gorm:"index;autoIncrement;not null"`
+				CreatedAt time.Time  `gorm:"type:time"`
+				UpdatedAt time.Time  `gorm:"type:time"`
+				DeletedAt *time.Time `gorm:"index"`
+				NodeExecutionKey
+				RequestID  string `gorm:"size:255"`
+				OccurredAt time.Time
+				Phase      string `gorm:"size:255;primary_key"`
+			}
+
+			return tx.AutoMigrate(&NodeExecutionEvent{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-description-entity",
+		Migrate: func(tx *gorm.DB) error {
+			type DescriptionEntityKey struct {
+				// ResourceType is an enum that indicates the type of the resource. We represent it as an uint32.
+				ResourceType core.ResourceType `gorm:"primary_key;index:description_entity_project_domain_name_version_idx"`
+				Project      string            `gorm:"size:64;primary_key;index:description_entity_project_domain_name_version_idx"` 
+				Domain       string            `gorm:"size:255;primary_key;index:description_entity_project_domain_name_version_idx"`
+				Name         string            `gorm:"size:255;primary_key;index:description_entity_project_domain_name_version_idx"`
+				Version      string            `gorm:"size:255;primary_key;index:description_entity_project_domain_name_version_idx"`
+			}
+
+			// SourceCode Database model to encapsulate a SourceCode.
+			type SourceCode struct {
+				Link string `gorm:"size:255"`
+			}
+
+			// DescriptionEntity Database model to encapsulate a DescriptionEntity.
+			type DescriptionEntity struct {
+				DescriptionEntityKey
+				ID        uint       `gorm:"index;autoIncrement;not null"`
+				CreatedAt time.Time  `gorm:"type:time"`
+				UpdatedAt time.Time  `gorm:"type:time"`
+				DeletedAt *time.Time `gorm:"index"`
+				SourceCode
+				ShortDescription string `gorm:"size:255"`
+				LongDescription  []byte
+			}
+
+			return tx.AutoMigrate(&DescriptionEntity{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-signal",
+		Migrate: func(tx *gorm.DB) error {
+			type SignalKey struct {
+				ExecutionKey
+				SignalID string `gorm:"size:255;primary_key;index"`
+			}
+
+			type Signal struct {
+				ID        uint       `gorm:"index;autoIncrement;not null"`
+				CreatedAt time.Time  `gorm:"type:time"`
+				UpdatedAt time.Time  `gorm:"type:time"`
+				DeletedAt *time.Time `gorm:"index"`
+				SignalKey
+				Type  []byte `gorm:"not null"`
+				Value []byte
+			}
+
+			return tx.AutoMigrate(&Signal{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-resource",
+		Migrate: func(tx *gorm.DB) error {
+			type ResourcePriority int32
+
+			// In this model, the combination of (Project, Domain, Workflow, LaunchPlan, ResourceType) is unique
+			type Resource struct {
+				ID           int64 `gorm:"AUTO_INCREMENT;column:id;primary_key;not null"`
+				CreatedAt    time.Time
+				UpdatedAt    time.Time
+				DeletedAt    *time.Time `sql:"index"`
+				Project      string     `gorm:"size:64;uniqueIndex:resource_idx"`
+				Domain       string     `gorm:"size:255;uniqueIndex:resource_idx""`
+				Workflow     string     `gorm:"size:255;uniqueIndex:resource_idx""`
+				LaunchPlan   string     `gorm:"size:255;uniqueIndex:resource_idx""`
+				ResourceType string     `gorm:"size:255;uniqueIndex:resource_idx""`
+				Priority     ResourcePriority
+				// Serialized flyteidl.admin.MatchingAttributes.
+				Attributes []byte
+			}
+
+			return tx.AutoMigrate(&Resource{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-schedulable_entities",
+		Migrate: func(tx *gorm.DB) error {
+			type SchedulableEntityKey struct {
+				Project string `gorm:"size:64;primary_key"`
+				Domain  string `gorm:"size:255;primary_key"`
+				Name    string `gorm:"size:255;primary_key"`
+				Version string `gorm:"size:255;primary_key"`
+			}
+			type SchedulableEntity struct {
+				ID        uint `gorm:"index;autoIncrement;not null"`
+				CreatedAt time.Time
+				UpdatedAt time.Time
+				DeletedAt *time.Time `gorm:"index"`
+				SchedulableEntityKey
+				// TODO: figure out if this is just the schedule definition.
+				CronExpression      string `gorm:"size:100"`
+				FixedRateValue      uint32
+				Unit                admin.FixedRateUnit
+				// TODO: figure out how big this should be.
+				KickoffTimeInputArg string `gorm:"size:100"`
+				Active              *bool
+			}
+
+			return tx.AutoMigrate(&SchedulableEntity{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-schedulable_entities-snapshot",
+		Migrate: func(tx *gorm.DB) error {
+			type ScheduleEntitiesSnapshot struct {
+				ID        uint `gorm:"index;autoIncrement;not null"`
+				CreatedAt time.Time
+				UpdatedAt time.Time
+				DeletedAt *time.Time `gorm:"index"`
+				Snapshot  []byte     `gorm:"column:snapshot" schema:"-"`
+			}
+
+			return tx.AutoMigrate(&ScheduleEntitiesSnapshot{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+}
+
+func ListMigrations(db *gorm.DB) []*gormigrate.Migration {
+	var Migrations []*gormigrate.Migration
+	// Only run legacy migrations for postgres
+	if db.Dialector.Name() == "postgres" {
+		Migrations = append(LegacyMigrations, NoopMigrations...)
+	}
+	Migrations = append(Migrations, FixupMigrations...)
+	return Migrations
+}
+
 func alterTableColumnType(db *sql.DB, columnName, columnType string) error {
 
 	var err error
