@@ -1,9 +1,10 @@
 package config
 
 import (
+	"testing"
+
 	mocket "github.com/Selvatico/go-mocket"
 	"github.com/stretchr/testify/assert"
-	"testing"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
