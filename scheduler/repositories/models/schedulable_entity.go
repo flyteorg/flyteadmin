@@ -9,10 +9,12 @@ import (
 type SchedulableEntity struct {
 	models.BaseModel
 	SchedulableEntityKey
-	CronExpression      string
+	// FIXME: figure out if this is just the schedule definition.
+	CronExpression      string `gorm:"size:100"`
 	FixedRateValue      uint32
 	Unit                admin.FixedRateUnit
-	KickoffTimeInputArg string
+	// FIXME: figure out how big this should be.
+	KickoffTimeInputArg string `gorm:"size:100"`
 	Active              *bool
 }
 
