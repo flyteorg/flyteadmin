@@ -489,6 +489,7 @@ var Migrations = []*gormigrate.Migration{
 	of the database as of 2023 March. The rollback is a noop for everything because the migration itself should
 	be a noop.
 	*/
+	// need to add not null, re-running old migrations now seems to drop the not null constraint on ID.
 
 	{
 		ID: "pg-noop-2023-03-31-noop-project-3",
@@ -511,26 +512,27 @@ var Migrations = []*gormigrate.Migration{
 			return nil
 		},
 	},
+	// ALTER TABLE "projects" ALTER COLUMN "id" DROP NOT NULL otherwise.
 
 	{
-		ID: "pg-noop-2023-03-31-noop-task",
+		ID: "pg-noop-2023-03-31-noop-task-2",
 		Migrate: func(tx *gorm.DB) error {
 			type Task struct {
 				ID        uint       `gorm:"index;autoIncrement;not null"`
 				CreatedAt time.Time  `gorm:"type:time"`
 				UpdatedAt time.Time  `gorm:"type:time"`
 				DeletedAt *time.Time `gorm:"index"`
-				Project   string     `gorm:"size:64;primary_key;index:task_project_domain_name_idx;index:task_project_domain_idx" valid:"length(0|255)"`
-				Domain    string     `gorm:"size:100;primary_key;index:task_project_domain_name_idx;index:task_project_domain_idx" valid:"length(0|255)"`
-				Name      string     `gorm:"size:100;primary_key;index:task_project_domain_name_idx" valid:"length(0|255)"`
-				Version   string     `gorm:"size:100;primary_key" valid:"length(0|255)"`
+				Project   string     `gorm:"primary_key;index:task_project_domain_name_idx;index:task_project_domain_idx" valid:"length(0|255)"`
+				Domain    string     `gorm:"primary_key;index:task_project_domain_name_idx;index:task_project_domain_idx" valid:"length(0|255)"`
+				Name      string     `gorm:"primary_key;index:task_project_domain_name_idx" valid:"length(0|255)"`
+				Version   string     `gorm:"primary_key" valid:"length(0|255)"`
 				Closure   []byte     `gorm:"not null"`
 				// Hash of the compiled task closure
 				Digest []byte
 				// Task type (also stored in the closure put promoted as a column for filtering).
-				Type string `gorm:"size:100" valid:"length(0|255)"`
+				Type string `gorm:"" valid:"length(0|255)"`
 				// ShortDescription for the task.
-				ShortDescription string `gorm:"size:100"`
+				ShortDescription string
 			}
 			return tx.AutoMigrate(&Task{})
 		},
@@ -569,6 +571,12 @@ var Migrations = []*gormigrate.Migration{
 		ID: "pg-noop-2023-03-31-noop-launchplan",
 		Migrate: func(tx *gorm.DB) error {
 			type LaunchPlanScheduleType string
+
+			const (
+				LaunchPlanScheduleTypeNONE LaunchPlanScheduleType = "NONE"
+				LaunchPlanScheduleTypeCRON LaunchPlanScheduleType = "CRON"
+				LaunchPlanScheduleTypeRATE LaunchPlanScheduleType = "RATE"
+			)
 
 			type LaunchPlan struct {
 				ID         uint       `gorm:"index;autoIncrement;not null"`
@@ -620,20 +628,20 @@ var Migrations = []*gormigrate.Migration{
 	},
 
 	{
-		ID: "pg-noop-2023-03-31-noop-taskexecution",
+		ID: "pg-noop-2023-03-31-noop-taskexecution-3",
 		Migrate: func(tx *gorm.DB) error {
 			type TaskKey struct {
-				Project string `gorm:"size:64;primary_key"`
-				Domain  string `gorm:"size:100;primary_key"`
-				Name    string `gorm:"size:100;primary_key"`
-				Version string `gorm:"size:100;primary_key"`
+				Project string `gorm:"primary_key"`
+				Domain  string `gorm:"primary_key"`
+				Name    string `gorm:"primary_key"`
+				Version string `gorm:"primary_key"`
 			}
 			type TaskExecutionKey struct {
 				TaskKey
-				Project string `gorm:"size:64;primary_key;column:execution_project;index:idx_task_executions_exec"`
-				Domain  string `gorm:"size:100;primary_key;column:execution_domain;index:idx_task_executions_exec"`
-				Name    string `gorm:"size:100;primary_key;column:execution_name;index:idx_task_executions_exec"`
-				NodeID  string `gorm:"size:100;primary_key;index:idx_task_executions_exec;index"`
+				Project string `gorm:"primary_key;column:execution_project;index:idx_task_executions_exec"`
+				Domain  string `gorm:"primary_key;column:execution_domain;index:idx_task_executions_exec"`
+				Name    string `gorm:"primary_key;column:execution_name;index:idx_task_executions_exec"`
+				NodeID  string `gorm:"primary_key;index:idx_task_executions_exec;index"`
 				// *IMPORTANT* This is a pointer to an int in order to allow setting an empty ("0") value according to gorm convention.
 				// Because RetryAttempt is part of the TaskExecution primary key is should *never* be null.
 				RetryAttempt *uint32 `gorm:"primary_key;AUTO_INCREMENT:FALSE"`
@@ -644,7 +652,7 @@ var Migrations = []*gormigrate.Migration{
 				UpdatedAt time.Time  `gorm:"type:time"`
 				DeletedAt *time.Time `gorm:"index"`
 				TaskExecutionKey
-				Phase        string `gorm:"type:text;size:100"`
+				Phase        string `gorm:"type:text"`
 				PhaseVersion uint32
 				InputURI     string `gorm:"type:text"`
 				Closure      []byte
@@ -672,17 +680,17 @@ var Migrations = []*gormigrate.Migration{
 	// ALTER TABLE "task_executions" ALTER COLUMN "input_uri" TYPE varchar(100) USING "input_uri"::varchar(100)
 
 	{
-		ID: "pg-noop-2023-03-31-noop-nodeexecution",
+		ID: "pg-noop-2023-03-31-noop-nodeexecution-2",
 		Migrate: func(tx *gorm.DB) error {
 			type ExecutionKey struct {
-				Project string `gorm:"size:64;primary_key;column:execution_project"`
-				Domain  string `gorm:"size:100;primary_key;column:execution_domain"`
-				Name    string `gorm:"size:100;primary_key;column:execution_name"`
+				Project string `gorm:"primary_key;column:execution_project"`
+				Domain  string `gorm:"primary_key;column:execution_domain"`
+				Name    string `gorm:"primary_key;column:execution_name"`
 			}
 
 			type NodeExecutionKey struct {
 				ExecutionKey
-				NodeID string `gorm:"size:100;primary_key;index"`
+				NodeID string `gorm:"primary_key;index"`
 			}
 			type NodeExecution struct {
 				ID        uint       `gorm:"index;autoIncrement;not null"`
@@ -723,9 +731,9 @@ var Migrations = []*gormigrate.Migration{
 		ID: "pg-noop-2023-03-31-noop-execution-event",
 		Migrate: func(tx *gorm.DB) error {
 			type ExecutionKey struct {
-				Project string `gorm:"size:127;primary_key;column:execution_project" valid:"length(0|127)"`
-				Domain  string `gorm:"size:127;primary_key;column:execution_domain" valid:"length(0|127)"`
-				Name    string `gorm:"size:127;primary_key;column:execution_name" valid:"length(0|127)"`
+				Project string `gorm:"primary_key;column:execution_project" valid:"length(0|127)"`
+				Domain  string `gorm:"primary_key;column:execution_domain" valid:"length(0|127)"`
+				Name    string `gorm:"primary_key;column:execution_name" valid:"length(0|127)"`
 			}
 			type ExecutionEvent struct {
 				ID        uint       `gorm:"index;autoIncrement;not null"`
@@ -749,13 +757,13 @@ var Migrations = []*gormigrate.Migration{
 		ID: "pg-noop-2023-03-31-noop-node-execution-event",
 		Migrate: func(tx *gorm.DB) error {
 			type ExecutionKey struct {
-				Project string `gorm:"size:127;primary_key;column:execution_project" valid:"length(0|127)"`
-				Domain  string `gorm:"size:127;primary_key;column:execution_domain" valid:"length(0|127)"`
-				Name    string `gorm:"size:127;primary_key;column:execution_name" valid:"length(0|127)"`
+				Project string `gorm:"primary_key;column:execution_project" valid:"length(0|127)"`
+				Domain  string `gorm:"primary_key;column:execution_domain" valid:"length(0|127)"`
+				Name    string `gorm:"primary_key;column:execution_name" valid:"length(0|127)"`
 			}
 			type NodeExecutionKey struct {
 				ExecutionKey
-				NodeID string `gorm:"size:180;primary_key;index" valid:"length(0|180)"`
+				NodeID string `gorm:"primary_key;index" valid:"length(0|180)"`
 			}
 			type NodeExecutionEvent struct {
 				ID        uint       `gorm:"index;autoIncrement;not null"`
@@ -765,7 +773,7 @@ var Migrations = []*gormigrate.Migration{
 				NodeExecutionKey
 				RequestID  string
 				OccurredAt time.Time
-				Phase      string `gorm:"size:128;primary_key"`
+				Phase      string `gorm:"primary_key"`
 			}
 
 			return tx.AutoMigrate(&NodeExecutionEvent{})
@@ -776,19 +784,19 @@ var Migrations = []*gormigrate.Migration{
 	},
 
 	{
-		ID: "pg-noop-2023-03-31-noop-description-entity",
+		ID: "pg-noop-2023-03-31-noop-description-entity-2",
 		Migrate: func(tx *gorm.DB) error {
 			type DescriptionEntityKey struct {
 				ResourceType core.ResourceType `gorm:"primary_key;index:description_entity_project_domain_name_version_idx" valid:"length(0|255)"`
-				Project      string            `gorm:"size:100;primary_key;index:description_entity_project_domain_name_version_idx" valid:"length(0|255)"`
-				Domain       string            `gorm:"size:100;primary_key;index:description_entity_project_domain_name_version_idx" valid:"length(0|255)"`
-				Name         string            `gorm:"size:100;primary_key;index:description_entity_project_domain_name_version_idx" valid:"length(0|255)"`
-				Version      string            `gorm:"size:100;primary_key;index:description_entity_project_domain_name_version_idx" valid:"length(0|255)"`
+				Project      string            `gorm:"primary_key;index:description_entity_project_domain_name_version_idx" valid:"length(0|255)"`
+				Domain       string            `gorm:"primary_key;index:description_entity_project_domain_name_version_idx" valid:"length(0|255)"`
+				Name         string            `gorm:"primary_key;index:description_entity_project_domain_name_version_idx" valid:"length(0|255)"`
+				Version      string            `gorm:"primary_key;index:description_entity_project_domain_name_version_idx" valid:"length(0|255)"`
 			}
 
 			// SourceCode Database model to encapsulate a SourceCode.
 			type SourceCode struct {
-				Link string `gorm:"typesize:100" valid:"length(0|255)"`
+				Link string `valid:"length(0|255)"`
 			}
 
 			// DescriptionEntity Database model to encapsulate a DescriptionEntity.
@@ -799,7 +807,7 @@ var Migrations = []*gormigrate.Migration{
 				UpdatedAt time.Time  `gorm:"type:time"`
 				DeletedAt *time.Time `gorm:"index"`
 				SourceCode
-				ShortDescription string `gorm:"type:text;size:100`
+				ShortDescription string
 				LongDescription  []byte
 			}
 
@@ -836,7 +844,7 @@ var Migrations = []*gormigrate.Migration{
 	},
 
 	{
-		ID: "pg-noop-2023-03-31-noop-resource",
+		ID: "pg-noop-2023-03-31-noop-resource-3",
 		Migrate: func(tx *gorm.DB) error {
 			type ResourcePriority int32
 
@@ -846,11 +854,11 @@ var Migrations = []*gormigrate.Migration{
 				CreatedAt    time.Time
 				UpdatedAt    time.Time
 				DeletedAt    *time.Time `sql:"index"`
-				Project      string     `gorm:"size:100;uniqueIndex:resource_idx" valid:"length(0|255)"`
-				Domain       string     `gorm:"size:100;uniqueIndex:resource_idx" valid:"length(0|255)"`
-				Workflow     string     `gorm:"size:100;uniqueIndex:resource_idx" valid:"length(0|255)"`
-				LaunchPlan   string     `gorm:"size:100;uniqueIndex:resource_idx" valid:"length(0|255)"`
-				ResourceType string     `gorm:"size:100;uniqueIndex:resource_idx" valid:"length(0|255)"`
+				Project      string     `gorm:"uniqueIndex:resource_idx" valid:"length(0|255)"`
+				Domain       string     `gorm:"uniqueIndex:resource_idx" valid:"length(0|255)"`
+				Workflow     string     `gorm:"uniqueIndex:resource_idx" valid:"length(0|255)"`
+				LaunchPlan   string     `gorm:"uniqueIndex:resource_idx" valid:"length(0|255)"`
+				ResourceType string     `gorm:"uniqueIndex:resource_idx" valid:"length(0|255)"`
 				Priority     ResourcePriority
 				// Serialized flyteidl.admin.MatchingAttributes.
 				Attributes []byte
