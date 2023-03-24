@@ -205,26 +205,13 @@ var LegacyMigrations = []*gormigrate.Migration{
 			return tx.Exec("UPDATE named_entity_metadata set state = NULL").Error
 		},
 	},
-	// FIXME: the syntax ALTER TABLE T DROP COLUMN IF EXISTS c is invalid in mysql.
-	// TODO: remove mentions to that from other queries ((including rollbacks))
 	// Modify the workflows table, if necessary
 	{
 		ID: "2020-04-03-workflow-state",
 		Migrate: func(tx *gorm.DB) error {
-			if !tx.Model(&models.Workflow{}).Migrator().HasColumn(&models.Workflow{}, "state") {
-				return nil
-			}
-			if err := tx.Model(&models.Workflow{}).Migrator().DropColumn(&models.Workflow{}, "state"); err != nil {
-				return err
-			}
-			return nil
+			return tx.Exec("ALTER TABLE workflows DROP COLUMN IF EXISTS state").Error
 		},
 		Rollback: func(tx *gorm.DB) error {
-			// TODO: the column state is not going to be present in the model. Does this mean that we cannot
-			// rely on gorm to restore the column?
-			// if err := tx.Model(&models.Workflow{}).Migrator().AddColumn(&models.Workflow{}, "state"); err != nil {
-			// 	return err
-			// }
 			return tx.Exec("ALTER TABLE workflows ADD COLUMN IF NOT EXISTS state integer;").Error
 		},
 	},
@@ -357,17 +344,17 @@ var LegacyMigrations = []*gormigrate.Migration{
 			return tx.Migrator().DropTable(&schedulerModels.ScheduleEntitiesSnapshot{}, "schedulable_entities_snapshot")
 		},
 	},
+
 	// For any new table, Please use the following pattern due to a bug
 	// in the postgres gorm layer https://github.com/go-gorm/postgres/issues/65
 	{
 		ID: "2022-01-11-id-to-bigint",
 		Migrate: func(tx *gorm.DB) error {
-			return nil
-			// db, err := tx.DB()
-			// if err != nil {
-			// 	return err
-			// }
-			// return alterTableColumnType(db, "id", "bigint")
+			db, err := tx.DB()
+			if err != nil {
+				return err
+			}
+			return alterTableColumnType(db, "id", "bigint")
 		},
 		Rollback: func(tx *gorm.DB) error {
 			db, err := tx.DB()
@@ -418,7 +405,7 @@ var LegacyMigrations = []*gormigrate.Migration{
 			return tx.Migrator().DropTable("description_entities")
 		},
 	},
-	// // Modify the tasks table, if necessary
+	// Modify the tasks table, if necessary
 	{
 		ID: "2020-09-13-task-short_description",
 		Migrate: func(tx *gorm.DB) error {
@@ -438,7 +425,7 @@ var LegacyMigrations = []*gormigrate.Migration{
 			return tx.Exec("ALTER TABLE workflows DROP COLUMN IF EXISTS short_description").Error
 		},
 	},
-	// // Create signals table.
+	// Create signals table.
 	{
 		ID: "2022-04-11-signals",
 		Migrate: func(tx *gorm.DB) error {
@@ -1477,410 +1464,10 @@ func alterTableColumnType(db *sql.DB, columnName, columnType string) error {
 
 	var err error
 	for _, table := range tables {
-		// if _, err = db.Exec(fmt.Sprintf(`ALTER TABLE IF EXISTS %s ALTER COLUMN "%s" TYPE %s`, table, columnName,
-		// 	columnType)); err != nil {
-		// 	return err
-		// }
-		// TODO: figure out how to get the driver name
-		if _, err = db.Exec(fmt.Sprintf(`ALTER TABLE %s MODIFY COLUMN %s %s`, table, columnName, columnType)); err != nil {
+		if _, err = db.Exec(fmt.Sprintf(`ALTER TABLE IF EXISTS %s ALTER COLUMN "%s" TYPE %s`, table, columnName,
+			columnType)); err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-// func alterTableColumnTypeGorm(tx *gorm.DB, columnName, columnType string) error {
-// 	for tableName, model := range gorm_models {
-// 		if tx.Model(model).Migrator().HasColumn(model, "columnName") {
-// 			tx.Migrator().MigrateColumn(model, field *schema.Field, columnType gorm.ColumnType)
-// 		}
-// 	}
-// }
-
-var Migrations = []*gormigrate.Migration{
-	/* The following is a series of Postgres specific migrations. They should mirror the state
-	of the database as of 2023 March. The rollback is a noop for everything because the migration itself should
-	be a noop.
-	*/
-	// need to add not null, re-running old migrations now seems to drop the not null constraint on ID.
-
-	{
-		ID: "pg-noop-2023-03-31-noop-project-3",
-		Migrate: func(tx *gorm.DB) error {
-			type Project struct {
-				ID          uint       `gorm:"index;autoIncrement;not null"`
-				CreatedAt   time.Time  `gorm:"type:time"`
-				UpdatedAt   time.Time  `gorm:"type:time"`
-				DeletedAt   *time.Time `gorm:"index"`
-				Identifier  string     `gorm:"primary_key"`
-				Name        string     `valid:"length(0|255)"` // Human-readable name, not a unique identifier.
-				Description string     `gorm:"type:varchar(300)"`
-				Labels      []byte
-				// GORM doesn't save the zero value for ints, so we use a pointer for the State field
-				State *int32 `gorm:"default:0;index"`
-			}
-			return tx.AutoMigrate(&Project{})
-		},
-		Rollback: func(tx *gorm.DB) error {
-			return nil
-		},
-	},
-	// ALTER TABLE "projects" ALTER COLUMN "id" DROP NOT NULL otherwise.
-
-	{
-		ID: "pg-noop-2023-03-31-noop-task-2",
-		Migrate: func(tx *gorm.DB) error {
-			type Task struct {
-				ID        uint       `gorm:"index;autoIncrement;not null"`
-				CreatedAt time.Time  `gorm:"type:time"`
-				UpdatedAt time.Time  `gorm:"type:time"`
-				DeletedAt *time.Time `gorm:"index"`
-				Project   string     `gorm:"primary_key;index:task_project_domain_name_idx;index:task_project_domain_idx" valid:"length(0|255)"`
-				Domain    string     `gorm:"primary_key;index:task_project_domain_name_idx;index:task_project_domain_idx" valid:"length(0|255)"`
-				Name      string     `gorm:"primary_key;index:task_project_domain_name_idx" valid:"length(0|255)"`
-				Version   string     `gorm:"primary_key" valid:"length(0|255)"`
-				Closure   []byte     `gorm:"not null"`
-				// Hash of the compiled task closure
-				Digest []byte
-				// Task type (also stored in the closure put promoted as a column for filtering).
-				Type string `gorm:"" valid:"length(0|255)"`
-				// ShortDescription for the task.
-				ShortDescription string
-			}
-			return tx.AutoMigrate(&Task{})
-		},
-		Rollback: func(tx *gorm.DB) error {
-			return nil
-		},
-	},
-
-	{
-		ID: "pg-noop-2023-03-31-noop-workflow",
-		Migrate: func(tx *gorm.DB) error {
-			type Workflow struct {
-				ID                      uint       `gorm:"index;autoIncrement;not null"`
-				CreatedAt               time.Time  `gorm:"type:time"`
-				UpdatedAt               time.Time  `gorm:"type:time"`
-				DeletedAt               *time.Time `gorm:"index"`
-				Project                 string     `gorm:"primary_key;index:workflow_project_domain_name_idx;index:workflow_project_domain_idx"  valid:"length(0|255)"`
-				Domain                  string     `gorm:"primary_key;index:workflow_project_domain_name_idx;index:workflow_project_domain_idx"  valid:"length(0|255)"`
-				Name                    string     `gorm:"primary_key;index:workflow_project_domain_name_idx"  valid:"length(0|255)"`
-				Version                 string     `gorm:"primary_key"`
-				TypedInterface          []byte
-				RemoteClosureIdentifier string `gorm:"not null" valid:"length(0|255)"`
-				// Hash of the compiled workflow closure
-				Digest []byte
-				// ShortDescription for the workflow.
-				ShortDescription string
-			}
-			return tx.AutoMigrate(&Workflow{})
-		},
-		Rollback: func(tx *gorm.DB) error {
-			return nil
-		},
-	},
-
-	{
-		ID: "pg-noop-2023-03-31-noop-launchplan",
-		Migrate: func(tx *gorm.DB) error {
-			type LaunchPlanScheduleType string
-
-			const (
-				LaunchPlanScheduleTypeNONE LaunchPlanScheduleType = "NONE"
-				LaunchPlanScheduleTypeCRON LaunchPlanScheduleType = "CRON"
-				LaunchPlanScheduleTypeRATE LaunchPlanScheduleType = "RATE"
-			)
-
-			type LaunchPlan struct {
-				ID         uint       `gorm:"index;autoIncrement;not null"`
-				CreatedAt  time.Time  `gorm:"type:time"`
-				UpdatedAt  time.Time  `gorm:"type:time"`
-				DeletedAt  *time.Time `gorm:"index"`
-				Project    string     `gorm:"primary_key;index:lp_project_domain_name_idx,lp_project_domain_idx" valid:"length(0|255)"`
-				Domain     string     `gorm:"primary_key;index:lp_project_domain_name_idx,lp_project_domain_idx" valid:"length(0|255)"`
-				Name       string     `gorm:"primary_key;index:lp_project_domain_name_idx" valid:"length(0|255)"`
-				Version    string     `gorm:"primary_key" valid:"length(0|255)"`
-				Spec       []byte     `gorm:"not null"`
-				WorkflowID uint       `gorm:"index"`
-				Closure    []byte     `gorm:"not null"`
-				// GORM doesn't save the zero value for ints, so we use a pointer for the State field
-				State *int32 `gorm:"default:0"`
-				// Hash of the launch plan
-				Digest       []byte
-				ScheduleType LaunchPlanScheduleType
-			}
-			return tx.AutoMigrate(&LaunchPlan{})
-		},
-		Rollback: func(tx *gorm.DB) error {
-			return nil
-		},
-	},
-
-	{
-		ID: "pg-noop-2023-03-31-noop-namedentitymetadata",
-		Migrate: func(tx *gorm.DB) error {
-			type NamedEntityMetadata struct {
-				ID           uint              `gorm:"index;autoIncrement;not null"`
-				CreatedAt    time.Time         `gorm:"type:time"`
-				UpdatedAt    time.Time         `gorm:"type:time"`
-				DeletedAt    *time.Time        `gorm:"index"`
-				ResourceType core.ResourceType `gorm:"primary_key;index:named_entity_metadata_type_project_domain_name_idx" valid:"length(0|255)"`
-				Project      string            `gorm:"primary_key;index:named_entity_metadata_type_project_domain_name_idx" valid:"length(0|255)"`
-				Domain       string            `gorm:"primary_key;index:named_entity_metadata_type_project_domain_name_idx" valid:"length(0|255)"`
-				Name         string            `gorm:"primary_key;index:named_entity_metadata_type_project_domain_name_idx" valid:"length(0|255)"`
-				Description  string            `gorm:"type:varchar(300)"`
-				// GORM doesn't save the zero value for ints, so we use a pointer for the State field
-				State *int32 `gorm:"default:0"`
-			}
-
-			return tx.AutoMigrate(&NamedEntityMetadata{})
-		},
-		Rollback: func(tx *gorm.DB) error {
-			return nil
-		},
-	},
-
-	{
-		ID: "pg-noop-2023-03-31-noop-taskexecution-3",
-		Migrate: func(tx *gorm.DB) error {
-			type TaskKey struct {
-				Project string `gorm:"primary_key"`
-				Domain  string `gorm:"primary_key"`
-				Name    string `gorm:"primary_key"`
-				Version string `gorm:"primary_key"`
-			}
-			type TaskExecutionKey struct {
-				TaskKey
-				Project string `gorm:"primary_key;column:execution_project;index:idx_task_executions_exec"`
-				Domain  string `gorm:"primary_key;column:execution_domain;index:idx_task_executions_exec"`
-				Name    string `gorm:"primary_key;column:execution_name;index:idx_task_executions_exec"`
-				NodeID  string `gorm:"primary_key;index:idx_task_executions_exec;index"`
-				// *IMPORTANT* This is a pointer to an int in order to allow setting an empty ("0") value according to gorm convention.
-				// Because RetryAttempt is part of the TaskExecution primary key is should *never* be null.
-				RetryAttempt *uint32 `gorm:"primary_key;AUTO_INCREMENT:FALSE"`
-			}
-			type TaskExecution struct {
-				ID        uint       `gorm:"index;autoIncrement;not null"`
-				CreatedAt time.Time  `gorm:"type:time"`
-				UpdatedAt time.Time  `gorm:"type:time"`
-				DeletedAt *time.Time `gorm:"index"`
-				TaskExecutionKey
-				Phase        string `gorm:"type:text"`
-				PhaseVersion uint32
-				InputURI     string `gorm:"type:text"`
-				Closure      []byte
-				StartedAt    *time.Time
-				// Corresponds to the CreatedAt field in the TaskExecution closure
-				// This field is prefixed with TaskExecution because it signifies when
-				// the execution was createdAt, not to be confused with gorm.Model.CreatedAt
-				TaskExecutionCreatedAt *time.Time
-				// Corresponds to the UpdatedAt field in the TaskExecution closure
-				// This field is prefixed with TaskExecution because it signifies when
-				// the execution was UpdatedAt, not to be confused with gorm.Model.UpdatedAt
-				TaskExecutionUpdatedAt *time.Time
-				Duration               time.Duration
-				// The child node executions (if any) launched by this task execution.
-				ChildNodeExecution []NodeExecution `gorm:"foreignkey:ParentTaskExecutionID;references:ID"`
-			}
-
-			return tx.AutoMigrate(&TaskExecution{})
-		},
-		Rollback: func(tx *gorm.DB) error {
-			return nil
-		},
-	},
-	// ALTER TABLE "task_executions" ALTER COLUMN "phase" TYPE varchar(100) USING "phase"::varchar(100)
-	// ALTER TABLE "task_executions" ALTER COLUMN "input_uri" TYPE varchar(100) USING "input_uri"::varchar(100)
-
-	{
-		ID: "pg-noop-2023-03-31-noop-nodeexecution-2",
-		Migrate: func(tx *gorm.DB) error {
-			type ExecutionKey struct {
-				Project string `gorm:"primary_key;column:execution_project"`
-				Domain  string `gorm:"primary_key;column:execution_domain"`
-				Name    string `gorm:"primary_key;column:execution_name"`
-			}
-
-			type NodeExecutionKey struct {
-				ExecutionKey
-				NodeID string `gorm:"primary_key;index"`
-			}
-			type NodeExecution struct {
-				ID        uint       `gorm:"index;autoIncrement;not null"`
-				CreatedAt time.Time  `gorm:"type:time"`
-				UpdatedAt time.Time  `gorm:"type:time"`
-				DeletedAt *time.Time `gorm:"index"`
-				NodeExecutionKey
-				// Also stored in the closure, but defined as a separate column because it's useful for filtering and sorting.
-				Phase     string
-				InputURI  string
-				Closure   []byte
-				StartedAt *time.Time
-				// Corresponds to the CreatedAt field in the NodeExecution closure
-				// Prefixed with NodeExecution to avoid clashes with gorm.Model CreatedAt
-				NodeExecutionCreatedAt *time.Time
-				// Corresponds to the UpdatedAt field in the NodeExecution closure
-				// Prefixed with NodeExecution to avoid clashes with gorm.Model UpdatedAt
-				NodeExecutionUpdatedAt *time.Time
-				Duration               time.Duration
-				// The task execution (if any) which launched this node execution.
-				ParentTaskExecutionID uint `sql:"default:null" gorm:"index"`
-				// The workflow execution (if any) which this node execution launched
-				LaunchedExecution models.Execution `gorm:"foreignKey:ParentNodeExecutionID;references:ID"`
-				// In the case of dynamic workflow nodes, the remote closure is uploaded to the path specified here.
-				DynamicWorkflowRemoteClosureReference string
-				// Metadata that is only relevant to the flyteadmin service that is used to parse the model and track additional attributes.
-				InternalData []byte
-			}
-
-			return tx.AutoMigrate(&NodeExecution{})
-		},
-		Rollback: func(tx *gorm.DB) error {
-			return nil
-		},
-	},
-
-	{
-		ID: "pg-noop-2023-03-31-noop-execution-event",
-		Migrate: func(tx *gorm.DB) error {
-			type ExecutionKey struct {
-				Project string `gorm:"primary_key;column:execution_project" valid:"length(0|127)"`
-				Domain  string `gorm:"primary_key;column:execution_domain" valid:"length(0|127)"`
-				Name    string `gorm:"primary_key;column:execution_name" valid:"length(0|127)"`
-			}
-			type ExecutionEvent struct {
-				ID        uint       `gorm:"index;autoIncrement;not null"`
-				CreatedAt time.Time  `gorm:"type:time"`
-				UpdatedAt time.Time  `gorm:"type:time"`
-				DeletedAt *time.Time `gorm:"index"`
-				ExecutionKey
-				RequestID  string `valid:"length(0|255)"`
-				OccurredAt time.Time
-				Phase      string `gorm:"primary_key"`
-			}
-
-			return tx.AutoMigrate(&ExecutionEvent{})
-		},
-		Rollback: func(tx *gorm.DB) error {
-			return nil
-		},
-	},
-
-	{
-		ID: "pg-noop-2023-03-31-noop-node-execution-event",
-		Migrate: func(tx *gorm.DB) error {
-			type ExecutionKey struct {
-				Project string `gorm:"primary_key;column:execution_project" valid:"length(0|127)"`
-				Domain  string `gorm:"primary_key;column:execution_domain" valid:"length(0|127)"`
-				Name    string `gorm:"primary_key;column:execution_name" valid:"length(0|127)"`
-			}
-			type NodeExecutionKey struct {
-				ExecutionKey
-				NodeID string `gorm:"primary_key;index" valid:"length(0|180)"`
-			}
-			type NodeExecutionEvent struct {
-				ID        uint       `gorm:"index;autoIncrement;not null"`
-				CreatedAt time.Time  `gorm:"type:time"`
-				UpdatedAt time.Time  `gorm:"type:time"`
-				DeletedAt *time.Time `gorm:"index"`
-				NodeExecutionKey
-				RequestID  string
-				OccurredAt time.Time
-				Phase      string `gorm:"primary_key"`
-			}
-
-			return tx.AutoMigrate(&NodeExecutionEvent{})
-		},
-		Rollback: func(tx *gorm.DB) error {
-			return nil
-		},
-	},
-
-	{
-		ID: "pg-noop-2023-03-31-noop-description-entity-2",
-		Migrate: func(tx *gorm.DB) error {
-			type DescriptionEntityKey struct {
-				ResourceType core.ResourceType `gorm:"primary_key;index:description_entity_project_domain_name_version_idx" valid:"length(0|255)"`
-				Project      string            `gorm:"primary_key;index:description_entity_project_domain_name_version_idx" valid:"length(0|255)"`
-				Domain       string            `gorm:"primary_key;index:description_entity_project_domain_name_version_idx" valid:"length(0|255)"`
-				Name         string            `gorm:"primary_key;index:description_entity_project_domain_name_version_idx" valid:"length(0|255)"`
-				Version      string            `gorm:"primary_key;index:description_entity_project_domain_name_version_idx" valid:"length(0|255)"`
-			}
-
-			// SourceCode Database model to encapsulate a SourceCode.
-			type SourceCode struct {
-				Link string `valid:"length(0|255)"`
-			}
-
-			// DescriptionEntity Database model to encapsulate a DescriptionEntity.
-			type DescriptionEntity struct {
-				DescriptionEntityKey
-				ID        uint       `gorm:"index;autoIncrement;not null"`
-				CreatedAt time.Time  `gorm:"type:time"`
-				UpdatedAt time.Time  `gorm:"type:time"`
-				DeletedAt *time.Time `gorm:"index"`
-				SourceCode
-				ShortDescription string
-				LongDescription  []byte
-			}
-
-			return tx.AutoMigrate(&DescriptionEntity{})
-		},
-		Rollback: func(tx *gorm.DB) error {
-			return nil
-		},
-	},
-
-	{
-		ID: "pg-noop-2023-03-31-noop-signal",
-		Migrate: func(tx *gorm.DB) error {
-			type SignalKey struct {
-				ExecutionKey
-				SignalID string `gorm:"primary_key;index" valid:"length(0|255)"`
-			}
-
-			type Signal struct {
-				ID        uint       `gorm:"index;autoIncrement;not null"`
-				CreatedAt time.Time  `gorm:"type:time"`
-				UpdatedAt time.Time  `gorm:"type:time"`
-				DeletedAt *time.Time `gorm:"index"`
-				SignalKey
-				Type  []byte `gorm:"not null"`
-				Value []byte
-			}
-
-			return tx.AutoMigrate(&Signal{})
-		},
-		Rollback: func(tx *gorm.DB) error {
-			return nil
-		},
-	},
-
-	{
-		ID: "pg-noop-2023-03-31-noop-resource-3",
-		Migrate: func(tx *gorm.DB) error {
-			type ResourcePriority int32
-
-			// In this model, the combination of (Project, Domain, Workflow, LaunchPlan, ResourceType) is unique
-			type Resource struct {
-				ID           int64 `gorm:"AUTO_INCREMENT;column:id;primary_key;not null"`
-				CreatedAt    time.Time
-				UpdatedAt    time.Time
-				DeletedAt    *time.Time `sql:"index"`
-				Project      string     `gorm:"uniqueIndex:resource_idx" valid:"length(0|255)"`
-				Domain       string     `gorm:"uniqueIndex:resource_idx" valid:"length(0|255)"`
-				Workflow     string     `gorm:"uniqueIndex:resource_idx" valid:"length(0|255)"`
-				LaunchPlan   string     `gorm:"uniqueIndex:resource_idx" valid:"length(0|255)"`
-				ResourceType string     `gorm:"uniqueIndex:resource_idx" valid:"length(0|255)"`
-				Priority     ResourcePriority
-				// Serialized flyteidl.admin.MatchingAttributes.
-				Attributes []byte
-			}
-
-			return tx.AutoMigrate(&Resource{})
-		},
-		Rollback: func(tx *gorm.DB) error {
-			return nil
-		},
-	},
 }

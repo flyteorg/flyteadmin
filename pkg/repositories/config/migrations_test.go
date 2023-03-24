@@ -71,7 +71,7 @@ func TestMigrations(t *testing.T) {
 
 	fmt.Println(gormDb)
 
-	m := gormigrate.New(gormDb, gormigrate.DefaultOptions, Migrations)
+	m := gormigrate.New(gormDb, gormigrate.DefaultOptions, ListMigrations(gormDb))
 	if err := m.Migrate(); err != nil {
 		fmt.Errorf("database migration failed: %v", err)
 	}
