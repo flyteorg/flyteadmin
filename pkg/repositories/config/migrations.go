@@ -745,7 +745,6 @@ var NoopMigrations = []*gormigrate.Migration{
 				// TO BE DEPRECATED - as we have now introduced ParentID
 				ParentTaskExecutionID uint `sql:"default:null" gorm:"index"`
 				// The workflow execution (if any) which this node execution launched
-				// FIXME: this is refering to a migration model (i.e. not inlined).
 				LaunchedExecution models.Execution `gorm:"foreignKey:ParentNodeExecutionID;references:ID"`
 				// In the case of dynamic workflow nodes, the remote closure is uploaded to the path specified here.
 				DynamicWorkflowRemoteClosureReference string
@@ -1074,7 +1073,7 @@ var FixupMigrations = []*gormigrate.Migration{
 				CreatedAt    time.Time         `gorm:"type:time"`
 				UpdatedAt    time.Time         `gorm:"type:time"`
 				DeletedAt    *time.Time        `gorm:"index"`
-				ResourceType core.ResourceType `gorm:"primary_key;index:named_entity_metadata_type_project_domain_name_idx"`
+				ResourceType core.ResourceType `gorm:"size:255;primary_key;index:named_entity_metadata_type_project_domain_name_idx"`
 				Project      string            `gorm:"size:64;primary_key;index:named_entity_metadata_type_project_domain_name_idx"`
 				Domain       string            `gorm:"size:255;primary_key;index:named_entity_metadata_type_project_domain_name_idx"`
 				Name         string            `gorm:"size:255;primary_key;index:named_entity_metadata_type_project_domain_name_idx"`
@@ -1134,10 +1133,10 @@ var FixupMigrations = []*gormigrate.Migration{
 				// User specified inputs. This map might be incomplete and not include defaults applied
 				UserInputsURI storage.DataReference
 				// Execution Error Kind. nullable
-				// FIXME: This is a string representation of the enum ExecutionError.ErrorKind
+				// TODO: This is a string representation of the enum ExecutionError.ErrorKind
 				ErrorKind *string `gorm:"size:10;index"`
 				// Execution Error Code nullable
-				// FIXME: This is a string representation of the enum ExecutionError.code
+				// TODO: This is a string representation of the enum ExecutionError.code
 				ErrorCode *string `gorm:"size:100"`
 				// The user responsible for launching this execution.
 				// This is also stored in the spec but promoted as a column for filtering.
@@ -1226,9 +1225,7 @@ var FixupMigrations = []*gormigrate.Migration{
 				DeletedAt *time.Time `gorm:"index"`
 				NodeExecutionKey
 				// Also stored in the closure, but defined as a separate column because it's useful for filtering and sorting.
-				// FIXME: how short should this be?
 				Phase     string `gorm:"size:255"`
-				// FIXME: how short should this be?
 				InputURI  string `gorm:"size:255"`
 				Closure   []byte
 				StartedAt *time.Time
@@ -1239,33 +1236,26 @@ var FixupMigrations = []*gormigrate.Migration{
 				// Prefixed with NodeExecution to avoid clashes with gorm.Model UpdatedAt
 				NodeExecutionUpdatedAt *time.Time
 				Duration               time.Duration
-				// Metadata about the node execution.
+				// The task execution (if any) which launched this node execution.
+				// TO BE DEPRECATED - as we have now introduced ParentID
+				ParentTaskExecutionID uint `sql:"default:null" gorm:"index"`
+				// The workflow execution (if any) which this node execution launched
+				LaunchedExecution models.Execution `gorm:"foreignKey:ParentNodeExecutionID;references:ID"`
+				// In the case of dynamic workflow nodes, the remote closure is uploaded to the path specified here.
+				DynamicWorkflowRemoteClosureReference string `gorm:"size:255"`
+				// Metadata that is only relevant to the flyteadmin service that is used to parse the model and track additional attributes.
+				InternalData          []byte
 				NodeExecutionMetadata []byte
 				// Parent that spawned this node execution - value is empty for executions at level 0
 				ParentID *uint `sql:"default:null" gorm:"index"`
 				// List of child node executions - for cases like Dynamic task, sub workflow, etc
 				ChildNodeExecutions []NodeExecution `gorm:"foreignKey:ParentID;references:ID"`
-				// The task execution (if any) which launched this node execution.
-				// TO BE DEPRECATED - as we have now introduced ParentID
-				ParentTaskExecutionID *uint `sql:"default:null" gorm:"index"`
-				// The workflow execution (if any) which this node execution launched
-				// NOTE: LaunchedExecution[foreignkey:ParentNodeExecutionID] refers to Workflow execution launched and is different from ParentID
-				// FIXME: this is refering to a migration model (i.e. not inlined).
-				LaunchedExecution models.Execution `gorm:"foreignKey:ParentNodeExecutionID;references:ID"`
 				// Execution Error Kind. nullable, can be one of core.ExecutionError_ErrorKind
-				// FIXME: how short should this be?
 				ErrorKind *string `gorm:"size:255;index"`
 				// Execution Error Code nullable. string value, but finite set determined by the execution engine and plugins
-				// FIXME: how short should this be?
 				ErrorCode *string `gorm:"size:255"`
 				// If the node is of Type Task, this should always exist for a successful execution, indicating the cache status for the execution
-				// FIXME: how short should this be?
 				CacheStatus *string `gorm:"size:255"`
-				// In the case of dynamic workflow nodes, the remote closure is uploaded to the path specified here.
-				// FIXME: can this be this small?
-				DynamicWorkflowRemoteClosureReference string `gorm:"size:255"`
-				// Metadata that is only relevant to the flyteadmin service that is used to parse the model and track additional attributes.
-				InternalData []byte
 			}
 
 			return tx.AutoMigrate(&NodeExecution{})
@@ -1289,7 +1279,7 @@ var FixupMigrations = []*gormigrate.Migration{
 				DeletedAt *time.Time `gorm:"index"`
 				ExecutionKey
 				RequestID  string `gorm:"size:255"`
-				OccurredAt time.Time
+				OccurredAt time.Time `gorm:"type:time"`
 				Phase      string `gorm:"size:255;primary_key"`
 			}
 
@@ -1429,11 +1419,11 @@ var FixupMigrations = []*gormigrate.Migration{
 				UpdatedAt time.Time
 				DeletedAt *time.Time `gorm:"index"`
 				SchedulableEntityKey
-				// FIXME: figure out if this is just the schedule definition.
+				// TODO: figure out if this is just the schedule definition.
 				CronExpression      string `gorm:"size:100"`
 				FixedRateValue      uint32
 				Unit                admin.FixedRateUnit
-				// FIXME: figure out how big this should be.
+				// TODO: figure out how big this should be.
 				KickoffTimeInputArg string `gorm:"size:100"`
 				Active              *bool
 			}

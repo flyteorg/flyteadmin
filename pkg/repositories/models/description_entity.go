@@ -13,7 +13,7 @@ type DescriptionEntityKey struct {
 
 // SourceCode Database model to encapsulate a SourceCode.
 type SourceCode struct {
-	Link string `gorm:"size:255"`
+	Link string `gorm:"size:100" valid:"length(0|255)"`
 }
 
 // DescriptionEntity Database model to encapsulate a DescriptionEntity.
@@ -24,7 +24,7 @@ type DescriptionEntity struct {
 
 	SourceCode
 
-	ShortDescription string `gorm:"size:255"`
+	ShortDescription string `gorm:"size:100`
 
 	LongDescription []byte
 }

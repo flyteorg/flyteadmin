@@ -9,7 +9,7 @@ import (
 
 type NodeExecutionKey struct {
 	ExecutionKey
-	NodeID string `gorm:"size:255;primary_key;index"`
+	NodeID string `gorm:"size:180;primary_key;index" valid:"length(0|180)"`
 }
 
 // By convention, gorm foreign key references are of the form {ModelName}ID
@@ -17,10 +17,8 @@ type NodeExecution struct {
 	BaseModel
 	NodeExecutionKey
 	// Also stored in the closure, but defined as a separate column because it's useful for filtering and sorting.
-	// FIXME: how short should this be?
-	Phase     string `gorm:"size:255"`
-	// FIXME: how short should this be?
-	InputURI  string `gorm:"size:255"`
+	Phase     string
+	InputURI  string
 	Closure   []byte
 	StartedAt *time.Time
 	// Corresponds to the CreatedAt field in the NodeExecution closure
@@ -43,17 +41,13 @@ type NodeExecution struct {
 	// NOTE: LaunchedExecution[foreignkey:ParentNodeExecutionID] refers to Workflow execution launched and is different from ParentID
 	LaunchedExecution Execution `gorm:"foreignKey:ParentNodeExecutionID;references:ID"`
 	// Execution Error Kind. nullable, can be one of core.ExecutionError_ErrorKind
-	// FIXME: how short should this be?
-	ErrorKind *string `gorm:"size:255;index"`
+	ErrorKind *string `gorm:"index"`
 	// Execution Error Code nullable. string value, but finite set determined by the execution engine and plugins
-	// FIXME: how short should this be?
-	ErrorCode *string `gorm:"size:255"`
+	ErrorCode *string
 	// If the node is of Type Task, this should always exist for a successful execution, indicating the cache status for the execution
-	// FIXME: how short should this be?
-	CacheStatus *string `gorm:"size:255"`
+	CacheStatus *string
 	// In the case of dynamic workflow nodes, the remote closure is uploaded to the path specified here.
-	// FIXME: can this be this small?
-	DynamicWorkflowRemoteClosureReference string `gorm:"size:255"`
+	DynamicWorkflowRemoteClosureReference string
 	// Metadata that is only relevant to the flyteadmin service that is used to parse the model and track additional attributes.
 	InternalData []byte
 }

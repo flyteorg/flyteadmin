@@ -15,7 +15,6 @@ type TaskExecutionKey struct {
 	NodeExecutionKey
 	// *IMPORTANT* This is a pointer to an int in order to allow setting an empty ("0") value according to gorm convention.
 	// Because RetryAttempt is part of the TaskExecution primary key is should *never* be null.
-	// TODO: why isn't AUTO_INCREMENT:FALSE not here?
 	RetryAttempt *uint32 `gorm:"primary_key"`
 }
 
@@ -23,9 +22,9 @@ type TaskExecutionKey struct {
 type TaskExecution struct {
 	BaseModel
 	TaskExecutionKey
-	Phase        string `gorm:"size:255"`
+	Phase        string `valid:"length(0|255)"`
 	PhaseVersion uint32
-	InputURI     string `gorm:"size:255"`
+	InputURI     string `valid:"length(0|255)"`
 	Closure      []byte
 	StartedAt    *time.Time
 	// Corresponds to the CreatedAt field in the TaskExecution closure
@@ -38,6 +37,5 @@ type TaskExecution struct {
 	TaskExecutionUpdatedAt *time.Time
 	Duration               time.Duration
 	// The child node executions (if any) launched by this task execution.
-	// TODO: this refers to `NodeExecution` defined at the top of this file. Should this also be defined inline?
 	ChildNodeExecution []NodeExecution `gorm:"foreignkey:ParentTaskExecutionID;references:ID"`
 }
