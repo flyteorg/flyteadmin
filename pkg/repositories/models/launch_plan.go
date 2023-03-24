@@ -24,11 +24,11 @@ const (
 type LaunchPlan struct {
 	BaseModel
 	LaunchPlanKey
-	Spec       []byte					`gorm:"not null"`
-	WorkflowID uint						`gorm:"index"`
-	Closure    []byte					`gorm:"not null"`
+	Spec       []byte `gorm:"not null"`
+	WorkflowID uint	  `gorm:"index"`
+	Closure    []byte `gorm:"not null"`
 	// GORM doesn't save the zero value for ints, so we use a pointer for the State field
-	State *int32						`gorm:"default:0"`
+	State *int32 `gorm:"default:0"`
 	// Hash of the launch plan
 	Digest       []byte
 	ScheduleType LaunchPlanScheduleType `gorm:"size:255"`

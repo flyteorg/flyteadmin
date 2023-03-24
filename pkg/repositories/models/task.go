@@ -15,11 +15,11 @@ type TaskKey struct {
 type Task struct {
 	BaseModel
 	TaskKey
-	Closure   []byte		`gorm:"not null"`
+	Closure []byte `gorm:"not null"`
 	// Hash of the compiled task closure
 	Digest []byte
 	// Task type (also stored in the closure put promoted as a column for filtering).
-	Type string				`gorm:"size:255"`
+	Type string	`gorm:"size:255"`
 	// ShortDescription for the task.
 	ShortDescription string `gorm:"size:255"`
 }

@@ -6,8 +6,6 @@ import (
 
 // IMPORTANT: If you update the model below, be sure to double check model definitions in
 // pkg/repositories/config/migration_models.go
-//
-// TODO: why do we have copies of the models present in this file in pkg/repositories/config/migration_models.go?
 
 // Task execution primary key
 type TaskExecutionKey struct {
@@ -38,6 +36,5 @@ type TaskExecution struct {
 	TaskExecutionUpdatedAt *time.Time
 	Duration               time.Duration
 	// The child node executions (if any) launched by this task execution.
-	// TODO: this refers to `NodeExecution` defined at the top of this file. Should this also be defined inline?
 	ChildNodeExecution []NodeExecution `gorm:"foreignkey:ParentTaskExecutionID;references:ID"`
 }

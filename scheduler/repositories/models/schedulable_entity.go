@@ -20,8 +20,8 @@ type SchedulableEntity struct {
 
 // Schedulable entity primary key
 type SchedulableEntityKey struct {
-	Project string `gorm:"primary_key"`
-	Domain  string `gorm:"primary_key"`
-	Name    string `gorm:"primary_key"`
-	Version string `gorm:"primary_key"`
+	Project string `gorm:"size:64;primary_key"`
+	Domain  string `gorm:"size:255;primary_key"`
+	Name    string `gorm:"size:255;primary_key"`
+	Version string `gorm:"size:255;primary_key"`
 }
