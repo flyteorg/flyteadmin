@@ -50,10 +50,10 @@ type Execution struct {
 	// User specified inputs. This map might be incomplete and not include defaults applied
 	UserInputsURI storage.DataReference
 	// Execution Error Kind. nullable
-	// FIXME: This is a string representation of the enum ExecutionError.ErrorKind
+	// TODO: This is a string representation of the enum ExecutionError.ErrorKind
 	ErrorKind *string `gorm:"size:10;index"`
 	// Execution Error Code nullable
-	// FIXME: This is a string representation of the enum ExecutionError.code
+	// TODO: This is a string representation of the enum ExecutionError.code
 	ErrorCode *string `gorm:"size:100"`
 	// The user responsible for launching this execution.
 	// This is also stored in the spec but promoted as a column for filtering.
