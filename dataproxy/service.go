@@ -257,6 +257,7 @@ const (
 func ParseFlyteUrl(flyteUrl string) (core.NodeExecutionIdentifier, int, IOType, error) {
 	// flyteUrl is of the form flyte://v1/project/domain/execution_id/node_id/attempt/[iod]
 	// where i stands for inputs.pb o for outputs.pb and d for the flyte deck
+	// todo: should we move iod to the front?
 	re, err := regexp.Compile("flyte://v1/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/([0-9]+)/[iod]")
 	if err != nil {
 		return core.NodeExecutionIdentifier{}, 0, err
