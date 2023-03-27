@@ -5,8 +5,12 @@ import (
 	"encoding/base32"
 	"encoding/base64"
 	"fmt"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"net/url"
 	"reflect"
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/flyteorg/flyteadmin/pkg/errors"
@@ -229,6 +233,88 @@ func createStorageLocation(ctx context.Context, store *storage.DataStore,
 	}
 
 	return storagePath, nil
+}
+
+func (s Service) validateResolveArtifactRequest(req *service.ResolveArtifactRequest) error {
+	if req.GetFlyteUrl() == "" {
+		return fmt.Errorf("source is required. Provided empty string")
+	}
+	if !strings.HasPrefix(req.GetFlyteUrl(), "flyte://") {
+		return fmt.Errorf("request does not start with the correct prefix")
+	}
+
+	return nil
+}
+
+type IOType int
+
+const (
+	INPUT = iota
+	OUTPUT
+	DECK
+)
+
+func ParseFlyteUrl(flyteUrl string) (core.NodeExecutionIdentifier, int, IOType, error) {
+	// flyteUrl is of the form flyte://v1/project/domain/execution_id/node_id/attempt/[iod]
+	// where i stands for inputs.pb o for outputs.pb and d for the flyte deck
+	re, err := regexp.Compile("flyte://v1/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/([0-9]+)/[iod]")
+	if err != nil {
+		return core.NodeExecutionIdentifier{}, 0, err
+	}
+	re.MatchString(flyteUrl)
+	matches := re.FindStringSubmatch(flyteUrl)
+	if len(matches) != 7 {
+		return core.NodeExecutionIdentifier{}, 0, 0, fmt.Errorf("failed to parse flyte url, only %d matches found", len(matches))
+	}
+	proj := matches[1]
+	domain := matches[2]
+	executionId := matches[3]
+	nodeId := matches[4]
+	attempt, err := strconv.Atoi(matches[5])
+	if err != nil {
+		return core.NodeExecutionIdentifier{}, 0, 0, fmt.Errorf("failed to parse attempt, %s", err)
+	}
+	var ioType IOType
+	switch matches[6] {
+	case "i":
+		ioType = INPUT
+	case "o":
+		ioType = OUTPUT
+	case "d":
+		ioType = DECK
+	}
+
+	return core.NodeExecutionIdentifier{
+		NodeId: nodeId,
+		ExecutionId: &core.WorkflowExecutionIdentifier{
+			Project: proj,
+			Domain:  domain,
+			Name:    executionId,
+		},
+	}, attempt, ioType, nil
+}
+
+func (s Service) ResolveArtifact(ctx context.Context, req *service.ResolveArtifactRequest) (
+	*service.ResolveArtifactResponse, error) {
+
+	fmt.Printf("+++++++++++++++++++++++++++++++ request\n%v\n", req)
+	fmt.Printf("extracted url query: %s\n", req.GetFlyteUrl())
+	err := s.validateResolveArtifactRequest(req)
+	if err != nil {
+		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "failed to validate resolve artifact request. Error: %v", err)
+	}
+
+	// Get the node execution id and other information
+	nodeExecId, attempt, ioType, err := ParseFlyteUrl(req.GetFlyteUrl())
+	if err != nil {
+		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "failed to parse artifact url Error: %v", err)
+	}
+
+	// Get the task executions for the node execution
+
+	return &service.ResolveArtifactResponse{
+		NativeUrl: "somes3link",
+	}, nil
 }
 
 func NewService(cfg config.DataProxyConfig,
