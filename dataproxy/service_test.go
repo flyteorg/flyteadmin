@@ -3,7 +3,6 @@ package dataproxy
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"testing"
 	"time"
 
@@ -166,13 +165,14 @@ func TestCreateDownloadLocation(t *testing.T) {
 
 func TestParseFlyteUrl(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
-		re, _ := regexp.Compile("flyte://v1/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/([0-9]+)")
-		xx := re.FindStringSubmatch("flyte://v1/fs/dev/abc/n0/0")
-		fmt.Println(xx)
+		ne, attempt, kind, err := ParseFlyteUrl("flyte://v1/i/fs/dev/abc/n0/0")
+		assert.NoError(t, err)
+		fmt.Println(ne, attempt, kind, err)
+		ne, attempt, kind, err = ParseFlyteUrl("flyte://v1/i/fs/dev/abc/n0")
+		assert.NoError(t, err)
+		fmt.Println(ne, attempt, kind, err)
+		ne, attempt, kind, err = ParseFlyteUrl("flyte://v1/i/fs/dev/abc/n0/")
+		assert.NoError(t, err)
+		fmt.Println(ne, attempt, kind, err)
 	})
-
-	//t.Run("invalid", func(t *testing.T) {
-	//	_, err := parseFlyteUrl("bucket/key")
-	//	assert.Error(t, err)
-	//})
 }
