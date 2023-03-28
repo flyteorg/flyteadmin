@@ -687,7 +687,7 @@ func NewClusterResourceControllerFromConfig(ctx context.Context, scope promutils
 		repo := repositories.NewGormRepo(
 			db, errors2.NewPostgresErrorTransformer(dbScope.NewSubScope("errors")), dbScope)
 
-		adminDataProvider = impl2.NewDatabaseAdminDataProvider(repo, configuration, resources.NewResourceManager(repo, configuration.ApplicationConfiguration()))
+		adminDataProvider = impl2.NewDatabaseAdminDataProvider(repo, configuration, resources.NewResourceManager(repo, configuration))
 	}
 
 	return NewClusterResourceController(adminDataProvider, listTargetsProvider, scope), nil

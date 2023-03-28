@@ -172,7 +172,7 @@ func NewAdminServer(ctx context.Context, pluginRegistry *plugins.Registry, confi
 		TaskExecutionManager: manager.NewTaskExecutionManager(repo, configuration, dataStorageClient,
 			adminScope.NewSubScope("task_execution_manager"), urlData, eventPublisher, cloudEventPublisher),
 		ProjectManager:  manager.NewProjectManager(repo, configuration),
-		ResourceManager: resources.NewResourceManager(repo, configuration.ApplicationConfiguration()),
+		ResourceManager: resources.NewResourceManager(repo, configuration),
 		Metrics:         InitMetrics(adminScope),
 	}
 }

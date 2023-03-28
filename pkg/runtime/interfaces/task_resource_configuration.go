@@ -1,6 +1,9 @@
 package interfaces
 
-import "k8s.io/apimachinery/pkg/api/resource"
+import (
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"k8s.io/apimachinery/pkg/api/resource"
+)
 
 type TaskResourceSet struct {
 	CPU              resource.Quantity `json:"cpu"`
@@ -14,4 +17,5 @@ type TaskResourceSet struct {
 type TaskResourceConfiguration interface {
 	GetDefaults() TaskResourceSet
 	GetLimits() TaskResourceSet
+	GetAsAttribute() admin.TaskResourceAttributes
 }

@@ -26,7 +26,7 @@ import (
 
 type ResourceManager struct {
 	db     repo_interface.Repository
-	config runtimeInterfaces.ApplicationConfiguration
+	config runtimeInterfaces.Configuration
 }
 
 func (m *ResourceManager) GetResource(ctx context.Context, request interfaces.ResourceRequest) (*interfaces.ResourceResponse, error) {
@@ -97,7 +97,7 @@ func (m *ResourceManager) UpdateWorkflowAttributes(
 	*admin.WorkflowAttributesUpdateResponse, error) {
 	var resource admin.MatchableResource
 	var err error
-	if resource, err = validation.ValidateWorkflowAttributesUpdateRequest(ctx, m.db, m.config, request); err != nil {
+	if resource, err = validation.ValidateWorkflowAttributesUpdateRequest(ctx, m.db, m.config.ApplicationConfiguration(), request); err != nil {
 		return nil, err
 	}
 
@@ -119,7 +119,7 @@ func (m *ResourceManager) UpdateWorkflowAttributes(
 func (m *ResourceManager) GetWorkflowAttributes(
 	ctx context.Context, request admin.WorkflowAttributesGetRequest) (
 	*admin.WorkflowAttributesGetResponse, error) {
-	if err := validation.ValidateWorkflowAttributesGetRequest(ctx, m.db, m.config, request); err != nil {
+	if err := validation.ValidateWorkflowAttributesGetRequest(ctx, m.db, m.config.ApplicationConfiguration(), request); err != nil {
 		return nil, err
 	}
 	workflowAttributesModel, err := m.db.ResourceRepo().Get(
@@ -138,7 +138,7 @@ func (m *ResourceManager) GetWorkflowAttributes(
 
 func (m *ResourceManager) DeleteWorkflowAttributes(ctx context.Context,
 	request admin.WorkflowAttributesDeleteRequest) (*admin.WorkflowAttributesDeleteResponse, error) {
-	if err := validation.ValidateWorkflowAttributesDeleteRequest(ctx, m.db, m.config, request); err != nil {
+	if err := validation.ValidateWorkflowAttributesDeleteRequest(ctx, m.db, m.config.ApplicationConfiguration(), request); err != nil {
 		return nil, err
 	}
 	if err := m.db.ResourceRepo().Delete(
@@ -205,44 +205,59 @@ func (m *ResourceManager) GetProjectAttributesBase(ctx context.Context, request 
 // GetProjectAttributes combines the call to the database to get the Project level settings with
 // Admin server level configuration.
 // Note this merge is only done for WorkflowExecutionConfig
+// This merge should be done for the following matchable-resource types:
+// TASK_RESOURCE, WORKFLOW_EXECUTION_CONFIG
 // This code should be removed pending implementation of a complete settings implementation.
 func (m *ResourceManager) GetProjectAttributes(ctx context.Context, request admin.ProjectAttributesGetRequest) (
 	*admin.ProjectAttributesGetResponse, error) {
 
 	getResponse, err := m.GetProjectAttributesBase(ctx, request)
-	configLevelDefaults := m.config.GetTopLevelConfig().GetAsWorkflowExecutionConfig()
+
+	// Return as missing if missing and not one of the two matchable resources that are merged with system level config
 	if err != nil {
 		ec, ok := err.(errors.FlyteAdminError)
-		if ok && ec.Code() == codes.NotFound && request.ResourceType == admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG {
-			// TODO: Will likely be removed after overarching settings project is done
-			return &admin.ProjectAttributesGetResponse{
-				Attributes: &admin.ProjectAttributes{
-					Project: request.Project,
-					MatchingAttributes: &admin.MatchingAttributes{
-						Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
-							WorkflowExecutionConfig: &configLevelDefaults,
-						},
-					},
-				},
-			}, nil
+		if ok && ec.Code() == codes.NotFound && !(request.ResourceType == admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG || request.ResourceType == admin.MatchableResource_TASK_RESOURCE) {
+			return nil, err
 		}
-		return nil, err
-
 	}
-	// If found, then merge result with the default values for the platform
-	// TODO: Remove this logic once the overarching settings project is done. Those endpoints should take
-	//   default configuration into account.
-	responseAttributes := getResponse.Attributes.GetMatchingAttributes().GetWorkflowExecutionConfig()
-	if responseAttributes != nil {
-		logger.Warningf(ctx, "Merging response %s with defaults %s", responseAttributes, configLevelDefaults)
-		tmp := util.MergeIntoExecConfig(*responseAttributes, &configLevelDefaults)
-		responseAttributes = &tmp
+
+	// Merge with system level config if appropriate
+	if request.ResourceType == admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG {
+		var responseAttributes *admin.WorkflowExecutionConfig
+		configLevelDefaults := m.config.ApplicationConfiguration().GetAsWorkflowExecutionAttribute()
+		if getResponse == nil || getResponse.Attributes == nil || getResponse.Attributes.GetMatchingAttributes() == nil || getResponse.Attributes.GetMatchingAttributes().GetWorkflowExecutionConfig() == nil {
+			responseAttributes = &configLevelDefaults
+		} else {
+			logger.Debugf(ctx, "Merging workflow config %s with defaults %s", responseAttributes, configLevelDefaults)
+			responseAttributes := getResponse.Attributes.GetMatchingAttributes().GetWorkflowExecutionConfig()
+			tmp := util.MergeIntoExecConfig(*responseAttributes, &configLevelDefaults)
+			responseAttributes = &tmp
+		}
 		return &admin.ProjectAttributesGetResponse{
 			Attributes: &admin.ProjectAttributes{
 				Project: request.Project,
 				MatchingAttributes: &admin.MatchingAttributes{
 					Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
 						WorkflowExecutionConfig: responseAttributes,
+					},
+				},
+			},
+		}, nil
+	} else if request.ResourceType == admin.MatchableResource_TASK_RESOURCE {
+		var responseAttributes *admin.TaskResourceAttributes
+		configLevelDefaults := m.config.TaskResourceConfiguration().GetAsAttribute()
+		if getResponse == nil || getResponse.Attributes == nil || getResponse.Attributes.GetMatchingAttributes() == nil || getResponse.Attributes.GetMatchingAttributes().GetTaskResourceAttributes() == nil {
+			responseAttributes = &configLevelDefaults
+		} else {
+			logger.Debugf(ctx, "Merging taskresources %s with defaults %s", responseAttributes, configLevelDefaults)
+			responseAttributes = util.MergeIntoTaskResources(*responseAttributes, configLevelDefaults)
+		}
+		return &admin.ProjectAttributesGetResponse{
+			Attributes: &admin.ProjectAttributes{
+				Project: request.Project,
+				MatchingAttributes: &admin.MatchingAttributes{
+					Target: &admin.MatchingAttributes_TaskResourceAttributes{
+						TaskResourceAttributes: responseAttributes,
 					},
 				},
 			},
@@ -342,7 +357,7 @@ func (m *ResourceManager) UpdateProjectDomainAttributes(
 	*admin.ProjectDomainAttributesUpdateResponse, error) {
 	var resource admin.MatchableResource
 	var err error
-	if resource, err = validation.ValidateProjectDomainAttributesUpdateRequest(ctx, m.db, m.config, request); err != nil {
+	if resource, err = validation.ValidateProjectDomainAttributesUpdateRequest(ctx, m.db, m.config.ApplicationConfiguration(), request); err != nil {
 		return nil, err
 	}
 	ctx = contextutils.WithProjectDomain(ctx, request.Attributes.Project, request.Attributes.Domain)
@@ -364,7 +379,7 @@ func (m *ResourceManager) UpdateProjectDomainAttributes(
 func (m *ResourceManager) GetProjectDomainAttributes(
 	ctx context.Context, request admin.ProjectDomainAttributesGetRequest) (
 	*admin.ProjectDomainAttributesGetResponse, error) {
-	if err := validation.ValidateProjectDomainAttributesGetRequest(ctx, m.db, m.config, request); err != nil {
+	if err := validation.ValidateProjectDomainAttributesGetRequest(ctx, m.db, m.config.ApplicationConfiguration(), request); err != nil {
 		return nil, err
 	}
 	projectAttributesModel, err := m.db.ResourceRepo().Get(
@@ -383,7 +398,7 @@ func (m *ResourceManager) GetProjectDomainAttributes(
 
 func (m *ResourceManager) DeleteProjectDomainAttributes(ctx context.Context,
 	request admin.ProjectDomainAttributesDeleteRequest) (*admin.ProjectDomainAttributesDeleteResponse, error) {
-	if err := validation.ValidateProjectDomainAttributesDeleteRequest(ctx, m.db, m.config, request); err != nil {
+	if err := validation.ValidateProjectDomainAttributesDeleteRequest(ctx, m.db, m.config.ApplicationConfiguration(), request); err != nil {
 		return nil, err
 	}
 	if err := m.db.ResourceRepo().Delete(
@@ -417,7 +432,7 @@ func (m *ResourceManager) ListAll(ctx context.Context, request admin.ListMatchab
 	}, nil
 }
 
-func NewResourceManager(db repo_interface.Repository, config runtimeInterfaces.ApplicationConfiguration) interfaces.ResourceInterface {
+func NewResourceManager(db repo_interface.Repository, config runtimeInterfaces.Configuration) interfaces.ResourceInterface {
 	return &ResourceManager{
 		db:     db,
 		config: config,

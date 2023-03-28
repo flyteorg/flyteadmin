@@ -1623,7 +1623,7 @@ func NewExecutionManager(db repositoryInterfaces.Repository, pluginRegistry *plu
 			"size in bytes of serialized execution outputs"),
 	}
 
-	resourceManager := resources.NewResourceManager(db, config.ApplicationConfiguration())
+	resourceManager := resources.NewResourceManager(db, config)
 	return &ExecutionManager{
 		db:                        db,
 		config:                    config,

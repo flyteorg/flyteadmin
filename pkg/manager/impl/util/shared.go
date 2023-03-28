@@ -288,6 +288,7 @@ func GetMatchableResource(ctx context.Context, resourceManager interfaces.Resour
 // new object with the merged changes.
 // After settings project is done, can move this function back to execution manager. Currently shared with resource.
 func MergeIntoExecConfig(workflowExecConfig admin.WorkflowExecutionConfig, spec shared.WorkflowExecutionConfigInterface) admin.WorkflowExecutionConfig {
+
 	if workflowExecConfig.GetMaxParallelism() == 0 && spec.GetMaxParallelism() > 0 {
 		workflowExecConfig.MaxParallelism = spec.GetMaxParallelism()
 	}
@@ -326,4 +327,27 @@ func MergeIntoExecConfig(workflowExecConfig admin.WorkflowExecutionConfig, spec 
 	}
 
 	return workflowExecConfig
+}
+
+func MergeTaskResourceSpec(higher admin.TaskResourceSpec, lower admin.TaskResourceSpec) *admin.TaskResourceSpec {
+	if (higher.GetCpu() == "" || higher.GetCpu() == "0") && len(lower.GetCpu()) > 0 {
+		higher.Cpu = lower.GetCpu()
+	}
+	if (higher.GetGpu() == "" || higher.GetGpu() == "0") && len(lower.GetGpu()) > 0 {
+		higher.Gpu = lower.GetGpu()
+	}
+	if (higher.GetMemory() == "" || higher.GetMemory() == "0") && len(lower.GetMemory()) > 0 {
+		higher.Memory = lower.GetMemory()
+	}
+	if (higher.GetEphemeralStorage() == "" || higher.GetEphemeralStorage() == "0") && len(lower.GetStorage()) > 0 {
+		higher.Storage = lower.GetStorage()
+	}
+	return &higher
+}
+
+func MergeIntoTaskResources(taskResources admin.TaskResourceAttributes, defaults admin.TaskResourceAttributes) *admin.TaskResourceAttributes {
+	return &admin.TaskResourceAttributes{
+		Defaults: MergeTaskResourceSpec(*taskResources.GetDefaults(), *defaults.GetDefaults()),
+		Limits:   MergeTaskResourceSpec(*taskResources.GetLimits(), *defaults.GetLimits()),
+	}
 }

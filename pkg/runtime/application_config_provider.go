@@ -3,6 +3,7 @@ package runtime
 import (
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flytestdlib/config"
 	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/database"
@@ -117,6 +118,36 @@ func (p *ApplicationConfigurationProvider) GetExternalEventsConfig() *interfaces
 
 func (p *ApplicationConfigurationProvider) GetCloudEventsConfig() *interfaces.CloudEventsConfig {
 	return cloudEventsConfig.GetConfig().(*interfaces.CloudEventsConfig)
+}
+
+// GetAsWorkflowExecutionAttribute returns the WorkflowExecutionConfig as extracted from the base system configuration
+// admin has been loaded with.
+func (p *ApplicationConfigurationProvider) GetAsWorkflowExecutionAttribute() admin.WorkflowExecutionConfig {
+	// These values should always be set as their fallback values equals to their zero value or nil,
+	// providing a sensible default even if the actual value was not set.
+	a := p.GetTopLevelConfig()
+
+	wec := admin.WorkflowExecutionConfig{
+		MaxParallelism: a.GetMaxParallelism(),
+		OverwriteCache: a.GetOverwriteCache(),
+		Interruptible:  a.GetInterruptible(),
+	}
+
+	// For the others, we only add the field when the field is set in the config.
+	if a.GetSecurityContext().RunAs.GetK8SServiceAccount() != "" || a.GetSecurityContext().RunAs.GetIamRole() != "" {
+		wec.SecurityContext = a.GetSecurityContext()
+	}
+	if a.GetRawOutputDataConfig().OutputLocationPrefix != "" {
+		wec.RawOutputDataConfig = a.GetRawOutputDataConfig()
+	}
+	if len(a.GetLabels().Values) > 0 {
+		wec.Labels = a.GetLabels()
+	}
+	if len(a.GetAnnotations().Values) > 0 {
+		wec.Annotations = a.GetAnnotations()
+	}
+
+	return wec
 }
 
 func NewApplicationConfigurationProvider() interfaces.ApplicationConfiguration {

@@ -272,7 +272,7 @@ func NewTaskManager(
 		ClosureSizeBytes: scope.MustNewSummary("closure_size_bytes", "size in bytes of serialized task closure"),
 		Registered:       labeled.NewCounter("num_registered", "count of registered tasks", scope),
 	}
-	resourceManager := resources.NewResourceManager(db, config.ApplicationConfiguration())
+	resourceManager := resources.NewResourceManager(db, config)
 	return &TaskManager{
 		db:              db,
 		config:          config,
