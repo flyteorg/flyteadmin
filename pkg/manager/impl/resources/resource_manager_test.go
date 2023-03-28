@@ -54,7 +54,7 @@ func TestUpdateWorkflowAttributes(t *testing.T) {
 		createOrUpdateCalled = true
 		return nil
 	}
-	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+	manager := NewResourceManager(db, testutils.GetMockConfiguration())
 	_, err := manager.UpdateWorkflowAttributes(context.Background(), request)
 	assert.Nil(t, err)
 	assert.True(t, createOrUpdateCalled)
@@ -95,7 +95,7 @@ func TestUpdateWorkflowAttributes_CreateOrMerge(t *testing.T) {
 			createOrUpdateCalled = true
 			return nil
 		}
-		manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+		manager := NewResourceManager(db, testutils.GetMockConfiguration())
 		_, err := manager.UpdateWorkflowAttributes(context.Background(), request)
 		assert.NoError(t, err)
 		assert.True(t, createOrUpdateCalled)
@@ -144,7 +144,7 @@ func TestUpdateWorkflowAttributes_CreateOrMerge(t *testing.T) {
 			createOrUpdateCalled = true
 			return nil
 		}
-		manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+		manager := NewResourceManager(db, testutils.GetMockConfiguration())
 		_, err := manager.UpdateWorkflowAttributes(context.Background(), request)
 		assert.NoError(t, err)
 		assert.True(t, createOrUpdateCalled)
@@ -174,7 +174,7 @@ func TestGetWorkflowAttributes(t *testing.T) {
 			Attributes:   expectedSerializedAttrs,
 		}, nil
 	}
-	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+	manager := NewResourceManager(db, testutils.GetMockConfiguration())
 	response, err := manager.GetWorkflowAttributes(context.Background(), request)
 	assert.Nil(t, err)
 	assert.True(t, proto.Equal(&admin.WorkflowAttributesGetResponse{
@@ -203,7 +203,7 @@ func TestDeleteWorkflowAttributes(t *testing.T) {
 		assert.Equal(t, admin.MatchableResource_EXECUTION_QUEUE.String(), ID.ResourceType)
 		return nil
 	}
-	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+	manager := NewResourceManager(db, testutils.GetMockConfiguration())
 	_, err := manager.DeleteWorkflowAttributes(context.Background(), request)
 	assert.Nil(t, err)
 }
@@ -229,7 +229,7 @@ func TestUpdateProjectDomainAttributes(t *testing.T) {
 		createOrUpdateCalled = true
 		return nil
 	}
-	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+	manager := NewResourceManager(db, testutils.GetMockConfiguration())
 	_, err := manager.UpdateProjectDomainAttributes(context.Background(), request)
 	assert.Nil(t, err)
 	assert.True(t, createOrUpdateCalled)
@@ -268,7 +268,7 @@ func TestUpdateProjectDomainAttributes_CreateOrMerge(t *testing.T) {
 			createOrUpdateCalled = true
 			return nil
 		}
-		manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+		manager := NewResourceManager(db, testutils.GetMockConfiguration())
 		_, err := manager.UpdateProjectDomainAttributes(context.Background(), request)
 		assert.NoError(t, err)
 		assert.True(t, createOrUpdateCalled)
@@ -315,7 +315,7 @@ func TestUpdateProjectDomainAttributes_CreateOrMerge(t *testing.T) {
 			createOrUpdateCalled = true
 			return nil
 		}
-		manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+		manager := NewResourceManager(db, testutils.GetMockConfiguration())
 		_, err := manager.UpdateProjectDomainAttributes(context.Background(), request)
 		assert.NoError(t, err)
 		assert.True(t, createOrUpdateCalled)
@@ -343,7 +343,7 @@ func TestGetProjectDomainAttributes(t *testing.T) {
 			Attributes:   expectedSerializedAttrs,
 		}, nil
 	}
-	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+	manager := NewResourceManager(db, testutils.GetMockConfiguration())
 	response, err := manager.GetProjectDomainAttributes(context.Background(), request)
 	assert.Nil(t, err)
 	assert.True(t, proto.Equal(&admin.ProjectDomainAttributesGetResponse{
@@ -369,7 +369,7 @@ func TestDeleteProjectDomainAttributes(t *testing.T) {
 		assert.Equal(t, admin.MatchableResource_EXECUTION_QUEUE.String(), ID.ResourceType)
 		return nil
 	}
-	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+	manager := NewResourceManager(db, testutils.GetMockConfiguration())
 	_, err := manager.DeleteProjectDomainAttributes(context.Background(), request)
 	assert.Nil(t, err)
 }
@@ -394,7 +394,7 @@ func TestUpdateProjectAttributes(t *testing.T) {
 		createOrUpdateCalled = true
 		return nil
 	}
-	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+	manager := NewResourceManager(db, testutils.GetMockConfiguration())
 	_, err := manager.UpdateProjectAttributes(context.Background(), request)
 	assert.Nil(t, err)
 	assert.True(t, createOrUpdateCalled)
@@ -451,7 +451,7 @@ func TestUpdateProjectAttributes_CreateOrMerge(t *testing.T) {
 			createOrUpdateCalled = true
 			return nil
 		}
-		manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+		manager := NewResourceManager(db, testutils.GetMockConfiguration())
 		_, err := manager.UpdateProjectAttributes(context.Background(), request)
 		assert.NoError(t, err)
 		assert.True(t, createOrUpdateCalled)
@@ -497,7 +497,7 @@ func TestUpdateProjectAttributes_CreateOrMerge(t *testing.T) {
 			createOrUpdateCalled = true
 			return nil
 		}
-		manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+		manager := NewResourceManager(db, testutils.GetMockConfiguration())
 		_, err := manager.UpdateProjectAttributes(context.Background(), request)
 		assert.NoError(t, err)
 		assert.True(t, createOrUpdateCalled)
@@ -511,7 +511,7 @@ func TestGetProjectAttributes(t *testing.T) {
 	}
 	db := mocks.NewMockRepository()
 
-	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+	manager := NewResourceManager(db, testutils.GetMockConfiguration())
 	db.ResourceRepo().(*mocks.MockResourceRepo).GetFunction = func(
 		ctx context.Context, ID repoInterfaces.ResourceID) (models.Resource, error) {
 
@@ -557,8 +557,10 @@ func TestGetProjectAttributes_ConfigLookup(t *testing.T) {
 		// return not found to trigger loading from config
 		return models.Resource{}, errors.NewFlyteAdminError(codes.NotFound, "not found message")
 	}
-	config := runtimeMocks.MockApplicationProvider{}
-	manager := NewResourceManager(db, &config)
+	appConfiguration := runtimeMocks.MockApplicationProvider{}
+	config := runtimeMocks.NewMockConfigurationProvider(&appConfiguration, nil, nil, nil, nil, nil).(*runtimeMocks.MockConfigurationProvider)
+
+	manager := NewResourceManager(db, config)
 
 	t.Run("config 1", func(t *testing.T) {
 		appConfig := runtimeInterfaces.ApplicationConfig{
@@ -567,7 +569,7 @@ func TestGetProjectAttributes_ConfigLookup(t *testing.T) {
 			Labels:               map[string]string{"lab1": "name"},
 			OutputLocationPrefix: "s3://test-bucket",
 		}
-		config.SetTopLevelConfig(appConfig)
+		appConfiguration.SetTopLevelConfig(appConfig)
 
 		response, err := manager.GetProjectAttributes(context.Background(), request)
 		assert.Nil(t, err)
@@ -599,7 +601,7 @@ func TestGetProjectAttributes_ConfigLookup(t *testing.T) {
 			MaxParallelism:   3,
 			AssumableIamRole: "myrole",
 		}
-		config.SetTopLevelConfig(appConfig)
+		appConfiguration.SetTopLevelConfig(appConfig)
 
 		response, err := manager.GetProjectAttributes(context.Background(), request)
 		assert.Nil(t, err)
@@ -625,7 +627,7 @@ func TestGetProjectAttributes_ConfigLookup(t *testing.T) {
 			MaxParallelism: 3,
 			Annotations:    map[string]string{"ann1": "val1"},
 		}
-		config.SetTopLevelConfig(appConfig)
+		appConfiguration.SetTopLevelConfig(appConfig)
 
 		response, err := manager.GetProjectAttributes(context.Background(), request)
 		assert.Nil(t, err)
@@ -653,7 +655,7 @@ func TestGetProjectAttributes_ConfigLookup(t *testing.T) {
 			Labels:               map[string]string{"lab1": "name"},
 			OutputLocationPrefix: "s3://test-bucket",
 		}
-		config.SetTopLevelConfig(appConfig)
+		appConfiguration.SetTopLevelConfig(appConfig)
 		request := admin.ProjectAttributesGetRequest{
 			Project:      project,
 			ResourceType: admin.MatchableResource_EXECUTION_QUEUE,
@@ -680,7 +682,7 @@ func TestDeleteProjectAttributes(t *testing.T) {
 		assert.Equal(t, admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG.String(), ID.ResourceType)
 		return nil
 	}
-	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+	manager := NewResourceManager(db, testutils.GetMockConfiguration())
 	_, err := manager.DeleteProjectAttributes(context.Background(), request)
 	assert.Nil(t, err)
 }
@@ -711,7 +713,7 @@ func TestGetResource(t *testing.T) {
 			Attributes:   expectedSerializedAttrs,
 		}, nil
 	}
-	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+	manager := NewResourceManager(db, testutils.GetMockConfiguration())
 	response, err := manager.GetResource(context.Background(), request)
 	assert.Nil(t, err)
 	assert.Equal(t, request.Project, response.Project)
@@ -762,7 +764,7 @@ func TestListAllResources(t *testing.T) {
 			},
 		}, nil
 	}
-	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+	manager := NewResourceManager(db, testutils.GetMockConfiguration())
 	response, err := manager.ListAll(context.Background(), admin.ListMatchableAttributesRequest{
 		ResourceType: admin.MatchableResource_CLUSTER_RESOURCE,
 	})

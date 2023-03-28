@@ -216,7 +216,9 @@ func (m *ResourceManager) GetProjectAttributes(ctx context.Context, request admi
 	// Return as missing if missing and not one of the two matchable resources that are merged with system level config
 	if err != nil {
 		ec, ok := err.(errors.FlyteAdminError)
-		if ok && ec.Code() == codes.NotFound && !(request.ResourceType == admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG || request.ResourceType == admin.MatchableResource_TASK_RESOURCE) {
+		if ok && ec.Code() == codes.NotFound && (request.ResourceType == admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG || request.ResourceType == admin.MatchableResource_TASK_RESOURCE) {
+			logger.Debugf(ctx, "Attributes not found, but look for system fallback %s", request.ResourceType.String())
+		} else {
 			return nil, err
 		}
 	}
@@ -229,7 +231,7 @@ func (m *ResourceManager) GetProjectAttributes(ctx context.Context, request admi
 			responseAttributes = &configLevelDefaults
 		} else {
 			logger.Debugf(ctx, "Merging workflow config %s with defaults %s", responseAttributes, configLevelDefaults)
-			responseAttributes := getResponse.Attributes.GetMatchingAttributes().GetWorkflowExecutionConfig()
+			responseAttributes = getResponse.Attributes.GetMatchingAttributes().GetWorkflowExecutionConfig()
 			tmp := util.MergeIntoExecConfig(*responseAttributes, &configLevelDefaults)
 			responseAttributes = &tmp
 		}
