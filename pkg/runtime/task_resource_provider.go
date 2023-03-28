@@ -27,7 +27,7 @@ type TaskResourceSpec struct {
 	Limits   interfaces.TaskResourceSet `json:"limits"`
 }
 
-// Implementation of an interfaces.TaskResourceConfiguration
+// TaskResourceProvider Implementation of an interfaces.TaskResourceConfiguration
 type TaskResourceProvider struct{}
 
 func (p *TaskResourceProvider) GetDefaults() interfaces.TaskResourceSet {
@@ -57,7 +57,7 @@ func (p *TaskResourceProvider) GetAsAttribute() admin.TaskResourceAttributes {
 	limitEphemeralStorage := p.GetLimits().EphemeralStorage
 	limitEphemeralStorageStr := limitEphemeralStorage.String()
 
-	xx := admin.TaskResourceAttributes{
+	return admin.TaskResourceAttributes{
 		Defaults: &admin.TaskResourceSpec{
 			Cpu:              defaultCPUStr,
 			Gpu:              defaultGPUStr,
@@ -71,7 +71,6 @@ func (p *TaskResourceProvider) GetAsAttribute() admin.TaskResourceAttributes {
 			EphemeralStorage: limitEphemeralStorageStr,
 		},
 	}
-	return xx
 }
 
 func NewTaskResourceProvider() interfaces.TaskResourceConfiguration {
