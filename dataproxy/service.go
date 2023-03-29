@@ -121,6 +121,15 @@ func (s Service) CreateDownloadLink(ctx context.Context, req *service.CreateDown
 		switch req.GetArtifactType() {
 		case service.ArtifactType_ARTIFACT_TYPE_DECK:
 			nativeURL = node.Closure.DeckUri
+		case service.ArtifactType_ARTIFACT_TYPE_INPUT:
+			nativeURL = node.InputUri
+		case service.ArtifactType_ARTIFACT_TYPE_OUTPUT:
+			nativeURL = node.Closure.GetOutputUri()
+		}
+	} else if flyteURLEnvelope, casted := req.GetSource().(*service.CreateDownloadLinkRequest_FlyteUrl); casted {
+		nativeURL, err = s.ResolveFlyteURL(ctx, flyteURLEnvelope.FlyteUrl)
+		if err != nil {
+			return nil, err
 		}
 	} else {
 		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "unsupported source [%v]", reflect.TypeOf(req.GetSource()))
@@ -302,22 +311,12 @@ func ParseFlyteUrl(flyteUrl string) (core.NodeExecutionIdentifier, *int, IOType,
 	}, attempt, ioType, nil
 }
 
-// ResolveArtifact tries to return the raw remote URL. In cases where only the raw data is available, we will return
-// an error code that the frontend (flytekit) should know how to handle.
-func (s Service) ResolveArtifact(ctx context.Context, req *service.ResolveArtifactRequest) (
-	*service.ResolveArtifactResponse, error) {
-
-	logger.Debugf(ctx, "resolving flyte url query: %s", req.GetFlyteUrl())
+func (s Service) ResolveFlyteURL(ctx context.Context, flyteURL string) (string, error) {
 	var resolvedURL string
-	err := s.validateResolveArtifactRequest(req)
-	if err != nil {
-		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "failed to validate resolve artifact request. Error: %v", err)
-	}
-
 	// Get the node execution id and other information
-	nodeExecId, attempt, ioType, err := ParseFlyteUrl(req.GetFlyteUrl())
+	nodeExecId, attempt, ioType, err := ParseFlyteUrl(flyteURL)
 	if err != nil {
-		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "failed to parse artifact url Error: %v", err)
+		return "", errors.NewFlyteAdminErrorf(codes.InvalidArgument, "failed to parse artifact url Error: %v", err)
 	}
 
 	logger.Debugf(ctx, "resolved to node exec id %s, attempt %v, type %d", nodeExecId, attempt, ioType)
@@ -326,7 +325,7 @@ func (s Service) ResolveArtifact(ctx context.Context, req *service.ResolveArtifa
 		Id: &nodeExecId,
 	})
 	if err != nil {
-		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "failed to find node execution [%v]. Error: %v", nodeExecId, err)
+		return "", errors.NewFlyteAdminErrorf(codes.InvalidArgument, "failed to find node execution [%v]. Error: %v", nodeExecId, err)
 	}
 	if attempt == nil || ioType == DECK {
 		// get the node execution io link, if available.
@@ -346,7 +345,7 @@ func (s Service) ResolveArtifact(ctx context.Context, req *service.ResolveArtifa
 			Filters:         fmt.Sprintf("eq(retry_attempt,%s)", strconv.Itoa(*attempt)),
 		})
 		if err != nil || len(taskExecs.TaskExecutions) == 0 {
-			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "failed to list task executions [%v]. Error: %v", nodeExecId, err)
+			return "", errors.NewFlyteAdminErrorf(codes.InvalidArgument, "failed to list task executions [%v]. Error: %v", nodeExecId, err)
 		}
 		taskExec := taskExecs.TaskExecutions[0]
 		if ioType == INPUT {
@@ -356,7 +355,24 @@ func (s Service) ResolveArtifact(ctx context.Context, req *service.ResolveArtifa
 		}
 	}
 	if resolvedURL == "" {
-		return nil, errors.NewFlyteAdminErrorf(codes.NotFound, "failed to resolve [%s]. Error: %v", req.GetFlyteUrl(), err)
+		return "", errors.NewFlyteAdminErrorf(codes.NotFound, "failed to resolve [%s]. Error: %v", flyteURL, err)
+	}
+	return resolvedURL, nil
+}
+
+// ResolveArtifact tries to return the raw remote URL. In cases where only the raw data is available, we will return
+// an error code that the frontend (flytekit) should know how to handle.
+func (s Service) ResolveArtifact(ctx context.Context, req *service.ResolveArtifactRequest) (
+	*service.ResolveArtifactResponse, error) {
+
+	logger.Debugf(ctx, "resolving flyte url query: %s", req.GetFlyteUrl())
+	err := s.validateResolveArtifactRequest(req)
+	if err != nil {
+		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "failed to validate resolve artifact request. Error: %v", err)
+	}
+	resolvedURL, err := s.ResolveFlyteURL(ctx, req.GetFlyteUrl())
+	if err != nil {
+		return nil, err
 	}
 
 	return &service.ResolveArtifactResponse{
