@@ -15,6 +15,7 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/golang/protobuf/proto"
 
+	flyteErrors "github.com/flyteorg/flyteadmin/pkg/errors"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	runtimeMocks "github.com/flyteorg/flyteadmin/pkg/runtime/mocks"
 	workflowengineInterfaces "github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
@@ -131,7 +132,7 @@ func TestSetWorkflowDefaults(t *testing.T) {
 func TestCreateWorkflow(t *testing.T) {
 	repository := getMockRepository(!returnWorkflowOnGet)
 	var createCalled bool
-	repository.WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetCreateCallback(func(input models.Workflow) error {
+	repository.WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetCreateCallback(func(input models.Workflow, descriptionEntity *models.DescriptionEntity) error {
 		assert.Equal(t, []byte{
 			0x2c, 0x69, 0x58, 0x2f, 0xd5, 0x3e, 0x68, 0x7d, 0x5, 0x8e, 0xd9, 0xc8, 0x7d, 0xbd, 0xd1, 0xc7, 0xa7, 0x69,
 			0xeb, 0x2e, 0x54, 0x6, 0x3e, 0x67, 0x82, 0xcd, 0x54, 0x7a, 0x91, 0xb3, 0x35, 0x81}, input.Digest)
@@ -149,6 +150,13 @@ func TestCreateWorkflow(t *testing.T) {
 	expectedResponse := &admin.WorkflowCreateResponse{}
 	assert.Equal(t, expectedResponse, response)
 	assert.True(t, createCalled)
+
+	repository.WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetCreateCallback(func(input models.Workflow, descriptionEntity *models.DescriptionEntity) error {
+		return errors.New("failed to insert record into workflow table")
+	})
+	response, err = workflowManager.CreateWorkflow(context.Background(), request)
+	assert.Error(t, err)
+	assert.Nil(t, response)
 }
 
 func TestCreateWorkflow_ValidationError(t *testing.T) {
@@ -177,12 +185,11 @@ func TestCreateWorkflow_ExistingWorkflow(t *testing.T) {
 		getMockWorkflowConfigProvider(), getMockWorkflowCompiler(), mockStorageClient, storagePrefix, mockScope.NewTestScope())
 	request := testutils.GetWorkflowRequest()
 	response, err := workflowManager.CreateWorkflow(context.Background(), request)
-	assert.EqualError(t, err, "workflow with different structure already exists with id "+
-		"resource_type:WORKFLOW project:\"project\" domain:\"domain\" name:\"name\" version:\"version\" ")
+	assert.EqualError(t, err, "workflow with different structure already exists")
 	assert.Nil(t, response)
 }
 
-func TestCreateWorkflow_ExistingWorkflow_NotIdentical(t *testing.T) {
+func TestCreateWorkflow_ExistingWorkflow_Different(t *testing.T) {
 	mockStorageClient := commonMocks.GetMockStorageClient()
 
 	mockStorageClient.ComposedProtobufStore.(*commonMocks.TestDataStore).ReadProtobufCb =
@@ -196,8 +203,9 @@ func TestCreateWorkflow_ExistingWorkflow_NotIdentical(t *testing.T) {
 
 	request := testutils.GetWorkflowRequest()
 	response, err := workflowManager.CreateWorkflow(context.Background(), request)
-	assert.EqualError(t, err, "workflow with different structure already exists with id "+
-		"resource_type:WORKFLOW project:\"project\" domain:\"domain\" name:\"name\" version:\"version\" ")
+	assert.EqualError(t, err, "workflow with different structure already exists")
+	flyteErr := err.(flyteErrors.FlyteAdminError)
+	assert.Equal(t, codes.InvalidArgument, flyteErr.Code())
 	assert.Nil(t, response)
 }
 
@@ -244,7 +252,7 @@ func TestCreateWorkflow_CompileWorkflowError(t *testing.T) {
 func TestCreateWorkflow_DatabaseError(t *testing.T) {
 	repository := getMockRepository(!returnWorkflowOnGet)
 	expectedErr := errors.New("expected error")
-	workflowCreateFunc := func(input models.Workflow) error {
+	workflowCreateFunc := func(input models.Workflow, descriptionEntity *models.DescriptionEntity) error {
 		return expectedErr
 	}
 

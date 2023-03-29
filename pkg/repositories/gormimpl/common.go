@@ -15,6 +15,7 @@ import (
 const Project = "project"
 const Domain = "domain"
 const Name = "name"
+const Version = "version"
 const Description = "description"
 const ResourceType = "resource_type"
 const State = "state"
@@ -25,6 +26,8 @@ const namedEntityMetadataTableName = "named_entity_metadata"
 const nodeExecutionTableName = "node_executions"
 const taskExecutionTableName = "task_executions"
 const taskTableName = "tasks"
+const workflowTableName = "workflows"
+const descriptionEntityTableName = "description_entities"
 
 const limit = "limit"
 const filters = "filters"
@@ -41,6 +44,7 @@ var entityToTableName = map[common.Entity]string{
 	common.Workflow:            "workflows",
 	common.NamedEntity:         "entities",
 	common.NamedEntityMetadata: "named_entity_metadata",
+	common.Signal:              "signals",
 }
 
 var innerJoinExecToNodeExec = fmt.Sprintf(

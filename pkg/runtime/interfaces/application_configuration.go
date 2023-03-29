@@ -1,7 +1,6 @@
 package interfaces
 
 import (
-	"github.com/Shopify/sarama"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/config"
@@ -78,6 +77,11 @@ type ApplicationConfig struct {
 	Annotations map[string]string `json:"annotations,omitempty"`
 	// Interruptible indicates whether all tasks should be run as interruptible by default (unless specified otherwise via the execution/workflow/task definition)
 	Interruptible bool `json:"interruptible"`
+	// OverwriteCache indicates all workflows and tasks should skip all their cached results and re-compute their outputs,
+	// overwriting any already stored data.
+	// Note that setting this setting to `true` effectively disabled all caching in Flyte as all executions launched
+	// will have their OverwriteCache setting enabled.
+	OverwriteCache bool `json:"overwriteCache"`
 
 	// Optional: security context override to apply this execution.
 	// iam_role references the fully qualified name of Identity & Access Management role to impersonate.
@@ -158,11 +162,17 @@ func (a *ApplicationConfig) GetInterruptible() *wrappers.BoolValue {
 	}
 }
 
+func (a *ApplicationConfig) GetOverwriteCache() bool {
+	return a.OverwriteCache
+}
+
 // GetAsWorkflowExecutionConfig returns the WorkflowExecutionConfig as extracted from this object
 func (a *ApplicationConfig) GetAsWorkflowExecutionConfig() admin.WorkflowExecutionConfig {
-	// These two should always be set, one is a number, and the other returns nil when empty.
+	// These values should always be set as their fallback values equals to their zero value or nil,
+	// providing a sensible default even if the actual value was not set.
 	wec := admin.WorkflowExecutionConfig{
 		MaxParallelism: a.GetMaxParallelism(),
+		OverwriteCache: a.GetOverwriteCache(),
 		Interruptible:  a.GetInterruptible(),
 	}
 
@@ -194,7 +204,8 @@ type GCPConfig struct {
 }
 
 type KafkaConfig struct {
-	Version sarama.KafkaVersion
+	// The version of Kafka, e.g. 2.1.0, 0.8.2.0
+	Version string `json:"version"`
 	// kafka broker addresses
 	Brokers []string `json:"brokers"`
 }
@@ -344,10 +355,16 @@ type FlyteWorkflowExecutorConfig struct {
 	// eg : 100 TPS will send at the max 100 schedule requests to admin per sec.
 	// Burst specifies burst traffic count
 	AdminRateLimit *AdminRateLimit `json:"adminRateLimit"`
+	// Defaults to using user local timezone where the scheduler is deployed.
+	UseUTCTz bool `json:"useUTCTz"`
 }
 
 func (f *FlyteWorkflowExecutorConfig) GetAdminRateLimit() *AdminRateLimit {
 	return f.AdminRateLimit
+}
+
+func (f *FlyteWorkflowExecutorConfig) GetUseUTCTz() bool {
+	return f.UseUTCTz
 }
 
 type AdminRateLimit struct {

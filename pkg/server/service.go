@@ -25,6 +25,7 @@ import (
 	"github.com/flyteorg/flyteadmin/auth/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/config"
+	"github.com/flyteorg/flyteadmin/pkg/rpc"
 	"github.com/flyteorg/flyteadmin/pkg/rpc/adminservice"
 	runtimeIfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
@@ -111,19 +112,22 @@ func newGRPCServer(ctx context.Context, pluginRegistry *plugins.Registry, cfg *c
 	}
 
 	configuration := runtime2.NewConfigurationProvider()
-	service.RegisterAdminServiceServer(grpcServer, adminservice.NewAdminServer(ctx, pluginRegistry, configuration, cfg.KubeConfig, cfg.Master, dataStorageClient, scope.NewSubScope("admin")))
+	adminServer := adminservice.NewAdminServer(ctx, pluginRegistry, configuration, cfg.KubeConfig, cfg.Master, dataStorageClient, scope.NewSubScope("admin"))
+	service.RegisterAdminServiceServer(grpcServer, adminServer)
 	if cfg.Security.UseAuth {
 		service.RegisterAuthMetadataServiceServer(grpcServer, authCtx.AuthMetadataService())
 		service.RegisterIdentityServiceServer(grpcServer, authCtx.IdentityService())
 	}
 
-	dataProxySvc, err := dataproxy.NewService(cfg.DataProxy, dataStorageClient)
+	dataProxySvc, err := dataproxy.NewService(cfg.DataProxy, adminServer.NodeExecutionManager, dataStorageClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize dataProxy service. Error: %w", err)
 	}
 
 	pluginRegistry.RegisterDefault(plugins.PluginIDDataProxy, dataProxySvc)
 	service.RegisterDataProxyServiceServer(grpcServer, plugins.Get[service.DataProxyServiceServer](pluginRegistry, plugins.PluginIDDataProxy))
+
+	service.RegisterSignalServiceServer(grpcServer, rpc.NewSignalServer(ctx, configuration, scope.NewSubScope("signal")))
 
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus("flyteadmin", grpc_health_v1.HealthCheckResponse_SERVING)
@@ -178,6 +182,9 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, _ *authConfig.
 	// This option means that http requests are served with protobufs, instead of json. We always want this.
 	gwmuxOptions = append(gwmuxOptions, runtime.WithMarshalerOption("application/octet-stream", &runtime.ProtoMarshaller{}))
 
+	// This option sets subject in the user info response
+	gwmuxOptions = append(gwmuxOptions, runtime.WithForwardResponseOption(auth.GetUserInfoForwardResponseHandler()))
+
 	if cfg.Security.UseAuth {
 		// Add HTTP handlers for OIDC endpoints
 		auth.RegisterHandlers(ctx, mux, authCtx)
@@ -214,6 +221,11 @@ func newHTTPServer(ctx context.Context, cfg *config.ServerConfig, _ *authConfig.
 	err = service.RegisterDataProxyServiceHandlerFromEndpoint(ctx, gwmux, grpcAddress, grpcConnectionOpts)
 	if err != nil {
 		return nil, errors.Wrap(err, "error registering data proxy service")
+	}
+
+	err = service.RegisterSignalServiceHandlerFromEndpoint(ctx, gwmux, grpcAddress, grpcConnectionOpts)
+	if err != nil {
+		return nil, errors.Wrap(err, "error registering signal service")
 	}
 
 	mux.Handle("/", gwmux)

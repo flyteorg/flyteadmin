@@ -3,6 +3,8 @@ package transformers
 import (
 	"context"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+
 	"github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flytestdlib/storage"
 
@@ -110,14 +112,18 @@ func CreateNodeExecutionModel(ctx context.Context, input ToNodeExecutionModelInp
 				Name:    input.Request.Event.Id.ExecutionId.Name,
 			},
 		},
-		Phase:    input.Request.Event.Phase.String(),
-		InputURI: input.Request.Event.InputUri,
+		Phase: input.Request.Event.Phase.String(),
+	}
+
+	reportedAt := input.Request.Event.ReportedAt
+	if reportedAt == nil || (reportedAt.Seconds == 0 && reportedAt.Nanos == 0) {
+		reportedAt = input.Request.Event.OccurredAt
 	}
 
 	closure := admin.NodeExecutionClosure{
 		Phase:     input.Request.Event.Phase,
 		CreatedAt: input.Request.Event.OccurredAt,
-		UpdatedAt: input.Request.Event.OccurredAt,
+		UpdatedAt: reportedAt,
 	}
 
 	nodeExecutionMetadata := admin.NodeExecutionMetaData{
@@ -125,6 +131,10 @@ func CreateNodeExecutionModel(ctx context.Context, input ToNodeExecutionModelInp
 		SpecNodeId:   input.Request.Event.SpecNodeId,
 		IsParentNode: input.Request.Event.IsParent,
 		IsDynamic:    input.Request.Event.IsDynamic,
+	}
+	err := handleNodeExecutionInputs(ctx, nodeExecution, input.Request, input.StorageClient)
+	if err != nil {
+		return nil, err
 	}
 
 	if input.Request.Event.Phase == core.NodeExecution_RUNNING {
@@ -174,7 +184,11 @@ func CreateNodeExecutionModel(ctx context.Context, input ToNodeExecutionModelInp
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to read event timestamp")
 	}
 	nodeExecution.NodeExecutionCreatedAt = &nodeExecutionCreatedAt
-	nodeExecution.NodeExecutionUpdatedAt = &nodeExecutionCreatedAt
+	nodeExecutionUpdatedAt, err := ptypes.Timestamp(reportedAt)
+	if err != nil {
+		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to read event reported_at timestamp")
+	}
+	nodeExecution.NodeExecutionUpdatedAt = &nodeExecutionUpdatedAt
 	if input.Request.Event.ParentTaskMetadata != nil {
 		nodeExecution.ParentTaskExecutionID = input.ParentTaskExecutionID
 	}
@@ -196,15 +210,23 @@ func UpdateNodeExecutionModel(
 	ctx context.Context, request *admin.NodeExecutionEventRequest, nodeExecutionModel *models.NodeExecution,
 	targetExecution *core.WorkflowExecutionIdentifier, dynamicWorkflowRemoteClosure string,
 	inlineEventDataPolicy interfaces.InlineEventDataPolicy, storageClient *storage.DataStore) error {
+	err := handleNodeExecutionInputs(ctx, nodeExecutionModel, request, storageClient)
+	if err != nil {
+		return err
+	}
 	var nodeExecutionClosure admin.NodeExecutionClosure
-	err := proto.Unmarshal(nodeExecutionModel.Closure, &nodeExecutionClosure)
+	err = proto.Unmarshal(nodeExecutionModel.Closure, &nodeExecutionClosure)
 	if err != nil {
 		return errors.NewFlyteAdminErrorf(codes.Internal,
 			"failed to unmarshal node execution closure with error: %+v", err)
 	}
 	nodeExecutionModel.Phase = request.Event.Phase.String()
 	nodeExecutionClosure.Phase = request.Event.Phase
-	nodeExecutionClosure.UpdatedAt = request.Event.OccurredAt
+	reportedAt := request.Event.ReportedAt
+	if reportedAt == nil || (reportedAt.Seconds == 0 && reportedAt.Nanos == 0) {
+		reportedAt = request.Event.OccurredAt
+	}
+	nodeExecutionClosure.UpdatedAt = reportedAt
 
 	if request.Event.Phase == core.NodeExecution_RUNNING {
 		err := addNodeRunningState(request, nodeExecutionModel, &nodeExecutionClosure)
@@ -242,6 +264,12 @@ func UpdateNodeExecutionModel(
 			nodeExecutionModel.CacheStatus = &st
 		}
 		nodeExecutionClosure.TargetMetadata = targetMetadata
+
+		// if this is a dynamic task then maintain the DynamicJobSpecUri
+		dynamicWorkflowMetadata := request.Event.GetTaskNodeMetadata().DynamicWorkflow
+		if dynamicWorkflowMetadata != nil && len(dynamicWorkflowMetadata.DynamicJobSpecUri) > 0 {
+			nodeExecutionClosure.DynamicJobSpecUri = dynamicWorkflowMetadata.DynamicJobSpecUri
+		}
 	}
 
 	marshaledClosure, err := proto.Marshal(&nodeExecutionClosure)
@@ -251,7 +279,7 @@ func UpdateNodeExecutionModel(
 	}
 
 	nodeExecutionModel.Closure = marshaledClosure
-	updatedAt, err := ptypes.Timestamp(request.Event.OccurredAt)
+	updatedAt, err := ptypes.Timestamp(reportedAt)
 	if err != nil {
 		return errors.NewFlyteAdminErrorf(codes.Internal, "failed to parse updated at timestamp")
 	}
@@ -287,11 +315,20 @@ func UpdateNodeExecutionModel(
 	return nil
 }
 
-func FromNodeExecutionModel(nodeExecutionModel models.NodeExecution) (*admin.NodeExecution, error) {
+func FromNodeExecutionModel(nodeExecutionModel models.NodeExecution, opts *ExecutionTransformerOptions) (*admin.NodeExecution, error) {
 	var closure admin.NodeExecutionClosure
 	err := proto.Unmarshal(nodeExecutionModel.Closure, &closure)
 	if err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal closure")
+	}
+	if closure.GetError() != nil && opts != nil && opts.TrimErrorMessage && len(closure.GetError().Message) > 0 {
+		trimmedErrOutputResult := closure.GetError()
+		if len(trimmedErrOutputResult.Message) > trimmedErrMessageLen {
+			trimmedErrOutputResult.Message = trimmedErrOutputResult.Message[0:trimmedErrMessageLen]
+		}
+		closure.OutputResult = &admin.NodeExecutionClosure_Error{
+			Error: trimmedErrOutputResult,
+		}
 	}
 
 	var nodeExecutionMetadata admin.NodeExecutionMetaData
@@ -334,4 +371,32 @@ func GetNodeExecutionInternalData(internalData []byte) (*genModel.NodeExecutionI
 		}
 	}
 	return &nodeExecutionInternalData, nil
+}
+
+func handleNodeExecutionInputs(ctx context.Context,
+	nodeExecutionModel *models.NodeExecution,
+	request *admin.NodeExecutionEventRequest,
+	storageClient *storage.DataStore) error {
+	if len(nodeExecutionModel.InputURI) > 0 {
+		// Inputs are static over the duration of the node execution, no need to update them when they're already set
+		return nil
+	}
+	switch request.Event.GetInputValue().(type) {
+	case *event.NodeExecutionEvent_InputUri:
+		logger.Debugf(ctx, "saving node execution input URI [%s]", request.Event.GetInputUri())
+		nodeExecutionModel.InputURI = request.Event.GetInputUri()
+	case *event.NodeExecutionEvent_InputData:
+		uri, err := common.OffloadLiteralMap(ctx, storageClient, request.Event.GetInputData(),
+			request.Event.Id.ExecutionId.Project, request.Event.Id.ExecutionId.Domain, request.Event.Id.ExecutionId.Name,
+			request.Event.Id.NodeId, InputsObjectSuffix)
+		if err != nil {
+			return err
+		}
+		logger.Debugf(ctx, "offloaded node execution inputs to [%s]", uri)
+		nodeExecutionModel.InputURI = uri.String()
+	default:
+		logger.Debugf(ctx, "request contained no input data")
+
+	}
+	return nil
 }

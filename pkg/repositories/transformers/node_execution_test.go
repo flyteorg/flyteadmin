@@ -5,6 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
+	"github.com/flyteorg/flytestdlib/promutils"
+
 	flyteAdminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
 	"google.golang.org/grpc/codes"
 
@@ -50,6 +53,14 @@ var childExecutionID = &core.WorkflowExecutionIdentifier{
 }
 
 const dynamicWorkflowClosureRef = "s3://bucket/admin/metadata/workflow"
+
+const testInputURI = "fake://bucket/inputs.pb"
+
+var testInputs = &core.LiteralMap{
+	Literals: map[string]*core.Literal{
+		"foo": coreutils.MustMakeLiteral("bar"),
+	},
+}
 
 func TestAddRunningState(t *testing.T) {
 	var startedAt = time.Now().UTC()
@@ -198,8 +209,10 @@ func TestCreateNodeExecutionModel(t *testing.T) {
 					Name:    "name",
 				},
 			},
-			Phase:    core.NodeExecution_RUNNING,
-			InputUri: "input uri",
+			Phase: core.NodeExecution_RUNNING,
+			InputValue: &event.NodeExecutionEvent_InputUri{
+				InputUri: testInputURI,
+			},
 			OutputResult: &event.NodeExecutionEvent_OutputUri{
 				OutputUri: "output uri",
 			},
@@ -269,7 +282,7 @@ func TestCreateNodeExecutionModel(t *testing.T) {
 		},
 		Phase:                  "RUNNING",
 		Closure:                closureBytes,
-		InputURI:               "input uri",
+		InputURI:               testInputURI,
 		StartedAt:              &occurredAt,
 		NodeExecutionCreatedAt: &occurredAt,
 		NodeExecutionUpdatedAt: &occurredAt,
@@ -291,19 +304,24 @@ func TestUpdateNodeExecutionModel(t *testing.T) {
 						ExecutionId: childExecutionID,
 					},
 				},
+				InputValue: &event.NodeExecutionEvent_InputUri{
+					InputUri: testInputURI,
+				},
 			},
 		}
 		nodeExecutionModel := models.NodeExecution{
 			Phase: core.NodeExecution_UNDEFINED.String(),
 		}
+		mockStore := commonMocks.GetMockStorageClient()
 		err := UpdateNodeExecutionModel(context.TODO(), &request, &nodeExecutionModel, childExecutionID, dynamicWorkflowClosureRef,
-			interfaces.InlineEventDataPolicyStoreInline, commonMocks.GetMockStorageClient())
+			interfaces.InlineEventDataPolicyStoreInline, mockStore)
 		assert.Nil(t, err)
 		assert.Equal(t, core.NodeExecution_RUNNING.String(), nodeExecutionModel.Phase)
 		assert.Equal(t, occurredAt, *nodeExecutionModel.StartedAt)
 		assert.EqualValues(t, occurredAt, *nodeExecutionModel.NodeExecutionUpdatedAt)
 		assert.Nil(t, nodeExecutionModel.CacheStatus)
 		assert.Equal(t, nodeExecutionModel.DynamicWorkflowRemoteClosureReference, dynamicWorkflowClosureRef)
+		assert.Equal(t, nodeExecutionModel.InputURI, testInputURI)
 
 		var closure = &admin.NodeExecutionClosure{
 			Phase:     core.NodeExecution_RUNNING,
@@ -352,6 +370,7 @@ func TestUpdateNodeExecutionModel(t *testing.T) {
 									},
 								},
 							},
+							DynamicJobSpecUri: "/foo/bar",
 						},
 						CheckpointUri: "last checkpoint uri",
 					},
@@ -382,6 +401,7 @@ func TestUpdateNodeExecutionModel(t *testing.T) {
 					CheckpointUri: request.Event.GetTaskNodeMetadata().CheckpointUri,
 				},
 			},
+			DynamicJobSpecUri: request.Event.GetTaskNodeMetadata().DynamicWorkflow.DynamicJobSpecUri,
 		}
 		var closureBytes, _ = proto.Marshal(closure)
 		assert.Equal(t, nodeExecutionModel.Closure, closureBytes)
@@ -422,6 +442,56 @@ func TestUpdateNodeExecutionModel(t *testing.T) {
 		nodeExecMetadataExpected, _ := proto.Marshal(&nodeExecMetadata)
 		assert.Equal(t, nodeExecutionModel.NodeExecutionMetadata, nodeExecMetadataExpected)
 	})
+	t.Run("inline input data", func(t *testing.T) {
+		request := admin.NodeExecutionEventRequest{
+			Event: &event.NodeExecutionEvent{
+				Id:         sampleNodeExecID,
+				Phase:      core.NodeExecution_RUNNING,
+				OccurredAt: occurredAtProto,
+				InputValue: &event.NodeExecutionEvent_InputData{
+					InputData: testInputs,
+				},
+			},
+		}
+		nodeExecMetadata := admin.NodeExecutionMetaData{
+			SpecNodeId: "foo",
+		}
+		nodeExecMetadataSerialized, _ := proto.Marshal(&nodeExecMetadata)
+		nodeExecutionModel := models.NodeExecution{
+			Phase:                 core.NodeExecution_UNDEFINED.String(),
+			NodeExecutionMetadata: nodeExecMetadataSerialized,
+		}
+		ds, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
+		assert.NoError(t, err)
+		err = UpdateNodeExecutionModel(context.TODO(), &request, &nodeExecutionModel, childExecutionID, dynamicWorkflowClosureRef,
+			interfaces.InlineEventDataPolicyStoreInline, ds)
+		assert.Nil(t, err)
+		assert.Equal(t, nodeExecutionModel.InputURI, "/metadata/project/domain/name/node-id/offloaded_inputs")
+	})
+	t.Run("input data URI", func(t *testing.T) {
+		request := admin.NodeExecutionEventRequest{
+			Event: &event.NodeExecutionEvent{
+				Id:         sampleNodeExecID,
+				Phase:      core.NodeExecution_RUNNING,
+				OccurredAt: occurredAtProto,
+				InputValue: &event.NodeExecutionEvent_InputUri{
+					InputUri: testInputURI,
+				},
+			},
+		}
+		nodeExecMetadata := admin.NodeExecutionMetaData{
+			SpecNodeId: "foo",
+		}
+		nodeExecMetadataSerialized, _ := proto.Marshal(&nodeExecMetadata)
+		nodeExecutionModel := models.NodeExecution{
+			Phase:                 core.NodeExecution_UNDEFINED.String(),
+			NodeExecutionMetadata: nodeExecMetadataSerialized,
+		}
+		err := UpdateNodeExecutionModel(context.TODO(), &request, &nodeExecutionModel, childExecutionID, dynamicWorkflowClosureRef,
+			interfaces.InlineEventDataPolicyStoreInline, commonMocks.GetMockStorageClient())
+		assert.Nil(t, err)
+		assert.Equal(t, nodeExecutionModel.InputURI, testInputURI)
+	})
 }
 
 func TestFromNodeExecutionModel(t *testing.T) {
@@ -447,7 +517,7 @@ func TestFromNodeExecutionModel(t *testing.T) {
 		NodeExecutionMetadata: nodeExecutionMetadataBytes,
 		InputURI:              "input uri",
 		Duration:              duration,
-	})
+	}, DefaultExecutionTransformerOptions)
 	assert.Nil(t, err)
 	assert.True(t, proto.Equal(&admin.NodeExecution{
 		Id:       &nodeExecutionIdentifier,
@@ -455,6 +525,39 @@ func TestFromNodeExecutionModel(t *testing.T) {
 		Closure:  closure,
 		Metadata: &nodeExecutionMetadata,
 	}, nodeExecution))
+}
+
+func TestFromNodeExecutionModel_Error(t *testing.T) {
+	extraLongErrMsg := string(make([]byte, 2*trimmedErrMessageLen))
+	execErr := &core.ExecutionError{
+		Code:    "CODE",
+		Message: extraLongErrMsg,
+		Kind:    core.ExecutionError_USER,
+	}
+	executionClosureBytes, _ := proto.Marshal(&admin.ExecutionClosure{
+		Phase:        core.WorkflowExecution_FAILED,
+		OutputResult: &admin.ExecutionClosure_Error{Error: execErr},
+	})
+	nodeExecution, err := FromNodeExecutionModel(models.NodeExecution{
+		NodeExecutionKey: models.NodeExecutionKey{
+			NodeID: "nodey",
+			ExecutionKey: models.ExecutionKey{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			},
+		},
+		Closure:               executionClosureBytes,
+		NodeExecutionMetadata: nodeExecutionMetadataBytes,
+		InputURI:              "input uri",
+		Duration:              duration,
+	}, &ExecutionTransformerOptions{TrimErrorMessage: true})
+	assert.Nil(t, err)
+
+	expectedExecErr := execErr
+	expectedExecErr.Message = string(make([]byte, trimmedErrMessageLen))
+	assert.Nil(t, err)
+	assert.True(t, proto.Equal(expectedExecErr, nodeExecution.Closure.GetError()))
 }
 
 func TestFromNodeExecutionModelWithChildren(t *testing.T) {
@@ -493,7 +596,7 @@ func TestFromNodeExecutionModelWithChildren(t *testing.T) {
 	}
 	t.Run("dynamic workflow", func(t *testing.T) {
 		nodeExecModel.DynamicWorkflowRemoteClosureReference = "dummy_dynamic_worklfow_ref"
-		nodeExecution, err := FromNodeExecutionModel(nodeExecModel)
+		nodeExecution, err := FromNodeExecutionModel(nodeExecModel, DefaultExecutionTransformerOptions)
 		assert.Nil(t, err)
 		assert.True(t, proto.Equal(&admin.NodeExecution{
 			Id:       &nodeExecutionIdentifier,
@@ -509,7 +612,7 @@ func TestFromNodeExecutionModelWithChildren(t *testing.T) {
 	})
 	t.Run("non dynamic workflow", func(t *testing.T) {
 		nodeExecModel.DynamicWorkflowRemoteClosureReference = ""
-		nodeExecution, err := FromNodeExecutionModel(nodeExecModel)
+		nodeExecution, err := FromNodeExecutionModel(nodeExecModel, DefaultExecutionTransformerOptions)
 		assert.Nil(t, err)
 		assert.True(t, proto.Equal(&admin.NodeExecution{
 			Id:       &nodeExecutionIdentifier,
@@ -543,5 +646,62 @@ func TestGetNodeExecutionInternalData(t *testing.T) {
 	t.Run("invalid internal", func(t *testing.T) {
 		_, err := GetNodeExecutionInternalData([]byte("i'm invalid"))
 		assert.Equal(t, err.(flyteAdminErrors.FlyteAdminError).Code(), codes.Internal)
+	})
+}
+
+func TestHandleNodeExecutionInputs(t *testing.T) {
+	ctx := context.TODO()
+	t.Run("no need to update", func(t *testing.T) {
+		nodeExecutionModel := models.NodeExecution{
+			InputURI: testInputURI,
+		}
+		err := handleNodeExecutionInputs(ctx, &nodeExecutionModel, nil, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, nodeExecutionModel.InputURI, testInputURI)
+	})
+	t.Run("read event input data", func(t *testing.T) {
+		nodeExecutionModel := models.NodeExecution{}
+		ds, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
+		assert.NoError(t, err)
+		err = handleNodeExecutionInputs(ctx, &nodeExecutionModel, &admin.NodeExecutionEventRequest{
+			Event: &event.NodeExecutionEvent{
+				Id: sampleNodeExecID,
+				InputValue: &event.NodeExecutionEvent_InputData{
+					InputData: testInputs,
+				},
+			},
+		}, ds)
+		assert.NoError(t, err)
+		expectedOffloadedInputsLocation := "/metadata/project/domain/name/node-id/offloaded_inputs"
+		assert.Equal(t, nodeExecutionModel.InputURI, expectedOffloadedInputsLocation)
+		actualInputs := &core.LiteralMap{}
+		err = ds.ReadProtobuf(ctx, storage.DataReference(expectedOffloadedInputsLocation), actualInputs)
+		assert.NoError(t, err)
+		assert.True(t, proto.Equal(actualInputs, testInputs))
+	})
+	t.Run("read event input uri", func(t *testing.T) {
+		nodeExecutionModel := models.NodeExecution{}
+		err := handleNodeExecutionInputs(ctx, &nodeExecutionModel, &admin.NodeExecutionEventRequest{
+			Event: &event.NodeExecutionEvent{
+				Id: sampleNodeExecID,
+				InputValue: &event.NodeExecutionEvent_InputUri{
+					InputUri: testInputURI,
+				},
+			},
+		}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, nodeExecutionModel.InputURI, testInputURI)
+	})
+	t.Run("request contained no input data", func(t *testing.T) {
+		nodeExecutionModel := models.NodeExecution{
+			InputURI: testInputURI,
+		}
+		err := handleNodeExecutionInputs(ctx, &nodeExecutionModel, &admin.NodeExecutionEventRequest{
+			Event: &event.NodeExecutionEvent{
+				Id: sampleNodeExecID,
+			},
+		}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, nodeExecutionModel.InputURI, testInputURI)
 	})
 }

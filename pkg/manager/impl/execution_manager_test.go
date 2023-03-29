@@ -286,6 +286,7 @@ func TestCreateExecution(t *testing.T) {
 			assert.Equal(t, principal, spec.Metadata.Principal)
 			assert.Equal(t, rawOutput, spec.RawOutputDataConfig.OutputLocationPrefix)
 			assert.True(t, proto.Equal(spec.ClusterAssignment, &clusterAssignment))
+			assert.Equal(t, "launch_plan", input.LaunchEntity)
 			return nil
 		})
 	setDefaultLpCallbackForExecTest(repository)
@@ -357,7 +358,8 @@ func TestCreateExecution(t *testing.T) {
 	request.Spec.RawOutputDataConfig = &admin.RawOutputDataConfig{OutputLocationPrefix: rawOutput}
 	request.Spec.ClusterAssignment = &clusterAssignment
 
-	identity := auth.NewIdentityContext("", principal, "", time.Now(), sets.NewString(), nil, nil)
+	identity, err := auth.NewIdentityContext("", principal, "", time.Now(), sets.NewString(), nil, nil)
+	assert.NoError(t, err)
 	ctx := identity.WithContext(context.Background())
 	response, err := execManager.CreateExecution(ctx, request, requestedAt)
 	assert.Nil(t, err)
@@ -1001,6 +1003,86 @@ func TestCreateExecutionInterruptible(t *testing.T) {
 	}
 }
 
+func TestCreateExecutionOverwriteCache(t *testing.T) {
+	tests := []struct {
+		name           string
+		task           bool
+		overwriteCache bool
+		want           bool
+	}{
+		{
+			name:           "LaunchPlanDefault",
+			task:           false,
+			overwriteCache: false,
+			want:           false,
+		},
+		{
+			name:           "LaunchPlanEnable",
+			task:           false,
+			overwriteCache: true,
+			want:           true,
+		},
+		{
+			name:           "TaskDefault",
+			task:           false,
+			overwriteCache: false,
+			want:           false,
+		},
+		{
+			name:           "TaskEnable",
+			task:           true,
+			overwriteCache: true,
+			want:           true,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			request := testutils.GetExecutionRequest()
+			if tt.task {
+				request.Spec.LaunchPlan.ResourceType = core.ResourceType_TASK
+			}
+			request.Spec.OverwriteCache = tt.overwriteCache
+
+			repository := getMockRepositoryForExecTest()
+			setDefaultLpCallbackForExecTest(repository)
+			setDefaultTaskCallbackForExecTest(repository)
+
+			exCreateFunc := func(ctx context.Context, input models.Execution) error {
+				var spec admin.ExecutionSpec
+				err := proto.Unmarshal(input.Spec, &spec)
+				assert.Nil(t, err)
+
+				if tt.task {
+					assert.Equal(t, uint(0), input.LaunchPlanID)
+					assert.NotEqual(t, uint(0), input.TaskID)
+				} else {
+					assert.NotEqual(t, uint(0), input.LaunchPlanID)
+					assert.Equal(t, uint(0), input.TaskID)
+				}
+
+				assert.Equal(t, tt.overwriteCache, spec.GetOverwriteCache())
+
+				return nil
+			}
+
+			repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
+			mockExecutor := workflowengineMocks.WorkflowExecutor{}
+			mockExecutor.OnExecuteMatch(mock.Anything, mock.Anything, mock.Anything).Return(workflowengineInterfaces.ExecutionResponse{}, nil)
+			mockExecutor.OnID().Return("testMockExecutor")
+			r := plugins.NewRegistry()
+			r.RegisterDefault(plugins.PluginIDWorkflowExecutor, &mockExecutor)
+			execManager := NewExecutionManager(repository, r, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
+
+			_, err := execManager.CreateExecution(context.Background(), request, requestedAt)
+			assert.Nil(t, err)
+		})
+	}
+}
+
 func makeExecutionGetFunc(
 	t *testing.T, closureBytes []byte, startTime *time.Time) repositoryMocks.GetExecutionFunc {
 	return func(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
@@ -1066,6 +1148,39 @@ func makeExecutionInterruptibleGetFunc(
 		} else {
 			request.Spec.Interruptible = &wrappers.BoolValue{Value: *interruptible}
 		}
+
+		specBytes, err := proto.Marshal(request.Spec)
+		assert.Nil(t, err)
+
+		return models.Execution{
+			ExecutionKey: models.ExecutionKey{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			},
+			BaseModel: models.BaseModel{
+				ID: uint(8),
+			},
+			Spec:         specBytes,
+			Phase:        core.WorkflowExecution_QUEUED.String(),
+			Closure:      closureBytes,
+			LaunchPlanID: uint(1),
+			WorkflowID:   uint(2),
+			StartedAt:    startTime,
+			Cluster:      testCluster,
+		}, nil
+	}
+}
+
+func makeExecutionOverwriteCacheGetFunc(
+	t *testing.T, closureBytes []byte, startTime *time.Time, overwriteCache bool) repositoryMocks.GetExecutionFunc {
+	return func(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
+		assert.Equal(t, "project", input.Project)
+		assert.Equal(t, "domain", input.Domain)
+		assert.Equal(t, "name", input.Name)
+
+		request := testutils.GetExecutionRequest()
+		request.Spec.OverwriteCache = overwriteCache
 
 		specBytes, err := proto.Marshal(request.Spec)
 		assert.Nil(t, err)
@@ -1278,6 +1393,129 @@ func TestRelaunchExecutionInterruptibleOverride(t *testing.T) {
 	}, requestedAt)
 	assert.Nil(t, err)
 	assert.True(t, createCalled)
+}
+
+func TestRelaunchExecutionOverwriteCacheOverride(t *testing.T) {
+	// Set up mocks.
+	repository := getMockRepositoryForExecTest()
+	setDefaultLpCallbackForExecTest(repository)
+	mockExecutor := workflowengineMocks.WorkflowExecutor{}
+	mockExecutor.OnExecuteMatch(mock.Anything, mock.Anything, mock.Anything).Return(workflowengineInterfaces.ExecutionResponse{}, nil)
+	mockExecutor.OnID().Return("testMockExecutor")
+	r := plugins.NewRegistry()
+	r.RegisterDefault(plugins.PluginIDWorkflowExecutor, &mockExecutor)
+	execManager := NewExecutionManager(repository, r, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
+	startTime := time.Now()
+	startTimeProto, _ := ptypes.TimestampProto(startTime)
+	existingClosure := admin.ExecutionClosure{
+		Phase:     core.WorkflowExecution_RUNNING,
+		StartedAt: startTimeProto,
+	}
+	existingClosureBytes, _ := proto.Marshal(&existingClosure)
+
+	t.Run("override enable", func(t *testing.T) {
+		executionGetFunc := makeExecutionOverwriteCacheGetFunc(t, existingClosureBytes, &startTime, false)
+		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
+
+		var createCalled bool
+		exCreateFunc := func(ctx context.Context, input models.Execution) error {
+			createCalled = true
+			assert.Equal(t, "relaunchy", input.Name)
+			assert.Equal(t, "domain", input.Domain)
+			assert.Equal(t, "project", input.Project)
+			assert.Equal(t, uint(8), input.SourceExecutionID)
+			var spec admin.ExecutionSpec
+			err := proto.Unmarshal(input.Spec, &spec)
+			assert.Nil(t, err)
+			assert.Equal(t, admin.ExecutionMetadata_RELAUNCH, spec.Metadata.Mode)
+			assert.Equal(t, int32(admin.ExecutionMetadata_RELAUNCH), input.Mode)
+			assert.True(t, spec.GetOverwriteCache())
+			return nil
+		}
+		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
+
+		asd, err := execManager.RelaunchExecution(context.Background(), admin.ExecutionRelaunchRequest{
+			Id: &core.WorkflowExecutionIdentifier{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			},
+			Name:           "relaunchy",
+			OverwriteCache: true,
+		}, requestedAt)
+		assert.Nil(t, err)
+		assert.NotNil(t, asd)
+		assert.True(t, createCalled)
+	})
+
+	t.Run("override disable", func(t *testing.T) {
+		executionGetFunc := makeExecutionOverwriteCacheGetFunc(t, existingClosureBytes, &startTime, true)
+		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
+
+		var createCalled bool
+		exCreateFunc := func(ctx context.Context, input models.Execution) error {
+			createCalled = true
+			assert.Equal(t, "relaunchy", input.Name)
+			assert.Equal(t, "domain", input.Domain)
+			assert.Equal(t, "project", input.Project)
+			assert.Equal(t, uint(8), input.SourceExecutionID)
+			var spec admin.ExecutionSpec
+			err := proto.Unmarshal(input.Spec, &spec)
+			assert.Nil(t, err)
+			assert.Equal(t, admin.ExecutionMetadata_RELAUNCH, spec.Metadata.Mode)
+			assert.Equal(t, int32(admin.ExecutionMetadata_RELAUNCH), input.Mode)
+			assert.False(t, spec.GetOverwriteCache())
+			return nil
+		}
+		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
+
+		asd, err := execManager.RelaunchExecution(context.Background(), admin.ExecutionRelaunchRequest{
+			Id: &core.WorkflowExecutionIdentifier{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			},
+			Name:           "relaunchy",
+			OverwriteCache: false,
+		}, requestedAt)
+		assert.Nil(t, err)
+		assert.NotNil(t, asd)
+		assert.True(t, createCalled)
+	})
+
+	t.Run("override omitted", func(t *testing.T) {
+		executionGetFunc := makeExecutionOverwriteCacheGetFunc(t, existingClosureBytes, &startTime, true)
+		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
+
+		var createCalled bool
+		exCreateFunc := func(ctx context.Context, input models.Execution) error {
+			createCalled = true
+			assert.Equal(t, "relaunchy", input.Name)
+			assert.Equal(t, "domain", input.Domain)
+			assert.Equal(t, "project", input.Project)
+			assert.Equal(t, uint(8), input.SourceExecutionID)
+			var spec admin.ExecutionSpec
+			err := proto.Unmarshal(input.Spec, &spec)
+			assert.Nil(t, err)
+			assert.Equal(t, admin.ExecutionMetadata_RELAUNCH, spec.Metadata.Mode)
+			assert.Equal(t, int32(admin.ExecutionMetadata_RELAUNCH), input.Mode)
+			assert.False(t, spec.GetOverwriteCache())
+			return nil
+		}
+		repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
+
+		asd, err := execManager.RelaunchExecution(context.Background(), admin.ExecutionRelaunchRequest{
+			Id: &core.WorkflowExecutionIdentifier{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			},
+			Name: "relaunchy",
+		}, requestedAt)
+		assert.Nil(t, err)
+		assert.NotNil(t, asd)
+		assert.True(t, createCalled)
+	})
 }
 
 func TestRecoverExecution(t *testing.T) {
@@ -1552,6 +1790,67 @@ func TestRecoverExecutionInterruptibleOverride(t *testing.T) {
 		assert.Equal(t, int32(admin.ExecutionMetadata_RECOVERED), input.Mode)
 		assert.NotNil(t, spec.GetInterruptible())
 		assert.True(t, spec.GetInterruptible().GetValue())
+		return nil
+	}
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
+
+	// Issue request.
+	response, err := execManager.RecoverExecution(context.Background(), admin.ExecutionRecoverRequest{
+		Id: &core.WorkflowExecutionIdentifier{
+			Project: "project",
+			Domain:  "domain",
+			Name:    "name",
+		},
+		Name: "recovered",
+	}, requestedAt)
+
+	// And verify response.
+	assert.Nil(t, err)
+
+	expectedResponse := &admin.ExecutionCreateResponse{
+		Id: &core.WorkflowExecutionIdentifier{
+			Project: "project",
+			Domain:  "domain",
+			Name:    "recovered",
+		},
+	}
+	assert.True(t, createCalled)
+	assert.True(t, proto.Equal(expectedResponse, response))
+}
+
+func TestRecoverExecutionOverwriteCacheOverride(t *testing.T) {
+	// Set up mocks.
+	repository := getMockRepositoryForExecTest()
+	setDefaultLpCallbackForExecTest(repository)
+	mockExecutor := workflowengineMocks.WorkflowExecutor{}
+	mockExecutor.OnExecuteMatch(mock.Anything, mock.Anything, mock.Anything).Return(workflowengineInterfaces.ExecutionResponse{}, nil)
+	mockExecutor.OnID().Return("testMockExecutor")
+	r := plugins.NewRegistry()
+	r.RegisterDefault(plugins.PluginIDWorkflowExecutor, &mockExecutor)
+	execManager := NewExecutionManager(repository, r, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
+	startTime := time.Now()
+	startTimeProto, _ := ptypes.TimestampProto(startTime)
+	existingClosure := admin.ExecutionClosure{
+		Phase:     core.WorkflowExecution_SUCCEEDED,
+		StartedAt: startTimeProto,
+	}
+	existingClosureBytes, _ := proto.Marshal(&existingClosure)
+	executionGetFunc := makeExecutionOverwriteCacheGetFunc(t, existingClosureBytes, &startTime, true)
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
+
+	var createCalled bool
+	exCreateFunc := func(ctx context.Context, input models.Execution) error {
+		createCalled = true
+		assert.Equal(t, "recovered", input.Name)
+		assert.Equal(t, "domain", input.Domain)
+		assert.Equal(t, "project", input.Project)
+		assert.Equal(t, uint(8), input.SourceExecutionID)
+		var spec admin.ExecutionSpec
+		err := proto.Unmarshal(input.Spec, &spec)
+		assert.Nil(t, err)
+		assert.Equal(t, admin.ExecutionMetadata_RECOVERED, spec.Metadata.Mode)
+		assert.Equal(t, int32(admin.ExecutionMetadata_RECOVERED), input.Mode)
+		assert.True(t, spec.GetOverwriteCache())
 		return nil
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
@@ -2824,7 +3123,8 @@ func TestTerminateExecution(t *testing.T) {
 	r.RegisterDefault(plugins.PluginIDWorkflowExecutor, &mockExecutor)
 	execManager := NewExecutionManager(repository, r, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
 
-	identity := auth.NewIdentityContext("", principal, "", time.Now(), sets.NewString(), nil, nil)
+	identity, err := auth.NewIdentityContext("", principal, "", time.Now(), sets.NewString(), nil, nil)
+	assert.NoError(t, err)
 	ctx := identity.WithContext(context.Background())
 	resp, err := execManager.TerminateExecution(ctx, admin.ExecutionTerminateRequest{
 		Id: &core.WorkflowExecutionIdentifier{
@@ -3425,90 +3725,6 @@ func TestListExecutions_LegacyModel(t *testing.T) {
 	assert.Empty(t, executionList.Token)
 }
 
-func TestGetTaskResourcesAsSet(t *testing.T) {
-	taskResources := getTaskResourcesAsSet(context.TODO(), &core.Identifier{}, []*core.Resources_ResourceEntry{
-		{
-			Name:  core.Resources_CPU,
-			Value: "100",
-		},
-		{
-			Name:  core.Resources_MEMORY,
-			Value: "200",
-		},
-		{
-			Name:  core.Resources_EPHEMERAL_STORAGE,
-			Value: "300",
-		},
-		{
-			Name:  core.Resources_GPU,
-			Value: "400",
-		},
-	}, "request")
-	assert.True(t, taskResources.CPU.Equal(resource.MustParse("100")))
-	assert.True(t, taskResources.Memory.Equal(resource.MustParse("200")))
-	assert.True(t, taskResources.EphemeralStorage.Equal(resource.MustParse("300")))
-	assert.True(t, taskResources.GPU.Equal(resource.MustParse("400")))
-}
-
-func TestGetCompleteTaskResourceRequirements(t *testing.T) {
-	taskResources := getCompleteTaskResourceRequirements(context.TODO(), &core.Identifier{}, &core.CompiledTask{
-		Template: &core.TaskTemplate{
-			Target: &core.TaskTemplate_Container{
-				Container: &core.Container{
-					Resources: &core.Resources{
-						Requests: []*core.Resources_ResourceEntry{
-							{
-								Name:  core.Resources_CPU,
-								Value: "100",
-							},
-							{
-								Name:  core.Resources_MEMORY,
-								Value: "200",
-							},
-							{
-								Name:  core.Resources_EPHEMERAL_STORAGE,
-								Value: "300",
-							},
-							{
-								Name:  core.Resources_GPU,
-								Value: "400",
-							},
-						},
-						Limits: []*core.Resources_ResourceEntry{
-							{
-								Name:  core.Resources_CPU,
-								Value: "200",
-							},
-							{
-								Name:  core.Resources_MEMORY,
-								Value: "400",
-							},
-							{
-								Name:  core.Resources_EPHEMERAL_STORAGE,
-								Value: "600",
-							},
-							{
-								Name:  core.Resources_GPU,
-								Value: "800",
-							},
-						},
-					},
-				},
-			},
-		},
-	})
-
-	assert.True(t, taskResources.Defaults.CPU.Equal(resource.MustParse("100")))
-	assert.True(t, taskResources.Defaults.Memory.Equal(resource.MustParse("200")))
-	assert.True(t, taskResources.Defaults.EphemeralStorage.Equal(resource.MustParse("300")))
-	assert.True(t, taskResources.Defaults.GPU.Equal(resource.MustParse("400")))
-
-	assert.True(t, taskResources.Limits.CPU.Equal(resource.MustParse("200")))
-	assert.True(t, taskResources.Limits.Memory.Equal(resource.MustParse("400")))
-	assert.True(t, taskResources.Limits.EphemeralStorage.Equal(resource.MustParse("600")))
-	assert.True(t, taskResources.Limits.GPU.Equal(resource.MustParse("800")))
-}
-
 func TestSetDefaults(t *testing.T) {
 	task := &core.CompiledTask{
 		Template: &core.TaskTemplate{
@@ -3787,11 +4003,11 @@ func TestCreateSingleTaskExecution(t *testing.T) {
 	repository := getMockRepositoryForExecTest()
 	var getCalledCount = 0
 	var newlyCreatedWorkflow models.Workflow
-	workflowcreateFunc := func(input models.Workflow) error {
+	workflowCreateFunc := func(input models.Workflow, descriptionEntity *models.DescriptionEntity) error {
 		newlyCreatedWorkflow = input
 		return nil
 	}
-	repository.WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetCreateCallback(workflowcreateFunc)
+	repository.WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetCreateCallback(workflowCreateFunc)
 
 	workflowGetFunc := func(input interfaces.Identifier) (models.Workflow, error) {
 		if getCalledCount <= 1 {
@@ -3802,6 +4018,13 @@ func TestCreateSingleTaskExecution(t *testing.T) {
 		return newlyCreatedWorkflow, nil
 	}
 	repository.WorkflowRepo().(*repositoryMocks.MockWorkflowRepo).SetGetCallback(workflowGetFunc)
+	taskIdentifier := &core.Identifier{
+		ResourceType: core.ResourceType_TASK,
+		Project:      "flytekit",
+		Domain:       "production",
+		Name:         "simple_task",
+		Version:      "12345",
+	}
 	repository.TaskRepo().(*repositoryMocks.MockTaskRepo).SetGetCallback(
 		func(input interfaces.Identifier) (models.Task, error) {
 			createdAt := time.Now()
@@ -3809,13 +4032,7 @@ func TestCreateSingleTaskExecution(t *testing.T) {
 			taskClosure := &admin.TaskClosure{
 				CompiledTask: &core.CompiledTask{
 					Template: &core.TaskTemplate{
-						Id: &core.Identifier{
-							ResourceType: core.ResourceType_TASK,
-							Project:      "flytekit",
-							Domain:       "production",
-							Name:         "simple_task",
-							Version:      "12345",
-						},
+						Id:   taskIdentifier,
 						Type: "python-task",
 						Metadata: &core.TaskMetadata{
 							Runtime: &core.RuntimeMetadata{
@@ -3902,6 +4119,33 @@ func TestCreateSingleTaskExecution(t *testing.T) {
 				Type:    "python",
 			}, nil
 		})
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(
+		func(ctx context.Context, input models.Execution) error {
+			var spec admin.ExecutionSpec
+			err := proto.Unmarshal(input.Spec, &spec)
+			assert.NoError(t, err)
+			assert.Equal(t, models.ExecutionKey{
+				Project: "flytekit",
+				Domain:  "production",
+				Name:    "singletaskexec",
+			}, input.ExecutionKey)
+			assert.Equal(t, "task", input.LaunchEntity)
+			assert.Equal(t, "UNDEFINED", input.Phase)
+			assert.True(t, proto.Equal(taskIdentifier, spec.LaunchPlan))
+			return nil
+		})
+
+	var launchplan *models.LaunchPlan
+	repository.LaunchPlanRepo().(*repositoryMocks.MockLaunchPlanRepo).SetCreateCallback(func(input models.LaunchPlan) error {
+		launchplan = &input
+		return nil
+	})
+	repository.LaunchPlanRepo().(*repositoryMocks.MockLaunchPlanRepo).SetGetCallback(func(input interfaces.Identifier) (models.LaunchPlan, error) {
+		if launchplan == nil {
+			return models.LaunchPlan{}, flyteAdminErrors.NewFlyteAdminError(codes.NotFound, "launchplan not found")
+		}
+		return *launchplan, nil
+	})
 
 	mockStorage := getMockStorageForExecTest(context.Background())
 	workflowManager := NewWorkflowManager(
@@ -3921,13 +4165,7 @@ func TestCreateSingleTaskExecution(t *testing.T) {
 		Domain:  "production",
 		Name:    "singletaskexec",
 		Spec: &admin.ExecutionSpec{
-			LaunchPlan: &core.Identifier{
-				Project:      "flytekit",
-				Domain:       "production",
-				Name:         "simple_task",
-				Version:      "12345",
-				ResourceType: core.ResourceType_TASK,
-			},
+			LaunchPlan: taskIdentifier,
 		},
 		Inputs: &core.LiteralMap{
 			Literals: map[string]*core.Literal{
@@ -3947,45 +4185,17 @@ func TestCreateSingleTaskExecution(t *testing.T) {
 			},
 		},
 	}
-	marshaller := jsonpb.Marshaler{}
-	stringReq, ferr := marshaller.MarshalToString(&request)
-	assert.NoError(t, ferr)
-	println(fmt.Sprintf("req: %+v", stringReq))
-	_, err := execManager.CreateExecution(context.TODO(), admin.ExecutionCreateRequest{
-		Project: "flytekit",
-		Domain:  "production",
-		Name:    "singletaskexec",
-		Spec: &admin.ExecutionSpec{
-			LaunchPlan: &core.Identifier{
-				Project:      "flytekit",
-				Domain:       "production",
-				Name:         "simple_task",
-				Version:      "12345",
-				ResourceType: core.ResourceType_TASK,
-			},
-			AuthRole: &admin.AuthRole{
-				KubernetesServiceAccount: "foo",
-			},
-		},
-		Inputs: &core.LiteralMap{
-			Literals: map[string]*core.Literal{
-				"a": {
-					Value: &core.Literal_Scalar{
-						Scalar: &core.Scalar{
-							Value: &core.Scalar_Primitive{
-								Primitive: &core.Primitive{
-									Value: &core.Primitive_Integer{
-										Integer: 999,
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}, time.Now())
 
+	marshaller := jsonpb.Marshaler{}
+	_, ferr := marshaller.MarshalToString(&request)
+	assert.NoError(t, ferr)
+
+	// test once to create an initial launchplan
+	_, err := execManager.CreateExecution(context.TODO(), request, time.Now())
+	assert.NoError(t, err)
+
+	// test again to ensure existing launchplan retrieval works
+	_, err = execManager.CreateExecution(context.TODO(), request, time.Now())
 	assert.NoError(t, err)
 }
 
@@ -3997,6 +4207,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 	requestK8sServiceAccount := "requestK8sServiceAccount"
 	requestMaxParallelism := int32(10)
 	requestInterruptible := false
+	requestOverwriteCache := false
 
 	launchPlanLabels := map[string]string{"launchPlanLabelKey": "launchPlanLabelValue"}
 	launchPlanAnnotations := map[string]string{"launchPlanAnnotationKey": "launchPlanAnnotationValue"}
@@ -4005,6 +4216,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 	launchPlanAssumableIamRole := "launchPlanAssumableIamRole"
 	launchPlanMaxParallelism := int32(50)
 	launchPlanInterruptible := true
+	launchPlanOverwriteCache := true
 
 	applicationConfig := runtime.NewConfigurationProvider()
 
@@ -4018,6 +4230,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 	rmK8sServiceAccount := "rmK8sServiceAccount"
 	rmMaxParallelism := int32(80)
 	rmInterruptible := false
+	rmOverwriteCache := false
 
 	resourceManager := managerMocks.MockResourceManager{}
 	executionManager := ExecutionManager{
@@ -4041,6 +4254,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 					WorkflowExecutionConfig: &admin.WorkflowExecutionConfig{
 						MaxParallelism: rmMaxParallelism,
 						Interruptible:  &wrappers.BoolValue{Value: rmInterruptible},
+						OverwriteCache: rmOverwriteCache,
 						Annotations:    &admin.Annotations{Values: rmAnnotations},
 						RawOutputDataConfig: &admin.RawOutputDataConfig{
 							OutputLocationPrefix: rmOutputLocationPrefix,
@@ -4090,6 +4304,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 				},
 				MaxParallelism: requestMaxParallelism,
 				Interruptible:  &wrappers.BoolValue{Value: requestInterruptible},
+				OverwriteCache: requestOverwriteCache,
 			},
 		}
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, nil)
@@ -4097,6 +4312,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.Equal(t, requestMaxParallelism, execConfig.MaxParallelism)
 		assert.Equal(t, requestK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Equal(t, requestInterruptible, execConfig.Interruptible.Value)
+		assert.Equal(t, requestOverwriteCache, execConfig.OverwriteCache)
 		assert.Equal(t, requestOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, requestLabels, execConfig.GetLabels().Values)
 		assert.Equal(t, requestAnnotations, execConfig.GetAnnotations().Values)
@@ -4126,12 +4342,14 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 				},
 				MaxParallelism: launchPlanMaxParallelism,
 				Interruptible:  &wrappers.BoolValue{Value: launchPlanInterruptible},
+				OverwriteCache: launchPlanOverwriteCache,
 			},
 		}
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
 		assert.NoError(t, err)
 		assert.Equal(t, requestMaxParallelism, execConfig.MaxParallelism)
 		assert.Equal(t, launchPlanInterruptible, execConfig.Interruptible.Value)
+		assert.Equal(t, launchPlanOverwriteCache, execConfig.OverwriteCache)
 		assert.True(t, proto.Equal(launchPlan.Spec.SecurityContext, execConfig.SecurityContext))
 		assert.True(t, proto.Equal(launchPlan.Spec.Annotations, execConfig.Annotations))
 		assert.Equal(t, requestOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
@@ -4162,12 +4380,14 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 				},
 				MaxParallelism: launchPlanMaxParallelism,
 				Interruptible:  &wrappers.BoolValue{Value: launchPlanInterruptible},
+				OverwriteCache: launchPlanOverwriteCache,
 			},
 		}
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
 		assert.NoError(t, err)
 		assert.Equal(t, launchPlanMaxParallelism, execConfig.MaxParallelism)
 		assert.Equal(t, launchPlanInterruptible, execConfig.Interruptible.Value)
+		assert.Equal(t, launchPlanOverwriteCache, execConfig.OverwriteCache)
 		assert.Equal(t, launchPlanK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Equal(t, launchPlanOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, launchPlanLabels, execConfig.GetLabels().Values)
@@ -4192,12 +4412,14 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 				},
 				MaxParallelism: launchPlanMaxParallelism,
 				Interruptible:  &wrappers.BoolValue{Value: launchPlanInterruptible},
+				OverwriteCache: launchPlanOverwriteCache,
 			},
 		}
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
 		assert.NoError(t, err)
 		assert.Equal(t, launchPlanMaxParallelism, execConfig.MaxParallelism)
 		assert.Equal(t, launchPlanInterruptible, execConfig.Interruptible.Value)
+		assert.Equal(t, launchPlanOverwriteCache, execConfig.OverwriteCache)
 		assert.Equal(t, launchPlanK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Equal(t, launchPlanOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, launchPlanLabels, execConfig.GetLabels().Values)
@@ -4228,6 +4450,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, launchPlanMaxParallelism, execConfig.MaxParallelism)
 		assert.Equal(t, rmInterruptible, execConfig.Interruptible.Value)
+		assert.Equal(t, rmOverwriteCache, execConfig.OverwriteCache)
 		assert.Equal(t, launchPlanK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Equal(t, launchPlanOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, launchPlanLabels, execConfig.GetLabels().Values)
@@ -4246,6 +4469,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, rmMaxParallelism, execConfig.MaxParallelism)
 		assert.Equal(t, rmInterruptible, execConfig.Interruptible.Value)
+		assert.Equal(t, rmOverwriteCache, execConfig.OverwriteCache)
 		assert.Equal(t, rmK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Equal(t, rmOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, rmLabels, execConfig.GetLabels().Values)
@@ -4291,6 +4515,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, rmMaxParallelism, execConfig.MaxParallelism)
 		assert.Nil(t, execConfig.GetInterruptible())
+		assert.False(t, execConfig.OverwriteCache)
 		assert.Equal(t, rmK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Nil(t, execConfig.GetRawOutputDataConfig())
 		assert.Nil(t, execConfig.GetLabels())
@@ -4327,6 +4552,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
 		assert.Nil(t, execConfig.GetInterruptible())
+		assert.False(t, execConfig.OverwriteCache)
 		assert.Equal(t, defaultK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Nil(t, execConfig.GetRawOutputDataConfig())
 		assert.Nil(t, execConfig.GetLabels())
@@ -4368,6 +4594,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
 		assert.Nil(t, execConfig.GetInterruptible())
+		assert.False(t, execConfig.OverwriteCache)
 		assert.Equal(t, deprecatedLaunchPlanK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Nil(t, execConfig.GetRawOutputDataConfig())
 		assert.Nil(t, execConfig.GetLabels())
@@ -4393,6 +4620,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 						WorkflowExecutionConfig: &admin.WorkflowExecutionConfig{
 							MaxParallelism: 300,
 							Interruptible:  &wrappers.BoolValue{Value: true},
+							OverwriteCache: true,
 							SecurityContext: &core.SecurityContext{
 								RunAs: &core.Identity{
 									K8SServiceAccount: "workflowDefault",
@@ -4419,6 +4647,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, int32(300), execConfig.MaxParallelism)
 		assert.True(t, execConfig.Interruptible.Value)
+		assert.True(t, execConfig.OverwriteCache)
 		assert.Equal(t, "workflowDefault", execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Nil(t, execConfig.GetRawOutputDataConfig())
 		assert.Nil(t, execConfig.GetLabels())
@@ -4448,6 +4677,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
 		assert.Equal(t, fmt.Errorf("failed to fetch the resources"), err)
 		assert.Nil(t, execConfig.GetInterruptible())
+		assert.False(t, execConfig.GetOverwriteCache())
 		assert.Nil(t, execConfig.GetSecurityContext())
 		assert.Nil(t, execConfig.GetRawOutputDataConfig())
 		assert.Nil(t, execConfig.GetLabels())
@@ -4474,6 +4704,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		}
 
 		executionManager.config.ApplicationConfiguration().GetTopLevelConfig().Interruptible = true
+		executionManager.config.ApplicationConfiguration().GetTopLevelConfig().OverwriteCache = true
 
 		t.Run("request with interruptible override disabled", func(t *testing.T) {
 			request := &admin.ExecutionCreateRequest{
@@ -4615,6 +4846,106 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 			assert.Nil(t, execConfig.GetLabels())
 			assert.Nil(t, execConfig.GetAnnotations())
 		})
+		t.Run("request with skip cache override enabled", func(t *testing.T) {
+			request := &admin.ExecutionCreateRequest{
+				Project: workflowIdentifier.Project,
+				Domain:  workflowIdentifier.Domain,
+				Spec: &admin.ExecutionSpec{
+					OverwriteCache: true,
+				},
+			}
+
+			execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, nil)
+			assert.NoError(t, err)
+			assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
+			assert.True(t, execConfig.OverwriteCache)
+			assert.Equal(t, defaultK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
+			assert.Nil(t, execConfig.GetRawOutputDataConfig())
+			assert.Nil(t, execConfig.GetLabels())
+			assert.Nil(t, execConfig.GetAnnotations())
+		})
+		t.Run("request with no skip cache override specified", func(t *testing.T) {
+			request := &admin.ExecutionCreateRequest{
+				Project: workflowIdentifier.Project,
+				Domain:  workflowIdentifier.Domain,
+				Spec:    &admin.ExecutionSpec{},
+			}
+
+			execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, nil)
+			assert.NoError(t, err)
+			assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
+			assert.True(t, execConfig.OverwriteCache)
+			assert.Equal(t, defaultK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
+			assert.Nil(t, execConfig.GetRawOutputDataConfig())
+			assert.Nil(t, execConfig.GetLabels())
+			assert.Nil(t, execConfig.GetAnnotations())
+		})
+		t.Run("launch plan with skip cache override enabled", func(t *testing.T) {
+			request := &admin.ExecutionCreateRequest{
+				Project: workflowIdentifier.Project,
+				Domain:  workflowIdentifier.Domain,
+				Spec:    &admin.ExecutionSpec{},
+			}
+
+			launchPlan := &admin.LaunchPlan{
+				Spec: &admin.LaunchPlanSpec{
+					OverwriteCache: true,
+				},
+			}
+
+			execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
+			assert.NoError(t, err)
+			assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
+			assert.True(t, execConfig.OverwriteCache)
+			assert.Equal(t, defaultK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
+			assert.Nil(t, execConfig.GetRawOutputDataConfig())
+			assert.Nil(t, execConfig.GetLabels())
+			assert.Nil(t, execConfig.GetAnnotations())
+		})
+		t.Run("launch plan with no skip cache override specified", func(t *testing.T) {
+			request := &admin.ExecutionCreateRequest{
+				Project: workflowIdentifier.Project,
+				Domain:  workflowIdentifier.Domain,
+				Spec:    &admin.ExecutionSpec{},
+			}
+
+			launchPlan := &admin.LaunchPlan{
+				Spec: &admin.LaunchPlanSpec{},
+			}
+
+			execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
+			assert.NoError(t, err)
+			assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
+			assert.True(t, execConfig.OverwriteCache)
+			assert.Equal(t, defaultK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
+			assert.Nil(t, execConfig.GetRawOutputDataConfig())
+			assert.Nil(t, execConfig.GetLabels())
+			assert.Nil(t, execConfig.GetAnnotations())
+		})
+		t.Run("request and launch plan with different skip cache overrides", func(t *testing.T) {
+			request := &admin.ExecutionCreateRequest{
+				Project: workflowIdentifier.Project,
+				Domain:  workflowIdentifier.Domain,
+				Spec: &admin.ExecutionSpec{
+					OverwriteCache: true,
+				},
+			}
+
+			launchPlan := &admin.LaunchPlan{
+				Spec: &admin.LaunchPlanSpec{
+					OverwriteCache: false,
+				},
+			}
+
+			execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
+			assert.NoError(t, err)
+			assert.Equal(t, defaultMaxParallelism, execConfig.MaxParallelism)
+			assert.True(t, execConfig.OverwriteCache)
+			assert.Equal(t, defaultK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
+			assert.Nil(t, execConfig.GetRawOutputDataConfig())
+			assert.Nil(t, execConfig.GetLabels())
+			assert.Nil(t, execConfig.GetAnnotations())
+		})
 	})
 }
 
@@ -4635,6 +4966,7 @@ func TestGetExecutionConfig(t *testing.T) {
 				Target: &admin.MatchingAttributes_WorkflowExecutionConfig{
 					WorkflowExecutionConfig: &admin.WorkflowExecutionConfig{
 						MaxParallelism: 100,
+						OverwriteCache: true,
 					},
 				},
 			},
@@ -4653,6 +4985,7 @@ func TestGetExecutionConfig(t *testing.T) {
 	}, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, execConfig.MaxParallelism, int32(100))
+	assert.True(t, execConfig.OverwriteCache)
 }
 
 func TestGetExecutionConfig_Spec(t *testing.T) {
@@ -4671,14 +5004,17 @@ func TestGetExecutionConfig_Spec(t *testing.T) {
 		Domain:  workflowIdentifier.Domain,
 		Spec: &admin.ExecutionSpec{
 			MaxParallelism: 100,
+			OverwriteCache: true,
 		},
 	}, &admin.LaunchPlan{
 		Spec: &admin.LaunchPlanSpec{
 			MaxParallelism: 50,
+			OverwriteCache: false, // explicitly set to false for clarity
 		},
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, int32(100), execConfig.MaxParallelism)
+	assert.True(t, execConfig.OverwriteCache)
 
 	execConfig, err = executionManager.getExecutionConfig(context.TODO(), &admin.ExecutionCreateRequest{
 		Project: workflowIdentifier.Project,
@@ -4687,10 +5023,12 @@ func TestGetExecutionConfig_Spec(t *testing.T) {
 	}, &admin.LaunchPlan{
 		Spec: &admin.LaunchPlanSpec{
 			MaxParallelism: 50,
+			OverwriteCache: true,
 		},
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, int32(50), execConfig.MaxParallelism)
+	assert.True(t, execConfig.OverwriteCache)
 
 	resourceManager = managerMocks.MockResourceManager{}
 	resourceManager.GetResourceFunc = func(ctx context.Context,
@@ -4702,6 +5040,8 @@ func TestGetExecutionConfig_Spec(t *testing.T) {
 		config:          applicationConfig,
 	}
 
+	executionManager.config.ApplicationConfiguration().GetTopLevelConfig().OverwriteCache = true
+
 	execConfig, err = executionManager.getExecutionConfig(context.TODO(), &admin.ExecutionCreateRequest{
 		Project: workflowIdentifier.Project,
 		Domain:  workflowIdentifier.Domain,
@@ -4711,6 +5051,7 @@ func TestGetExecutionConfig_Spec(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, execConfig.MaxParallelism, int32(25))
+	assert.True(t, execConfig.OverwriteCache)
 }
 
 func TestGetClusterAssignment(t *testing.T) {
@@ -4952,122 +5293,6 @@ func TestResolvePermissions(t *testing.T) {
 		assert.Equal(t, assumableIamRoleLp, authRole.AssumableIamRole)
 		assert.Equal(t, k8sServiceAccountLp, authRole.KubernetesServiceAccount)
 	})
-}
-
-func TestGetTaskResources(t *testing.T) {
-	taskConfig := runtimeMocks.MockTaskResourceConfiguration{}
-	taskConfig.Defaults = runtimeInterfaces.TaskResourceSet{
-		CPU:              resource.MustParse("200m"),
-		GPU:              resource.MustParse("8"),
-		Memory:           resource.MustParse("200Gi"),
-		EphemeralStorage: resource.MustParse("500Mi"),
-		Storage:          resource.MustParse("400Mi"),
-	}
-	taskConfig.Limits = runtimeInterfaces.TaskResourceSet{
-		CPU:              resource.MustParse("300m"),
-		GPU:              resource.MustParse("8"),
-		Memory:           resource.MustParse("500Gi"),
-		EphemeralStorage: resource.MustParse("501Mi"),
-		Storage:          resource.MustParse("450Mi"),
-	}
-	mockConfig := runtimeMocks.NewMockConfigurationProvider(
-		testutils.GetApplicationConfigWithDefaultDomains(), nil, nil, &taskConfig,
-		runtimeMocks.NewMockWhitelistConfiguration(), nil)
-
-	t.Run("use runtime application values", func(t *testing.T) {
-		r := plugins.NewRegistry()
-		r.RegisterDefault(plugins.PluginIDWorkflowExecutor, &defaultTestExecutor)
-		execManager := NewExecutionManager(repositoryMocks.NewMockRepository(), r, mockConfig, getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
-		taskResourceAttrs := execManager.(*ExecutionManager).getTaskResources(context.TODO(), &workflowIdentifier)
-		assert.EqualValues(t, taskResourceAttrs, workflowengineInterfaces.TaskResources{
-			Defaults: runtimeInterfaces.TaskResourceSet{
-				CPU:              resource.MustParse("200m"),
-				GPU:              resource.MustParse("8"),
-				Memory:           resource.MustParse("200Gi"),
-				EphemeralStorage: resource.MustParse("500Mi"),
-				Storage:          resource.MustParse("400Mi"),
-			},
-			Limits: runtimeInterfaces.TaskResourceSet{
-				CPU:              resource.MustParse("300m"),
-				GPU:              resource.MustParse("8"),
-				Memory:           resource.MustParse("500Gi"),
-				EphemeralStorage: resource.MustParse("501Mi"),
-				Storage:          resource.MustParse("450Mi"),
-			},
-		})
-	})
-	t.Run("use specific overrides", func(t *testing.T) {
-		resourceManager := managerMocks.MockResourceManager{}
-		resourceManager.GetResourceFunc = func(ctx context.Context,
-			request managerInterfaces.ResourceRequest) (*managerInterfaces.ResourceResponse, error) {
-			assert.EqualValues(t, request, managerInterfaces.ResourceRequest{
-				Project:      workflowIdentifier.Project,
-				Domain:       workflowIdentifier.Domain,
-				Workflow:     workflowIdentifier.Name,
-				ResourceType: admin.MatchableResource_TASK_RESOURCE,
-			})
-			return &managerInterfaces.ResourceResponse{
-				Attributes: &admin.MatchingAttributes{
-					Target: &admin.MatchingAttributes_TaskResourceAttributes{
-						TaskResourceAttributes: &admin.TaskResourceAttributes{
-							Defaults: &admin.TaskResourceSpec{
-								Cpu:              "1200m",
-								Gpu:              "18",
-								Memory:           "1200Gi",
-								EphemeralStorage: "1500Mi",
-								Storage:          "1400Mi",
-							},
-							Limits: &admin.TaskResourceSpec{
-								Cpu:              "300m",
-								Gpu:              "8",
-								Memory:           "500Gi",
-								EphemeralStorage: "501Mi",
-								Storage:          "450Mi",
-							},
-						},
-					},
-				},
-			}, nil
-		}
-		executionManager := ExecutionManager{
-			resourceManager: &resourceManager,
-			config:          mockConfig,
-		}
-		taskResourceAttrs := executionManager.getTaskResources(context.TODO(), &workflowIdentifier)
-		assert.EqualValues(t, taskResourceAttrs, workflowengineInterfaces.TaskResources{
-			Defaults: runtimeInterfaces.TaskResourceSet{
-				CPU:              resource.MustParse("1200m"),
-				GPU:              resource.MustParse("18"),
-				Memory:           resource.MustParse("1200Gi"),
-				EphemeralStorage: resource.MustParse("1500Mi"),
-				Storage:          resource.MustParse("1400Mi"),
-			},
-			Limits: runtimeInterfaces.TaskResourceSet{
-				CPU:              resource.MustParse("300m"),
-				GPU:              resource.MustParse("8"),
-				Memory:           resource.MustParse("500Gi"),
-				EphemeralStorage: resource.MustParse("501Mi"),
-				Storage:          resource.MustParse("450Mi"),
-			},
-		})
-	})
-}
-
-func TestFromAdminProtoTaskResourceSpec(t *testing.T) {
-	taskResourceSet := fromAdminProtoTaskResourceSpec(context.TODO(), &admin.TaskResourceSpec{
-		Cpu:              "1",
-		Memory:           "100",
-		Storage:          "200",
-		EphemeralStorage: "300",
-		Gpu:              "2",
-	})
-	assert.EqualValues(t, runtimeInterfaces.TaskResourceSet{
-		CPU:              resource.MustParse("1"),
-		Memory:           resource.MustParse("100"),
-		Storage:          resource.MustParse("200"),
-		EphemeralStorage: resource.MustParse("300"),
-		GPU:              resource.MustParse("2"),
-	}, taskResourceSet)
 }
 
 func TestAddStateFilter(t *testing.T) {

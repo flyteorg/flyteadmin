@@ -239,6 +239,20 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_userAuth.httpProxyURL", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := DefaultConfig.UserAuth.HTTPProxyURL.String()
+
+			cmdFlags.Set("userAuth.httpProxyURL", testValue)
+			if vString, err := cmdFlags.GetString("userAuth.httpProxyURL"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.UserAuth.HTTPProxyURL)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 	t.Run("Test_userAuth.cookieHashKeySecretName", func(t *testing.T) {
 
 		t.Run("Override", func(t *testing.T) {
@@ -471,6 +485,20 @@ func TestConfig_SetFlags(t *testing.T) {
 			cmdFlags.Set("appAuth.thirdPartyConfig.flyteClient.scopes", testValue)
 			if vStringSlice, err := cmdFlags.GetStringSlice("appAuth.thirdPartyConfig.flyteClient.scopes"); err == nil {
 				testDecodeRaw_Config(t, join_Config(vStringSlice, ","), &actual.AppAuth.ThirdParty.FlyteClientConfig.Scopes)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_appAuth.thirdPartyConfig.flyteClient.audience", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("appAuth.thirdPartyConfig.flyteClient.audience", testValue)
+			if vString, err := cmdFlags.GetString("appAuth.thirdPartyConfig.flyteClient.audience"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.AppAuth.ThirdParty.FlyteClientConfig.Audience)
 
 			} else {
 				assert.FailNow(t, err.Error())

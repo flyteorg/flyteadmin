@@ -60,6 +60,7 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "userAuth.openId.clientSecretFile"), DefaultConfig.UserAuth.OpenID.DeprecatedClientSecretFile, "")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "userAuth.openId.baseUrl"), DefaultConfig.UserAuth.OpenID.BaseURL.String(), "")
 	cmdFlags.StringSlice(fmt.Sprintf("%v%v", prefix, "userAuth.openId.scopes"), DefaultConfig.UserAuth.OpenID.Scopes, "")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "userAuth.httpProxyURL"), DefaultConfig.UserAuth.HTTPProxyURL.String(), "OPTIONAL: HTTP Proxy to be used for OAuth requests.")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "userAuth.cookieHashKeySecretName"), DefaultConfig.UserAuth.CookieHashKeySecretName, "OPTIONAL: Secret name to use for cookie hash key.")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "userAuth.cookieBlockKeySecretName"), DefaultConfig.UserAuth.CookieBlockKeySecretName, "OPTIONAL: Secret name to use for cookie block key.")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "userAuth.cookieSetting.sameSitePolicy"), DefaultConfig.UserAuth.CookieSetting.SameSitePolicy.String(), "OPTIONAL: Allows you to declare if your cookie should be restricted to a first-party or same-site context.Wrapper around http.SameSite.")
@@ -77,5 +78,6 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "appAuth.thirdPartyConfig.flyteClient.clientId"), DefaultConfig.AppAuth.ThirdParty.FlyteClientConfig.ClientID, "public identifier for the app which handles authorization for a Flyte deployment")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "appAuth.thirdPartyConfig.flyteClient.redirectUri"), DefaultConfig.AppAuth.ThirdParty.FlyteClientConfig.RedirectURI, "This is the callback uri registered with the app which handles authorization for a Flyte deployment")
 	cmdFlags.StringSlice(fmt.Sprintf("%v%v", prefix, "appAuth.thirdPartyConfig.flyteClient.scopes"), DefaultConfig.AppAuth.ThirdParty.FlyteClientConfig.Scopes, "Recommended scopes for the client to request.")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "appAuth.thirdPartyConfig.flyteClient.audience"), DefaultConfig.AppAuth.ThirdParty.FlyteClientConfig.Audience, "Audience to use when initiating OAuth2 authorization requests.")
 	return cmdFlags
 }

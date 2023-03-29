@@ -69,11 +69,15 @@ func (cfg ServerConfig) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "thirdPartyConfig.flyteClient.clientId"), defaultServerConfig.DeprecatedThirdPartyConfig.FlyteClientConfig.ClientID, "public identifier for the app which handles authorization for a Flyte deployment")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "thirdPartyConfig.flyteClient.redirectUri"), defaultServerConfig.DeprecatedThirdPartyConfig.FlyteClientConfig.RedirectURI, "This is the callback uri registered with the app which handles authorization for a Flyte deployment")
 	cmdFlags.StringSlice(fmt.Sprintf("%v%v", prefix, "thirdPartyConfig.flyteClient.scopes"), defaultServerConfig.DeprecatedThirdPartyConfig.FlyteClientConfig.Scopes, "Recommended scopes for the client to request.")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "thirdPartyConfig.flyteClient.audience"), defaultServerConfig.DeprecatedThirdPartyConfig.FlyteClientConfig.Audience, "Audience to use when initiating OAuth2 authorization requests.")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "dataProxy.upload.maxSize"), defaultServerConfig.DataProxy.Upload.MaxSize.String(), "Maximum allowed upload size.")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "dataProxy.upload.maxExpiresIn"), defaultServerConfig.DataProxy.Upload.MaxExpiresIn.String(), "Maximum allowed expiration duration.")
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "dataProxy.upload.defaultFileNameLength"), defaultServerConfig.DataProxy.Upload.DefaultFileNameLength, "Default length for the generated file name if not provided in the request.")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "dataProxy.upload.storagePrefix"), defaultServerConfig.DataProxy.Upload.StoragePrefix, "Storage prefix to use for all upload requests.")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "dataProxy.download.maxExpiresIn"), defaultServerConfig.DataProxy.Download.MaxExpiresIn.String(), "Maximum allowed expiration duration.")
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "readHeaderTimeoutSeconds"), defaultServerConfig.ReadHeaderTimeoutSeconds, "The amount of time allowed to read request headers.")
+	cmdFlags.Int32(fmt.Sprintf("%v%v", prefix, "kubeClientConfig.qps"), defaultServerConfig.KubeClientConfig.QPS, "Max QPS to the master for requests to KubeAPI. 0 defaults to 5.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "kubeClientConfig.burst"), defaultServerConfig.KubeClientConfig.Burst, "Max burst rate for throttle. 0 defaults to 10")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "kubeClientConfig.timeout"), defaultServerConfig.KubeClientConfig.Timeout.String(), "Max duration allowed for every request to KubeAPI before giving up. 0 implies no timeout.")
 	return cmdFlags
 }

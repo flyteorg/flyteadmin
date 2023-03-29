@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -21,6 +22,9 @@ var entityToResourceType = map[common.Entity]core.ResourceType{
 	common.Workflow:   core.ResourceType_WORKFLOW,
 	common.LaunchPlan: core.ResourceType_LAUNCH_PLAN,
 }
+
+// See https://www.rfc-editor.org/rfc/rfc3986#section-2.2
+var uriReservedChars = "!*'();:@&=+$,/?#[]"
 
 func ValidateEmptyStringField(field, fieldName string) error {
 	if field == "" {
@@ -132,6 +136,10 @@ func ValidateVersion(version string) error {
 	if err := ValidateEmptyStringField(version, shared.Version); err != nil {
 		return err
 	}
+	sanitizedVersion := url.QueryEscape(version)
+	if !strings.EqualFold(sanitizedVersion, version) {
+		return errors.NewFlyteAdminErrorf(codes.InvalidArgument, "version [%s] must be url safe, cannot contains chars [%s]", version, uriReservedChars)
+	}
 	return nil
 }
 
@@ -143,6 +151,25 @@ func ValidateResourceListRequest(request admin.ResourceListRequest) error {
 		return err
 	}
 	if err := ValidateEmptyStringField(request.Id.Domain, shared.Domain); err != nil {
+		return err
+	}
+	if err := ValidateLimit(request.Limit); err != nil {
+		return err
+	}
+	return nil
+}
+
+func ValidateDescriptionEntityListRequest(request admin.DescriptionEntityListRequest) error {
+	if request.Id == nil {
+		return shared.GetMissingArgumentError(shared.ID)
+	}
+	if err := ValidateEmptyStringField(request.Id.Project, shared.Project); err != nil {
+		return err
+	}
+	if err := ValidateEmptyStringField(request.Id.Domain, shared.Domain); err != nil {
+		return err
+	}
+	if err := ValidateEmptyStringField(request.Id.Name, shared.Name); err != nil {
 		return err
 	}
 	if err := ValidateLimit(request.Limit); err != nil {
@@ -185,6 +212,16 @@ func ValidateNamedEntityIdentifierListRequest(request admin.NamedEntityIdentifie
 		return err
 	}
 	if err := ValidateLimit(request.Limit); err != nil {
+		return err
+	}
+	return nil
+}
+
+func ValidateDescriptionEntityGetRequest(request admin.ObjectGetRequest) error {
+	if err := ValidateResourceType(request.Id.ResourceType); err != nil {
+		return err
+	}
+	if err := ValidateIdentifierFieldsSet(request.Id); err != nil {
 		return err
 	}
 	return nil
