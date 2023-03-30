@@ -946,8 +946,10 @@ var NoopMigrations = []*gormigrate.Migration{
 	},
 }
 
+// These migrations modify the column types from `text` to a bounded string type (i.e. varchar).
+// The idea is to tighten the column types to avoid the performance penalty of using `text`, which in the case of
+// MySQL is a `longtext` (4GB) column type.
 var FixupMigrations = []*gormigrate.Migration{
-	// These migrations modify the column types from `text` to a bounded string type (i.e. varchar). 
 	{
 		ID: "2023-03-31-fixup-project",
 		Migrate: func(tx *gorm.DB) error {
