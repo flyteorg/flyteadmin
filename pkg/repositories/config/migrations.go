@@ -1168,7 +1168,7 @@ var FixupMigrations = []*gormigrate.Migration{
 					UpdatedAt time.Time  `gorm:"type:time"`
 					DeletedAt *time.Time 
 					TaskExecutionKey
-					Phase        string `gorm:"size:255"`
+					Phase        string `gorm:"size:50"`
 					PhaseVersion uint32
 					InputURI     string `gorm:"size:2048"`
 					Closure      []byte
@@ -1393,7 +1393,7 @@ var FixupMigrations = []*gormigrate.Migration{
 			type ExecutionKey struct {
 				Project string `gorm:"size:64;primary_key;column:execution_project"`
 				Domain  string `gorm:"size:64;primary_key;column:execution_domain"`
-				Name    string `gorm:"size:512;primary_key;column:execution_name"`
+				Name    string `gorm:"size:511;primary_key;column:execution_name"`
 			}
 			type SignalKey struct {
 				ExecutionKey
@@ -1429,8 +1429,8 @@ var FixupMigrations = []*gormigrate.Migration{
 				DeletedAt    *time.Time `sql:"index"`
 				Project      string     `gorm:"size:64;index:idx_project_domain_workflow_resource_type;index:idx_project_domain_launchplan_resource_type"`
 				Domain       string     `gorm:"size:64;index:idx_project_domain_workflow_resource_type;index:idx_project_domain_launchplan_resource_type"`
-				Workflow     string     `gorm:"size:512;index:idx_project_domain_workflow_resource_type"`
-				LaunchPlan   string     `gorm:"size:512;index:idx_project_domain_launchplan_resource_type"`
+				Workflow     string     `gorm:"size:511;index:idx_project_domain_workflow_resource_type"`
+				LaunchPlan   string     `gorm:"size:511;index:idx_project_domain_launchplan_resource_type"`
 				ResourceType string     `gorm:"size:50;index:idx_project_domain_workflow_resource_type;index:idx_project_domain_launchplan_resource_type"`
 				Priority     ResourcePriority
 				// Serialized flyteidl.admin.MatchingAttributes.
