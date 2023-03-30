@@ -1390,9 +1390,14 @@ var FixupMigrations = []*gormigrate.Migration{
 	{
 		ID: "2023-03-31-fixup-signal",
 		Migrate: func(tx *gorm.DB) error {
+			type ExecutionKey struct {
+				Project string `gorm:"size:64;primary_key;column:execution_project"`
+				Domain  string `gorm:"size:64;primary_key;column:execution_domain"`
+				Name    string `gorm:"size:512;primary_key;column:execution_name"`
+			}
 			type SignalKey struct {
 				ExecutionKey
-				SignalID string `gorm:"size:255;primary_key;index"`
+				SignalID string `gorm:"size:255;index"`
 			}
 
 			type Signal struct {
