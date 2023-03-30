@@ -1497,12 +1497,8 @@ func alterTableColumnType(db *sql.DB, columnName, columnType string) error {
 
 	var err error
 	for _, table := range tables {
-		// if _, err = db.Exec(fmt.Sprintf(`ALTER TABLE IF EXISTS %s ALTER COLUMN "%s" TYPE %s`, table, columnName,
-		// 	columnType)); err != nil {
-		// 	return err
-		// }
-		// TODO: figure out how to get the driver name
-		if _, err = db.Exec(fmt.Sprintf(`ALTER TABLE %s MODIFY COLUMN %s %s`, table, columnName, columnType)); err != nil {
+		if _, err = db.Exec(fmt.Sprintf(`ALTER TABLE IF EXISTS %s ALTER COLUMN "%s" TYPE %s`, table, columnName,
+			columnType)); err != nil {
 			return err
 		}
 	}
