@@ -6,8 +6,6 @@ import (
 
 // IMPORTANT: If you update the model below, be sure to double check model definitions in
 // pkg/repositories/config/migration_models.go
-//
-// TODO: why do we have copies of the models present in this file in pkg/repositories/config/migration_models.go?
 
 // Task execution primary key
 type TaskExecutionKey struct {
