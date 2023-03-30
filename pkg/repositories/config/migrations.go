@@ -205,26 +205,13 @@ var LegacyMigrations = []*gormigrate.Migration{
 			return tx.Exec("UPDATE named_entity_metadata set state = NULL").Error
 		},
 	},
-	// FIXME: the syntax ALTER TABLE T DROP COLUMN IF EXISTS c is invalid in mysql.
-	// TODO: remove mentions to that from other queries ((including rollbacks))
 	// Modify the workflows table, if necessary
 	{
 		ID: "2020-04-03-workflow-state",
 		Migrate: func(tx *gorm.DB) error {
-			if !tx.Model(&models.Workflow{}).Migrator().HasColumn(&models.Workflow{}, "state") {
-				return nil
-			}
-			if err := tx.Model(&models.Workflow{}).Migrator().DropColumn(&models.Workflow{}, "state"); err != nil {
-				return err
-			}
-			return nil
+			return tx.Exec("ALTER TABLE workflows DROP COLUMN IF EXISTS state").Error
 		},
 		Rollback: func(tx *gorm.DB) error {
-			// TODO: the column state is not going to be present in the model. Does this mean that we cannot
-			// rely on gorm to restore the column?
-			// if err := tx.Model(&models.Workflow{}).Migrator().AddColumn(&models.Workflow{}, "state"); err != nil {
-			// 	return err
-			// }
 			return tx.Exec("ALTER TABLE workflows ADD COLUMN IF NOT EXISTS state integer;").Error
 		},
 	},
@@ -337,7 +324,6 @@ var LegacyMigrations = []*gormigrate.Migration{
 			return tx.Model(&models.NodeExecution{}).Migrator().DropColumn(&models.NodeExecution{}, "dynamic_workflow_remote_closure_reference")
 		},
 	},
-
 	{
 		ID: "2021-07-22-schedulable_entities",
 		Migrate: func(tx *gorm.DB) error {
@@ -347,7 +333,6 @@ var LegacyMigrations = []*gormigrate.Migration{
 			return tx.Migrator().DropTable(&schedulerModels.SchedulableEntity{}, "schedulable_entities")
 		},
 	},
-
 	{
 		ID: "2021-08-05-schedulable_entities_snapshot",
 		Migrate: func(tx *gorm.DB) error {
@@ -362,12 +347,11 @@ var LegacyMigrations = []*gormigrate.Migration{
 	{
 		ID: "2022-01-11-id-to-bigint",
 		Migrate: func(tx *gorm.DB) error {
-			return nil
-			// db, err := tx.DB()
-			// if err != nil {
-			// 	return err
-			// }
-			// return alterTableColumnType(db, "id", "bigint")
+			db, err := tx.DB()
+			if err != nil {
+				return err
+			}
+			return alterTableColumnType(db, "id", "bigint")
 		},
 		Rollback: func(tx *gorm.DB) error {
 			db, err := tx.DB()
@@ -418,7 +402,7 @@ var LegacyMigrations = []*gormigrate.Migration{
 			return tx.Migrator().DropTable("description_entities")
 		},
 	},
-	// // Modify the tasks table, if necessary
+	// Modify the tasks table, if necessary
 	{
 		ID: "2020-09-13-task-short_description",
 		Migrate: func(tx *gorm.DB) error {
@@ -438,7 +422,7 @@ var LegacyMigrations = []*gormigrate.Migration{
 			return tx.Exec("ALTER TABLE workflows DROP COLUMN IF EXISTS short_description").Error
 		},
 	},
-	// // Create signals table.
+	// Create signals table.
 	{
 		ID: "2022-04-11-signals",
 		Migrate: func(tx *gorm.DB) error {
@@ -972,7 +956,7 @@ var FixupMigrations = []*gormigrate.Migration{
 				CreatedAt   time.Time  `gorm:"type:time"`
 				UpdatedAt   time.Time  `gorm:"type:time"`
 				DeletedAt   *time.Time `gorm:"index"`
-				Identifier  string     `gorm:"primary_key"`
+				Identifier  string     `gorm:"size:64;primary_key"`
 				Name        string     `gorm:"size:64"` // Human-readable name, not a unique identifier.
 				Description string     `gorm:"type:varchar(300)"`
 				Labels      []byte
@@ -994,9 +978,9 @@ var FixupMigrations = []*gormigrate.Migration{
 				UpdatedAt time.Time		`gorm:"type:time"`
 				DeletedAt *time.Time	`gorm:"index"`
 				Project   string		`gorm:"size:64;primary_key;index:task_project_domain_name_idx;index:task_project_domain_idx" gorm:""`
-				Domain    string		`gorm:"size:255;primary_key;index:task_project_domain_name_idx;index:task_project_domain_idx"`
-				Name      string		`gorm:"size:255;primary_key;index:task_project_domain_name_idx"`
-				Version   string		`gorm:"size:255;primary_key"`
+				Domain    string		`gorm:"size:64;primary_key;index:task_project_domain_name_idx;index:task_project_domain_idx"`
+				Name      string		`gorm:"size:511;primary_key;index:task_project_domain_name_idx"`
+				Version   string		`gorm:"size:128;primary_key"`
 				Closure   []byte		`gorm:"not null"`
 				// Hash of the compiled task closure
 				Digest []byte
@@ -1005,6 +989,7 @@ var FixupMigrations = []*gormigrate.Migration{
 				// ShortDescription for the task.
 				ShortDescription string `gorm:"size:255"`
 			}
+
 			return tx.AutoMigrate(&Task{})
 		},
 		Rollback: func(tx *gorm.DB) error {
@@ -1020,15 +1005,15 @@ var FixupMigrations = []*gormigrate.Migration{
 				UpdatedAt               time.Time	`gorm:"type:time"`
 				DeletedAt               *time.Time	`gorm:"index"`
 				Project                 string		`gorm:"size:64;primary_key;index:workflow_project_domain_name_idx;index:workflow_project_domain_idx"`
-				Domain                  string		`gorm:"size:255;index:workflow_project_domain_name_idx;index:workflow_project_domain_idx"`
-				Name                    string		`gorm:"size:255;primary_key;index:workflow_project_domain_name_idx"`
-				Version                 string		`gorm:"size:255;primary_key"`
+				Domain                  string		`gorm:"size:64;index:workflow_project_domain_name_idx;index:workflow_project_domain_idx"`
+				Name                    string		`gorm:"size:511;primary_key;index:workflow_project_domain_name_idx"`
+				Version                 string		`gorm:"size:128;primary_key"`
 				TypedInterface          []byte
-				RemoteClosureIdentifier string		`gorm:"size:255;not null"`
+				RemoteClosureIdentifier string		`gorm:"size:2048;not null"`
 				// Hash of the compiled workflow closure
 				Digest []byte
 				// ShortDescription for the workflow.
-				ShortDescription string				`gorm:"size:255"`
+				ShortDescription string				`gorm:"size:2048"`
 			}
 			return tx.AutoMigrate(&Workflow{})
 		},
@@ -1047,9 +1032,9 @@ var FixupMigrations = []*gormigrate.Migration{
 				UpdatedAt  time.Time				`gorm:"type:time"`
 				DeletedAt  *time.Time				`gorm:"index"`
 				Project    string					`gorm:"size:64;primary_key;index:lp_project_domain_name_idx,lp_project_domain_idx"`
-				Domain     string					`gorm:"size:255;primary_key;index:lp_project_domain_name_idx,lp_project_domain_idx"`
-				Name       string					`gorm:"size:255;primary_key;index:lp_project_domain_name_idx"`
-				Version    string					`gorm:"size:255;primary_key"`
+				Domain     string					`gorm:"size:64;primary_key;index:lp_project_domain_name_idx,lp_project_domain_idx"`
+				Name       string					`gorm:"size:511;primary_key;index:lp_project_domain_name_idx"`
+				Version    string					`gorm:"size:128;primary_key"`
 				Spec       []byte					`gorm:"not null"`
 				WorkflowID uint						`gorm:"index"`
 				Closure    []byte					`gorm:"not null"`
@@ -1073,10 +1058,10 @@ var FixupMigrations = []*gormigrate.Migration{
 				CreatedAt    time.Time         `gorm:"type:time"`
 				UpdatedAt    time.Time         `gorm:"type:time"`
 				DeletedAt    *time.Time        `gorm:"index"`
-				ResourceType core.ResourceType `gorm:"size:255;primary_key;index:named_entity_metadata_type_project_domain_name_idx"`
+				ResourceType core.ResourceType `gorm:"primary_key;index:named_entity_metadata_type_project_domain_name_idx"`
 				Project      string            `gorm:"size:64;primary_key;index:named_entity_metadata_type_project_domain_name_idx"`
-				Domain       string            `gorm:"size:255;primary_key;index:named_entity_metadata_type_project_domain_name_idx"`
-				Name         string            `gorm:"size:255;primary_key;index:named_entity_metadata_type_project_domain_name_idx"`
+				Domain       string            `gorm:"size:64;primary_key;index:named_entity_metadata_type_project_domain_name_idx"`
+				Name         string            `gorm:"size:511;primary_key;index:named_entity_metadata_type_project_domain_name_idx"`
 				Description  string            `gorm:"type:varchar(300)"`
 				// GORM doesn't save the zero value for ints, so we use a pointer for the State field
 				State *int32 `gorm:"default:0"`
@@ -1093,8 +1078,8 @@ var FixupMigrations = []*gormigrate.Migration{
 		Migrate: func(tx *gorm.DB) error {
 			type ExecutionKey struct {
 				Project string `gorm:"size:64;primary_key;column:execution_project"`
-				Domain  string `gorm:"size:255;primary_key;column:execution_domain"`
-				Name    string `gorm:"size:255;primary_key;column:execution_name"`
+				Domain  string `gorm:"size:64;primary_key;column:execution_domain"`
+				Name    string `gorm:"size:511;primary_key;column:execution_name"`
 			}
 
 			type Execution struct {
@@ -1106,7 +1091,7 @@ var FixupMigrations = []*gormigrate.Migration{
 				LaunchPlanID uint   `gorm:"index"`
 				WorkflowID   uint   `gorm:"index"`
 				TaskID       uint   `gorm:"index"`
-				Phase        string `gorm:"size:255"`
+				Phase        string `gorm:"size:50"`
 				Closure      []byte
 				Spec         []byte `gorm:"not null"`
 				StartedAt    *time.Time
@@ -1119,7 +1104,7 @@ var FixupMigrations = []*gormigrate.Migration{
 				Duration           time.Duration
 				// In the case of an aborted execution this string may be non-empty.
 				// It should be ignored for any other value of phase other than aborted.
-				AbortCause string `gorm:"size:255"`
+				AbortCause string `gorm:"size:2048"`
 				// Corresponds to the execution mode used to trigger this execution
 				Mode int32
 				// The "parent" execution (if there is one) that is related to this execution.
@@ -1127,26 +1112,22 @@ var FixupMigrations = []*gormigrate.Migration{
 				// The parent node execution if this was launched by a node
 				ParentNodeExecutionID uint
 				// Cluster where execution was triggered
-				Cluster string `gorm:"size:255"`
+				Cluster string `gorm:"size:512"`
 				// Offloaded location of inputs LiteralMap. These are the inputs evaluated and contain applied defaults.
 				InputsURI storage.DataReference
 				// User specified inputs. This map might be incomplete and not include defaults applied
 				UserInputsURI storage.DataReference
 				// Execution Error Kind. nullable
-				// TODO: This is a string representation of the enum ExecutionError.ErrorKind
-				ErrorKind *string `gorm:"size:10;index"`
+				ErrorKind *string `gorm:"size:100;index"`
 				// Execution Error Code nullable
-				// TODO: This is a string representation of the enum ExecutionError.code
-				ErrorCode *string `gorm:"size:100"`
+				ErrorCode *string `gorm:"size:2048"`
 				// The user responsible for launching this execution.
 				// This is also stored in the spec but promoted as a column for filtering.
-				User string `gorm:"size:100;index"`
+				User string `gorm:"size:128;index"`
 				// GORM doesn't save the zero value for ints, so we use a pointer for the State field
 				State *int32 `gorm:"index;default:0"`
 				// The resource type of the entity used to launch the execution, one of 'launch_plan' or 'task'
-				// FIXME: By default a field without a gorm tag gets the default value for that type, which for strings
-				// is varchar(255).
-				LaunchEntity string `gorm:"size:100"`
+				LaunchEntity string `gorm:"size:128"`
 			}
 
 			return tx.AutoMigrate(&Execution{})
@@ -1210,13 +1191,13 @@ var FixupMigrations = []*gormigrate.Migration{
 		Migrate: func(tx *gorm.DB) error {
 			type ExecutionKey struct {
 				Project string `gorm:"size:64;primary_key;column:execution_project"`
-				Domain  string `gorm:"size:255;primary_key;column:execution_domain"`
-				Name    string `gorm:"size:255;primary_key;column:execution_name"`
+				Domain  string `gorm:"size:64;primary_key;column:execution_domain"`
+				Name    string `gorm:"size:511;primary_key;column:execution_name"`
 			}
 
 			type NodeExecutionKey struct {
 				ExecutionKey
-				NodeID string `gorm:"size:255;primary_key;index"`
+				NodeID string `gorm:"size:30;primary_key;index"`
 			}
 			type NodeExecution struct {
 				ID        uint       `gorm:"index;autoIncrement;not null"`
@@ -1225,8 +1206,8 @@ var FixupMigrations = []*gormigrate.Migration{
 				DeletedAt *time.Time `gorm:"index"`
 				NodeExecutionKey
 				// Also stored in the closure, but defined as a separate column because it's useful for filtering and sorting.
-				Phase     string `gorm:"size:255"`
-				InputURI  string `gorm:"size:255"`
+				Phase     string `gorm:"size:50"`
+				InputURI  string `gorm:"size:2048"`
 				Closure   []byte
 				StartedAt *time.Time
 				// Corresponds to the CreatedAt field in the NodeExecution closure
@@ -1242,7 +1223,7 @@ var FixupMigrations = []*gormigrate.Migration{
 				// The workflow execution (if any) which this node execution launched
 				LaunchedExecution models.Execution `gorm:"foreignKey:ParentNodeExecutionID;references:ID"`
 				// In the case of dynamic workflow nodes, the remote closure is uploaded to the path specified here.
-				DynamicWorkflowRemoteClosureReference string `gorm:"size:255"`
+				DynamicWorkflowRemoteClosureReference string `gorm:"size:2048"`
 				// Metadata that is only relevant to the flyteadmin service that is used to parse the model and track additional attributes.
 				InternalData          []byte
 				NodeExecutionMetadata []byte
@@ -1251,7 +1232,7 @@ var FixupMigrations = []*gormigrate.Migration{
 				// List of child node executions - for cases like Dynamic task, sub workflow, etc
 				ChildNodeExecutions []NodeExecution `gorm:"foreignKey:ParentID;references:ID"`
 				// Execution Error Kind. nullable, can be one of core.ExecutionError_ErrorKind
-				ErrorKind *string `gorm:"size:255;index"`
+				ErrorKind *string `gorm:"size:50;index"`
 				// Execution Error Code nullable. string value, but finite set determined by the execution engine and plugins
 				ErrorCode *string `gorm:"size:255"`
 				// If the node is of Type Task, this should always exist for a successful execution, indicating the cache status for the execution
@@ -1269,8 +1250,8 @@ var FixupMigrations = []*gormigrate.Migration{
 		Migrate: func(tx *gorm.DB) error {
 			type ExecutionKey struct {
 				Project string `gorm:"size:64;primary_key;column:execution_project"`
-				Domain  string `gorm:"size:255;primary_key;column:execution_domain"`
-				Name    string `gorm:"size:255;primary_key;column:execution_name"`
+				Domain  string `gorm:"size:64;primary_key;column:execution_domain"`
+				Name    string `gorm:"size:511;primary_key;column:execution_name"`
 			}
 			type ExecutionEvent struct {
 				ID        uint       `gorm:"index;autoIncrement;not null"`
@@ -1280,7 +1261,7 @@ var FixupMigrations = []*gormigrate.Migration{
 				ExecutionKey
 				RequestID  string `gorm:"size:255"`
 				OccurredAt time.Time `gorm:"type:time"`
-				Phase      string `gorm:"size:255;primary_key"`
+				Phase      string `gorm:"size:50;primary_key"`
 			}
 
 			return tx.AutoMigrate(&ExecutionEvent{})
@@ -1294,12 +1275,12 @@ var FixupMigrations = []*gormigrate.Migration{
 		Migrate: func(tx *gorm.DB) error {
 			type ExecutionKey struct {
 				Project string `gorm:"size:64;primary_key;column:execution_project"`
-				Domain  string `gorm:"size:255;primary_key;column:execution_domain"`
-				Name    string `gorm:"size:255;primary_key;column:execution_name"`
+				Domain  string `gorm:"size:64;primary_key;column:execution_domain"`
+				Name    string `gorm:"size:511;primary_key;column:execution_name"`
 			}
 			type NodeExecutionKey struct {
 				ExecutionKey
-				NodeID string `gorm:"size:180;primary_key;index"`
+				NodeID string `gorm:"size:30;primary_key;index"`
 			}
 			type NodeExecutionEvent struct {
 				ID        uint       `gorm:"index;autoIncrement;not null"`
@@ -1309,7 +1290,7 @@ var FixupMigrations = []*gormigrate.Migration{
 				NodeExecutionKey
 				RequestID  string `gorm:"size:255"`
 				OccurredAt time.Time
-				Phase      string `gorm:"size:255;primary_key"`
+				Phase      string `gorm:"size:50;primary_key"`
 			}
 
 			return tx.AutoMigrate(&NodeExecutionEvent{})
@@ -1325,14 +1306,14 @@ var FixupMigrations = []*gormigrate.Migration{
 				// ResourceType is an enum that indicates the type of the resource. We represent it as an uint32.
 				ResourceType core.ResourceType `gorm:"primary_key;index:description_entity_project_domain_name_version_idx"`
 				Project      string            `gorm:"size:64;primary_key;index:description_entity_project_domain_name_version_idx"` 
-				Domain       string            `gorm:"size:255;primary_key;index:description_entity_project_domain_name_version_idx"`
-				Name         string            `gorm:"size:255;primary_key;index:description_entity_project_domain_name_version_idx"`
-				Version      string            `gorm:"size:255;primary_key;index:description_entity_project_domain_name_version_idx"`
+				Domain       string            `gorm:"size:64;primary_key;index:description_entity_project_domain_name_version_idx"`
+				Name         string            `gorm:"size:511;primary_key;index:description_entity_project_domain_name_version_idx"`
+				Version      string            `gorm:"size:128;primary_key;index:description_entity_project_domain_name_version_idx"`
 			}
 
 			// SourceCode Database model to encapsulate a SourceCode.
 			type SourceCode struct {
-				Link string `gorm:"size:255"`
+				Link string `gorm:"size:2048"`
 			}
 
 			// DescriptionEntity Database model to encapsulate a DescriptionEntity.
@@ -1343,7 +1324,7 @@ var FixupMigrations = []*gormigrate.Migration{
 				UpdatedAt time.Time  `gorm:"type:time"`
 				DeletedAt *time.Time `gorm:"index"`
 				SourceCode
-				ShortDescription string `gorm:"size:255"`
+				ShortDescription string `gorm:"size:2048"`
 				LongDescription  []byte
 			}
 
@@ -1388,11 +1369,11 @@ var FixupMigrations = []*gormigrate.Migration{
 				CreatedAt    time.Time
 				UpdatedAt    time.Time
 				DeletedAt    *time.Time `sql:"index"`
-				Project      string     `gorm:"size:64;uniqueIndex:resource_idx"`
-				Domain       string     `gorm:"size:255;uniqueIndex:resource_idx""`
-				Workflow     string     `gorm:"size:255;uniqueIndex:resource_idx""`
-				LaunchPlan   string     `gorm:"size:255;uniqueIndex:resource_idx""`
-				ResourceType string     `gorm:"size:255;uniqueIndex:resource_idx""`
+				Project      string     `gorm:"size:64;index:idx_project_domain_workflow_resource_type;index:idx_project_domain_launchplan_resource_type"`
+				Domain       string     `gorm:"size:64;index:idx_project_domain_workflow_resource_type;index:idx_project_domain_launchplan_resource_type"`
+				Workflow     string     `gorm:"size:512;index:idx_project_domain_workflow_resource_type"`
+				LaunchPlan   string     `gorm:"size:512;index:idx_project_domain_launchplan_resource_type"`
+				ResourceType string     `gorm:"size:50;index:idx_project_domain_workflow_resource_type;index:idx_project_domain_launchplan_resource_type"`
 				Priority     ResourcePriority
 				// Serialized flyteidl.admin.MatchingAttributes.
 				Attributes []byte
@@ -1409,9 +1390,9 @@ var FixupMigrations = []*gormigrate.Migration{
 		Migrate: func(tx *gorm.DB) error {
 			type SchedulableEntityKey struct {
 				Project string `gorm:"size:64;primary_key"`
-				Domain  string `gorm:"size:255;primary_key"`
-				Name    string `gorm:"size:255;primary_key"`
-				Version string `gorm:"size:255;primary_key"`
+				Domain  string `gorm:"size:64;primary_key"`
+				Name    string `gorm:"size:511;primary_key"`
+				Version string `gorm:"size:128;primary_key"`
 			}
 			type SchedulableEntity struct {
 				ID        uint `gorm:"index;autoIncrement;not null"`
@@ -1419,11 +1400,9 @@ var FixupMigrations = []*gormigrate.Migration{
 				UpdatedAt time.Time
 				DeletedAt *time.Time `gorm:"index"`
 				SchedulableEntityKey
-				// TODO: figure out if this is just the schedule definition.
 				CronExpression      string `gorm:"size:100"`
 				FixedRateValue      uint32
 				Unit                admin.FixedRateUnit
-				// TODO: figure out how big this should be.
 				KickoffTimeInputArg string `gorm:"size:100"`
 				Active              *bool
 			}
