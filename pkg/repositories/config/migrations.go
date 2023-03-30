@@ -1139,48 +1139,99 @@ var FixupMigrations = []*gormigrate.Migration{
 	{
 		ID: "2023-03-31-fixup-taskexecution",
 		Migrate: func(tx *gorm.DB) error {
-			type TaskKey struct {
-				Project string `gorm:"size:64;primary_key"`
-				Domain  string `gorm:"size:255;primary_key"`
-				Name    string `gorm:"size:255;primary_key"`
-				Version string `gorm:"size:255;primary_key"`
-			}
-			type TaskExecutionKey struct {
-				TaskKey
-				Project string `gorm:"size:64;primary_key;column:execution_project;index:idx_task_executions_exec"`
-				Domain  string `gorm:"size:255;primary_key;column:execution_domain;index:idx_task_executions_exec"`
-				Name    string `gorm:"size:255;primary_key;column:execution_name;index:idx_task_executions_exec"`
-				NodeID  string `gorm:"size:255;primary_key;index:idx_task_executions_exec;index"`
-				// *IMPORTANT* This is a pointer to an int in order to allow setting an empty ("0") value according to gorm convention.
-				// Because RetryAttempt is part of the TaskExecution primary key is should *never* be null.
-				RetryAttempt *uint32 `gorm:"primary_key;AUTO_INCREMENT:FALSE"`
-			}
-			type TaskExecution struct {
-				ID        uint       `gorm:"index;autoIncrement;not null"`
-				CreatedAt time.Time  `gorm:"type:time"`
-				UpdatedAt time.Time  `gorm:"type:time"`
-				DeletedAt *time.Time `gorm:"index"`
-				TaskExecutionKey
-				Phase        string `gorm:"size:255"`
-				PhaseVersion uint32
-				InputURI     string `gorm:"size:255"`
-				Closure      []byte
-				StartedAt    *time.Time
-				// Corresponds to the CreatedAt field in the TaskExecution closure
-				// This field is prefixed with TaskExecution because it signifies when
-				// the execution was createdAt, not to be confused with gorm.Model.CreatedAt
-				TaskExecutionCreatedAt *time.Time
-				// Corresponds to the UpdatedAt field in the TaskExecution closure
-				// This field is prefixed with TaskExecution because it signifies when
-				// the execution was UpdatedAt, not to be confused with gorm.Model.UpdatedAt
-				TaskExecutionUpdatedAt *time.Time
-				Duration               time.Duration
-				// The child node executions (if any) launched by this task execution.
-				// TODO: this refers to `NodeExecution` defined at the top of this file. Should this also be defined inline?
-				ChildNodeExecution []NodeExecution `gorm:"foreignkey:ParentTaskExecutionID;references:ID"`
-			}
+			// The `task_executions` table is a special case because of the number of fields present in its primary key.
+			// Postgres does not have a restriction on the total length of its primary keys, however, the same is not true
+			// for MySQL. MySQL has a limit of 3072 bytes for the total length of the primary key. So, in that case we rely
+			// on secondary indexes instead.
+			if tx.Dialector.Name() == "mysql" {
+				type TaskKey struct {
+					Project string `gorm:"size:64;index:idx_taskkey_project_domain_name_version"`
+					Domain  string `gorm:"size:64;index:idx_taskkey_project_domain_name_version"`
+					Name    string `gorm:"size:511;index:idx_taskkey_project_domain_name_version"`
+					Version string `gorm:"size:128;index:idx_taskkey_project_domain_name_version"`
+				}
+				type TaskExecutionKey struct {
+					TaskKey
+					Project string `gorm:"size:64;index:idx_taskexecutionkey_project_domain_name_nodeid_retry;column:execution_project"`
+					Domain  string `gorm:"size:64;index:idx_taskexecutionkey_project_domain_name_nodeid_retry;column:execution_domain"`
+					Name    string `gorm:"size:511;index:idx_taskexecutionkey_project_domain_name_nodeid_retry;column:execution_name"`
+					NodeID  string `gorm:"size:30;index:idx_taskexecutionkey_project_domain_name_nodeid_retry;"`
+					// *IMPORTANT* This is a pointer to an int in order to allow setting an empty ("0") value according to gorm convention.
+					// Because RetryAttempt is part of the TaskExecution primary key is should *never* be null.
+					RetryAttempt *uint32 `gorm:"index:idx_taskexecutionkey_project_domain_name_nodeid_retry;AUTO_INCREMENT:FALSE"`
+				}
+				type TaskExecution struct {
+					ID        uint       `gorm:"index;autoIncrement;not null"`
+					CreatedAt time.Time  `gorm:"type:time"`
+					UpdatedAt time.Time  `gorm:"type:time"`
+					DeletedAt *time.Time 
+					TaskExecutionKey
+					Phase        string `gorm:"size:255"`
+					PhaseVersion uint32
+					InputURI     string `gorm:"size:2048"`
+					Closure      []byte
+					StartedAt    *time.Time
+					// Corresponds to the CreatedAt field in the TaskExecution closure
+					// This field is prefixed with TaskExecution because it signifies when
+					// the execution was createdAt, not to be confused with gorm.Model.CreatedAt
+					TaskExecutionCreatedAt *time.Time
+					// Corresponds to the UpdatedAt field in the TaskExecution closure
+					// This field is prefixed with TaskExecution because it signifies when
+					// the execution was UpdatedAt, not to be confused with gorm.Model.UpdatedAt
+					TaskExecutionUpdatedAt *time.Time
+					Duration               time.Duration
+					// The child node executions (if any) launched by this task execution.
+					// TODO: this refers to `NodeExecution` defined at the top of this file. Should this also be defined inline?
+					ChildNodeExecution []NodeExecution `gorm:"foreignkey:ParentTaskExecutionID;references:ID"`
+				}
 
-			return tx.AutoMigrate(&TaskExecution{})
+				return tx.AutoMigrate(&TaskExecution{})
+			} else {
+				// For all other databases, we can use the primary key as defined in the model.
+				// ** Please, keep the model definitions in sync with the mysql ones defined above. **
+				type TaskKey struct {
+					Project string `gorm:"size:64;primary_key"`
+					Domain  string `gorm:"size:64;primary_key"`
+					Name    string `gorm:"size:511;primary_key"`
+					Version string `gorm:"size:128;primary_key"`
+				}
+				type TaskExecutionKey struct {
+					TaskKey
+					Project string `gorm:"size:64;primary_key;column:execution_project;index:idx_task_executions_exec"`
+					Domain  string `gorm:"size:64;primary_key;column:execution_domain;index:idx_task_executions_exec"`
+					Name    string `gorm:"size:511;primary_key;column:execution_name;index:idx_task_executions_exec"`
+					NodeID  string `gorm:"size:30;primary_key;index:idx_task_executions_exec;index"`
+					// *IMPORTANT* This is a pointer to an int in order to allow setting an empty ("0") value according to gorm convention.
+					// Because RetryAttempt is part of the TaskExecution primary key is should *never* be null.
+					RetryAttempt *uint32 `gorm:"primary_key;AUTO_INCREMENT:FALSE"`
+				}
+				type TaskExecution struct {
+					ID        uint       `gorm:"index;autoIncrement;not null"`
+					CreatedAt time.Time  `gorm:"type:time"`
+					UpdatedAt time.Time  `gorm:"type:time"`
+					DeletedAt *time.Time `gorm:"index"`
+					TaskExecutionKey
+					Phase        string `gorm:"size:50"`
+					PhaseVersion uint32
+					InputURI     string `gorm:"size:2048"`
+					Closure      []byte
+					StartedAt    *time.Time
+					// Corresponds to the CreatedAt field in the TaskExecution closure
+					// This field is prefixed with TaskExecution because it signifies when
+					// the execution was createdAt, not to be confused with gorm.Model.CreatedAt
+					TaskExecutionCreatedAt *time.Time
+					// Corresponds to the UpdatedAt field in the TaskExecution closure
+					// This field is prefixed with TaskExecution because it signifies when
+					// the execution was UpdatedAt, not to be confused with gorm.Model.UpdatedAt
+					TaskExecutionUpdatedAt *time.Time
+					Duration               time.Duration
+					// The child node executions (if any) launched by this task execution.
+					// TODO: this refers to `NodeExecution` defined at the top of this file. Should this also be defined inline?
+					ChildNodeExecution []NodeExecution `gorm:"foreignkey:ParentTaskExecutionID;references:ID"`
+				}
+
+				return tx.AutoMigrate(&TaskExecution{})
+			}
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return nil
