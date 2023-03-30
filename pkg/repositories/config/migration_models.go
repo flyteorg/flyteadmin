@@ -72,9 +72,9 @@ type TaskExecutionKey struct {
 type TaskExecution struct {
 	models.BaseModel
 	TaskExecutionKey
-	Phase        string `gorm:"size:100"`
+	Phase        string
 	PhaseVersion uint32
-	InputURI     string `gorm:"size:100"`
+	InputURI     string
 	Closure      []byte
 	StartedAt    *time.Time
 	// Corresponds to the CreatedAt field in the TaskExecution closure
