@@ -9,9 +9,9 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flytepropeller/pkg/compiler/validators"
 	"google.golang.org/grpc/codes"
 )
 
@@ -123,7 +123,7 @@ func checkAndFetchExpectedInputForLaunchPlan(
 		value, ok := workflowExpectedInputMap[name]
 		if !ok {
 			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "unexpected default_input %s", name)
-		} else if !validators.AreTypesCastable(defaultInput.GetVar().GetType(), value.GetType()) {
+		} else if !coreutils.AreTypesCastable(defaultInput.GetVar().GetType(), value.GetType()) {
 			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
 				"invalid default_input wrong type %s, expected %v, got %v instead",
 				name, defaultInput.GetVar().GetType().String(), value.GetType().String())
@@ -135,8 +135,8 @@ func checkAndFetchExpectedInputForLaunchPlan(
 		if !ok {
 			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "unexpected fixed_input %s", name)
 		}
-		inputType := validators.LiteralTypeForLiteral(fixedInput)
-		if !validators.AreTypesCastable(inputType, value.GetType()) {
+		inputType := coreutils.LiteralTypeForLiteral(fixedInput)
+		if !coreutils.AreTypesCastable(inputType, value.GetType()) {
 			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
 				"invalid fixed_input wrong type %s, expected %v, got %v instead", name, value.GetType(), inputType)
 		}
