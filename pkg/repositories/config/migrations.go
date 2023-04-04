@@ -1219,7 +1219,7 @@ var FixupMigrations = []*gormigrate.Migration{
 				if err != nil {
 					return err
 				}
-				return tx.Exec("CREATE INDEX primary_alt ON task_executions(project, domain, name, version, execution_project, execution_domain, execution_name, node_id, retry_attempt);").Error
+				return tx.Exec("CREATE INDEX primary_alt ON task_executions(project, domain, name(200), version, execution_project, execution_domain, execution_name(128), node_id, retry_attempt);").Error
 			} else {
 				// For all other databases, we can use the primary key as defined in the model.
 				// ** Please, keep the model definitions in sync with the mysql ones defined above. **
