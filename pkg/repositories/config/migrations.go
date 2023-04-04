@@ -1215,11 +1215,7 @@ var FixupMigrations = []*gormigrate.Migration{
 					ChildNodeExecution []NodeExecution `gorm:"foreignkey:ParentTaskExecutionID;references:ID"`
 				}
 
-				err := tx.AutoMigrate(&TaskExecution{})
-				if err != nil {
-					return err
-				}
-				return tx.Exec("CREATE INDEX primary_alt ON task_executions(project, domain, name(200), version, execution_project, execution_domain, execution_name(128), node_id, retry_attempt);").Error
+				return tx.AutoMigrate(&TaskExecution{})
 			} else {
 				// For all other databases, we can use the primary key as defined in the model.
 				// ** Please, keep the model definitions in sync with the mysql ones defined above. **
@@ -1266,6 +1262,21 @@ var FixupMigrations = []*gormigrate.Migration{
 
 				return tx.AutoMigrate(&TaskExecution{})
 			}
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-task_executions_create_primary_alt_index",
+		Migrate: func(tx *gorm.DB) error {
+			// This migration only applies to mysql as it has a limit on the size of the index.
+			// For other databases, we can use the primary key as defined in the model.
+			// ** Please, keep the model definitions in sync with the mysql ones defined above. **
+			if tx.Dialector.Name() == "mysql" {
+				return tx.Exec("CREATE INDEX primary_alt ON task_executions(project, domain, name(200), version, execution_project, execution_domain, execution_name(128), node_id, retry_attempt);").Error
+			}
+			return nil
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return nil
@@ -1470,11 +1481,7 @@ var FixupMigrations = []*gormigrate.Migration{
 					Attributes []byte
 				}
 
-				err := tx.AutoMigrate(&Resource{})
-				if err != nil {
-					return err
-				}
-				return tx.Exec("CREATE INDEX primary_alt ON resources(project, domain, workflow(200), launch_plan(200), resource_type);").Error
+				return tx.AutoMigrate(&Resource{})
 			} else {
 				type ResourcePriority int32
 
@@ -1496,6 +1503,21 @@ var FixupMigrations = []*gormigrate.Migration{
 
 				return tx.AutoMigrate(&Resource{})
 			}
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-resources_create_primary_alt_index",
+		Migrate: func(tx *gorm.DB) error {
+			// This migration only applies to mysql as it has a limit on the size of the index.
+			// For other databases, we can use the primary key as defined in the model.
+			// ** Please, keep the model definitions in sync with the mysql ones defined above. **
+			if tx.Dialector.Name() != "mysql" {
+				return tx.Exec("CREATE INDEX primary_alt ON resources(project, domain, workflow(200), launch_plan(200), resource_type);").Error
+			}
+			return nil
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return nil
