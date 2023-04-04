@@ -848,6 +848,12 @@ var NoopMigrations = []*gormigrate.Migration{
 	{
 		ID: "pg-noop-2023-03-31-noop-signal",
 		Migrate: func(tx *gorm.DB) error {
+			type ExecutionKey struct {
+				Project string `gorm:"primary_key;column:execution_project"`
+				Domain  string `gorm:"primary_key;column:execution_domain"`
+				Name    string `gorm:"primary_key;column:execution_name"`
+			}
+
 			type SignalKey struct {
 				ExecutionKey
 				SignalID string `gorm:"primary_key;index" valid:"length(0|255)"`
@@ -1397,7 +1403,7 @@ var FixupMigrations = []*gormigrate.Migration{
 			}
 			type SignalKey struct {
 				ExecutionKey
-				SignalID string `gorm:"size:255;index;not null"`
+				SignalID string `gorm:"size:128;primary_key"`
 			}
 
 			type Signal struct {
