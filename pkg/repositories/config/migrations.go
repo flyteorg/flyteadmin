@@ -1007,23 +1007,45 @@ var FixupMigrations = []*gormigrate.Migration{
 	{
 		ID: "2023-03-31-fixup-workflow",
 		Migrate: func(tx *gorm.DB) error {
-			type Workflow struct {
-				ID                      uint       `gorm:"index;autoIncrement;not null"`
-				CreatedAt               time.Time  `gorm:"type:time"`
-				UpdatedAt               time.Time  `gorm:"type:time"`
-				DeletedAt               *time.Time `gorm:"index"`
-				Project                 string     `gorm:"size:64;primary_key;index:workflow_project_domain_name_idx;index:workflow_project_domain_idx"`
-				Domain                  string     `gorm:"size:64;index:workflow_project_domain_name_idx;index:workflow_project_domain_idx;not null"`
-				Name                    string     `gorm:"size:511;primary_key;index:workflow_project_domain_name_idx"`
-				Version                 string     `gorm:"size:128;primary_key"`
-				TypedInterface          []byte
-				RemoteClosureIdentifier string `gorm:"size:2048;not null"`
-				// Hash of the compiled workflow closure
-				Digest []byte
-				// ShortDescription for the workflow.
-				ShortDescription string `gorm:"size:2048"`
+			if tx.Dialector.Name() == "mysql" {
+				type Workflow struct {
+					ID                      uint       `gorm:"primary_key;index;autoIncrement;not null"`
+					CreatedAt               time.Time  `gorm:"type:time"`
+					UpdatedAt               time.Time  `gorm:"type:time"`
+					DeletedAt               *time.Time `gorm:"index"`
+					Project                 string     `gorm:"size:64;uniqueIndex:workflow_pdnv;index:workflow_project_domain_name_idx;index:workflow_project_domain_idx"`
+					Domain                  string     `gorm:"size:64;uniqueIndex:workflow_pdnv;index:workflow_project_domain_name_idx;index:workflow_project_domain_idx;not null"`
+					Name                    string     `gorm:"size:511;uniqueIndex:workflow_pdnv;index:workflow_project_domain_name_idx"`
+					Version                 string     `gorm:"size:128;uniqueIndex:workflow_pdnv"`
+					TypedInterface          []byte
+					RemoteClosureIdentifier string `gorm:"size:2048;not null"`
+					// Hash of the compiled workflow closure
+					Digest []byte
+					// ShortDescription for the workflow.
+					ShortDescription string `gorm:"size:2048"`
+				}
+				return tx.AutoMigrate(&Workflow{})
+
+			} else {
+				type Workflow struct {
+					ID                      uint       `gorm:"index;autoIncrement;not null"`
+					CreatedAt               time.Time  `gorm:"type:time"`
+					UpdatedAt               time.Time  `gorm:"type:time"`
+					DeletedAt               *time.Time `gorm:"index"`
+					Project                 string     `gorm:"size:64;primary_key;index:workflow_project_domain_name_idx;index:workflow_project_domain_idx"`
+					Domain                  string     `gorm:"size:64;primary_key:workflow_project_domain_name_idx;index:workflow_project_domain_idx;not null"`
+					Name                    string     `gorm:"size:511;primary_key;index:workflow_project_domain_name_idx"`
+					Version                 string     `gorm:"size:128;primary_key"`
+					TypedInterface          []byte
+					RemoteClosureIdentifier string `gorm:"size:2048;not null"`
+					// Hash of the compiled workflow closure
+					Digest []byte
+					// ShortDescription for the workflow.
+					ShortDescription string `gorm:"size:2048"`
+				}
+				return tx.AutoMigrate(&Workflow{})
+
 			}
-			return tx.AutoMigrate(&Workflow{})
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return nil
@@ -1153,23 +1175,23 @@ var FixupMigrations = []*gormigrate.Migration{
 			// on secondary indexes instead.
 			if tx.Dialector.Name() == "mysql" {
 				type TaskKey struct {
-					Project string `gorm:"size:64;index:idx_taskkey_project_domain_name_version"`
-					Domain  string `gorm:"size:64;index:idx_taskkey_project_domain_name_version"`
-					Name    string `gorm:"size:511;index:idx_taskkey_project_domain_name_version"`
-					Version string `gorm:"size:128;index:idx_taskkey_project_domain_name_version"`
+					Project string `gorm:"size:64"`
+					Domain  string `gorm:"size:64"`
+					Name    string `gorm:"size:511"`
+					Version string `gorm:"size:128"`
 				}
 				type TaskExecutionKey struct {
 					TaskKey
-					Project string `gorm:"size:64;index:idx_taskexecutionkey_project_domain_name_nodeid_retry;column:execution_project"`
-					Domain  string `gorm:"size:64;index:idx_taskexecutionkey_project_domain_name_nodeid_retry;column:execution_domain"`
-					Name    string `gorm:"size:511;index:idx_taskexecutionkey_project_domain_name_nodeid_retry;column:execution_name"`
-					NodeID  string `gorm:"size:30;index:idx_taskexecutionkey_project_domain_name_nodeid_retry;"`
+					Project string `gorm:"size:64;index:idx_taskexecutionkey_project_domain_name_nodeid;column:execution_project"`
+					Domain  string `gorm:"size:64;index:idx_taskexecutionkey_project_domain_name_nodeid;column:execution_domain"`
+					Name    string `gorm:"size:511;index:idx_taskexecutionkey_project_domain_name_nodeid;column:execution_name"`
+					NodeID  string `gorm:"size:30;index:idx_taskexecutionkey_project_domain_name_nodeid;"`
 					// *IMPORTANT* This is a pointer to an int in order to allow setting an empty ("0") value according to gorm convention.
 					// Because RetryAttempt is part of the TaskExecution primary key is should *never* be null.
-					RetryAttempt *uint32 `gorm:"index:idx_taskexecutionkey_project_domain_name_nodeid_retry;AUTO_INCREMENT:FALSE"`
+					RetryAttempt *uint32 `gorm:"AUTO_INCREMENT:FALSE"`
 				}
 				type TaskExecution struct {
-					ID        uint      `gorm:"index;autoIncrement;not null"`
+					ID        uint      `gorm:"index;autoIncrement;not null"` // maybe need to add primary key, if not remove from workflows
 					CreatedAt time.Time `gorm:"type:time"`
 					UpdatedAt time.Time `gorm:"type:time"`
 					DeletedAt *time.Time
@@ -1193,7 +1215,11 @@ var FixupMigrations = []*gormigrate.Migration{
 					ChildNodeExecution []NodeExecution `gorm:"foreignkey:ParentTaskExecutionID;references:ID"`
 				}
 
-				return tx.AutoMigrate(&TaskExecution{})
+				err := tx.AutoMigrate(&TaskExecution{})
+				if err != nil {
+					return err
+				}
+				return tx.Exec("CREATE INDEX primary_alt ON task_executions(project, domain, name, version, execution_project, execution_domain, execution_name, node_id, retry_attempt);").Error
 			} else {
 				// For all other databases, we can use the primary key as defined in the model.
 				// ** Please, keep the model definitions in sync with the mysql ones defined above. **
@@ -1425,25 +1451,51 @@ var FixupMigrations = []*gormigrate.Migration{
 	{
 		ID: "2023-03-31-fixup-resource",
 		Migrate: func(tx *gorm.DB) error {
-			type ResourcePriority int32
+			if tx.Dialector.Name() == "mysql" {
+				type ResourcePriority int32
 
-			// In this model, the combination of (Project, Domain, Workflow, LaunchPlan, ResourceType) is unique
-			type Resource struct {
-				ID           int64 `gorm:"AUTO_INCREMENT;column:id;primary_key;not null"`
-				CreatedAt    time.Time
-				UpdatedAt    time.Time
-				DeletedAt    *time.Time `sql:"index"`
-				Project      string     `gorm:"size:64;index:idx_project_domain_workflow_resource_type;index:idx_project_domain_launchplan_resource_type"`
-				Domain       string     `gorm:"size:64;index:idx_project_domain_workflow_resource_type;index:idx_project_domain_launchplan_resource_type"`
-				Workflow     string     `gorm:"size:511;index:idx_project_domain_workflow_resource_type"`
-				LaunchPlan   string     `gorm:"size:511;index:idx_project_domain_launchplan_resource_type"`
-				ResourceType string     `gorm:"size:50;index:idx_project_domain_workflow_resource_type;index:idx_project_domain_launchplan_resource_type"`
-				Priority     ResourcePriority
-				// Serialized flyteidl.admin.MatchingAttributes.
-				Attributes []byte
+				// In this model, the combination of (Project, Domain, Workflow, LaunchPlan, ResourceType) is unique
+				type Resource struct {
+					ID           int64 `gorm:"AUTO_INCREMENT;column:id;primary_key;not null"`
+					CreatedAt    time.Time
+					UpdatedAt    time.Time
+					DeletedAt    *time.Time `sql:"index"`
+					Project      string     `gorm:"size:64"`
+					Domain       string     `gorm:"size:64"`
+					Workflow     string     `gorm:"size:511"`
+					LaunchPlan   string     `gorm:"size:511"`
+					ResourceType string     `gorm:"size:50"`
+					Priority     ResourcePriority
+					// Serialized flyteidl.admin.MatchingAttributes.
+					Attributes []byte
+				}
+
+				err := tx.AutoMigrate(&Resource{})
+				if err != nil {
+					return err
+				}
+				return tx.Exec("CREATE INDEX primary_alt ON resources(project, domain, workflow(200), launch_plan(200), resource_type);").Error
+			} else {
+				type ResourcePriority int32
+
+				// In this model, the combination of (Project, Domain, Workflow, LaunchPlan, ResourceType) is unique
+				type Resource struct {
+					ID           int64 `gorm:"AUTO_INCREMENT;column:id;primary_key;not null"`
+					CreatedAt    time.Time
+					UpdatedAt    time.Time
+					DeletedAt    *time.Time `sql:"index"`
+					Project      string     `gorm:"size:64;uniqueIndex:idx_project_domain_workflow_resource_type"`
+					Domain       string     `gorm:"size:64;uniqueIndex:idx_project_domain_workflow_resource_type"`
+					Workflow     string     `gorm:"size:511;uniqueIndex:idx_project_domain_workflow_resource_type"`
+					LaunchPlan   string     `gorm:"size:511;uniqueIndex:idx_project_domain_workflow_resource_type"`
+					ResourceType string     `gorm:"size:50;uniqueIndex:idx_project_domain_workflow_resource_type"`
+					Priority     ResourcePriority
+					// Serialized flyteidl.admin.MatchingAttributes.
+					Attributes []byte
+				}
+
+				return tx.AutoMigrate(&Resource{})
 			}
-
-			return tx.AutoMigrate(&Resource{})
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return nil
