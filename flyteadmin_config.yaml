@@ -169,7 +169,6 @@ task_resources:
     ephemeralStorage: 100M
   limits:
     cpu: 500m
-    gpu: 1
     memory: 300Mi
     ephemeralStorage: 10G
 task_type_whitelist:

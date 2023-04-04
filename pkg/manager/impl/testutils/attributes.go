@@ -26,3 +26,22 @@ var WorkflowExecutionConfigSample = &admin.MatchingAttributes{
 		},
 	},
 }
+
+var TaskResourcesSample = &admin.MatchingAttributes{
+	Target: &admin.MatchingAttributes_TaskResourceAttributes{
+		TaskResourceAttributes: &admin.TaskResourceAttributes{
+			Defaults: &admin.TaskResourceSpec{
+				Cpu:              "1",
+				Gpu:              "2",
+				Memory:           "100Mi",
+				EphemeralStorage: "100Gi",
+			},
+			Limits: &admin.TaskResourceSpec{
+				Cpu:              "2",
+				Gpu:              "3",
+				Memory:           "200Mi",
+				EphemeralStorage: "300Gi",
+			},
+		},
+	},
+}

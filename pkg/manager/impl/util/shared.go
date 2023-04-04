@@ -329,6 +329,7 @@ func MergeIntoExecConfig(workflowExecConfig admin.WorkflowExecutionConfig, spec 
 	return workflowExecConfig
 }
 
+// MergeTaskResourceSpec merges the higher priority task resource spec with the lower priority task resource spec.
 func MergeTaskResourceSpec(higher admin.TaskResourceSpec, lower admin.TaskResourceSpec) *admin.TaskResourceSpec {
 	if (higher.GetCpu() == "" || higher.GetCpu() == "0") && len(lower.GetCpu()) > 0 {
 		higher.Cpu = lower.GetCpu()
@@ -339,12 +340,13 @@ func MergeTaskResourceSpec(higher admin.TaskResourceSpec, lower admin.TaskResour
 	if (higher.GetMemory() == "" || higher.GetMemory() == "0") && len(lower.GetMemory()) > 0 {
 		higher.Memory = lower.GetMemory()
 	}
-	if (higher.GetEphemeralStorage() == "" || higher.GetEphemeralStorage() == "0") && len(lower.GetStorage()) > 0 {
-		higher.Storage = lower.GetStorage()
+	if (higher.GetEphemeralStorage() == "" || higher.GetEphemeralStorage() == "0") && len(lower.GetEphemeralStorage()) > 0 {
+		higher.EphemeralStorage = lower.GetEphemeralStorage()
 	}
 	return &higher
 }
 
+// Add an explicit test for this.
 func MergeIntoTaskResources(taskResources admin.TaskResourceAttributes, defaults admin.TaskResourceAttributes) *admin.TaskResourceAttributes {
 	return &admin.TaskResourceAttributes{
 		Defaults: MergeTaskResourceSpec(*taskResources.GetDefaults(), *defaults.GetDefaults()),

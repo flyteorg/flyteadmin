@@ -5,6 +5,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
+// TODO: We should to make these strings and parse downstream to be able to tell the difference between 0 and not set.
+
 type TaskResourceSet struct {
 	CPU              resource.Quantity `json:"cpu"`
 	GPU              resource.Quantity `json:"gpu"`

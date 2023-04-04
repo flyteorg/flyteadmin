@@ -2,7 +2,6 @@ package resources
 
 import (
 	"context"
-
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/util"
 
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
@@ -251,7 +250,8 @@ func (m *ResourceManager) GetProjectAttributes(ctx context.Context, request admi
 		if getResponse == nil || getResponse.Attributes == nil || getResponse.Attributes.GetMatchingAttributes() == nil || getResponse.Attributes.GetMatchingAttributes().GetTaskResourceAttributes() == nil {
 			responseAttributes = &configLevelDefaults
 		} else {
-			logger.Debugf(ctx, "Merging taskresources %s with defaults %s", responseAttributes, configLevelDefaults)
+			logger.Debugf(ctx, "Merging taskresources %v with system config %v", responseAttributes, configLevelDefaults)
+			responseAttributes = getResponse.Attributes.GetMatchingAttributes().GetTaskResourceAttributes()
 			responseAttributes = util.MergeIntoTaskResources(*responseAttributes, configLevelDefaults)
 		}
 		return &admin.ProjectAttributesGetResponse{
