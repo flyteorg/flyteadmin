@@ -330,23 +330,25 @@ func MergeIntoExecConfig(workflowExecConfig admin.WorkflowExecutionConfig, spec 
 }
 
 // MergeTaskResourceSpec merges the higher priority task resource spec with the lower priority task resource spec.
+// This does not look at the value quantity of anything, so higher is just for priority, not value.
 func MergeTaskResourceSpec(higher admin.TaskResourceSpec, lower admin.TaskResourceSpec) *admin.TaskResourceSpec {
-	if (higher.GetCpu() == "" || higher.GetCpu() == "0") && len(lower.GetCpu()) > 0 {
+	if (higher.GetCpu() == "" || higher.GetCpu() == "0") && (len(lower.GetCpu()) > 0 && lower.GetCpu() != "0") {
 		higher.Cpu = lower.GetCpu()
 	}
-	if (higher.GetGpu() == "" || higher.GetGpu() == "0") && len(lower.GetGpu()) > 0 {
+	if (higher.GetGpu() == "" || higher.GetGpu() == "0") && (len(lower.GetGpu()) > 0 && lower.GetGpu() != "0") {
 		higher.Gpu = lower.GetGpu()
 	}
-	if (higher.GetMemory() == "" || higher.GetMemory() == "0") && len(lower.GetMemory()) > 0 {
+	if (higher.GetMemory() == "" || higher.GetMemory() == "0") && (len(lower.GetMemory()) > 0 && lower.GetMemory() != "0") {
 		higher.Memory = lower.GetMemory()
 	}
-	if (higher.GetEphemeralStorage() == "" || higher.GetEphemeralStorage() == "0") && len(lower.GetEphemeralStorage()) > 0 {
+	if (higher.GetEphemeralStorage() == "" || higher.GetEphemeralStorage() == "0") && (len(lower.GetEphemeralStorage()) > 0 && lower.GetEphemeralStorage() != "0") {
 		higher.EphemeralStorage = lower.GetEphemeralStorage()
 	}
 	return &higher
 }
 
-// Add an explicit test for this.
+// MergeIntoTaskResources does not today check that the defaults are below the limits when setting, therefore
+// todo: this doesn't do it either for now, but it should.
 func MergeIntoTaskResources(taskResources admin.TaskResourceAttributes, defaults admin.TaskResourceAttributes) *admin.TaskResourceAttributes {
 	return &admin.TaskResourceAttributes{
 		Defaults: MergeTaskResourceSpec(*taskResources.GetDefaults(), *defaults.GetDefaults()),
