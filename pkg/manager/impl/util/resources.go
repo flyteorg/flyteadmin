@@ -104,12 +104,13 @@ func GetTaskResources(ctx context.Context, id *core.Identifier, resourceManager 
 			id, err)
 	}
 
-	logger.Debugf(ctx, "Assigning task requested resources for [%+v]", id)
 	var taskResourceAttributes = workflowengineInterfaces.TaskResources{}
 	if resource != nil && resource.Attributes != nil && resource.Attributes.GetTaskResourceAttributes() != nil {
+		logger.Debugf(ctx, "Assigning task requested resources for [%+v] with resources [%+v]", id, resource.Attributes.GetTaskResourceAttributes())
 		taskResourceAttributes.Defaults = fromAdminProtoTaskResourceSpec(ctx, resource.Attributes.GetTaskResourceAttributes().Defaults)
 		taskResourceAttributes.Limits = fromAdminProtoTaskResourceSpec(ctx, resource.Attributes.GetTaskResourceAttributes().Limits)
 	} else {
+		logger.Debugf(ctx, "Assigning default task requested resources for [%+v]", id)
 		taskResourceAttributes = workflowengineInterfaces.TaskResources{
 			Defaults: taskResourceConfig.GetDefaults(),
 			Limits:   taskResourceConfig.GetLimits(),

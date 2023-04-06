@@ -205,6 +205,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 	}
 
 	if task.Template.GetContainer().Resources == nil {
+		logger.Debug(ctx, "Container resources not found, setting default")
 		// In case of no resources on the container, create empty requests and limits
 		// so the container will still have resources configure properly
 		task.Template.GetContainer().Resources = &core.Resources{
@@ -212,6 +213,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 			Limits:   []*core.Resources_ResourceEntry{},
 		}
 	}
+	logger.Debugf(ctx, "Setting default resources using task resources [%+v], platform resources [%v] [%+v]", task.Template.GetContainer().Resources, platformTaskResources.Defaults, platformTaskResources.Limits)
 
 	var finalizedResourceRequests = make([]*core.Resources_ResourceEntry, 0)
 	var finalizedResourceLimits = make([]*core.Resources_ResourceEntry, 0)
