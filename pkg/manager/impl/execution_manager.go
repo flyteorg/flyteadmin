@@ -184,12 +184,8 @@ func (m *ExecutionManager) addPluginOverrides(ctx context.Context, executionID *
 	return nil, nil
 }
 
-// TODO: Delete this code usage after the flyte v0.17.0 release
 // Assumes input contains a compiled task with a valid container resource execConfig.
-//
-// Note: The system will assign a system-default value for request but for limit it will deduce it from the request
-// itself => Limit := Min([Some-Multiplier X Request], System-Max). For now we are using a multiplier of 1. In
-// general we recommend the users to set limits close to requests for more predictability in the system.
+// Todo: rewrite
 func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *core.CompiledTask,
 	platformTaskResources workflowengineInterfaces.TaskResources) {
 

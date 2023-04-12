@@ -57,6 +57,40 @@ func (m *ResourceManager) GetResource(ctx context.Context, request interfaces.Re
 	}, nil
 }
 
+func (m *ResourceManager) GetResourcesList(ctx context.Context, request interfaces.ResourceRequest) (*interfaces.ResourceResponseList, error) {
+	resources, err := m.db.ResourceRepo().GetRows(ctx, repo_interface.ResourceID{
+		ResourceType: request.ResourceType.String(),
+		Project:      request.Project,
+		Domain:       request.Domain,
+		Workflow:     request.Workflow,
+		LaunchPlan:   request.LaunchPlan,
+	})
+	if err != nil {
+		return nil, err
+	}
+	logger.Debugf(ctx, "Retrieved %d rows listing resource type %s", len(resources), request.ResourceType.String()
+
+	var attributes []*admin.MatchingAttributes
+	for _, resource := range resources {
+		var attr admin.MatchingAttributes
+		err = proto.Unmarshal(resource.Attributes, &attr)
+		if err != nil {
+			return nil, errors.NewFlyteAdminErrorf(
+				codes.Internal, "Failed to decode resource attribute with err: %v", err)
+		}
+		attributes = append(attributes, &attr)
+	}
+
+	return &interfaces.ResourceResponseList{
+		ResourceType:  request.ResourceType.String(),
+		Project:       request.Project,
+		Domain:        request.Domain,
+		Workflow:      request.Workflow,
+		LaunchPlan:    request.LaunchPlan,
+		AttributeList: attributes,
+	}, nil
+}
+
 func (m *ResourceManager) createOrMergeUpdateWorkflowAttributes(
 	ctx context.Context, request admin.WorkflowAttributesUpdateRequest, model models.Resource,
 	resourceType admin.MatchableResource) (*admin.WorkflowAttributesUpdateResponse, error) {
@@ -119,6 +153,25 @@ func (m *ResourceManager) UpdateWorkflowAttributes(
 func (m *ResourceManager) GetWorkflowAttributes(
 	ctx context.Context, request admin.WorkflowAttributesGetRequest) (
 	*admin.WorkflowAttributesGetResponse, error) {
+
+	// if the request is a task resource request, then call that logic designed to merge task resources from
+	// different levels along with base config
+	if request.ResourceType == admin.MatchableResource_TASK_RESOURCE {
+		r := repo_interface.ResourceID{Project: request.Project, Domain: request.Domain, Workflow: request.Workflow, ResourceType: request.ResourceType.String()}
+		matchingAttributes, err := m.handleGetTaskResourceRequest(ctx, r)
+		if err != nil {
+			return nil, err
+		}
+		return &admin.WorkflowAttributesGetResponse{
+			Attributes: &admin.WorkflowAttributes{
+				Project:            request.Project,
+				Domain:             request.Domain,
+				Workflow:           request.Workflow,
+				MatchingAttributes: matchingAttributes,
+			},
+		}, nil
+	}
+
 	if err := validation.ValidateWorkflowAttributesGetRequest(ctx, m.db, m.config.ApplicationConfiguration(), request); err != nil {
 		return nil, err
 	}
@@ -202,6 +255,49 @@ func (m *ResourceManager) GetProjectAttributesBase(ctx context.Context, request 
 	}, nil
 }
 
+// handleGetTaskResourceRequest needs to merge results from multiple layers in the db, along with configuration value
+func (m *ResourceManager) handleGetTaskResourceRequest(ctx context.Context, request repo_interface.ResourceID) (*admin.MatchingAttributes, error) {
+	if err := validation.ValidateProjectExists(ctx, m.db, request.Project); err != nil {
+		return nil, err
+	}
+
+	var attrs []admin.TaskResourceAttributes
+	attrs = []admin.TaskResourceAttributes{}
+
+	rrList, err := m.GetResourcesList(ctx, interfaces.ResourceRequest{
+		Project:      request.Project,
+		Domain:       request.Domain,
+		Workflow:     request.Workflow,
+		LaunchPlan:   "",
+		ResourceType: admin.MatchableResource_TASK_RESOURCE,
+	})
+
+	if err != nil {
+		ec, ok := err.(errors.FlyteAdminError)
+		if ok && ec.Code() == codes.NotFound {
+			logger.Debug(ctx, "handleGetTaskResourceRequest did not find any task resources, falling back")
+		} else {
+			return nil, err
+		}
+	} else {
+		logger.Debugf(ctx, "handleGetTaskResourceRequest returned [%d] task resources, combining with config", len(rrList.AttributeList))
+		for _, rr := range rrList.AttributeList {
+			if rr.GetTaskResourceAttributes() != nil {
+				attrs = append(attrs, *rr.GetTaskResourceAttributes())
+			}
+		}
+	}
+
+	attrs = append(attrs, m.config.TaskResourceConfiguration().GetAsAttribute())
+	responseAttributes := util.MergeDownTaskResources(attrs...)
+
+	return &admin.MatchingAttributes{
+		Target: &admin.MatchingAttributes_TaskResourceAttributes{
+			TaskResourceAttributes: responseAttributes,
+		},
+	}, nil
+}
+
 // GetProjectAttributes combines the call to the database to get the Project level settings with
 // Admin server level configuration.
 // Note this merge is only done for WorkflowExecutionConfig
@@ -210,6 +306,22 @@ func (m *ResourceManager) GetProjectAttributesBase(ctx context.Context, request 
 // This code should be removed pending implementation of a complete settings implementation.
 func (m *ResourceManager) GetProjectAttributes(ctx context.Context, request admin.ProjectAttributesGetRequest) (
 	*admin.ProjectAttributesGetResponse, error) {
+
+	// if the request is a task resource request, then call that logic designed to merge task resources from
+	// different levels along with base config
+	if request.ResourceType == admin.MatchableResource_TASK_RESOURCE {
+		r := repo_interface.ResourceID{Project: request.Project, Domain: "", ResourceType: request.ResourceType.String()}
+		matchingAttributes, err := m.handleGetTaskResourceRequest(ctx, r)
+		if err != nil {
+			return nil, err
+		}
+		return &admin.ProjectAttributesGetResponse{
+			Attributes: &admin.ProjectAttributes{
+				Project:            request.Project,
+				MatchingAttributes: matchingAttributes,
+			},
+		}, nil
+	}
 
 	getResponse, err := m.GetProjectAttributesBase(ctx, request)
 
@@ -246,6 +358,7 @@ func (m *ResourceManager) GetProjectAttributes(ctx context.Context, request admi
 			},
 		}, nil
 	} else if request.ResourceType == admin.MatchableResource_TASK_RESOURCE {
+		// todo: delete this, handled above
 		var responseAttributes *admin.TaskResourceAttributes
 		configLevelDefaults := m.config.TaskResourceConfiguration().GetAsAttribute()
 		if getResponse == nil || getResponse.Attributes == nil || getResponse.Attributes.GetMatchingAttributes() == nil || getResponse.Attributes.GetMatchingAttributes().GetTaskResourceAttributes() == nil {
@@ -253,7 +366,7 @@ func (m *ResourceManager) GetProjectAttributes(ctx context.Context, request admi
 		} else {
 			logger.Debugf(ctx, "Merging taskresources %v with system config %v", responseAttributes, configLevelDefaults)
 			responseAttributes = getResponse.Attributes.GetMatchingAttributes().GetTaskResourceAttributes()
-			responseAttributes = util.MergeIntoTaskResources(*responseAttributes, configLevelDefaults)
+			responseAttributes = util.MergeDownTaskResources(*responseAttributes, configLevelDefaults)
 		}
 		return &admin.ProjectAttributesGetResponse{
 			Attributes: &admin.ProjectAttributes{
@@ -307,6 +420,7 @@ func (m *ResourceManager) createOrMergeUpdateProjectDomainAttributes(
 		}
 		return nil, err
 	}
+	// TODO: does this belong here? feels like the error should be better handled and not returned
 	updatedModel, err := transformers.MergeUpdatePluginAttributes(
 		ctx, existing, resourceType, &resourceID, request.Attributes.MatchingAttributes)
 	if err != nil {
@@ -382,6 +496,24 @@ func (m *ResourceManager) UpdateProjectDomainAttributes(
 func (m *ResourceManager) GetProjectDomainAttributes(
 	ctx context.Context, request admin.ProjectDomainAttributesGetRequest) (
 	*admin.ProjectDomainAttributesGetResponse, error) {
+
+	// if the request is a task resource request, then call that logic designed to merge task resources from
+	// different levels along with base config
+	if request.ResourceType == admin.MatchableResource_TASK_RESOURCE {
+		r := repo_interface.ResourceID{Project: request.Project, Domain: request.Domain, ResourceType: request.ResourceType.String()}
+		matchingAttributes, err := m.handleGetTaskResourceRequest(ctx, r)
+		if err != nil {
+			return nil, err
+		}
+		return &admin.ProjectDomainAttributesGetResponse{
+			Attributes: &admin.ProjectDomainAttributes{
+				Project:            request.Project,
+				Domain:             request.Domain,
+				MatchingAttributes: matchingAttributes,
+			},
+		}, nil
+	}
+
 	if err := validation.ValidateProjectDomainAttributesGetRequest(ctx, m.db, m.config.ApplicationConfiguration(), request); err != nil {
 		return nil, err
 	}
