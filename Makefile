@@ -21,8 +21,8 @@ docker_build_scheduler:
 	docker build -t $$FLYTE_SCHEDULER_REPOSITORY:$(GIT_HASH) -f Dockerfile.scheduler .
 
 .PHONY: integration
-integration: export CGO_ENABLED = 0
-integration: export GOFLAGS = -count=1
+integration: export CGO_ENABLED ?= 0
+integration: export GOFLAGS ?= -count=1
 integration:
 	go test -v -tags=integration ./tests/...
 
@@ -53,14 +53,14 @@ compile_scheduler_debug:
 
 
 .PHONY: linux_compile
-linux_compile: export CGO_ENABLED = 0
-linux_compile: export GOOS = linux
+linux_compile: export CGO_ENABLED ?= 0
+linux_compile: export GOOS ?= linux
 linux_compile:
 	go build -o /artifacts/flyteadmin -ldflags=$(LD_FLAGS) ./cmd/
 
 .PHONY: linux_compile_scheduler
-linux_compile_scheduler: export CGO_ENABLED = 0
-linux_compile_scheduler: export GOOS = linux
+linux_compile_scheduler: export CGO_ENABLED ?= 0
+linux_compile_scheduler: export GOOS ?= linux
 linux_compile_scheduler:
 	go build -o /artifacts/flytescheduler -ldflags=$(LD_FLAGS) ./cmd/scheduler/
 
