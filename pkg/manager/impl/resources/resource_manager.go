@@ -68,7 +68,7 @@ func (m *ResourceManager) GetResourcesList(ctx context.Context, request interfac
 	if err != nil {
 		return nil, err
 	}
-	logger.Debugf(ctx, "Retrieved %d rows listing resource type %s", len(resources), request.ResourceType.String()
+	logger.Debugf(ctx, "Retrieved %d rows listing resource type %s", len(resources), request.ResourceType.String())
 
 	var attributes []*admin.MatchingAttributes
 	for _, resource := range resources {
@@ -158,7 +158,7 @@ func (m *ResourceManager) GetWorkflowAttributes(
 	// different levels along with base config
 	if request.ResourceType == admin.MatchableResource_TASK_RESOURCE {
 		r := repo_interface.ResourceID{Project: request.Project, Domain: request.Domain, Workflow: request.Workflow, ResourceType: request.ResourceType.String()}
-		matchingAttributes, err := m.handleGetTaskResourceRequest(ctx, r)
+		matchingAttributes, err := m.HandleGetTaskResourceRequest(ctx, r)
 		if err != nil {
 			return nil, err
 		}
@@ -255,8 +255,8 @@ func (m *ResourceManager) GetProjectAttributesBase(ctx context.Context, request 
 	}, nil
 }
 
-// handleGetTaskResourceRequest needs to merge results from multiple layers in the db, along with configuration value
-func (m *ResourceManager) handleGetTaskResourceRequest(ctx context.Context, request repo_interface.ResourceID) (*admin.MatchingAttributes, error) {
+// HandleGetTaskResourceRequest needs to merge results from multiple layers in the db, along with configuration value
+func (m *ResourceManager) HandleGetTaskResourceRequest(ctx context.Context, request repo_interface.ResourceID) (*admin.MatchingAttributes, error) {
 	if err := validation.ValidateProjectExists(ctx, m.db, request.Project); err != nil {
 		return nil, err
 	}
@@ -275,12 +275,12 @@ func (m *ResourceManager) handleGetTaskResourceRequest(ctx context.Context, requ
 	if err != nil {
 		ec, ok := err.(errors.FlyteAdminError)
 		if ok && ec.Code() == codes.NotFound {
-			logger.Debug(ctx, "handleGetTaskResourceRequest did not find any task resources, falling back")
+			logger.Debug(ctx, "HandleGetTaskResourceRequest did not find any task resources, falling back")
 		} else {
 			return nil, err
 		}
 	} else {
-		logger.Debugf(ctx, "handleGetTaskResourceRequest returned [%d] task resources, combining with config", len(rrList.AttributeList))
+		logger.Debugf(ctx, "HandleGetTaskResourceRequest returned [%d] task resources, combining with config", len(rrList.AttributeList))
 		for _, rr := range rrList.AttributeList {
 			if rr.GetTaskResourceAttributes() != nil {
 				attrs = append(attrs, *rr.GetTaskResourceAttributes())
@@ -311,7 +311,7 @@ func (m *ResourceManager) GetProjectAttributes(ctx context.Context, request admi
 	// different levels along with base config
 	if request.ResourceType == admin.MatchableResource_TASK_RESOURCE {
 		r := repo_interface.ResourceID{Project: request.Project, Domain: "", ResourceType: request.ResourceType.String()}
-		matchingAttributes, err := m.handleGetTaskResourceRequest(ctx, r)
+		matchingAttributes, err := m.HandleGetTaskResourceRequest(ctx, r)
 		if err != nil {
 			return nil, err
 		}
@@ -501,7 +501,7 @@ func (m *ResourceManager) GetProjectDomainAttributes(
 	// different levels along with base config
 	if request.ResourceType == admin.MatchableResource_TASK_RESOURCE {
 		r := repo_interface.ResourceID{Project: request.Project, Domain: request.Domain, ResourceType: request.ResourceType.String()}
-		matchingAttributes, err := m.handleGetTaskResourceRequest(ctx, r)
+		matchingAttributes, err := m.HandleGetTaskResourceRequest(ctx, r)
 		if err != nil {
 			return nil, err
 		}
