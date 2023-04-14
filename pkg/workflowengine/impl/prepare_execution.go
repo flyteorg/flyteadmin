@@ -67,37 +67,37 @@ func addExecutionOverrides(taskPluginOverrides []*admin.PluginOverride,
 	}
 	if taskResources != nil {
 		var requests = v1alpha1.TaskResourceSpec{}
-		if !taskResources.Defaults.CPU.IsZero() {
-			requests.CPU = taskResources.Defaults.CPU
+		if taskResources.Defaults.CPU != nil && !taskResources.Defaults.CPU.IsZero() {
+			requests.CPU = *taskResources.Defaults.CPU
 		}
-		if !taskResources.Defaults.Memory.IsZero() {
-			requests.Memory = taskResources.Defaults.Memory
+		if taskResources.Defaults.Memory != nil && !taskResources.Defaults.Memory.IsZero() {
+			requests.Memory = *taskResources.Defaults.Memory
 		}
-		if !taskResources.Defaults.EphemeralStorage.IsZero() {
-			requests.EphemeralStorage = taskResources.Defaults.EphemeralStorage
+		if taskResources.Defaults.EphemeralStorage != nil && !taskResources.Defaults.EphemeralStorage.IsZero() {
+			requests.EphemeralStorage = *taskResources.Defaults.EphemeralStorage
 		}
-		if !taskResources.Defaults.Storage.IsZero() {
-			requests.Storage = taskResources.Defaults.Storage
+		if taskResources.Defaults.Storage != nil && !taskResources.Defaults.Storage.IsZero() {
+			requests.Storage = *taskResources.Defaults.Storage
 		}
-		if !taskResources.Defaults.GPU.IsZero() {
-			requests.GPU = taskResources.Defaults.GPU
+		if taskResources.Defaults.GPU != nil && !taskResources.Defaults.GPU.IsZero() {
+			requests.GPU = *taskResources.Defaults.GPU
 		}
 
 		var limits = v1alpha1.TaskResourceSpec{}
-		if !taskResources.Limits.CPU.IsZero() {
-			limits.CPU = taskResources.Limits.CPU
+		if taskResources.Limits.CPU != nil && !taskResources.Limits.CPU.IsZero() {
+			limits.CPU = *taskResources.Limits.CPU
 		}
-		if !taskResources.Limits.Memory.IsZero() {
-			limits.Memory = taskResources.Limits.Memory
+		if taskResources.Limits.Memory != nil && !taskResources.Limits.Memory.IsZero() {
+			limits.Memory = *taskResources.Limits.Memory
 		}
-		if !taskResources.Limits.EphemeralStorage.IsZero() {
-			limits.EphemeralStorage = taskResources.Limits.EphemeralStorage
+		if taskResources.Limits.EphemeralStorage != nil && !taskResources.Limits.EphemeralStorage.IsZero() {
+			limits.EphemeralStorage = *taskResources.Limits.EphemeralStorage
 		}
-		if !taskResources.Limits.Storage.IsZero() {
-			limits.Storage = taskResources.Limits.Storage
+		if taskResources.Limits.Storage != nil && !taskResources.Limits.Storage.IsZero() {
+			limits.Storage = *taskResources.Limits.Storage
 		}
-		if !taskResources.Limits.GPU.IsZero() {
-			limits.GPU = taskResources.Limits.GPU
+		if taskResources.Limits.GPU != nil && !taskResources.Limits.GPU.IsZero() {
+			limits.GPU = *taskResources.Limits.GPU
 		}
 		executionConfig.TaskResources = v1alpha1.TaskResources{
 			Requests: requests,

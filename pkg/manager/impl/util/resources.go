@@ -317,7 +317,7 @@ func ConformLimits(attr admin.TaskResourceAttributes) admin.TaskResourceAttribut
 		maxes = *attr.GetDefaultLimits()
 	}
 	if attr.GetDefaults() != nil {
-		x := ConstrainTaskResourceSpec(*attr.GetDefaultLimits(), maxes)
+		x := ConstrainTaskResourceSpec(*attr.GetDefaults(), maxes)
 		attr.Defaults = &x
 	}
 	return attr
