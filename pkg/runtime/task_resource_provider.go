@@ -16,7 +16,7 @@ var taskResourceConfig = config.MustRegisterSection(taskResourceKey, &TaskResour
 
 type TaskResourceSpec struct {
 	Defaults      interfaces.TaskResourceSet `json:"defaults"`
-	DefaultLimits interfaces.TaskResourceSet `json:"defaultLimits"`
+	DefaultLimits interfaces.TaskResourceSet `json:"default_limits"`
 	Limits        interfaces.TaskResourceSet `json:"limits"`
 }
 
