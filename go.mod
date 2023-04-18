@@ -16,7 +16,7 @@ require (
 	github.com/flyteorg/flyteidl v1.3.13
 	github.com/flyteorg/flyteplugins v1.0.40
 	github.com/flyteorg/flytepropeller v1.1.70
-	github.com/flyteorg/flytestdlib v1.0.15
+	github.com/flyteorg/flytestdlib v1.0.17-0.20230320195919-90331d171e2a
 	github.com/flyteorg/stow v0.3.6
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-gormigrate/gormigrate/v2 v2.0.0
@@ -210,4 +210,4 @@ require (
 
 replace github.com/robfig/cron/v3 => github.com/unionai/cron/v3 v3.0.2-0.20210825070134-bfc34418fe84
 
-replace github.com/flyteorg/flytestdlib => ../flytestdlib
+//replace github.com/flyteorg/flytestdlib => github.com/flyteorg/flytestdlib@mysql-support
