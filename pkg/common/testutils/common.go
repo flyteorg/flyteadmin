@@ -1,6 +1,9 @@
 package testutils
 
-import "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+import (
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"k8s.io/apimachinery/pkg/api/resource"
+)
 
 // Convenience method to wrap verbose boilerplate for initializing a PluginOverrides MatchingAttributes.
 func GetPluginOverridesAttributes(vals map[string][]string) *admin.MatchingAttributes {
@@ -18,4 +21,8 @@ func GetPluginOverridesAttributes(vals map[string][]string) *admin.MatchingAttri
 			},
 		},
 	}
+}
+
+func GetPtr(quantity resource.Quantity) *resource.Quantity {
+	return &quantity
 }

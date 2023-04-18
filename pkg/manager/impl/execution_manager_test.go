@@ -87,12 +87,12 @@ var testCluster = "C1"
 var outputURI = "output uri"
 
 var resourceDefaults = runtimeInterfaces.TaskResourceSet{
-	CPU:    resource.MustParse("200m"),
-	Memory: resource.MustParse("200Gi"),
+	CPU:    testutils.GetPtr(resource.MustParse("200m")),
+	Memory: testutils.GetPtr(resource.MustParse("200Gi")),
 }
 var resourceLimits = runtimeInterfaces.TaskResourceSet{
-	CPU:    resource.MustParse("300m"),
-	Memory: resource.MustParse("500Gi"),
+	CPU:    testutils.GetPtr(resource.MustParse("300m")),
+	Memory: testutils.GetPtr(resource.MustParse("500Gi")),
 }
 
 func getLegacySpec() *admin.ExecutionSpec {
@@ -3754,16 +3754,16 @@ func TestSetDefaults(t *testing.T) {
 	execManager := NewExecutionManager(repositoryMocks.NewMockRepository(), r, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
 	execManager.(*ExecutionManager).setCompiledTaskDefaults(context.Background(), task, workflowengineInterfaces.TaskResources{
 		Defaults: runtimeInterfaces.TaskResourceSet{
-			CPU:              resource.MustParse("200m"),
-			GPU:              resource.MustParse("4"),
-			Memory:           resource.MustParse("200Gi"),
-			EphemeralStorage: resource.MustParse("500Mi"),
+			CPU:              testutils.GetPtr(resource.MustParse("200m")),
+			GPU:              testutils.GetPtr(resource.MustParse("4")),
+			Memory:           testutils.GetPtr(resource.MustParse("200Gi")),
+			EphemeralStorage: testutils.GetPtr(resource.MustParse("500Mi")),
 		},
 		Limits: runtimeInterfaces.TaskResourceSet{
-			CPU:              resource.MustParse("300m"),
-			GPU:              resource.MustParse("8"),
-			Memory:           resource.MustParse("500Gi"),
-			EphemeralStorage: resource.MustParse("501Mi"),
+			CPU:              testutils.GetPtr(resource.MustParse("300m")),
+			GPU:              testutils.GetPtr(resource.MustParse("8")),
+			Memory:           testutils.GetPtr(resource.MustParse("500Gi")),
+			EphemeralStorage: testutils.GetPtr(resource.MustParse("501Mi")),
 		},
 	})
 	assert.True(t, proto.Equal(
@@ -3839,15 +3839,15 @@ func TestSetDefaults_MissingRequests_ExistingRequestsPreserved(t *testing.T) {
 	execManager := NewExecutionManager(repositoryMocks.NewMockRepository(), r, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
 	execManager.(*ExecutionManager).setCompiledTaskDefaults(context.Background(), task, workflowengineInterfaces.TaskResources{
 		Defaults: runtimeInterfaces.TaskResourceSet{
-			CPU:    resource.MustParse("200m"),
-			GPU:    resource.MustParse("4"),
-			Memory: resource.MustParse("200Gi"),
+			CPU:    testutils.GetPtr(resource.MustParse("200m")),
+			GPU:    testutils.GetPtr(resource.MustParse("4")),
+			Memory: testutils.GetPtr(resource.MustParse("200Gi")),
 		},
 		Limits: runtimeInterfaces.TaskResourceSet{
-			CPU: resource.MustParse("300m"),
-			GPU: resource.MustParse("8"),
+			CPU: testutils.GetPtr(resource.MustParse("300m")),
+			GPU: testutils.GetPtr(resource.MustParse("8")),
 			// Because only the limit is set, this resource should not be injected.
-			EphemeralStorage: resource.MustParse("100"),
+			EphemeralStorage: testutils.GetPtr(resource.MustParse("100")),
 		},
 	})
 	assert.True(t, proto.Equal(
@@ -3888,10 +3888,10 @@ func TestSetDefaults_MissingRequests_ExistingRequestsPreserved(t *testing.T) {
 
 func TestSetDefaults_OptionalRequiredResources(t *testing.T) {
 	taskConfigLimits := runtimeInterfaces.TaskResourceSet{
-		CPU:              resource.MustParse("300m"),
-		GPU:              resource.MustParse("1"),
-		Memory:           resource.MustParse("500Gi"),
-		EphemeralStorage: resource.MustParse("501Mi"),
+		CPU:              testutils.GetPtr(resource.MustParse("300m")),
+		GPU:              testutils.GetPtr(resource.MustParse("1")),
+		Memory:           testutils.GetPtr(resource.MustParse("500Gi")),
+		EphemeralStorage: testutils.GetPtr(resource.MustParse("501Mi")),
 	}
 
 	task := &core.CompiledTask{
@@ -3917,8 +3917,8 @@ func TestSetDefaults_OptionalRequiredResources(t *testing.T) {
 		execManager := NewExecutionManager(repositoryMocks.NewMockRepository(), r, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
 		execManager.(*ExecutionManager).setCompiledTaskDefaults(context.Background(), task, workflowengineInterfaces.TaskResources{
 			Defaults: runtimeInterfaces.TaskResourceSet{
-				CPU:    resource.MustParse("200m"),
-				Memory: resource.MustParse("200Gi"),
+				CPU:    testutils.GetPtr(resource.MustParse("200m")),
+				Memory: testutils.GetPtr(resource.MustParse("200Gi")),
 			},
 			Limits: taskConfigLimits,
 		})
