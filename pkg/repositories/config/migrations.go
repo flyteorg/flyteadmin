@@ -1514,7 +1514,7 @@ var FixupMigrations = []*gormigrate.Migration{
 			// This migration only applies to mysql as it has a limit on the size of the index.
 			// For other databases, we can use the primary key as defined in the model.
 			// ** Please, keep the model definitions in sync with the mysql ones defined above. **
-			if tx.Dialector.Name() != "mysql" {
+			if tx.Dialector.Name() == "mysql" {
 				return tx.Exec("CREATE INDEX primary_alt ON resources(project, domain, workflow(200), launch_plan(200), resource_type);").Error
 			}
 			return nil
