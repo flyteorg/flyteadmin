@@ -47,7 +47,7 @@ func (c *MockTaskResourceConfiguration) GetLimits() interfaces.TaskResourceSet {
 	return c.Limits
 }
 func (c *MockTaskResourceConfiguration) GetDefaultLimits() interfaces.TaskResourceSet {
-	return c.Limits
+	return c.DefaultLimits
 }
 
 func NewMockTaskResourceConfiguration(defaults, defaultLimits, limits interfaces.TaskResourceSet) interfaces.TaskResourceConfiguration {

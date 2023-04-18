@@ -34,19 +34,23 @@ func GetApplicationConfigWithDefaultDomains() runtimeInterfaces.ApplicationConfi
 	return &config
 }
 
+func GetPtr(quantity resource.Quantity) *resource.Quantity {
+	return &quantity
+}
+
 func GetSampleTaskResourceConfiguration() runtimeInterfaces.TaskResourceConfiguration {
 	resourceDefaults := runtimeInterfaces.TaskResourceSet{
-		CPU:    resource.MustParse("200m"),
-		Memory: resource.MustParse("200Gi"),
-		GPU:    resource.MustParse("0"),
+		CPU:    GetPtr(resource.MustParse("200m")),
+		Memory: GetPtr(resource.MustParse("200Gi")),
+		GPU:    GetPtr(resource.MustParse("0")),
 	}
 	resourceLimits := runtimeInterfaces.TaskResourceSet{
-		CPU:              resource.MustParse("300m"),
-		Memory:           resource.MustParse("500Gi"),
-		EphemeralStorage: resource.MustParse("10Gi"),
+		CPU:              GetPtr(resource.MustParse("300m")),
+		Memory:           GetPtr(resource.MustParse("500Gi")),
+		EphemeralStorage: GetPtr(resource.MustParse("10Gi")),
 	}
 
-	return runtimeMocks.NewMockTaskResourceConfiguration(resourceDefaults, resourceLimits)
+	return runtimeMocks.NewMockTaskResourceConfiguration(resourceDefaults, resourceLimits, resourceLimits)
 }
 
 func GetMockConfiguration() runtimeInterfaces.Configuration {

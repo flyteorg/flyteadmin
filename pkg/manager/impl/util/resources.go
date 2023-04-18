@@ -112,15 +112,6 @@ func getTaskResourcesAsSet(ctx context.Context,
 	return result
 }
 
-// GetCompleteTaskResourceRequirements parses the resource requests and limits from the `TaskTemplate` Container.
-func GetCompleteTaskResourceRequirements(ctx context.Context, task *core.CompiledTask) workflowengineInterfaces.TaskResources {
-	// These are meant to mimic the K8s resources, so there's no notion of default limits.
-	return workflowengineInterfaces.TaskResources{
-		Defaults: getTaskResourcesAsSet(ctx, task.GetTemplate().GetContainer().Resources.Requests),
-		Limits:   getTaskResourcesAsSet(ctx, task.GetTemplate().GetContainer().Resources.Limits),
-	}
-}
-
 // fromAdminProtoTaskResourceSpec parses the flyteidl `TaskResourceSpec` message into a `TaskResourceSet`.
 func fromAdminProtoTaskResourceSpec(ctx context.Context, spec *admin.TaskResourceSpec) runtimeInterfaces.TaskResourceSet {
 	result := runtimeInterfaces.TaskResourceSet{}
@@ -178,7 +169,7 @@ func GetTaskResources(ctx context.Context, id *core.Identifier, resourceManager 
 			logger.Warningf(ctx, "Failed to fetch override values when assigning task resource default values for [%+v]: %v",
 				id, err)
 		}
-	} else {
+	} else if resrc != nil {
 		logger.Debugf(ctx, "GetTaskResources returned [%d] task resources, combining with config", len(resrc.AttributeList))
 		for _, rr := range resrc.AttributeList {
 			if rr.GetTaskResourceAttributes() != nil {
@@ -211,6 +202,11 @@ func MergeTaskResourceSpec(high, low *admin.TaskResourceSpec) *admin.TaskResourc
 	if high == nil && low == nil {
 		return nil
 	} else if high == nil && low != nil {
+		// Return nil if all fields are empty strings. This is just done for this case, preserving the behavior that if
+		// the higher priority thing is nil, an empty lower priority object shouldn't make it non-nil.
+		if low.Cpu == "" && low.Gpu == "" && low.Memory == "" && low.EphemeralStorage == "" {
+			return nil
+		}
 		res := proto.Clone(low).(*admin.TaskResourceSpec)
 		return res
 	} else if high != nil && low == nil {
@@ -244,6 +240,9 @@ func MergeTaskResourceAttributes(high, low admin.TaskResourceAttributes) admin.T
 	return *res
 }
 
+// ConstrainTaskResourceSpec takes two TaskResourceSpecs and returns a new one, limiting the first argument, to the
+// values of the second arg (maxes), for each resource type, if it exists in the maxes. This function parses the
+// strings into resource.Quantity objects, and compares them using k8s Cmp.
 func ConstrainTaskResourceSpec(spec admin.TaskResourceSpec, maxes admin.TaskResourceSpec) admin.TaskResourceSpec {
 	res := proto.Clone(&spec).(*admin.TaskResourceSpec)
 	if maxes.GetCpu() != "" && spec.GetCpu() != "" {
@@ -314,7 +313,9 @@ func ConformLimits(attr admin.TaskResourceAttributes) admin.TaskResourceAttribut
 	if attr.GetDefaultLimits() != nil {
 		x := ConstrainTaskResourceSpec(*attr.GetDefaultLimits(), maxes)
 		attr.DefaultLimits = &x
-		maxes = *attr.GetDefaultLimits()
+		// attr.DefaultLimits has been limited, but it may have been empty. Merge with the original limits so as to
+		// preserve limits.
+		maxes = *MergeTaskResourceSpec(attr.GetDefaultLimits(), &maxes)
 	}
 	if attr.GetDefaults() != nil {
 		x := ConstrainTaskResourceSpec(*attr.GetDefaults(), maxes)

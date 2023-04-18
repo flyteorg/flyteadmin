@@ -46,7 +46,7 @@ func (m *MockResourceManager) GetResource(ctx context.Context, request interface
 }
 
 func (m *MockResourceManager) GetResourcesList(ctx context.Context, request interfaces.ResourceRequest) (*interfaces.ResourceResponseList, error) {
-	if m.GetResourceFunc != nil {
+	if m.GetResourcesListFunc != nil {
 		return m.GetResourcesListFunc(ctx, request)
 	}
 	return nil, nil

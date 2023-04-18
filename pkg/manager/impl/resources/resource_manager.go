@@ -70,7 +70,7 @@ func (m *ResourceManager) GetResourcesList(ctx context.Context, request interfac
 	}
 	logger.Debugf(ctx, "Retrieved %d rows listing resource type %s", len(resources), request.ResourceType.String())
 
-	var attributes []*admin.MatchingAttributes
+	var attributes = make([]*admin.MatchingAttributes, len(resources))
 	for _, resource := range resources {
 		var attr admin.MatchingAttributes
 		err = proto.Unmarshal(resource.Attributes, &attr)
@@ -81,6 +81,7 @@ func (m *ResourceManager) GetResourcesList(ctx context.Context, request interfac
 		attributes = append(attributes, &attr)
 	}
 
+	// TODO: If defaultlimits not set, is default limits nil or empty?
 	return &interfaces.ResourceResponseList{
 		ResourceType:  request.ResourceType.String(),
 		Project:       request.Project,
