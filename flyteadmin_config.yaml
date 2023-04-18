@@ -174,8 +174,8 @@ queues:
 task_resources:
   defaults:
     cpu: 100m
-  defaultLimits:
-    cpu: 500m
+#  defaultLimits:
+#    cpu: 500m
 task_type_whitelist:
   sparkonk8s:
     - project: my_queue_1

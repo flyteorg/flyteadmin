@@ -138,9 +138,10 @@ func fromAdminProtoTaskResourceSpec(ctx context.Context, spec *admin.TaskResourc
 	return result
 }
 
-// GetTaskResources returns the most specific default and limit task resources for the specified id. This first checks
-// if there is a matchable resource(s) defined, and uses the highest priority one, otherwise it falls back to using the
-// flyteadmin default configured values.
+// GetTaskResources returns the a merged set of all the requests, default limits, and limits for the given request.
+// This will combine all layers matched and merge missing resource types. That is, if CPU is set at the project level
+// and memory is set at the project/domain/workflow level, this will return both.
+// Admin default system wide configuration is also merged in.
 func GetTaskResources(ctx context.Context, id *core.Identifier, resourceManager interfaces.ResourceInterface,
 	taskResourceConfig runtimeInterfaces.TaskResourceConfiguration) workflowengineInterfaces.TaskResources {
 

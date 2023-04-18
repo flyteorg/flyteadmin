@@ -42,6 +42,7 @@ func addPermissions(securityCtx *core.SecurityContext, roleNameKey string, flyte
 func addExecutionOverrides(taskPluginOverrides []*admin.PluginOverride,
 	workflowExecutionConfig *admin.WorkflowExecutionConfig, recoveryExecution *core.WorkflowExecutionIdentifier,
 	taskResources *interfaces.TaskResources, flyteWf *v1alpha1.FlyteWorkflow) {
+
 	executionConfig := v1alpha1.ExecutionConfig{
 		TaskPluginImpls: make(map[string]v1alpha1.TaskPluginOverride),
 		RecoveryExecution: v1alpha1.WorkflowExecutionIdentifier{
