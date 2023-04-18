@@ -11,9 +11,9 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flytepropeller/pkg/compiler/validators"
 	"google.golang.org/grpc/codes"
 )
 
@@ -263,8 +263,8 @@ func validateParameterMap(inputMap *core.ParameterMap, fieldName string) error {
 			}
 			defaultValue := defaultInput.GetDefault()
 			if defaultValue != nil {
-				inputType := validators.LiteralTypeForLiteral(defaultValue)
-				if !validators.AreTypesCastable(inputType, defaultInput.GetVar().GetType()) {
+				inputType := coreutils.LiteralTypeForLiteral(defaultValue)
+				if !coreutils.AreTypesCastable(inputType, defaultInput.GetVar().GetType()) {
 					return errors.NewFlyteAdminErrorf(codes.InvalidArgument,
 						"Type mismatch for Parameter %s in %s has type %s, expected %s", name, fieldName,
 						defaultInput.GetVar().GetType().String(), inputType.String())

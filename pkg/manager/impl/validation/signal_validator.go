@@ -8,10 +8,9 @@ import (
 	repositoryInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
 
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-
-	propellervalidators "github.com/flyteorg/flytepropeller/pkg/compiler/validators"
 
 	"google.golang.org/grpc/codes"
 )
@@ -73,12 +72,12 @@ func ValidateSignalSetRequest(ctx context.Context, db repositoryInterfaces.Repos
 			"failed to validate that signal [%v] exists, err: [%+v]",
 			signalModel.SignalKey, err)
 	}
-	valueType := propellervalidators.LiteralTypeForLiteral(request.Value)
+	valueType := coreutils.LiteralTypeForLiteral(request.Value)
 	lookupSignal, err := transformers.FromSignalModel(lookupSignalModel)
 	if err != nil {
 		return err
 	}
-	if !propellervalidators.AreTypesCastable(lookupSignal.Type, valueType) {
+	if !coreutils.AreTypesCastable(lookupSignal.Type, valueType) {
 		return errors.NewFlyteAdminErrorf(codes.InvalidArgument,
 			"requested signal value [%v] is not castable to existing signal type [%v]",
 			request.Value, lookupSignalModel.Type)

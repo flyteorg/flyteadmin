@@ -10,9 +10,9 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flytepropeller/pkg/compiler/validators"
 	"google.golang.org/grpc/codes"
 )
 
@@ -102,8 +102,8 @@ func CheckAndFetchInputsForExecution(
 			}
 			executionInputMap[name] = expectedInput.GetDefault()
 		} else {
-			inputType := validators.LiteralTypeForLiteral(executionInputMap[name])
-			if !validators.AreTypesCastable(inputType, expectedInput.GetVar().GetType()) {
+			inputType := coreutils.LiteralTypeForLiteral(executionInputMap[name])
+			if !coreutils.AreTypesCastable(inputType, expectedInput.GetVar().GetType()) {
 				return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "invalid %s input wrong type. Expected %s, but got %s", name, expectedInput.GetVar().GetType(), inputType)
 			}
 		}
