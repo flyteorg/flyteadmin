@@ -33,9 +33,10 @@ func TestNewService(t *testing.T) {
 	assert.NoError(t, err)
 
 	nodeExecutionManager := &mocks.MockNodeExecutionManager{}
+	taskExecutionManager := &mocks.MockTaskExecutionManager{}
 	s, err := NewService(config.DataProxyConfig{
 		Upload: config.DataProxyUploadConfig{},
-	}, nodeExecutionManager, dataStore)
+	}, nodeExecutionManager, dataStore, taskExecutionManager)
 	assert.NoError(t, err)
 	assert.NotNil(t, s)
 }
@@ -58,7 +59,8 @@ func TestCreateUploadLocation(t *testing.T) {
 	dataStore, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
 	assert.NoError(t, err)
 	nodeExecutionManager := &mocks.MockNodeExecutionManager{}
-	s, err := NewService(config.DataProxyConfig{}, nodeExecutionManager, dataStore)
+	taskExecutionManager := &mocks.MockTaskExecutionManager{}
+	s, err := NewService(config.DataProxyConfig{}, nodeExecutionManager, dataStore, taskExecutionManager)
 	assert.NoError(t, err)
 	t.Run("No project/domain", func(t *testing.T) {
 		_, err = s.CreateUploadLocation(context.Background(), &service.CreateUploadLocationRequest{})
@@ -93,8 +95,9 @@ func TestCreateDownloadLink(t *testing.T) {
 			},
 		}, nil
 	})
+	taskExecutionManager := &mocks.MockTaskExecutionManager{}
 
-	s, err := NewService(config.DataProxyConfig{Download: config.DataProxyDownloadConfig{MaxExpiresIn: stdlibConfig.Duration{Duration: time.Hour}}}, nodeExecutionManager, dataStore)
+	s, err := NewService(config.DataProxyConfig{Download: config.DataProxyDownloadConfig{MaxExpiresIn: stdlibConfig.Duration{Duration: time.Hour}}}, nodeExecutionManager, dataStore, taskExecutionManager)
 	assert.NoError(t, err)
 
 	t.Run("Invalid expiry", func(t *testing.T) {
@@ -129,7 +132,8 @@ func TestCreateDownloadLink(t *testing.T) {
 func TestCreateDownloadLocation(t *testing.T) {
 	dataStore := commonMocks.GetMockStorageClient()
 	nodeExecutionManager := &mocks.MockNodeExecutionManager{}
-	s, err := NewService(config.DataProxyConfig{Download: config.DataProxyDownloadConfig{MaxExpiresIn: stdlibConfig.Duration{Duration: time.Hour}}}, nodeExecutionManager, dataStore)
+	taskExecutionManager := &mocks.MockTaskExecutionManager{}
+	s, err := NewService(config.DataProxyConfig{Download: config.DataProxyDownloadConfig{MaxExpiresIn: stdlibConfig.Duration{Duration: time.Hour}}}, nodeExecutionManager, dataStore, taskExecutionManager)
 	assert.NoError(t, err)
 
 	t.Run("Invalid expiry", func(t *testing.T) {
@@ -165,13 +169,13 @@ func TestCreateDownloadLocation(t *testing.T) {
 
 func TestParseFlyteUrl(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
-		ne, attempt, kind, err := ParseFlyteUrl("flyte://v1/i/fs/dev/abc/n0/0")
+		ne, attempt, kind, err := ParseFlyteURL("flyte://v1/fs/dev/abc/n0/0/o")
 		assert.NoError(t, err)
 		fmt.Println(ne, attempt, kind, err)
-		ne, attempt, kind, err = ParseFlyteUrl("flyte://v1/i/fs/dev/abc/n0")
+		ne, attempt, kind, err = ParseFlyteURL("flyte://v1/fs/dev/abc/n0/i")
 		assert.NoError(t, err)
 		fmt.Println(ne, attempt, kind, err)
-		ne, attempt, kind, err = ParseFlyteUrl("flyte://v1/i/fs/dev/abc/n0/")
+		ne, attempt, kind, err = ParseFlyteURL("flyte://v1/fs/dev/abc/n0/d")
 		assert.NoError(t, err)
 		fmt.Println(ne, attempt, kind, err)
 	})
