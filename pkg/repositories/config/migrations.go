@@ -971,7 +971,18 @@ var FixupMigrations = []*gormigrate.Migration{
 				// GORM doesn't save the zero value for ints, so we use a pointer for the State field
 				State *int32 `gorm:"default:0;index"`
 			}
-			return tx.AutoMigrate(&Project{})
+			err := tx.AutoMigrate(&Project{})
+			if err != nil {
+				return err
+			}
+			// Run manual migrations for the primary key columns in the case of postgres
+			if tx.Dialector.Name() == "postgres" {
+				err = tx.Exec("ALTER TABLE projects ALTER COLUMN identifier TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return nil
@@ -985,7 +996,7 @@ var FixupMigrations = []*gormigrate.Migration{
 				CreatedAt time.Time  `gorm:"type:time"`
 				UpdatedAt time.Time  `gorm:"type:time"`
 				DeletedAt *time.Time `gorm:"index"`
-				Project   string     `gorm:"size:64;primary_key;index:task_project_domain_name_idx;index:task_project_domain_idx" gorm:""`
+				Project   string     `gorm:"size:64;primary_key;index:task_project_domain_name_idx;index:task_project_domain_idx" `
 				Domain    string     `gorm:"size:64;primary_key;index:task_project_domain_name_idx;index:task_project_domain_idx"`
 				Name      string     `gorm:"size:511;primary_key;index:task_project_domain_name_idx"`
 				Version   string     `gorm:"size:128;primary_key"`
@@ -998,7 +1009,30 @@ var FixupMigrations = []*gormigrate.Migration{
 				ShortDescription string `gorm:"size:255"`
 			}
 
-			return tx.AutoMigrate(&Task{})
+			err := tx.AutoMigrate(&Task{})
+			if err != nil {
+				return err
+			}
+			// Run manual migrations for the primary key columns in the case of postgres
+			if tx.Dialector.Name() == "postgres" {
+				err = tx.Exec("ALTER TABLE tasks ALTER COLUMN project TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE tasks ALTER COLUMN domain TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE tasks ALTER COLUMN name TYPE varchar(511)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE tasks ALTER COLUMN version TYPE varchar(128)").Error
+				if err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return nil
@@ -1043,8 +1077,31 @@ var FixupMigrations = []*gormigrate.Migration{
 					// ShortDescription for the workflow.
 					ShortDescription string `gorm:"size:2048"`
 				}
-				return tx.AutoMigrate(&Workflow{})
 
+				err := tx.AutoMigrate(&Workflow{})
+				if err != nil {
+					return err
+				}
+				// Run manual migrations for the primary key columns in the case of postgres
+				if tx.Dialector.Name() == "postgres" {
+					err = tx.Exec("ALTER TABLE workflows ALTER COLUMN project TYPE varchar(64)").Error
+					if err != nil {
+						return err
+					}
+					err = tx.Exec("ALTER TABLE workflows ALTER COLUMN domain TYPE varchar(64)").Error
+					if err != nil {
+						return err
+					}
+					err = tx.Exec("ALTER TABLE workflows ALTER COLUMN name TYPE varchar(511)").Error
+					if err != nil {
+						return err
+					}
+					err = tx.Exec("ALTER TABLE workflows ALTER COLUMN version TYPE varchar(128)").Error
+					if err != nil {
+						return err
+					}
+				}
+				return nil
 			}
 		},
 		Rollback: func(tx *gorm.DB) error {
@@ -1074,7 +1131,30 @@ var FixupMigrations = []*gormigrate.Migration{
 				Digest       []byte
 				ScheduleType LaunchPlanScheduleType `gorm:"size:255"`
 			}
-			return tx.AutoMigrate(&LaunchPlan{})
+			err := tx.AutoMigrate(&LaunchPlan{})
+			if err != nil {
+				return err
+			}
+			// Run manual migrations for the primary key columns in the case of postgres
+			if tx.Dialector.Name() == "postgres" {
+				err = tx.Exec("ALTER TABLE launch_plans ALTER COLUMN project TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE launch_plans ALTER COLUMN domain TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE launch_plans ALTER COLUMN name TYPE varchar(511)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE launch_plans ALTER COLUMN version TYPE varchar(128)").Error
+				if err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return nil
@@ -1097,7 +1177,26 @@ var FixupMigrations = []*gormigrate.Migration{
 				State *int32 `gorm:"default:0"`
 			}
 
-			return tx.AutoMigrate(&NamedEntityMetadata{})
+			err := tx.AutoMigrate(&NamedEntityMetadata{})
+			if err != nil {
+				return err
+			}
+			// Run manual migrations for the primary key columns in the case of postgres
+			if tx.Dialector.Name() == "postgres" {
+				err = tx.Exec("ALTER TABLE named_entity_metadata ALTER COLUMN project TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE named_entity_metadata ALTER COLUMN domain TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE named_entity_metadata ALTER COLUMN name TYPE varchar(511)").Error
+				if err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return nil
@@ -1160,7 +1259,27 @@ var FixupMigrations = []*gormigrate.Migration{
 				LaunchEntity string `gorm:"size:128"`
 			}
 
-			return tx.AutoMigrate(&Execution{})
+			err := tx.AutoMigrate(&Execution{})
+			if err != nil {
+				return err
+			}
+
+			// Run manual migrations for the primary key columns in the case of postgres
+			if tx.Dialector.Name() == "postgres" {
+				err = tx.Exec("ALTER TABLE executions ALTER COLUMN execution_project TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE executions ALTER COLUMN execution_domain TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE executions ALTER COLUMN execution_name TYPE varchar(511)").Error
+				if err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return nil
@@ -1260,7 +1379,47 @@ var FixupMigrations = []*gormigrate.Migration{
 					ChildNodeExecution []NodeExecution `gorm:"foreignkey:ParentTaskExecutionID;references:ID"`
 				}
 
-				return tx.AutoMigrate(&TaskExecution{})
+				err := tx.AutoMigrate(&TaskExecution{})
+				if err != nil {
+					return err
+				}
+
+				// Run manual migrations for the primary key columns in the case of postgres
+				if tx.Dialector.Name() == "postgres" {
+					err = tx.Exec("ALTER TABLE task_executions ALTER COLUMN project TYPE varchar(64)").Error
+					if err != nil {
+						return err
+					}
+					err = tx.Exec("ALTER TABLE task_executions ALTER COLUMN domain TYPE varchar(64)").Error
+					if err != nil {
+						return err
+					}
+					err = tx.Exec("ALTER TABLE task_executions ALTER COLUMN name TYPE varchar(511)").Error
+					if err != nil {
+						return err
+					}
+					err = tx.Exec("ALTER TABLE task_executions ALTER COLUMN version TYPE varchar(128)").Error
+					if err != nil {
+						return err
+					}
+					err = tx.Exec("ALTER TABLE task_executions ALTER COLUMN execution_project TYPE varchar(64)").Error
+					if err != nil {
+						return err
+					}
+					err = tx.Exec("ALTER TABLE task_executions ALTER COLUMN execution_domain TYPE varchar(64)").Error
+					if err != nil {
+						return err
+					}
+					err = tx.Exec("ALTER TABLE task_executions ALTER COLUMN execution_name TYPE varchar(511)").Error
+					if err != nil {
+						return err
+					}
+					err = tx.Exec("ALTER TABLE task_executions ALTER COLUMN node_id TYPE varchar(30)").Error
+					if err != nil {
+						return err
+					}
+				}
+				return nil
 			}
 		},
 		Rollback: func(tx *gorm.DB) error {
@@ -1335,7 +1494,30 @@ var FixupMigrations = []*gormigrate.Migration{
 				CacheStatus *string `gorm:"size:255"`
 			}
 
-			return tx.AutoMigrate(&NodeExecution{})
+			err := tx.AutoMigrate(&NodeExecution{})
+			if err != nil {
+				return err
+			}
+			// Run manual migrations for the primary key columns in the case of postgres
+			if tx.Dialector.Name() == "postgres" {
+				err = tx.Exec("ALTER TABLE node_executions ALTER COLUMN execution_project TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE node_executions ALTER COLUMN execution_domain TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE node_executions ALTER COLUMN execution_name TYPE varchar(511)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE node_executions ALTER COLUMN node_id TYPE varchar(30)").Error
+				if err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return nil
@@ -1360,7 +1542,30 @@ var FixupMigrations = []*gormigrate.Migration{
 				Phase      string    `gorm:"size:50;primary_key"`
 			}
 
-			return tx.AutoMigrate(&ExecutionEvent{})
+			err := tx.AutoMigrate(&ExecutionEvent{})
+			if err != nil {
+				return err
+			}
+			// Run manual migrations for the primary key columns in the case of postgres
+			if tx.Dialector.Name() == "postgres" {
+				err = tx.Exec("ALTER TABLE execution_events ALTER COLUMN execution_project TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE execution_events ALTER COLUMN execution_domain TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE execution_events ALTER COLUMN execution_name TYPE varchar(511)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE execution_events ALTER COLUMN phase TYPE varchar(50)").Error
+				if err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return nil
@@ -1389,7 +1594,34 @@ var FixupMigrations = []*gormigrate.Migration{
 				Phase      string `gorm:"size:50;primary_key"`
 			}
 
-			return tx.AutoMigrate(&NodeExecutionEvent{})
+			err := tx.AutoMigrate(&NodeExecutionEvent{})
+			if err != nil {
+				return err
+			}
+			// Run manual migrations for the primary key columns in the case of postgres
+			if tx.Dialector.Name() == "postgres" {
+				err = tx.Exec("ALTER TABLE node_execution_events ALTER COLUMN execution_project TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE node_execution_events ALTER COLUMN execution_domain TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE node_execution_events ALTER COLUMN execution_name TYPE varchar(511)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE node_execution_events ALTER COLUMN node_id TYPE varchar(30)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE node_execution_events ALTER COLUMN phase TYPE varchar(50)").Error
+				if err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return nil
@@ -1424,7 +1656,30 @@ var FixupMigrations = []*gormigrate.Migration{
 				LongDescription  []byte
 			}
 
-			return tx.AutoMigrate(&DescriptionEntity{})
+			err := tx.AutoMigrate(&DescriptionEntity{})
+			if err != nil {
+				return err
+			}
+			// Run manual migrations for the primary key columns in the case of postgres
+			if tx.Dialector.Name() == "postgres" {
+				err = tx.Exec("ALTER TABLE description_entities ALTER COLUMN project TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE description_entities ALTER COLUMN domain TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE description_entities ALTER COLUMN name TYPE varchar(511)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE description_entities ALTER COLUMN version TYPE varchar(128)").Error
+				if err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return nil
@@ -1453,7 +1708,30 @@ var FixupMigrations = []*gormigrate.Migration{
 				Value []byte
 			}
 
-			return tx.AutoMigrate(&Signal{})
+			err := tx.AutoMigrate(&Signal{})
+			if err != nil {
+				return err
+			}
+			// Run manual migrations for the primary key columns in the case of postgres
+			if tx.Dialector.Name() == "postgres" {
+				err = tx.Exec("ALTER TABLE signals ALTER COLUMN execution_project TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE signals ALTER COLUMN execution_domain TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE signals ALTER COLUMN execution_name TYPE varchar(511)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE signals ALTER COLUMN signal_id TYPE varchar(128)").Error
+				if err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return nil
@@ -1545,7 +1823,30 @@ var FixupMigrations = []*gormigrate.Migration{
 				Active              *bool
 			}
 
-			return tx.AutoMigrate(&SchedulableEntity{})
+			err := tx.AutoMigrate(&SchedulableEntity{})
+			if err != nil {
+				return err
+			}
+			// Run manual migrations for the primary key columns in the case of postgres
+			if tx.Dialector.Name() == "postgres" {
+				err = tx.Exec("ALTER TABLE schedulable_entities ALTER COLUMN project TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE schedulable_entities ALTER COLUMN domain TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE schedulable_entities ALTER COLUMN name TYPE varchar(511)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE schedulable_entities ALTER COLUMN version TYPE varchar(128)").Error
+				if err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return nil
