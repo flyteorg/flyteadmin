@@ -324,7 +324,6 @@ var LegacyMigrations = []*gormigrate.Migration{
 			return tx.Model(&models.NodeExecution{}).Migrator().DropColumn(&models.NodeExecution{}, "dynamic_workflow_remote_closure_reference")
 		},
 	},
-
 	{
 		ID: "2021-07-22-schedulable_entities",
 		Migrate: func(tx *gorm.DB) error {
@@ -334,7 +333,6 @@ var LegacyMigrations = []*gormigrate.Migration{
 			return tx.Migrator().DropTable(&schedulerModels.SchedulableEntity{}, "schedulable_entities")
 		},
 	},
-
 	{
 		ID: "2021-08-05-schedulable_entities_snapshot",
 		Migrate: func(tx *gorm.DB) error {
@@ -344,7 +342,6 @@ var LegacyMigrations = []*gormigrate.Migration{
 			return tx.Migrator().DropTable(&schedulerModels.ScheduleEntitiesSnapshot{}, "schedulable_entities_snapshot")
 		},
 	},
-
 	// For any new table, Please use the following pattern due to a bug
 	// in the postgres gorm layer https://github.com/go-gorm/postgres/issues/65
 	{
@@ -851,6 +848,12 @@ var NoopMigrations = []*gormigrate.Migration{
 	{
 		ID: "pg-noop-2023-03-31-noop-signal",
 		Migrate: func(tx *gorm.DB) error {
+			type ExecutionKey struct {
+				Project string `gorm:"primary_key;column:execution_project"`
+				Domain  string `gorm:"primary_key;column:execution_domain"`
+				Name    string `gorm:"primary_key;column:execution_name"`
+			}
+
 			type SignalKey struct {
 				ExecutionKey
 				SignalID string `gorm:"primary_key;index" valid:"length(0|255)"`
@@ -949,7 +952,934 @@ var NoopMigrations = []*gormigrate.Migration{
 	},
 }
 
-var Migrations = append(LegacyMigrations, NoopMigrations...)
+// These migrations modify the column types from `text` to a bounded string type (i.e. varchar).
+// The idea is to tighten the column types to avoid the performance penalty of using `text`, which in the case of
+// MySQL is a `longtext` (4GB) column type.
+var FixupMigrations = []*gormigrate.Migration{
+	{
+		ID: "2023-03-31-fixup-project",
+		Migrate: func(tx *gorm.DB) error {
+			type Project struct {
+				ID          uint       `gorm:"index;autoIncrement;not null"`
+				CreatedAt   time.Time  `gorm:"type:time"`
+				UpdatedAt   time.Time  `gorm:"type:time"`
+				DeletedAt   *time.Time `gorm:"index"`
+				Identifier  string     `gorm:"size:64;primary_key"`
+				Name        string     `gorm:"size:64"` // Human-readable name, not a unique identifier.
+				Description string     `gorm:"type:varchar(300)"`
+				Labels      []byte
+				// GORM doesn't save the zero value for ints, so we use a pointer for the State field
+				State *int32 `gorm:"default:0;index"`
+			}
+			err := tx.AutoMigrate(&Project{})
+			if err != nil {
+				return err
+			}
+			// Run manual migrations for the primary key columns in the case of postgres
+			if tx.Dialector.Name() == "postgres" {
+				err = tx.Exec("ALTER TABLE projects ALTER COLUMN identifier TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-task",
+		Migrate: func(tx *gorm.DB) error {
+			type Task struct {
+				ID        uint       `gorm:"index;autoIncrement;not null"`
+				CreatedAt time.Time  `gorm:"type:time"`
+				UpdatedAt time.Time  `gorm:"type:time"`
+				DeletedAt *time.Time `gorm:"index"`
+				Project   string     `gorm:"size:64;primary_key;index:task_project_domain_name_idx;index:task_project_domain_idx" `
+				Domain    string     `gorm:"size:64;primary_key;index:task_project_domain_name_idx;index:task_project_domain_idx"`
+				Name      string     `gorm:"size:511;primary_key;index:task_project_domain_name_idx"`
+				Version   string     `gorm:"size:128;primary_key"`
+				Closure   []byte     `gorm:"not null"`
+				// Hash of the compiled task closure
+				Digest []byte
+				// Task type (also stored in the closure put promoted as a column for filtering).
+				Type string `gorm:"size:255"`
+				// ShortDescription for the task.
+				ShortDescription string `gorm:"size:255"`
+			}
+
+			err := tx.AutoMigrate(&Task{})
+			if err != nil {
+				return err
+			}
+			// Run manual migrations for the primary key columns in the case of postgres
+			if tx.Dialector.Name() == "postgres" {
+				err = tx.Exec("ALTER TABLE tasks ALTER COLUMN project TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE tasks ALTER COLUMN domain TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE tasks ALTER COLUMN name TYPE varchar(511)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE tasks ALTER COLUMN version TYPE varchar(128)").Error
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-workflow",
+		Migrate: func(tx *gorm.DB) error {
+			if tx.Dialector.Name() == "mysql" {
+				type Workflow struct {
+					ID                      uint       `gorm:"primary_key;index;autoIncrement;not null"`
+					CreatedAt               time.Time  `gorm:"type:time"`
+					UpdatedAt               time.Time  `gorm:"type:time"`
+					DeletedAt               *time.Time `gorm:"index"`
+					Project                 string     `gorm:"size:64;uniqueIndex:workflow_pdnv;index:workflow_project_domain_name_idx;index:workflow_project_domain_idx"`
+					Domain                  string     `gorm:"size:64;uniqueIndex:workflow_pdnv;index:workflow_project_domain_name_idx;index:workflow_project_domain_idx;not null"`
+					Name                    string     `gorm:"size:511;uniqueIndex:workflow_pdnv;index:workflow_project_domain_name_idx"`
+					Version                 string     `gorm:"size:128;uniqueIndex:workflow_pdnv"`
+					TypedInterface          []byte
+					RemoteClosureIdentifier string `gorm:"size:2048;not null"`
+					// Hash of the compiled workflow closure
+					Digest []byte
+					// ShortDescription for the workflow.
+					ShortDescription string `gorm:"size:2048"`
+				}
+				return tx.AutoMigrate(&Workflow{})
+
+			} else {
+				type Workflow struct {
+					ID                      uint       `gorm:"index;autoIncrement;not null"`
+					CreatedAt               time.Time  `gorm:"type:time"`
+					UpdatedAt               time.Time  `gorm:"type:time"`
+					DeletedAt               *time.Time `gorm:"index"`
+					Project                 string     `gorm:"size:64;primary_key;index:workflow_project_domain_name_idx;index:workflow_project_domain_idx"`
+					Domain                  string     `gorm:"size:64;primary_key:workflow_project_domain_name_idx;index:workflow_project_domain_idx;not null"`
+					Name                    string     `gorm:"size:511;primary_key;index:workflow_project_domain_name_idx"`
+					Version                 string     `gorm:"size:128;primary_key"`
+					TypedInterface          []byte
+					RemoteClosureIdentifier string `gorm:"size:2048;not null"`
+					// Hash of the compiled workflow closure
+					Digest []byte
+					// ShortDescription for the workflow.
+					ShortDescription string `gorm:"size:2048"`
+				}
+
+				err := tx.AutoMigrate(&Workflow{})
+				if err != nil {
+					return err
+				}
+				// Run manual migrations for the primary key columns in the case of postgres
+				if tx.Dialector.Name() == "postgres" {
+					err = tx.Exec("ALTER TABLE workflows ALTER COLUMN project TYPE varchar(64)").Error
+					if err != nil {
+						return err
+					}
+					err = tx.Exec("ALTER TABLE workflows ALTER COLUMN domain TYPE varchar(64)").Error
+					if err != nil {
+						return err
+					}
+					err = tx.Exec("ALTER TABLE workflows ALTER COLUMN name TYPE varchar(511)").Error
+					if err != nil {
+						return err
+					}
+					err = tx.Exec("ALTER TABLE workflows ALTER COLUMN version TYPE varchar(128)").Error
+					if err != nil {
+						return err
+					}
+				}
+				return nil
+			}
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-launchplan",
+		Migrate: func(tx *gorm.DB) error {
+			type LaunchPlanScheduleType string
+
+			type LaunchPlan struct {
+				ID         uint       `gorm:"index;autoIncrement;not null"`
+				CreatedAt  time.Time  `gorm:"type:time"`
+				UpdatedAt  time.Time  `gorm:"type:time"`
+				DeletedAt  *time.Time `gorm:"index"`
+				Project    string     `gorm:"size:64;primary_key;index:lp_project_domain_name_idx,lp_project_domain_idx"`
+				Domain     string     `gorm:"size:64;primary_key;index:lp_project_domain_name_idx,lp_project_domain_idx"`
+				Name       string     `gorm:"size:511;primary_key;index:lp_project_domain_name_idx"`
+				Version    string     `gorm:"size:128;primary_key"`
+				Spec       []byte     `gorm:"not null"`
+				WorkflowID uint       `gorm:"index"`
+				Closure    []byte     `gorm:"not null"`
+				// GORM doesn't save the zero value for ints, so we use a pointer for the State field
+				State *int32 `gorm:"default:0"`
+				// Hash of the launch plan
+				Digest       []byte
+				ScheduleType LaunchPlanScheduleType `gorm:"size:255"`
+			}
+			err := tx.AutoMigrate(&LaunchPlan{})
+			if err != nil {
+				return err
+			}
+			// Run manual migrations for the primary key columns in the case of postgres
+			if tx.Dialector.Name() == "postgres" {
+				err = tx.Exec("ALTER TABLE launch_plans ALTER COLUMN project TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE launch_plans ALTER COLUMN domain TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE launch_plans ALTER COLUMN name TYPE varchar(511)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE launch_plans ALTER COLUMN version TYPE varchar(128)").Error
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-namedentitymetadata",
+		Migrate: func(tx *gorm.DB) error {
+			type NamedEntityMetadata struct {
+				ID           uint              `gorm:"index;autoIncrement;not null"`
+				CreatedAt    time.Time         `gorm:"type:time"`
+				UpdatedAt    time.Time         `gorm:"type:time"`
+				DeletedAt    *time.Time        `gorm:"index"`
+				ResourceType core.ResourceType `gorm:"primary_key;index:named_entity_metadata_type_project_domain_name_idx"`
+				Project      string            `gorm:"size:64;primary_key;index:named_entity_metadata_type_project_domain_name_idx"`
+				Domain       string            `gorm:"size:64;primary_key;index:named_entity_metadata_type_project_domain_name_idx"`
+				Name         string            `gorm:"size:511;primary_key;index:named_entity_metadata_type_project_domain_name_idx"`
+				Description  string            `gorm:"type:varchar(300)"`
+				// GORM doesn't save the zero value for ints, so we use a pointer for the State field
+				State *int32 `gorm:"default:0"`
+			}
+
+			err := tx.AutoMigrate(&NamedEntityMetadata{})
+			if err != nil {
+				return err
+			}
+			// Run manual migrations for the primary key columns in the case of postgres
+			if tx.Dialector.Name() == "postgres" {
+				err = tx.Exec("ALTER TABLE named_entity_metadata ALTER COLUMN project TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE named_entity_metadata ALTER COLUMN domain TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE named_entity_metadata ALTER COLUMN name TYPE varchar(511)").Error
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-execution",
+		Migrate: func(tx *gorm.DB) error {
+			type ExecutionKey struct {
+				Project string `gorm:"size:64;primary_key;column:execution_project"`
+				Domain  string `gorm:"size:64;primary_key;column:execution_domain"`
+				Name    string `gorm:"size:511;primary_key;column:execution_name"`
+			}
+
+			type Execution struct {
+				ID        uint       `gorm:"index;autoIncrement;not null"`
+				CreatedAt time.Time  `gorm:"type:time"`
+				UpdatedAt time.Time  `gorm:"type:time"`
+				DeletedAt *time.Time `gorm:"index"`
+				ExecutionKey
+				LaunchPlanID uint   `gorm:"index"`
+				WorkflowID   uint   `gorm:"index"`
+				TaskID       uint   `gorm:"index"`
+				Phase        string `gorm:"size:50"`
+				Closure      []byte
+				Spec         []byte `gorm:"not null"`
+				StartedAt    *time.Time
+				// Corresponds to the CreatedAt field in the Execution closure.
+				// Prefixed with Execution to avoid clashes with gorm.Model CreatedAt
+				ExecutionCreatedAt *time.Time `gorm:"index:idx_executions_created_at"`
+				// Corresponds to the UpdatedAt field in the Execution closure
+				// Prefixed with Execution to avoid clashes with gorm.Model UpdatedAt
+				ExecutionUpdatedAt *time.Time
+				Duration           time.Duration
+				// In the case of an aborted execution this string may be non-empty.
+				// It should be ignored for any other value of phase other than aborted.
+				AbortCause string `gorm:"size:2048"`
+				// Corresponds to the execution mode used to trigger this execution
+				Mode int32
+				// The "parent" execution (if there is one) that is related to this execution.
+				SourceExecutionID uint
+				// The parent node execution if this was launched by a node
+				ParentNodeExecutionID uint
+				// Cluster where execution was triggered
+				Cluster string `gorm:"size:512"`
+				// Offloaded location of inputs LiteralMap. These are the inputs evaluated and contain applied defaults.
+				InputsURI storage.DataReference
+				// User specified inputs. This map might be incomplete and not include defaults applied
+				UserInputsURI storage.DataReference
+				// Execution Error Kind. nullable
+				ErrorKind *string `gorm:"size:100;index"`
+				// Execution Error Code nullable
+				ErrorCode *string `gorm:"size:2048"`
+				// The user responsible for launching this execution.
+				// This is also stored in the spec but promoted as a column for filtering.
+				User string `gorm:"size:128;index"`
+				// GORM doesn't save the zero value for ints, so we use a pointer for the State field
+				State *int32 `gorm:"index;default:0"`
+				// The resource type of the entity used to launch the execution, one of 'launch_plan' or 'task'
+				LaunchEntity string `gorm:"size:128"`
+			}
+
+			err := tx.AutoMigrate(&Execution{})
+			if err != nil {
+				return err
+			}
+
+			// Run manual migrations for the primary key columns in the case of postgres
+			if tx.Dialector.Name() == "postgres" {
+				err = tx.Exec("ALTER TABLE executions ALTER COLUMN execution_project TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE executions ALTER COLUMN execution_domain TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE executions ALTER COLUMN execution_name TYPE varchar(511)").Error
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-taskexecution",
+		Migrate: func(tx *gorm.DB) error {
+			// The `task_executions` table is a special case because of the number of fields present in its primary key.
+			// Postgres does not have a restriction on the total length of its primary keys, however, the same is not true
+			// for MySQL. MySQL has a limit of 3072 bytes for the total length of the primary key. So, in that case we rely
+			// on secondary indexes instead.
+			if tx.Dialector.Name() == "mysql" {
+				type TaskKey struct {
+					Project string `gorm:"size:64"`
+					Domain  string `gorm:"size:64"`
+					Name    string `gorm:"size:511"`
+					Version string `gorm:"size:128"`
+				}
+				type TaskExecutionKey struct {
+					TaskKey
+					Project string `gorm:"size:64;index:idx_taskexecutionkey_project_domain_name_nodeid;column:execution_project"`
+					Domain  string `gorm:"size:64;index:idx_taskexecutionkey_project_domain_name_nodeid;column:execution_domain"`
+					Name    string `gorm:"size:511;index:idx_taskexecutionkey_project_domain_name_nodeid;column:execution_name"`
+					NodeID  string `gorm:"size:30;index:idx_taskexecutionkey_project_domain_name_nodeid;"`
+					// *IMPORTANT* This is a pointer to an int in order to allow setting an empty ("0") value according to gorm convention.
+					// Because RetryAttempt is part of the TaskExecution primary key is should *never* be null.
+					RetryAttempt *uint32 `gorm:"AUTO_INCREMENT:FALSE"`
+				}
+				type TaskExecution struct {
+					ID        uint      `gorm:"index;autoIncrement;not null"` // maybe need to add primary key, if not remove from workflows
+					CreatedAt time.Time `gorm:"type:time"`
+					UpdatedAt time.Time `gorm:"type:time"`
+					DeletedAt *time.Time
+					TaskExecutionKey
+					Phase        string `gorm:"size:50"`
+					PhaseVersion uint32
+					InputURI     string `gorm:"size:2048"`
+					Closure      []byte
+					StartedAt    *time.Time
+					// Corresponds to the CreatedAt field in the TaskExecution closure
+					// This field is prefixed with TaskExecution because it signifies when
+					// the execution was createdAt, not to be confused with gorm.Model.CreatedAt
+					TaskExecutionCreatedAt *time.Time
+					// Corresponds to the UpdatedAt field in the TaskExecution closure
+					// This field is prefixed with TaskExecution because it signifies when
+					// the execution was UpdatedAt, not to be confused with gorm.Model.UpdatedAt
+					TaskExecutionUpdatedAt *time.Time
+					Duration               time.Duration
+					// The child node executions (if any) launched by this task execution.
+					// TODO: this refers to `NodeExecution` defined at the top of this file. Should this also be defined inline?
+					ChildNodeExecution []NodeExecution `gorm:"foreignkey:ParentTaskExecutionID;references:ID"`
+				}
+
+				return tx.AutoMigrate(&TaskExecution{})
+			} else {
+				// For all other databases, we can use the primary key as defined in the model.
+				// ** Please, keep the model definitions in sync with the mysql ones defined above. **
+				type TaskKey struct {
+					Project string `gorm:"size:64;primary_key"`
+					Domain  string `gorm:"size:64;primary_key"`
+					Name    string `gorm:"size:511;primary_key"`
+					Version string `gorm:"size:128;primary_key"`
+				}
+				type TaskExecutionKey struct {
+					TaskKey
+					Project string `gorm:"size:64;primary_key;column:execution_project;index:idx_task_executions_exec"`
+					Domain  string `gorm:"size:64;primary_key;column:execution_domain;index:idx_task_executions_exec"`
+					Name    string `gorm:"size:511;primary_key;column:execution_name;index:idx_task_executions_exec"`
+					NodeID  string `gorm:"size:30;primary_key;index:idx_task_executions_exec;index"`
+					// *IMPORTANT* This is a pointer to an int in order to allow setting an empty ("0") value according to gorm convention.
+					// Because RetryAttempt is part of the TaskExecution primary key is should *never* be null.
+					RetryAttempt *uint32 `gorm:"primary_key;AUTO_INCREMENT:FALSE"`
+				}
+				type TaskExecution struct {
+					ID        uint       `gorm:"index;autoIncrement;not null"`
+					CreatedAt time.Time  `gorm:"type:time"`
+					UpdatedAt time.Time  `gorm:"type:time"`
+					DeletedAt *time.Time `gorm:"index"`
+					TaskExecutionKey
+					Phase        string `gorm:"size:50"`
+					PhaseVersion uint32
+					InputURI     string `gorm:"size:2048"`
+					Closure      []byte
+					StartedAt    *time.Time
+					// Corresponds to the CreatedAt field in the TaskExecution closure
+					// This field is prefixed with TaskExecution because it signifies when
+					// the execution was createdAt, not to be confused with gorm.Model.CreatedAt
+					TaskExecutionCreatedAt *time.Time
+					// Corresponds to the UpdatedAt field in the TaskExecution closure
+					// This field is prefixed with TaskExecution because it signifies when
+					// the execution was UpdatedAt, not to be confused with gorm.Model.UpdatedAt
+					TaskExecutionUpdatedAt *time.Time
+					Duration               time.Duration
+					// The child node executions (if any) launched by this task execution.
+					// TODO: this refers to `NodeExecution` defined at the top of this file. Should this also be defined inline?
+					ChildNodeExecution []NodeExecution `gorm:"foreignkey:ParentTaskExecutionID;references:ID"`
+				}
+
+				err := tx.AutoMigrate(&TaskExecution{})
+				if err != nil {
+					return err
+				}
+
+				// Run manual migrations for the primary key columns in the case of postgres
+				if tx.Dialector.Name() == "postgres" {
+					err = tx.Exec("ALTER TABLE task_executions ALTER COLUMN project TYPE varchar(64)").Error
+					if err != nil {
+						return err
+					}
+					err = tx.Exec("ALTER TABLE task_executions ALTER COLUMN domain TYPE varchar(64)").Error
+					if err != nil {
+						return err
+					}
+					err = tx.Exec("ALTER TABLE task_executions ALTER COLUMN name TYPE varchar(511)").Error
+					if err != nil {
+						return err
+					}
+					err = tx.Exec("ALTER TABLE task_executions ALTER COLUMN version TYPE varchar(128)").Error
+					if err != nil {
+						return err
+					}
+					err = tx.Exec("ALTER TABLE task_executions ALTER COLUMN execution_project TYPE varchar(64)").Error
+					if err != nil {
+						return err
+					}
+					err = tx.Exec("ALTER TABLE task_executions ALTER COLUMN execution_domain TYPE varchar(64)").Error
+					if err != nil {
+						return err
+					}
+					err = tx.Exec("ALTER TABLE task_executions ALTER COLUMN execution_name TYPE varchar(511)").Error
+					if err != nil {
+						return err
+					}
+					err = tx.Exec("ALTER TABLE task_executions ALTER COLUMN node_id TYPE varchar(30)").Error
+					if err != nil {
+						return err
+					}
+				}
+				return nil
+			}
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-task_executions_create_primary_alt_index",
+		Migrate: func(tx *gorm.DB) error {
+			// This migration only applies to mysql as it has a limit on the size of the index.
+			// For other databases, we can use the primary key as defined in the model.
+			// ** Please, keep the model definitions in sync with the mysql ones defined above. **
+			if tx.Dialector.Name() == "mysql" {
+				return tx.Exec("CREATE INDEX primary_alt ON task_executions(project, domain, name(200), version, execution_project, execution_domain, execution_name(128), node_id, retry_attempt);").Error
+			}
+			return nil
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-nodeexecution",
+		Migrate: func(tx *gorm.DB) error {
+			type ExecutionKey struct {
+				Project string `gorm:"size:64;primary_key;column:execution_project"`
+				Domain  string `gorm:"size:64;primary_key;column:execution_domain"`
+				Name    string `gorm:"size:511;primary_key;column:execution_name"`
+			}
+
+			type NodeExecutionKey struct {
+				ExecutionKey
+				NodeID string `gorm:"size:30;primary_key;index"`
+			}
+			type NodeExecution struct {
+				ID        uint       `gorm:"index;autoIncrement;not null"`
+				CreatedAt time.Time  `gorm:"type:time"`
+				UpdatedAt time.Time  `gorm:"type:time"`
+				DeletedAt *time.Time `gorm:"index"`
+				NodeExecutionKey
+				// Also stored in the closure, but defined as a separate column because it's useful for filtering and sorting.
+				Phase     string `gorm:"size:50"`
+				InputURI  string `gorm:"size:2048"`
+				Closure   []byte
+				StartedAt *time.Time
+				// Corresponds to the CreatedAt field in the NodeExecution closure
+				// Prefixed with NodeExecution to avoid clashes with gorm.Model CreatedAt
+				NodeExecutionCreatedAt *time.Time
+				// Corresponds to the UpdatedAt field in the NodeExecution closure
+				// Prefixed with NodeExecution to avoid clashes with gorm.Model UpdatedAt
+				NodeExecutionUpdatedAt *time.Time
+				Duration               time.Duration
+				// The task execution (if any) which launched this node execution.
+				// TO BE DEPRECATED - as we have now introduced ParentID
+				ParentTaskExecutionID uint `sql:"default:null" gorm:"index"`
+				// The workflow execution (if any) which this node execution launched
+				LaunchedExecution models.Execution `gorm:"foreignKey:ParentNodeExecutionID;references:ID"`
+				// In the case of dynamic workflow nodes, the remote closure is uploaded to the path specified here.
+				DynamicWorkflowRemoteClosureReference string `gorm:"size:2048"`
+				// Metadata that is only relevant to the flyteadmin service that is used to parse the model and track additional attributes.
+				InternalData          []byte
+				NodeExecutionMetadata []byte
+				// Parent that spawned this node execution - value is empty for executions at level 0
+				ParentID *uint `sql:"default:null" gorm:"index"`
+				// List of child node executions - for cases like Dynamic task, sub workflow, etc
+				ChildNodeExecutions []NodeExecution `gorm:"foreignKey:ParentID;references:ID"`
+				// Execution Error Kind. nullable, can be one of core.ExecutionError_ErrorKind
+				ErrorKind *string `gorm:"size:50;index"`
+				// Execution Error Code nullable. string value, but finite set determined by the execution engine and plugins
+				ErrorCode *string `gorm:"size:255"`
+				// If the node is of Type Task, this should always exist for a successful execution, indicating the cache status for the execution
+				CacheStatus *string `gorm:"size:255"`
+			}
+
+			err := tx.AutoMigrate(&NodeExecution{})
+			if err != nil {
+				return err
+			}
+			// Run manual migrations for the primary key columns in the case of postgres
+			if tx.Dialector.Name() == "postgres" {
+				err = tx.Exec("ALTER TABLE node_executions ALTER COLUMN execution_project TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE node_executions ALTER COLUMN execution_domain TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE node_executions ALTER COLUMN execution_name TYPE varchar(511)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE node_executions ALTER COLUMN node_id TYPE varchar(30)").Error
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-execution-event",
+		Migrate: func(tx *gorm.DB) error {
+			type ExecutionKey struct {
+				Project string `gorm:"size:64;primary_key;column:execution_project"`
+				Domain  string `gorm:"size:64;primary_key;column:execution_domain"`
+				Name    string `gorm:"size:511;primary_key;column:execution_name"`
+			}
+			type ExecutionEvent struct {
+				ID        uint       `gorm:"index;autoIncrement;not null"`
+				CreatedAt time.Time  `gorm:"type:time"`
+				UpdatedAt time.Time  `gorm:"type:time"`
+				DeletedAt *time.Time `gorm:"index"`
+				ExecutionKey
+				RequestID  string    `gorm:"size:255"`
+				OccurredAt time.Time `gorm:"type:time"`
+				Phase      string    `gorm:"size:50;primary_key"`
+			}
+
+			err := tx.AutoMigrate(&ExecutionEvent{})
+			if err != nil {
+				return err
+			}
+			// Run manual migrations for the primary key columns in the case of postgres
+			if tx.Dialector.Name() == "postgres" {
+				err = tx.Exec("ALTER TABLE execution_events ALTER COLUMN execution_project TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE execution_events ALTER COLUMN execution_domain TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE execution_events ALTER COLUMN execution_name TYPE varchar(511)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE execution_events ALTER COLUMN phase TYPE varchar(50)").Error
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-node-execution-event",
+		Migrate: func(tx *gorm.DB) error {
+			type ExecutionKey struct {
+				Project string `gorm:"size:64;primary_key;column:execution_project"`
+				Domain  string `gorm:"size:64;primary_key;column:execution_domain"`
+				Name    string `gorm:"size:511;primary_key;column:execution_name"`
+			}
+			type NodeExecutionKey struct {
+				ExecutionKey
+				NodeID string `gorm:"size:30;primary_key;index"`
+			}
+			type NodeExecutionEvent struct {
+				ID        uint       `gorm:"index;autoIncrement;not null"`
+				CreatedAt time.Time  `gorm:"type:time"`
+				UpdatedAt time.Time  `gorm:"type:time"`
+				DeletedAt *time.Time `gorm:"index"`
+				NodeExecutionKey
+				RequestID  string `gorm:"size:255"`
+				OccurredAt time.Time
+				Phase      string `gorm:"size:50;primary_key"`
+			}
+
+			err := tx.AutoMigrate(&NodeExecutionEvent{})
+			if err != nil {
+				return err
+			}
+			// Run manual migrations for the primary key columns in the case of postgres
+			if tx.Dialector.Name() == "postgres" {
+				err = tx.Exec("ALTER TABLE node_execution_events ALTER COLUMN execution_project TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE node_execution_events ALTER COLUMN execution_domain TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE node_execution_events ALTER COLUMN execution_name TYPE varchar(511)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE node_execution_events ALTER COLUMN node_id TYPE varchar(30)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE node_execution_events ALTER COLUMN phase TYPE varchar(50)").Error
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-description-entity",
+		Migrate: func(tx *gorm.DB) error {
+			type DescriptionEntityKey struct {
+				// ResourceType is an enum that indicates the type of the resource. We represent it as an uint32.
+				ResourceType core.ResourceType `gorm:"primary_key;index:description_entity_project_domain_name_version_idx"`
+				Project      string            `gorm:"size:64;primary_key;index:description_entity_project_domain_name_version_idx"`
+				Domain       string            `gorm:"size:64;primary_key;index:description_entity_project_domain_name_version_idx"`
+				Name         string            `gorm:"size:511;primary_key;index:description_entity_project_domain_name_version_idx"`
+				Version      string            `gorm:"size:128;primary_key;index:description_entity_project_domain_name_version_idx"`
+			}
+
+			// SourceCode Database model to encapsulate a SourceCode.
+			type SourceCode struct {
+				Link string `gorm:"size:2048"`
+			}
+
+			// DescriptionEntity Database model to encapsulate a DescriptionEntity.
+			type DescriptionEntity struct {
+				DescriptionEntityKey
+				ID        uint       `gorm:"index;autoIncrement;not null"`
+				CreatedAt time.Time  `gorm:"type:time"`
+				UpdatedAt time.Time  `gorm:"type:time"`
+				DeletedAt *time.Time `gorm:"index"`
+				SourceCode
+				ShortDescription string `gorm:"size:2048"`
+				LongDescription  []byte
+			}
+
+			err := tx.AutoMigrate(&DescriptionEntity{})
+			if err != nil {
+				return err
+			}
+			// Run manual migrations for the primary key columns in the case of postgres
+			if tx.Dialector.Name() == "postgres" {
+				err = tx.Exec("ALTER TABLE description_entities ALTER COLUMN project TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE description_entities ALTER COLUMN domain TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE description_entities ALTER COLUMN name TYPE varchar(511)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE description_entities ALTER COLUMN version TYPE varchar(128)").Error
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-signal",
+		Migrate: func(tx *gorm.DB) error {
+			type ExecutionKey struct {
+				Project string `gorm:"size:64;primary_key;column:execution_project"`
+				Domain  string `gorm:"size:64;primary_key;column:execution_domain"`
+				Name    string `gorm:"size:511;primary_key;column:execution_name"`
+			}
+			type SignalKey struct {
+				ExecutionKey
+				SignalID string `gorm:"size:128;primary_key"`
+			}
+
+			type Signal struct {
+				ID        uint       `gorm:"index;autoIncrement;not null"`
+				CreatedAt time.Time  `gorm:"type:time"`
+				UpdatedAt time.Time  `gorm:"type:time"`
+				DeletedAt *time.Time `gorm:"index"`
+				SignalKey
+				Type  []byte `gorm:"not null"`
+				Value []byte
+			}
+
+			err := tx.AutoMigrate(&Signal{})
+			if err != nil {
+				return err
+			}
+			// Run manual migrations for the primary key columns in the case of postgres
+			if tx.Dialector.Name() == "postgres" {
+				err = tx.Exec("ALTER TABLE signals ALTER COLUMN execution_project TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE signals ALTER COLUMN execution_domain TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE signals ALTER COLUMN execution_name TYPE varchar(511)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE signals ALTER COLUMN signal_id TYPE varchar(128)").Error
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-resource",
+		Migrate: func(tx *gorm.DB) error {
+			if tx.Dialector.Name() == "mysql" {
+				type ResourcePriority int32
+
+				// In this model, the combination of (Project, Domain, Workflow, LaunchPlan, ResourceType) is unique
+				type Resource struct {
+					ID           int64 `gorm:"AUTO_INCREMENT;column:id;primary_key;not null"`
+					CreatedAt    time.Time
+					UpdatedAt    time.Time
+					DeletedAt    *time.Time `sql:"index"`
+					Project      string     `gorm:"size:64"`
+					Domain       string     `gorm:"size:64"`
+					Workflow     string     `gorm:"size:511"`
+					LaunchPlan   string     `gorm:"size:511"`
+					ResourceType string     `gorm:"size:50"`
+					Priority     ResourcePriority
+					// Serialized flyteidl.admin.MatchingAttributes.
+					Attributes []byte
+				}
+
+				return tx.AutoMigrate(&Resource{})
+			} else {
+				type ResourcePriority int32
+
+				// In this model, the combination of (Project, Domain, Workflow, LaunchPlan, ResourceType) is unique
+				type Resource struct {
+					ID           int64 `gorm:"AUTO_INCREMENT;column:id;primary_key;not null"`
+					CreatedAt    time.Time
+					UpdatedAt    time.Time
+					DeletedAt    *time.Time `sql:"index"`
+					Project      string     `gorm:"size:64;uniqueIndex:idx_project_domain_workflow_resource_type"`
+					Domain       string     `gorm:"size:64;uniqueIndex:idx_project_domain_workflow_resource_type"`
+					Workflow     string     `gorm:"size:511;uniqueIndex:idx_project_domain_workflow_resource_type"`
+					LaunchPlan   string     `gorm:"size:511;uniqueIndex:idx_project_domain_workflow_resource_type"`
+					ResourceType string     `gorm:"size:50;uniqueIndex:idx_project_domain_workflow_resource_type"`
+					Priority     ResourcePriority
+					// Serialized flyteidl.admin.MatchingAttributes.
+					Attributes []byte
+				}
+
+				return tx.AutoMigrate(&Resource{})
+			}
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-resources_create_primary_alt_index",
+		Migrate: func(tx *gorm.DB) error {
+			// This migration only applies to mysql as it has a limit on the size of the index.
+			// For other databases, we can use the primary key as defined in the model.
+			// ** Please, keep the model definitions in sync with the mysql ones defined above. **
+			if tx.Dialector.Name() == "mysql" {
+				return tx.Exec("CREATE INDEX primary_alt ON resources(project, domain, workflow(200), launch_plan(200), resource_type);").Error
+			}
+			return nil
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-schedulable_entities",
+		Migrate: func(tx *gorm.DB) error {
+			type SchedulableEntityKey struct {
+				Project string `gorm:"size:64;primary_key"`
+				Domain  string `gorm:"size:64;primary_key"`
+				Name    string `gorm:"size:511;primary_key"`
+				Version string `gorm:"size:128;primary_key"`
+			}
+			type SchedulableEntity struct {
+				ID        uint `gorm:"index;autoIncrement;not null"`
+				CreatedAt time.Time
+				UpdatedAt time.Time
+				DeletedAt *time.Time `gorm:"index"`
+				SchedulableEntityKey
+				CronExpression      string `gorm:"size:100"`
+				FixedRateValue      uint32
+				Unit                admin.FixedRateUnit
+				KickoffTimeInputArg string `gorm:"size:100"`
+				Active              *bool
+			}
+
+			err := tx.AutoMigrate(&SchedulableEntity{})
+			if err != nil {
+				return err
+			}
+			// Run manual migrations for the primary key columns in the case of postgres
+			if tx.Dialector.Name() == "postgres" {
+				err = tx.Exec("ALTER TABLE schedulable_entities ALTER COLUMN project TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE schedulable_entities ALTER COLUMN domain TYPE varchar(64)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE schedulable_entities ALTER COLUMN name TYPE varchar(511)").Error
+				if err != nil {
+					return err
+				}
+				err = tx.Exec("ALTER TABLE schedulable_entities ALTER COLUMN version TYPE varchar(128)").Error
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+	{
+		ID: "2023-03-31-fixup-schedulable_entities-snapshot",
+		Migrate: func(tx *gorm.DB) error {
+			type ScheduleEntitiesSnapshot struct {
+				ID        uint `gorm:"index;autoIncrement;not null"`
+				CreatedAt time.Time
+				UpdatedAt time.Time
+				DeletedAt *time.Time `gorm:"index"`
+				Snapshot  []byte     `gorm:"column:snapshot" schema:"-"`
+			}
+
+			return tx.AutoMigrate(&ScheduleEntitiesSnapshot{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+}
+
+func ListMigrations(db *gorm.DB) []*gormigrate.Migration {
+	var Migrations []*gormigrate.Migration
+	// Only run legacy migrations for postgres
+	if db.Dialector.Name() == "postgres" {
+		Migrations = append(LegacyMigrations, NoopMigrations...)
+	}
+	Migrations = append(Migrations, FixupMigrations...)
+	return Migrations
+}
 
 func alterTableColumnType(db *sql.DB, columnName, columnType string) error {
 

@@ -43,7 +43,7 @@ func withDB(ctx context.Context, do func(db *gorm.DB) error) error {
 // Migrate runs all configured migrations
 func Migrate(ctx context.Context) error {
 	return withDB(ctx, func(db *gorm.DB) error {
-		m := gormigrate.New(db, gormigrate.DefaultOptions, config.Migrations)
+		m := gormigrate.New(db, gormigrate.DefaultOptions, config.ListMigrations(db))
 		if err := m.Migrate(); err != nil {
 			return fmt.Errorf("database migration failed: %v", err)
 		}
@@ -55,7 +55,7 @@ func Migrate(ctx context.Context) error {
 // Rollback rolls back the last migration
 func Rollback(ctx context.Context) error {
 	return withDB(ctx, func(db *gorm.DB) error {
-		m := gormigrate.New(db, gormigrate.DefaultOptions, config.Migrations)
+		m := gormigrate.New(db, gormigrate.DefaultOptions, config.ListMigrations(db))
 		err := m.RollbackLast()
 		if err != nil {
 			return fmt.Errorf("could not rollback latest migration: %v", err)

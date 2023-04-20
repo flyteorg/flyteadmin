@@ -22,9 +22,9 @@ type DescriptionEntity struct {
 
 	BaseModel
 
+	SourceCode
+
 	ShortDescription string
 
 	LongDescription []byte
-
-	SourceCode
 }
