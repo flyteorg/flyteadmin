@@ -5,9 +5,9 @@ import (
 	"encoding/base32"
 	"encoding/base64"
 	"fmt"
+	"github.com/flyteorg/flyteadmin/pkg/common"
 	"net/url"
 	"reflect"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -249,60 +249,6 @@ func (s Service) validateResolveArtifactRequest(req *service.GetDataRequest) err
 	return nil
 }
 
-type IOType int
-
-const (
-	INPUT = iota
-	OUTPUT
-	DECK
-)
-
-func ParseFlyteURL(flyteURL string) (core.NodeExecutionIdentifier, *int, IOType, error) {
-	// flyteURL is of the form flyte://v1/project/domain/execution_id/node_id/attempt/[iod]
-	// where i stands for inputs.pb o for outputs.pb and d for the flyte deck
-	// If the retry attempt is missing, the io requested is assumed to be for the node instead of the task execution
-	zero := 0
-	re, err := regexp.Compile("flyte://v1/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)(?:/([0-9]+))?/([iod])")
-	if err != nil {
-		return core.NodeExecutionIdentifier{}, &zero, 0, err
-	}
-	re.MatchString(flyteURL)
-	matches := re.FindStringSubmatch(flyteURL)
-	if len(matches) != 7 && len(matches) != 6 {
-		return core.NodeExecutionIdentifier{}, &zero, 0, fmt.Errorf("failed to parse flyte url, only %d matches found", len(matches))
-	}
-	proj := matches[1]
-	domain := matches[2]
-	executionID := matches[3]
-	nodeID := matches[4]
-	var attempt *int // nil means node execution, not a task execution
-	if len(matches) == 7 && matches[5] != "" {
-		a, err := strconv.Atoi(matches[5])
-		if err != nil {
-			return core.NodeExecutionIdentifier{}, &zero, 0, fmt.Errorf("failed to parse attempt, %s", err)
-		}
-		attempt = &a
-	}
-	var ioType IOType
-	switch matches[len(matches)-1] {
-	case "i":
-		ioType = INPUT
-	case "o":
-		ioType = OUTPUT
-	case "d":
-		ioType = DECK
-	}
-
-	return core.NodeExecutionIdentifier{
-		NodeId: nodeID,
-		ExecutionId: &core.WorkflowExecutionIdentifier{
-			Project: proj,
-			Domain:  domain,
-			Name:    executionID,
-		},
-	}, attempt, ioType, nil
-}
-
 func (s Service) GetTaskExecutionID(ctx context.Context, attempt int, nodeExecID core.NodeExecutionIdentifier) (*core.TaskExecutionIdentifier, error) {
 	taskExecs, err := s.taskExecutionManager.ListTaskExecutions(ctx, admin.TaskExecutionListRequest{
 		NodeExecutionId: &nodeExecID,
@@ -325,7 +271,7 @@ func (s Service) GetData(ctx context.Context, req *service.GetDataRequest) (
 		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "failed to validate resolve artifact request. Error: %v", err)
 	}
 
-	nodeExecID, attempt, ioType, err := ParseFlyteURL(req.GetFlyteUrl())
+	nodeExecID, attempt, ioType, err := common.ParseFlyteURL(req.GetFlyteUrl())
 	if err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "failed to parse artifact url Error: %v", err)
 	}
@@ -340,9 +286,9 @@ func (s Service) GetData(ctx context.Context, req *service.GetDataRequest) (
 		}
 
 		var lm *core.LiteralMap
-		if ioType == INPUT {
+		if ioType == common.INPUT {
 			lm = resp.FullInputs
-		} else if ioType == OUTPUT {
+		} else if ioType == common.OUTPUT {
 			lm = resp.FullOutputs
 		} else {
 			// Assume deck, and create a download link request
@@ -382,9 +328,9 @@ func (s Service) GetData(ctx context.Context, req *service.GetDataRequest) (
 		return nil, err
 	}
 
-	if ioType == INPUT {
+	if ioType == common.INPUT {
 		lm = resp.FullInputs
-	} else if ioType == OUTPUT {
+	} else if ioType == common.OUTPUT {
 		lm = resp.FullOutputs
 	} else {
 		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "deck type cannot be specified with a retry attempt, just use the node instead")

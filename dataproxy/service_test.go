@@ -3,6 +3,7 @@ package dataproxy
 import (
 	"context"
 	"fmt"
+	"github.com/flyteorg/flyteadmin/pkg/common"
 	"testing"
 	"time"
 
@@ -169,13 +170,13 @@ func TestCreateDownloadLocation(t *testing.T) {
 
 func TestParseFlyteUrl(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
-		ne, attempt, kind, err := ParseFlyteURL("flyte://v1/fs/dev/abc/n0/0/o")
+		ne, attempt, kind, err := common.ParseFlyteURL("flyte://v1/fs/dev/abc/n0/0/o")
 		assert.NoError(t, err)
 		fmt.Println(ne, attempt, kind, err)
-		ne, attempt, kind, err = ParseFlyteURL("flyte://v1/fs/dev/abc/n0/i")
+		ne, attempt, kind, err = common.ParseFlyteURL("flyte://v1/fs/dev/abc/n0/i")
 		assert.NoError(t, err)
 		fmt.Println(ne, attempt, kind, err)
-		ne, attempt, kind, err = ParseFlyteURL("flyte://v1/fs/dev/abc/n0/d")
+		ne, attempt, kind, err = common.ParseFlyteURL("flyte://v1/fs/dev/abc/n0/d")
 		assert.NoError(t, err)
 		fmt.Println(ne, attempt, kind, err)
 	})
