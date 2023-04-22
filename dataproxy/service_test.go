@@ -3,9 +3,10 @@ package dataproxy
 import (
 	"context"
 	"fmt"
-	"github.com/flyteorg/flyteadmin/pkg/common"
 	"testing"
 	"time"
+
+	"github.com/flyteorg/flyteadmin/pkg/common"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 
