@@ -287,9 +287,9 @@ func (s Service) GetData(ctx context.Context, req *service.GetDataRequest) (
 		}
 
 		var lm *core.LiteralMap
-		if ioType == common.IOType_i {
+		if ioType == common.ArtifactTypeI {
 			lm = resp.FullInputs
-		} else if ioType == common.IOType_o {
+		} else if ioType == common.ArtifactTypeO {
 			lm = resp.FullOutputs
 		} else {
 			// Assume deck, and create a download link request
@@ -329,9 +329,9 @@ func (s Service) GetData(ctx context.Context, req *service.GetDataRequest) (
 		return nil, err
 	}
 
-	if ioType == common.IOType_i {
+	if ioType == common.ArtifactTypeI {
 		lm = resp.FullInputs
-	} else if ioType == common.IOType_o {
+	} else if ioType == common.ArtifactTypeO {
 		lm = resp.FullOutputs
 	} else {
 		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "deck type cannot be specified with a retry attempt, just use the node instead")
