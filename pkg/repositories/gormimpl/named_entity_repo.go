@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"google.golang.org/grpc/codes"
-
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	adminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/promutils"
+
+	"google.golang.org/grpc/codes"
 	"gorm.io/gorm"
 )
 
@@ -65,10 +65,10 @@ var resourceTypeToMetadataJoin = map[core.ResourceType]string{
 	core.ResourceType_TASK:        leftJoinTaskNameToMetadata,
 }
 
-var getGroupByForNamedEntity = fmt.Sprintf("%s.%s, %s.%s, %s.%s, %s.%s, %s.%s",
+var getGroupByForNamedEntity = fmt.Sprintf("%s.%s, %s.%s, %s.%s, %s.%s, %s.%s, %s.%s",
 	innerJoinTableAlias, Project, innerJoinTableAlias, Domain, innerJoinTableAlias, Name, namedEntityMetadataTableName,
 	Description,
-	namedEntityMetadataTableName, State)
+	namedEntityMetadataTableName, State, namedEntityMetadataTableName, CreatedAt)
 
 func getSelectForNamedEntity(tableName string, resourceType core.ResourceType) []string {
 	return []string{
@@ -198,7 +198,7 @@ func (r *NamedEntityRepo) List(ctx context.Context, input interfaces.ListNamedEn
 	var entities []models.NamedEntity
 	timer := r.metrics.ListDuration.Start()
 
-	tx.Select(getSelectForNamedEntity(innerJoinTableAlias, input.ResourceType)).Table(namedEntityMetadataTableName).Group(getGroupByForNamedEntity).Scan(&entities)
+	tx.Distinct(getSelectForNamedEntity(innerJoinTableAlias, input.ResourceType)).Table(namedEntityMetadataTableName).Group(getGroupByForNamedEntity).Scan(&entities)
 
 	timer.Stop()
 

@@ -118,7 +118,7 @@ func (r *WorkflowRepo) ListIdentifiers(ctx context.Context, input interfaces.Lis
 	// Scan the results into a list of workflows
 	var workflows []models.Workflow
 	timer := r.metrics.ListIdentifiersDuration.Start()
-	tx.Select([]string{Project, Domain, Name}).Group(identifierGroupBy).Scan(&workflows)
+	tx.Distinct([]string{Project, Domain, Name}).Group(identifierGroupBy).Scan(&workflows)
 	timer.Stop()
 	if tx.Error != nil {
 		return interfaces.WorkflowCollectionOutput{}, r.errorTransformer.ToFlyteAdminError(tx.Error)

@@ -2,18 +2,20 @@ package gormimpl
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
-
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
-
-	mocket "github.com/Selvatico/go-mocket"
+	adminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	mockScope "github.com/flyteorg/flytestdlib/promutils"
+
+	mocket "github.com/Selvatico/go-mocket"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc/codes"
 )
 
 func getMockNamedEntityResponseFromDb(expected models.NamedEntity) map[string]interface{} {
@@ -155,7 +157,7 @@ func TestListNamedEntity(t *testing.T) {
 	mockQuery := GlobalMock.NewMock()
 
 	mockQuery.WithQuery(
-		`SELECT entities.project,entities.domain,entities.name,'2' AS resource_type,named_entity_metadata.description,named_entity_metadata.state FROM "named_entity_metadata" RIGHT JOIN (SELECT project,domain,name FROM "workflows" WHERE "domain" = $1 AND "project" = $2 GROUP BY project, domain, name ORDER BY name desc LIMIT 20) AS entities ON named_entity_metadata.resource_type = 2 AND named_entity_metadata.project = entities.project AND named_entity_metadata.domain = entities.domain AND named_entity_metadata.name = entities.name GROUP BY entities.project, entities.domain, entities.name, named_entity_metadata.description, named_entity_metadata.state ORDER BY name desc`).WithReply(results)
+		`SELECT entities.project,entities.domain,entities.name,'2' AS resource_type,named_entity_metadata.description,named_entity_metadata.state FROM "named_entity_metadata" RIGHT JOIN (SELECT project,domain,name FROM "workflows" WHERE "domain" = $1 AND "project" = $2 GROUP BY project, domain, name, created_at ORDER BY name desc LIMIT 20) AS entities ON named_entity_metadata.resource_type = 2 AND named_entity_metadata.project = entities.project AND named_entity_metadata.domain = entities.domain AND named_entity_metadata.name = entities.name GROUP BY entities.project, entities.domain, entities.name, named_entity_metadata.description, named_entity_metadata.state, named_entity_metadata.created_at ORDER BY name desc`).WithReply(results)
 
 	sortParameter, _ := common.NewSortParameter(admin.Sort{
 		Direction: admin.Sort_DESCENDING,
@@ -172,4 +174,106 @@ func TestListNamedEntity(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.Len(t, output.Entities, 1)
+}
+
+func TestListNamedEntityTxErrorCases(t *testing.T) {
+	metadataRepo := NewNamedEntityRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
+	GlobalMock := mocket.Catcher.Reset()
+	GlobalMock.Logging = true
+	mockQuery := GlobalMock.NewMock()
+
+	mockQuery.WithQuery(
+		`SELECT entities.project,entities.domain,entities.name,'2' AS resource_type,named_entity_metadata.description,named_entity_metadata.state FROM "named_entity_metadata" RIGHT JOIN (SELECT project,domain,name FROM "workflows" WHERE "domain" = $1 AND "project" = $2 GROUP BY project, domain, name, created_at ORDER BY name desc LIMIT 20) AS entities ON named_entity_metadata.resource_type = 2 AND named_entity_metadata.project = entities.project AND named_entity_metadata.domain = entities.domain AND named_entity_metadata.name = entities.name GROUP BY entities.project, entities.domain, entities.name, named_entity_metadata.description, named_entity_metadata.state, named_entity_metadata.created_at ORDER BY name desc%`).WithError(fmt.Errorf("failed"))
+
+	sortParameter, _ := common.NewSortParameter(admin.Sort{
+		Direction: admin.Sort_DESCENDING,
+		Key:       "name",
+	})
+	output, err := metadataRepo.List(context.Background(), interfaces.ListNamedEntityInput{
+		ResourceType: resourceType,
+		Project:      "admintests",
+		Domain:       "development",
+		ListResourceInput: interfaces.ListResourceInput{
+			Limit:         20,
+			SortParameter: sortParameter,
+		},
+	})
+	assert.Equal(t, "Test transformer failed to find transformation to apply", err.Error())
+	assert.Len(t, output.Entities, 0)
+}
+
+func TestListNamedEntityInputErrorCases(t *testing.T) {
+	type test struct {
+		input        interfaces.ListNamedEntityInput
+		wantedError  error
+		wantedLength int
+	}
+
+	sortParameter, _ := common.NewSortParameter(admin.Sort{
+		Direction: admin.Sort_DESCENDING,
+		Key:       "name",
+	})
+
+	tests := []test{
+		{
+			input: interfaces.ListNamedEntityInput{
+				ResourceType: resourceType,
+				Project:      "",
+				Domain:       "development",
+				ListResourceInput: interfaces.ListResourceInput{
+					Limit:         20,
+					SortParameter: sortParameter,
+				},
+			},
+			wantedError:  errors.GetInvalidInputError(Project),
+			wantedLength: 0,
+		},
+		{
+			input: interfaces.ListNamedEntityInput{
+				ResourceType: resourceType,
+				Project:      "project",
+				Domain:       "",
+				ListResourceInput: interfaces.ListResourceInput{
+					Limit:         20,
+					SortParameter: sortParameter,
+				},
+			},
+			wantedError:  errors.GetInvalidInputError(Domain),
+			wantedLength: 0,
+		},
+		{
+			input: interfaces.ListNamedEntityInput{
+				ResourceType: resourceType,
+				Project:      "project",
+				Domain:       "development",
+				ListResourceInput: interfaces.ListResourceInput{
+					Limit:         0,
+					SortParameter: sortParameter,
+				},
+			},
+			wantedError:  errors.GetInvalidInputError(limit),
+			wantedLength: 0,
+		},
+		{
+			input: interfaces.ListNamedEntityInput{
+				ResourceType: -1,
+				Project:      "project",
+				Domain:       "development",
+				ListResourceInput: interfaces.ListResourceInput{
+					Limit:         20,
+					SortParameter: sortParameter,
+				},
+			},
+			wantedError: adminErrors.NewFlyteAdminErrorf(codes.InvalidArgument,
+				"Cannot list entity names for resource type: %v", -1),
+			wantedLength: 0,
+		},
+	}
+
+	metadataRepo := NewNamedEntityRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
+	for _, tc := range tests {
+		output, err := metadataRepo.List(context.Background(), tc.input)
+		assert.Len(t, output.Entities, tc.wantedLength)
+		assert.Equal(t, tc.wantedError, err)
+	}
 }
