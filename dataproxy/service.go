@@ -141,9 +141,17 @@ func (s Service) CreateDownloadLink(ctx context.Context, req *service.CreateDown
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to create a signed url. Error: %v", err)
 	}
 
+	u := []string{signedURLResp.URL.String()}
+	ts := timestamppb.New(time.Now().Add(req.ExpiresIn.AsDuration()))
+
+	//
 	return &service.CreateDownloadLinkResponse{
-		SignedUrl: []string{signedURLResp.URL.String()},
-		ExpiresAt: timestamppb.New(time.Now().Add(req.ExpiresIn.AsDuration())),
+		SignedUrl: u,
+		ExpiresAt: ts,
+		PreSignedUrls: &service.PreSignedURLs{
+			SignedUrl: []string{signedURLResp.URL.String()},
+			ExpiresAt: ts,
+		},
 	}, nil
 }
 
@@ -302,8 +310,8 @@ func (s Service) GetData(ctx context.Context, req *service.GetDataRequest) (
 				return nil, err
 			}
 			return &service.GetDataResponse{
-				Data: &service.GetDataResponse_FlyteDeckDownloadLink{
-					FlyteDeckDownloadLink: resp,
+				Data: &service.GetDataResponse_PreSignedUrls{
+					PreSignedUrls: resp.PreSignedUrls,
 				},
 			}, nil
 		}

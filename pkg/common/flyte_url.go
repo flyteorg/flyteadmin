@@ -18,12 +18,12 @@ type ArtifactType int
 // The suffixes in these constants are used to match against the tail end of the flyte url, to keep tne flyte url simpler
 const (
 	ArtifactTypeUndefined ArtifactType = iota
-	ArtifactTypeI
-	ArtifactTypeO
-	ArtifactTypeD
+	ArtifactTypeI                      // inputs
+	ArtifactTypeO                      // outputs
+	ArtifactTypeD                      // deck
 )
 
-var re = regexp.MustCompile("flyte://v1/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)(?:/([0-9]+))?/([iod])")
+var re = regexp.MustCompile("flyte://v1/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)(?:/([0-9]+))?/([iod])$")
 
 func ParseFlyteURL(flyteURL string) (core.NodeExecutionIdentifier, *int, ArtifactType, error) {
 	// flyteURL is of the form flyte://v1/project/domain/execution_id/node_id/attempt/[iod]

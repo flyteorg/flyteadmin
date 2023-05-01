@@ -2,13 +2,11 @@ package dataproxy
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
-	"github.com/flyteorg/flyteadmin/pkg/common"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/golang/protobuf/proto"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
@@ -169,16 +167,111 @@ func TestCreateDownloadLocation(t *testing.T) {
 	})
 }
 
-func TestParseFlyteUrl(t *testing.T) {
-	t.Run("valid", func(t *testing.T) {
-		ne, attempt, kind, err := common.ParseFlyteURL("flyte://v1/fs/dev/abc/n0/0/o")
+func TestService_GetData(t *testing.T) {
+	dataStore := commonMocks.GetMockStorageClient()
+	nodeExecutionManager := &mocks.MockNodeExecutionManager{}
+	taskExecutionManager := &mocks.MockTaskExecutionManager{}
+	s, err := NewService(config.DataProxyConfig{}, nodeExecutionManager, dataStore, taskExecutionManager)
+	assert.NoError(t, err)
+
+	inputsLM := &core.LiteralMap{
+		Literals: map[string]*core.Literal{
+			"input": {
+				Value: &core.Literal_Scalar{
+					Scalar: &core.Scalar{
+						Value: &core.Scalar_Primitive{
+							Primitive: &core.Primitive{
+								Value: &core.Primitive_StringValue{
+									StringValue: "hello",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	outputsLM := &core.LiteralMap{
+		Literals: map[string]*core.Literal{
+			"output": {
+				Value: &core.Literal_Scalar{
+					Scalar: &core.Scalar{
+						Value: &core.Scalar_Primitive{
+							Primitive: &core.Primitive{
+								Value: &core.Primitive_StringValue{
+									StringValue: "world",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	nodeExecutionManager.SetGetNodeExecutionDataFunc(
+		func(ctx context.Context, request admin.NodeExecutionGetDataRequest) (*admin.NodeExecutionGetDataResponse, error) {
+			return &admin.NodeExecutionGetDataResponse{
+				FullInputs:  inputsLM,
+				FullOutputs: outputsLM,
+			}, nil
+		},
+	)
+	taskExecutionManager.SetListTaskExecutionsCallback(func(ctx context.Context, request admin.TaskExecutionListRequest) (*admin.TaskExecutionList, error) {
+		return &admin.TaskExecutionList{
+			TaskExecutions: []*admin.TaskExecution{
+				{
+					Id: &core.TaskExecutionIdentifier{
+						TaskId: &core.Identifier{
+							ResourceType: core.ResourceType_TASK,
+							Project:      "proj",
+							Domain:       "dev",
+							Name:         "task",
+							Version:      "v1",
+						},
+						NodeExecutionId: &core.NodeExecutionIdentifier{
+							NodeId: "n0",
+							ExecutionId: &core.WorkflowExecutionIdentifier{
+								Project: "proj",
+								Domain:  "dev",
+								Name:    "wfexecid",
+							},
+						},
+						RetryAttempt: 5,
+					},
+				},
+			},
+		}, nil
+	})
+	taskExecutionManager.SetGetTaskExecutionDataCallback(func(ctx context.Context, request admin.TaskExecutionGetDataRequest) (*admin.TaskExecutionGetDataResponse, error) {
+		return &admin.TaskExecutionGetDataResponse{
+			FullInputs:  inputsLM,
+			FullOutputs: outputsLM,
+		}, nil
+	})
+
+	t.Run("get a working set of urls without retry attempt", func(t *testing.T) {
+		res, err := s.GetData(context.Background(), &service.GetDataRequest{
+			FlyteUrl: "flyte://v1/proj/dev/wfexecid/n0-d0/i",
+		})
 		assert.NoError(t, err)
-		fmt.Println(ne, attempt, kind, err)
-		ne, attempt, kind, err = common.ParseFlyteURL("flyte://v1/fs/dev/abc/n0/i")
+		assert.True(t, proto.Equal(inputsLM, res.GetLiteralMap()))
+		assert.Nil(t, res.GetPreSignedUrls())
+	})
+
+	t.Run("get a working set of urls with a retry attempt", func(t *testing.T) {
+		res, err := s.GetData(context.Background(), &service.GetDataRequest{
+			FlyteUrl: "flyte://v1/proj/dev/wfexecid/n0-d0/5/o",
+		})
 		assert.NoError(t, err)
-		fmt.Println(ne, attempt, kind, err)
-		ne, attempt, kind, err = common.ParseFlyteURL("flyte://v1/fs/dev/abc/n0/d")
-		assert.NoError(t, err)
-		fmt.Println(ne, attempt, kind, err)
+		assert.True(t, proto.Equal(outputsLM, res.GetLiteralMap()))
+		assert.Nil(t, res.GetPreSignedUrls())
+	})
+
+	t.Run("Bad URL", func(t *testing.T) {
+		_, err = s.GetData(context.Background(), &service.GetDataRequest{
+			FlyteUrl: "flyte://v3/blah/lorem/m0-fdj",
+		})
+		assert.Error(t, err)
 	})
 }
