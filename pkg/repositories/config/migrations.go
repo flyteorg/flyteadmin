@@ -696,7 +696,111 @@ var NoopMigrations = []*gormigrate.Migration{
 			return nil
 		},
 	},
+	{
+		ID: "pg-2023-05-02-fix-parentid-type",
+		Migrate: func(tx *gorm.DB) error {
+			// This migration only applies if dialect is postgres
+			if tx.Dialector.Name() != "postgres" {
+				return nil
+			}
+			// Start transaction
+			tx1 := tx.Begin()
+			defer func() {
+				if r := recover(); r != nil {
+					tx1.Rollback()
+				}
+			}()
 
+			// We should only apply this migration in case the type of the parent_id column is integer
+			var columnType string
+			query := `
+			SELECT data_type
+			FROM information_schema.columns
+			WHERE table_name = ? AND column_name = ?;
+			`
+			err := tx1.Raw(query, "node_executions", "parent_id").Scan(&columnType).Error
+			if err != nil {
+				return err
+			}
+			if columnType == "bigint" {
+				return nil
+			}
+
+			// Alter table and add new column
+			if err := tx1.Exec("ALTER TABLE node_executions ADD COLUMN new_parent_id BIGINT;").Error; err != nil {
+				return err
+			}
+
+			// Create trigger function
+			triggerFunction := `
+			CREATE FUNCTION set_new_parent_id() RETURNS TRIGGER AS
+			$BODY$
+			BEGIN
+				NEW.new_parent_id := NEW.parent_id;
+				RETURN NEW;
+			END
+			$BODY$ LANGUAGE PLPGSQL;
+			`
+			if err := tx1.Exec(triggerFunction).Error; err != nil {
+				return err
+			}
+
+			// Create trigger
+			if err := tx1.Exec("CREATE TRIGGER set_new_parent_id_trigger BEFORE INSERT OR UPDATE ON node_executions FOR EACH ROW EXECUTE PROCEDURE set_new_parent_id();").Error; err != nil {
+				return err
+			}
+
+			// Update table
+			if err := tx1.Exec("UPDATE node_executions SET new_parent_id = parent_id WHERE parent_id is not null;").Error; err != nil {
+				return err
+			}
+
+			// Lock table
+			if err := tx1.Exec("LOCK TABLE node_executions IN EXCLUSIVE MODE;").Error; err != nil {
+				tx1.Rollback()
+				return err
+			}
+
+			// DropIndex and create a new one
+			if err := tx1.Exec("DROP INDEX idx_node_executions_parent_id;").Error; err != nil {
+				tx1.Rollback()
+				return err
+			}
+			if err := tx1.Exec("CREATE INDEX idx_node_executions_parent_id ON public.node_executions USING btree (new_parent_id);").Error; err != nil {
+				tx1.Rollback()
+				return err
+			}
+
+			// Drop and rename columns
+			if err := tx1.Exec("ALTER TABLE node_executions DROP COLUMN parent_id;").Error; err != nil {
+				tx1.Rollback()
+				return err
+			}
+			if err := tx1.Exec("ALTER TABLE node_executions RENAME COLUMN new_parent_id TO parent_id;").Error; err != nil {
+				tx1.Rollback()
+				return err
+			}
+
+			// Drop trigger and function
+			if err := tx1.Exec("DROP TRIGGER IF EXISTS set_new_parent_id_trigger ON node_executions;").Error; err != nil {
+				tx1.Rollback()
+				return err
+			}
+			if err := tx1.Exec("DROP FUNCTION IF EXISTS set_new_parent_id();").Error; err != nil {
+				tx1.Rollback()
+				return err
+			}
+
+			// Commit transaction
+			if err := tx1.Commit().Error; err != nil {
+				return err
+			}
+			return nil
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
 	{
 		ID: "pg-noop-2023-03-31-noop-nodeexecution",
 		Migrate: func(tx *gorm.DB) error {
