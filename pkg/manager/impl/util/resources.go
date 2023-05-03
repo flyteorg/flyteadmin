@@ -2,6 +2,7 @@ package util
 
 import (
 	"context"
+
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"google.golang.org/grpc/codes"
 
@@ -71,22 +72,30 @@ func GetTaskResourcesAndCoalesce(ctx context.Context,
 		q := parseQuantityNoError(ctx, entry.Value)
 		switch entry.Name {
 		case core.Resources_CPU:
-			if q == nil && coalesce.CPU != nil {
-				result.CPU = coalesce.CPU
-			}
+			result.CPU = q
 		case core.Resources_MEMORY:
-			if q == nil && coalesce.Memory != nil {
-				result.Memory = coalesce.Memory
-			}
+			result.Memory = q
 		case core.Resources_EPHEMERAL_STORAGE:
-			if q == nil && coalesce.EphemeralStorage != nil {
-				result.EphemeralStorage = coalesce.EphemeralStorage
-			}
+			result.EphemeralStorage = q
+		case core.Resources_STORAGE:
+			result.Storage = q
 		case core.Resources_GPU:
-			if q == nil && coalesce.GPU != nil {
-				result.GPU = coalesce.GPU
-			}
+			result.GPU = q
+		default:
+			logger.Warnf(ctx, "Unknown resource type [%s]", entry.Name)
 		}
+	}
+	if result.CPU == nil && coalesce.CPU != nil {
+		result.CPU = coalesce.CPU
+	}
+	if result.Memory == nil && coalesce.Memory != nil {
+		result.Memory = coalesce.Memory
+	}
+	if result.EphemeralStorage == nil && coalesce.EphemeralStorage != nil {
+		result.EphemeralStorage = coalesce.EphemeralStorage
+	}
+	if result.GPU == nil && coalesce.GPU != nil {
+		result.GPU = coalesce.GPU
 	}
 
 	return result
@@ -239,35 +248,35 @@ func MergeTaskResourceAttributes(high, low admin.TaskResourceAttributes) admin.T
 }
 
 // ConstrainTaskResourceSpec takes two TaskResourceSpecs and returns a new one, limiting the first argument, to the
-// values of the second arg (maxes), for each resource type, if it exists in the maxes. This function parses the
-// strings into resource.Quantity objects, and compares them using k8s Cmp.
+// values of the second arg (maxes), for each resource type, if it exists and is non-zero. A zero is taken to mean
+// no limit. This function parses the strings into resource.Quantity objects, and compares them using k8s Cmp.
 func ConstrainTaskResourceSpec(spec admin.TaskResourceSpec, maxes admin.TaskResourceSpec) admin.TaskResourceSpec {
 	res := proto.Clone(&spec).(*admin.TaskResourceSpec)
 	if maxes.GetCpu() != "" && spec.GetCpu() != "" {
-		maxCpu := resource.MustParse(maxes.GetCpu())
-		specCpu := resource.MustParse(spec.GetCpu())
-		if specCpu.Cmp(maxCpu) == 1 {
+		maxCPU := resource.MustParse(maxes.GetCpu())
+		specCPU := resource.MustParse(spec.GetCpu())
+		if specCPU.Cmp(maxCPU) == 1 && !maxCPU.IsZero() {
 			res.Cpu = maxes.GetCpu()
 		}
 	}
 	if maxes.GetGpu() != "" && spec.GetGpu() != "" {
 		maxGpu := resource.MustParse(maxes.GetGpu())
 		specGpu := resource.MustParse(spec.GetGpu())
-		if specGpu.Cmp(maxGpu) == 1 {
+		if specGpu.Cmp(maxGpu) == 1 && !maxGpu.IsZero() {
 			res.Gpu = maxes.GetGpu()
 		}
 	}
 	if maxes.GetMemory() != "" && spec.GetMemory() != "" {
 		maxMemory := resource.MustParse(maxes.GetMemory())
 		specMemory := resource.MustParse(spec.GetMemory())
-		if specMemory.Cmp(maxMemory) == 1 {
+		if specMemory.Cmp(maxMemory) == 1 && !maxMemory.IsZero() {
 			res.Memory = maxes.GetMemory()
 		}
 	}
 	if maxes.GetEphemeralStorage() != "" && spec.GetEphemeralStorage() != "" {
 		maxEphemeralStorage := resource.MustParse(maxes.GetEphemeralStorage())
 		specEphemeralStorage := resource.MustParse(spec.GetEphemeralStorage())
-		if specEphemeralStorage.Cmp(maxEphemeralStorage) == 1 {
+		if specEphemeralStorage.Cmp(maxEphemeralStorage) == 1 && !maxEphemeralStorage.IsZero() {
 			res.EphemeralStorage = maxes.GetEphemeralStorage()
 		}
 	}

@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flyteorg/flyteadmin/pkg/common/testutils"
+
 	"github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
 
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
@@ -125,15 +127,15 @@ func TestAddExecutionOverrides(t *testing.T) {
 		workflow := &v1alpha1.FlyteWorkflow{}
 		addExecutionOverrides(nil, nil, nil, &interfaces.TaskResources{
 			Defaults: runtimeInterfaces.TaskResourceSet{
-				CPU:    resource.MustParse("1"),
-				Memory: resource.MustParse("100Gi"),
+				CPU:    testutils.GetPtr(resource.MustParse("1")),
+				Memory: testutils.GetPtr(resource.MustParse("100Gi")),
 			},
 			Limits: runtimeInterfaces.TaskResourceSet{
-				CPU:              resource.MustParse("2"),
-				Memory:           resource.MustParse("200Gi"),
-				Storage:          resource.MustParse("5Gi"),
-				EphemeralStorage: resource.MustParse("1Gi"),
-				GPU:              resource.MustParse("1"),
+				CPU:              testutils.GetPtr(resource.MustParse("2")),
+				Memory:           testutils.GetPtr(resource.MustParse("200Gi")),
+				Storage:          testutils.GetPtr(resource.MustParse("5Gi")),
+				EphemeralStorage: testutils.GetPtr(resource.MustParse("1Gi")),
+				GPU:              testutils.GetPtr(resource.MustParse("1")),
 			},
 		}, workflow)
 		assert.EqualValues(t, v1alpha1.TaskResourceSpec{

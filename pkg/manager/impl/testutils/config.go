@@ -50,7 +50,7 @@ func GetSampleTaskResourceConfiguration() runtimeInterfaces.TaskResourceConfigur
 		EphemeralStorage: GetPtr(resource.MustParse("10Gi")),
 	}
 
-	return runtimeMocks.NewMockTaskResourceConfiguration(resourceDefaults, resourceLimits, resourceLimits)
+	return runtimeMocks.NewMockTaskResourceConfiguration(resourceDefaults, resourceLimits)
 }
 
 func GetMockConfiguration() runtimeInterfaces.Configuration {

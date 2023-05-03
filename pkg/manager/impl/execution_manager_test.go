@@ -9,7 +9,6 @@ import (
 	"github.com/flyteorg/flyteadmin/plugins"
 
 	"google.golang.org/grpc/status"
-
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/benbjohnson/clock"
@@ -3957,9 +3956,9 @@ func TestSetDefaults_OptionalRequiredResources(t *testing.T) {
 		execManager.(*ExecutionManager).setCompiledTaskDefaults(context.Background(), task, workflowengineInterfaces.TaskResources{
 			Limits: taskConfigLimits,
 			Defaults: runtimeInterfaces.TaskResourceSet{
-				CPU:              resource.MustParse("200m"),
-				Memory:           resource.MustParse("200Gi"),
-				EphemeralStorage: resource.MustParse("1"),
+				CPU:              testutils.GetPtr(resource.MustParse("200m")),
+				Memory:           testutils.GetPtr(resource.MustParse("200Gi")),
+				EphemeralStorage: testutils.GetPtr(resource.MustParse("1")),
 			},
 		})
 		assert.True(t, proto.Equal(
@@ -3999,6 +3998,7 @@ func TestSetDefaults_OptionalRequiredResources(t *testing.T) {
 	})
 
 }
+
 func TestCreateSingleTaskExecution(t *testing.T) {
 	repository := getMockRepositoryForExecTest()
 	var getCalledCount = 0
