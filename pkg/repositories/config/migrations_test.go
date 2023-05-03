@@ -32,3 +32,20 @@ func GetDbForTest(t *testing.T) *gorm.DB {
 	}
 	return db
 }
+
+func TestShouldApplyFixParentidMigration(t *testing.T) {
+	gormDb := GetDbForTest(t)
+	GlobalMock := mocket.Catcher.Reset()
+	GlobalMock.Logging = true
+	query := GlobalMock.NewMock()
+	query.WithQuery(`
+	SELECT data_type
+	FROM information_schema.columns
+	WHERE table_name = $1 AND column_name = $2;
+	`)
+
+	shouldApply, err := shouldApplyFixParentidMigration(gormDb)
+	assert.True(t, shouldApply)
+	assert.True(t, query.Triggered)
+	assert.NoError(t, err)
+}
