@@ -182,15 +182,15 @@ func (m *ExecutionManager) addPluginOverrides(ctx context.Context, executionID *
 	return nil, nil
 }
 
-// task limits should be the floor of the task requested limits, the platform level default limits, and platform level limit
-// only things that are specified should be checked.
-// defaults should be coalesce of task defaults, and platform defaults.
+// defaults should be a coalesce of task defaults, and platform defaults.
+// task limits should be the limits from the task, coalesced with the defaults from step one
+// then both should be limited by any platform limits.
 // anything 0 or empty is not set.
 // if both requests and limits end up empty, return nil. if one is empty, return nil for it
 func (m *ExecutionManager) getResources(ctx context.Context, taskResources *core.Resources, platformResources workflowengineInterfaces.TaskResources) *core.Resources {
 
 	// requests: coalesce(task request, platform default)
-	// limits: coalesce(task limits, platform default limit)
+	// limits: coalesce(task limits, task requests)
 	// check that defaults and limits are both below platform limit
 	var requestSet runtimeInterfaces.TaskResourceSet
 	var limitSet runtimeInterfaces.TaskResourceSet
@@ -200,9 +200,9 @@ func (m *ExecutionManager) getResources(ctx context.Context, taskResources *core
 		requestSet = platformResources.Defaults
 	}
 	if taskResources != nil && taskResources.GetLimits() != nil {
-		limitSet = util.GetTaskResourcesAndCoalesce(ctx, taskResources.GetLimits(), platformResources.DefaultLimits)
+		limitSet = util.GetTaskResourcesAndCoalesce(ctx, taskResources.GetLimits(), requestSet)
 	} else {
-		limitSet = platformResources.DefaultLimits
+		limitSet = requestSet
 	}
 	adjustedRequestSet := util.ConstrainTaskResourceSet(ctx, requestSet, platformResources.Limits)
 	adjustedLimitSet := util.ConstrainTaskResourceSet(ctx, limitSet, platformResources.Limits)

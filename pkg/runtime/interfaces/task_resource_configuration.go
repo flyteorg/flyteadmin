@@ -14,10 +14,9 @@ type TaskResourceSet struct {
 	EphemeralStorage *resource.Quantity `json:"ephemeralStorage"`
 }
 
-// Provides default values for task resource limits and defaults.
+// TaskResourceConfiguration provides default values for task resource limits and defaults.
 type TaskResourceConfiguration interface {
 	GetDefaults() TaskResourceSet
-	GetDefaultLimits() TaskResourceSet
 	GetLimits() TaskResourceSet
 	GetAsAttribute() admin.TaskResourceAttributes
 }

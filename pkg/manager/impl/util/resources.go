@@ -62,6 +62,7 @@ func ConvertTaskResourceSetToCoreResources(resources runtimeInterfaces.TaskResou
 	return resourceEntries
 }
 
+// GetTaskResourcesAndCoalesce takes a set of Flyte IDL ResourceEntry's and fills in missing fields from the coalesce
 func GetTaskResourcesAndCoalesce(ctx context.Context,
 	resourceEntries []*core.Resources_ResourceEntry, coalesce runtimeInterfaces.TaskResourceSet) runtimeInterfaces.TaskResourceSet {
 
@@ -138,7 +139,7 @@ func fromAdminProtoTaskResourceSpec(ctx context.Context, spec *admin.TaskResourc
 	return result
 }
 
-// GetTaskResources returns the a merged set of all the requests, default limits, and limits for the given request.
+// GetTaskResources returns a merged set of all the requests, and limits for the given request.
 // This will combine all layers matched and merge missing resource types. That is, if CPU is set at the project level
 // and memory is set at the project/domain/workflow level, this will return both.
 // Admin default system wide configuration is also merged in.
@@ -190,9 +191,6 @@ func GetTaskResources(ctx context.Context, id *core.Identifier, resourceManager 
 	if responseAttributes.GetDefaults() != nil {
 		taskResourceAttributes.Defaults = fromAdminProtoTaskResourceSpec(ctx, responseAttributes.GetDefaults())
 	}
-	if responseAttributes.GetDefaultLimits() != nil {
-		taskResourceAttributes.DefaultLimits = fromAdminProtoTaskResourceSpec(ctx, responseAttributes.GetDefaultLimits())
-	}
 
 	return taskResourceAttributes
 }
@@ -236,7 +234,6 @@ func MergeTaskResourceSpec(high, low *admin.TaskResourceSpec) *admin.TaskResourc
 func MergeTaskResourceAttributes(high, low admin.TaskResourceAttributes) admin.TaskResourceAttributes {
 	res := proto.Clone(&high).(*admin.TaskResourceAttributes)
 	res.Defaults = MergeTaskResourceSpec(high.GetDefaults(), low.GetDefaults())
-	res.DefaultLimits = MergeTaskResourceSpec(high.GetDefaultLimits(), low.GetDefaultLimits())
 	res.Limits = MergeTaskResourceSpec(high.GetLimits(), low.GetLimits())
 	return *res
 }
@@ -311,13 +308,6 @@ func ConformLimits(attr admin.TaskResourceAttributes) admin.TaskResourceAttribut
 	if attr.GetLimits() != nil {
 		maxes = *attr.GetLimits()
 	}
-	if attr.GetDefaultLimits() != nil {
-		x := ConstrainTaskResourceSpec(*attr.GetDefaultLimits(), maxes)
-		attr.DefaultLimits = &x
-		// attr.DefaultLimits has been limited, but it may have been empty. Merge with the original limits so as to
-		// preserve limits.
-		maxes = *MergeTaskResourceSpec(attr.GetDefaultLimits(), &maxes)
-	}
 	if attr.GetDefaults() != nil {
 		x := ConstrainTaskResourceSpec(*attr.GetDefaults(), maxes)
 		attr.Defaults = &x
@@ -326,8 +316,9 @@ func ConformLimits(attr admin.TaskResourceAttributes) admin.TaskResourceAttribut
 }
 
 // MergeDownTaskResources does not today check that the defaults are below the limits when setting, therefore
-// Go through the list from high to low priority, first merge, and then resolve inconsistencies around quantities.
-//   - If set, must be limit >= default limit >= default
+// go through the list from high to low priority, first merge the various types, and then resolve inconsistencies
+// around quantities.
+//   - If set, must be limit >= default
 func MergeDownTaskResources(highToLowPriorityTaskResourceAttributes ...admin.TaskResourceAttributes) *admin.TaskResourceAttributes {
 	// Merge each one down, checking each condition
 	merged := admin.TaskResourceAttributes{}

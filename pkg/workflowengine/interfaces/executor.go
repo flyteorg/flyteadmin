@@ -15,9 +15,8 @@ import (
 //go:generate mockery -name=WorkflowExecutor -output=../mocks/ -case=underscore
 
 type TaskResources struct {
-	Defaults      runtime.TaskResourceSet
-	DefaultLimits runtime.TaskResourceSet
-	Limits        runtime.TaskResourceSet
+	Defaults runtime.TaskResourceSet
+	Limits   runtime.TaskResourceSet
 }
 
 type ExecutionParameters struct {

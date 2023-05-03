@@ -6,9 +6,8 @@ import (
 )
 
 type MockTaskResourceConfiguration struct {
-	Defaults      interfaces.TaskResourceSet
-	DefaultLimits interfaces.TaskResourceSet
-	Limits        interfaces.TaskResourceSet
+	Defaults interfaces.TaskResourceSet
+	Limits   interfaces.TaskResourceSet
 }
 
 func (c *MockTaskResourceConfiguration) ConstructTaskResourceSpec(a interfaces.TaskResourceSet) admin.TaskResourceSpec {
@@ -30,13 +29,11 @@ func (c *MockTaskResourceConfiguration) ConstructTaskResourceSpec(a interfaces.T
 
 func (c *MockTaskResourceConfiguration) GetAsAttribute() admin.TaskResourceAttributes {
 	defaults := c.ConstructTaskResourceSpec(c.GetDefaults())
-	defaultLimits := c.ConstructTaskResourceSpec(c.GetDefaultLimits())
 	limits := c.ConstructTaskResourceSpec(c.GetLimits())
 
 	return admin.TaskResourceAttributes{
-		Defaults:      &defaults,
-		DefaultLimits: &defaultLimits,
-		Limits:        &limits,
+		Defaults: &defaults,
+		Limits:   &limits,
 	}
 }
 
@@ -46,14 +43,10 @@ func (c *MockTaskResourceConfiguration) GetDefaults() interfaces.TaskResourceSet
 func (c *MockTaskResourceConfiguration) GetLimits() interfaces.TaskResourceSet {
 	return c.Limits
 }
-func (c *MockTaskResourceConfiguration) GetDefaultLimits() interfaces.TaskResourceSet {
-	return c.DefaultLimits
-}
 
-func NewMockTaskResourceConfiguration(defaults, defaultLimits, limits interfaces.TaskResourceSet) interfaces.TaskResourceConfiguration {
+func NewMockTaskResourceConfiguration(defaults, limits interfaces.TaskResourceSet) interfaces.TaskResourceConfiguration {
 	return &MockTaskResourceConfiguration{
-		Defaults:      defaults,
-		DefaultLimits: defaultLimits,
-		Limits:        limits,
+		Defaults: defaults,
+		Limits:   limits,
 	}
 }
