@@ -5,6 +5,7 @@ import (
 
 	mocket "github.com/Selvatico/go-mocket"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/driver/mysql"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -31,6 +32,14 @@ func GetDbForTest(t *testing.T) *gorm.DB {
 		t.Fatalf("Failed to open mock db with err %v", err)
 	}
 	return db
+}
+
+func TestShouldApplyFixParentidMigrationMysql(t *testing.T) {
+	mocket.Catcher.Register()
+	gormDb, _ := gorm.Open(mysql.New(mysql.Config{DriverName: mocket.DriverName}))
+	shouldApply, err := shouldApplyFixParentidMigration(gormDb)
+	assert.False(t, shouldApply)
+	assert.NoError(t, err)
 }
 
 func TestShouldApplyFixParentidMigration(t *testing.T) {
