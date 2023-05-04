@@ -22,7 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-const trimmedErrMessageLen = 100
+const trimmedErrMessageLen = 10240
 
 var clusterReassignablePhases = sets.NewString(core.WorkflowExecution_UNDEFINED.String(), core.WorkflowExecution_QUEUED.String())
 
