@@ -248,7 +248,7 @@ func createStorageLocation(ctx context.Context, store *storage.DataStore,
 }
 
 func (s Service) validateResolveArtifactRequest(req *service.GetDataRequest) error {
-	if req.GetFlyteUrl() == "" {
+	if len(req.GetFlyteUrl()) == 0 {
 		return fmt.Errorf("source is required. Provided empty string")
 	}
 	if !strings.HasPrefix(req.GetFlyteUrl(), "flyte://") {
