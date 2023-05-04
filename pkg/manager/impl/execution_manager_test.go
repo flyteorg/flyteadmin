@@ -3996,7 +3996,68 @@ func TestSetDefaults_OptionalRequiredResources(t *testing.T) {
 			},
 			task.Template.GetContainer()), fmt.Sprintf("%+v", task.Template.GetContainer()))
 	})
+}
 
+func TestGetResourcesDirectly(t *testing.T) {
+	taskConfigLimits := runtimeInterfaces.TaskResourceSet{
+		CPU:              testutils.GetPtr(resource.MustParse("300m")),
+		GPU:              testutils.GetPtr(resource.MustParse("1")),
+		Memory:           testutils.GetPtr(resource.MustParse("500Gi")),
+		EphemeralStorage: testutils.GetPtr(resource.MustParse("501Mi")),
+	}
+
+	t.Run("zero handling 1", func(t *testing.T) {
+		r := plugins.NewRegistry()
+		r.RegisterDefault(plugins.PluginIDWorkflowExecutor, &defaultTestExecutor)
+		execManager := NewExecutionManager(repositoryMocks.NewMockRepository(), r, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
+
+		taskResources := &core.Resources{
+			Requests: []*core.Resources_ResourceEntry{
+				{
+					Name:  core.Resources_CPU,
+					Value: "200m",
+				},
+				{
+					Name:  core.Resources_MEMORY,
+					Value: "0",
+				},
+			},
+		}
+		platformResources := workflowengineInterfaces.TaskResources{
+			Defaults: runtimeInterfaces.TaskResourceSet{
+				CPU:    testutils.GetPtr(resource.MustParse("200m")),
+				Memory: testutils.GetPtr(resource.MustParse("200Gi")),
+			},
+			Limits: taskConfigLimits,
+		}
+
+		result := execManager.(*ExecutionManager).getResources(context.Background(), taskResources, platformResources)
+
+		assert.True(t, proto.Equal(
+			&core.Resources{
+				Requests: []*core.Resources_ResourceEntry{
+					{
+						Name:  core.Resources_CPU,
+						Value: "200m",
+					},
+					{
+						Name:  core.Resources_MEMORY,
+						Value: "0",
+					},
+				},
+				Limits: []*core.Resources_ResourceEntry{
+					{
+						Name:  core.Resources_CPU,
+						Value: "200m",
+					},
+					{
+						Name:  core.Resources_MEMORY,
+						Value: "0",
+					},
+				},
+			},
+			result), fmt.Sprintf("Actual: %+v", result))
+	})
 }
 
 func TestCreateSingleTaskExecution(t *testing.T) {

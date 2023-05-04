@@ -238,8 +238,8 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 		logger.Debugf(ctx, "Not setting default resources for task [%+v], no container resources found to check", task)
 		return
 	}
-	task.Template.GetContainer().Resources = m.getResources(ctx, task.Template.GetContainer().Resources, platformTaskResources)
 
+	task.Template.GetContainer().Resources = m.getResources(ctx, task.Template.GetContainer().Resources, platformTaskResources)
 }
 
 // Fetches inherited execution metadata including the parent node execution db model id and the source execution model id

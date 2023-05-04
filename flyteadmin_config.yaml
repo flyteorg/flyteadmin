@@ -174,11 +174,11 @@ queues:
 #task_resources:
 #  defaults:
 #    cpu: 100m
-task_resources:
-  defaults:
-    ephemeralStorage: 500M
-  limits:
-    ephemeralStorage: 10G
+#task_resources:
+#  defaults:
+#    ephemeralStorage: 500M
+#  limits:
+#    ephemeralStorage: 10G
 task_type_whitelist:
   sparkonk8s:
     - project: my_queue_1
