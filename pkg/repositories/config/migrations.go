@@ -736,6 +736,12 @@ var NoopMigrations = []*gormigrate.Migration{
 			if err := tx.Exec("UPDATE node_executions SET new_parent_id = parent_id WHERE parent_id is not null;").Error; err != nil {
 				return err
 			}
+
+			// Create new index
+			if err := tx.Exec("CREATE INDEX idx_node_executions_new_parent_id ON public.node_executions USING btree (new_parent_id);").Error; err != nil {
+				return err
+			}
+
 			return nil
 		},
 		Rollback: func(tx *gorm.DB) error {
@@ -750,6 +756,11 @@ var NoopMigrations = []*gormigrate.Migration{
 			if err := tx.Exec("ALTER TABLE node_executions DROP COLUMN IF EXISTS new_parent_id;").Error; err != nil {
 				return err
 			}
+			// Drop index idx_node_executions_new_parent_id
+			if err := tx.Exec("DROP INDEX IF EXISTS idx_node_executions_new_parent_id;").Error; err != nil {
+				return err
+			}
+
 			return nil
 		},
 	},
@@ -785,16 +796,18 @@ var NoopMigrations = []*gormigrate.Migration{
 				return err
 			}
 
-			if err := tx1.Exec("CREATE INDEX idx_node_executions_parent_id ON public.node_executions USING btree (new_parent_id);").Error; err != nil {
-				tx1.Rollback()
-				return err
-			}
-
 			// Drop and rename columns
 			if err := tx1.Exec("ALTER TABLE node_executions DROP COLUMN parent_id;").Error; err != nil {
 				tx1.Rollback()
 				return err
 			}
+
+			// Rename idx_node_executions_new_parent_id to idx_node_executions_parent_id
+			if err := tx1.Exec("ALTER INDEX idx_node_executions_new_parent_id RENAME TO idx_node_executions_parent_id;").Error; err != nil {
+				tx1.Rollback()
+				return err
+			}
+
 			if err := tx1.Exec("ALTER TABLE node_executions RENAME COLUMN new_parent_id TO parent_id;").Error; err != nil {
 				tx1.Rollback()
 				return err
