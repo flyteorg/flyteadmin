@@ -47,10 +47,10 @@ func ParseFlyteURL(flyteURL string) (core.NodeExecutionIdentifier, *int, Artifac
 	executionID := matches["exec"]
 	nodeID := matches["node"]
 	var attempt *int // nil means node execution, not a task execution
-	if matches["attempt"] != "" {
-		a, err := strconv.Atoi(matches["attempt"])
+	if attempt := matches["attempt"]; len(attempt) > 0 {
+		a, err := strconv.Atoi(attempt)
 		if err != nil {
-			return core.NodeExecutionIdentifier{}, nil, ArtifactTypeUndefined, fmt.Errorf("failed to parse attempt, %s", err)
+			return core.NodeExecutionIdentifier{}, nil, ArtifactTypeUndefined, fmt.Errorf("failed to parse attempt [%v], %v", attempt, err)
 		}
 		attempt = &a
 	}
