@@ -4208,6 +4208,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 	requestMaxParallelism := int32(10)
 	requestInterruptible := false
 	requestOverwriteCache := false
+	requestEnvironmentVariables := map[string]string{"hello": "world"}
 
 	launchPlanLabels := map[string]string{"launchPlanLabelKey": "launchPlanLabelValue"}
 	launchPlanAnnotations := map[string]string{"launchPlanAnnotationKey": "launchPlanAnnotationValue"}
@@ -4217,6 +4218,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 	launchPlanMaxParallelism := int32(50)
 	launchPlanInterruptible := true
 	launchPlanOverwriteCache := true
+	launchPlanEnvironmentVariables := map[string]string{"foo": "bar"}
 
 	applicationConfig := runtime.NewConfigurationProvider()
 
@@ -4305,6 +4307,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 				MaxParallelism: requestMaxParallelism,
 				Interruptible:  &wrappers.BoolValue{Value: requestInterruptible},
 				OverwriteCache: requestOverwriteCache,
+				Envs:           &admin.Envs{Values: requestEnvironmentVariables},
 			},
 		}
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, nil)
@@ -4316,6 +4319,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.Equal(t, requestOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, requestLabels, execConfig.GetLabels().Values)
 		assert.Equal(t, requestAnnotations, execConfig.GetAnnotations().Values)
+		assert.Equal(t, requestEnvironmentVariables, execConfig.GetEnvs().Values)
 	})
 	t.Run("request with partial config", func(t *testing.T) {
 		request := &admin.ExecutionCreateRequest{
@@ -4343,6 +4347,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 				MaxParallelism: launchPlanMaxParallelism,
 				Interruptible:  &wrappers.BoolValue{Value: launchPlanInterruptible},
 				OverwriteCache: launchPlanOverwriteCache,
+				Envs:           &admin.Envs{Values: launchPlanEnvironmentVariables},
 			},
 		}
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
@@ -4354,6 +4359,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.True(t, proto.Equal(launchPlan.Spec.Annotations, execConfig.Annotations))
 		assert.Equal(t, requestOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, requestLabels, execConfig.GetLabels().Values)
+		assert.Equal(t, launchPlanEnvironmentVariables, execConfig.GetEnvs().Values)
 	})
 	t.Run("request with empty security context", func(t *testing.T) {
 		request := &admin.ExecutionCreateRequest{
@@ -4381,6 +4387,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 				MaxParallelism: launchPlanMaxParallelism,
 				Interruptible:  &wrappers.BoolValue{Value: launchPlanInterruptible},
 				OverwriteCache: launchPlanOverwriteCache,
+				Envs:           &admin.Envs{Values: launchPlanEnvironmentVariables},
 			},
 		}
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
@@ -4391,6 +4398,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.Equal(t, launchPlanK8sServiceAccount, execConfig.SecurityContext.RunAs.K8SServiceAccount)
 		assert.Equal(t, launchPlanOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, launchPlanLabels, execConfig.GetLabels().Values)
+		assert.Equal(t, launchPlanEnvironmentVariables, execConfig.GetEnvs().Values)
 	})
 	t.Run("request with no config", func(t *testing.T) {
 		request := &admin.ExecutionCreateRequest{
@@ -4413,6 +4421,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 				MaxParallelism: launchPlanMaxParallelism,
 				Interruptible:  &wrappers.BoolValue{Value: launchPlanInterruptible},
 				OverwriteCache: launchPlanOverwriteCache,
+				Envs:           &admin.Envs{Values: launchPlanEnvironmentVariables},
 			},
 		}
 		execConfig, err := executionManager.getExecutionConfig(context.TODO(), request, launchPlan)
@@ -4424,6 +4433,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.Equal(t, launchPlanOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, launchPlanLabels, execConfig.GetLabels().Values)
 		assert.Equal(t, launchPlanAnnotations, execConfig.GetAnnotations().Values)
+		assert.Equal(t, launchPlanEnvironmentVariables, execConfig.GetEnvs().Values)
 	})
 	t.Run("launchplan with partial config", func(t *testing.T) {
 		request := &admin.ExecutionCreateRequest{
@@ -4474,6 +4484,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.Equal(t, rmOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, rmLabels, execConfig.GetLabels().Values)
 		assert.Equal(t, rmAnnotations, execConfig.GetAnnotations().Values)
+		assert.Nil(t, execConfig.GetEnvs())
 	})
 	t.Run("matchable resource partial config", func(t *testing.T) {
 		resourceManager.GetResourceFunc = func(ctx context.Context,
@@ -4520,6 +4531,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.Nil(t, execConfig.GetRawOutputDataConfig())
 		assert.Nil(t, execConfig.GetLabels())
 		assert.Equal(t, rmAnnotations, execConfig.GetAnnotations().Values)
+		assert.Nil(t, execConfig.GetEnvs())
 	})
 	t.Run("matchable resource with no config", func(t *testing.T) {
 		resourceManager.GetResourceFunc = func(ctx context.Context,
@@ -4557,6 +4569,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.Nil(t, execConfig.GetRawOutputDataConfig())
 		assert.Nil(t, execConfig.GetLabels())
 		assert.Nil(t, execConfig.GetAnnotations())
+		assert.Nil(t, execConfig.GetEnvs())
 	})
 	t.Run("fetch security context from deprecated config", func(t *testing.T) {
 		resourceManager.GetResourceFunc = func(ctx context.Context,
@@ -4599,6 +4612,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.Nil(t, execConfig.GetRawOutputDataConfig())
 		assert.Nil(t, execConfig.GetLabels())
 		assert.Nil(t, execConfig.GetAnnotations())
+		assert.Nil(t, execConfig.GetEnvs())
 	})
 	t.Run("matchable resource workflow resource", func(t *testing.T) {
 		resourceManager.GetResourceFunc = func(ctx context.Context,
@@ -4652,6 +4666,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.Nil(t, execConfig.GetRawOutputDataConfig())
 		assert.Nil(t, execConfig.GetLabels())
 		assert.Nil(t, execConfig.GetAnnotations())
+		assert.Nil(t, execConfig.GetEnvs())
 	})
 	t.Run("matchable resource failure", func(t *testing.T) {
 		resourceManager.GetResourceFunc = func(ctx context.Context,
@@ -4682,6 +4697,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.Nil(t, execConfig.GetRawOutputDataConfig())
 		assert.Nil(t, execConfig.GetLabels())
 		assert.Nil(t, execConfig.GetAnnotations())
+		assert.Nil(t, execConfig.GetEnvs())
 	})
 	t.Run("application configuration", func(t *testing.T) {
 		resourceManager.GetResourceFunc = func(ctx context.Context,
@@ -4790,6 +4806,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 			launchPlan := &admin.LaunchPlan{
 				Spec: &admin.LaunchPlanSpec{
 					Interruptible: &wrappers.BoolValue{Value: true},
+					Envs:          &admin.Envs{Values: map[string]string{"foo": "bar"}},
 				},
 			}
 
@@ -4801,6 +4818,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 			assert.Nil(t, execConfig.GetRawOutputDataConfig())
 			assert.Nil(t, execConfig.GetLabels())
 			assert.Nil(t, execConfig.GetAnnotations())
+			assert.Equal(t, "bar", execConfig.Envs.Values["foo"])
 		})
 		t.Run("launch plan with no interruptible override specified", func(t *testing.T) {
 			request := &admin.ExecutionCreateRequest{
