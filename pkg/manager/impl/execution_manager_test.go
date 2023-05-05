@@ -1083,36 +1083,36 @@ func TestCreateExecutionOverwriteCache(t *testing.T) {
 	}
 }
 
-func TestCreateExecutionOverwriteEnvs(t *testing.T) {
+func TestCreateExecutionWithEnvs(t *testing.T) {
 	tests := []struct {
-		name          string
-		task          bool
-		overwriteEnvs map[string]string
-		want          map[string]string
+		name string
+		task bool
+		envs map[string]string
+		want map[string]string
 	}{
 		{
-			name:          "LaunchPlanDefault",
-			task:          false,
-			overwriteEnvs: nil,
-			want:          nil,
+			name: "LaunchPlanDefault",
+			task: false,
+			envs: nil,
+			want: nil,
 		},
 		{
-			name:          "LaunchPlanEnable",
-			task:          false,
-			overwriteEnvs: map[string]string{"foo": "bar"},
-			want:          map[string]string{"foo": "bar"},
+			name: "LaunchPlanEnable",
+			task: false,
+			envs: map[string]string{"foo": "bar"},
+			want: map[string]string{"foo": "bar"},
 		},
 		{
-			name:          "TaskDefault",
-			task:          false,
-			overwriteEnvs: nil,
-			want:          nil,
+			name: "TaskDefault",
+			task: false,
+			envs: nil,
+			want: nil,
 		},
 		{
-			name:          "TaskEnable",
-			task:          true,
-			overwriteEnvs: map[string]string{"foo": "bar"},
-			want:          map[string]string{"foo": "bar"},
+			name: "TaskEnable",
+			task: true,
+			envs: map[string]string{"foo": "bar"},
+			want: map[string]string{"foo": "bar"},
 		},
 	}
 
@@ -1125,7 +1125,7 @@ func TestCreateExecutionOverwriteEnvs(t *testing.T) {
 			if tt.task {
 				request.Spec.LaunchPlan.ResourceType = core.ResourceType_TASK
 			}
-			request.Spec.Envs.Values = tt.overwriteEnvs
+			request.Spec.Envs.Values = tt.envs
 
 			repository := getMockRepositoryForExecTest()
 			setDefaultLpCallbackForExecTest(repository)
@@ -1144,7 +1144,7 @@ func TestCreateExecutionOverwriteEnvs(t *testing.T) {
 					assert.Equal(t, uint(0), input.TaskID)
 				}
 
-				assert.Equal(t, tt.overwriteEnvs, spec.GetEnvs().Values)
+				assert.Equal(t, tt.envs, spec.GetEnvs().Values)
 
 				return nil
 			}
@@ -1285,15 +1285,15 @@ func makeExecutionOverwriteCacheGetFunc(
 	}
 }
 
-func makeExecutionOverwriteEnvs(
-	t *testing.T, closureBytes []byte, startTime *time.Time, overwriteEnvs map[string]string) repositoryMocks.GetExecutionFunc {
+func makeExecutionWithEnvs(
+	t *testing.T, closureBytes []byte, startTime *time.Time, envs map[string]string) repositoryMocks.GetExecutionFunc {
 	return func(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
 		assert.Equal(t, "project", input.Project)
 		assert.Equal(t, "domain", input.Domain)
 		assert.Equal(t, "name", input.Name)
 
 		request := testutils.GetExecutionRequest()
-		request.Spec.Envs.Values = overwriteEnvs
+		request.Spec.Envs.Values = envs
 
 		specBytes, err := proto.Marshal(request.Spec)
 		assert.Nil(t, err)
@@ -1649,7 +1649,7 @@ func TestRelaunchExecutionEnvsOverride(t *testing.T) {
 	}
 	existingClosureBytes, _ := proto.Marshal(&existingClosure)
 	env := map[string]string{"foo": "bar"}
-	executionGetFunc := makeExecutionOverwriteEnvs(t, existingClosureBytes, &startTime, env)
+	executionGetFunc := makeExecutionWithEnvs(t, existingClosureBytes, &startTime, env)
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
 
 	var createCalled bool
@@ -2061,7 +2061,7 @@ func TestRecoverExecutionEnvsOverride(t *testing.T) {
 	}
 	existingClosureBytes, _ := proto.Marshal(&existingClosure)
 	env := map[string]string{"foo": "bar"}
-	executionGetFunc := makeExecutionOverwriteEnvs(t, existingClosureBytes, &startTime, env)
+	executionGetFunc := makeExecutionWithEnvs(t, existingClosureBytes, &startTime, env)
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
 
 	exCreateFunc := func(ctx context.Context, input models.Execution) error {
