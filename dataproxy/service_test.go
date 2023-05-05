@@ -15,10 +15,10 @@ import (
 	commonMocks "github.com/flyteorg/flyteadmin/pkg/common/mocks"
 	stdlibConfig "github.com/flyteorg/flytestdlib/config"
 
-	"google.golang.org/protobuf/types/known/durationpb"
-
+	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
+	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 
@@ -273,5 +273,48 @@ func TestService_GetData(t *testing.T) {
 			FlyteUrl: "flyte://v3/blah/lorem/m0-fdj",
 		})
 		assert.Error(t, err)
+	})
+}
+
+func TestService_Error(t *testing.T) {
+	dataStore := commonMocks.GetMockStorageClient()
+	nodeExecutionManager := &mocks.MockNodeExecutionManager{}
+	taskExecutionManager := &mocks.MockTaskExecutionManager{}
+	s, err := NewService(config.DataProxyConfig{}, nodeExecutionManager, dataStore, taskExecutionManager)
+	assert.NoError(t, err)
+
+	t.Run("get a working set of urls without retry attempt", func(t *testing.T) {
+		taskExecutionManager.SetListTaskExecutionsCallback(func(ctx context.Context, request admin.TaskExecutionListRequest) (*admin.TaskExecutionList, error) {
+			return nil, errors.NewFlyteAdminErrorf(1, "not found")
+		})
+		nodeExecID := core.NodeExecutionIdentifier{
+			NodeId: "n0",
+			ExecutionId: &core.WorkflowExecutionIdentifier{
+				Project: "proj",
+				Domain:  "dev",
+				Name:    "wfexecid",
+			},
+		}
+		_, err := s.GetTaskExecutionID(context.Background(), 0, nodeExecID)
+		assert.Error(t, err, "failed to list")
+	})
+
+	t.Run("get a working set of urls without retry attempt", func(t *testing.T) {
+		taskExecutionManager.SetListTaskExecutionsCallback(func(ctx context.Context, request admin.TaskExecutionListRequest) (*admin.TaskExecutionList, error) {
+			return &admin.TaskExecutionList{
+				TaskExecutions: nil,
+				Token:          "",
+			}, nil
+		})
+		nodeExecID := core.NodeExecutionIdentifier{
+			NodeId: "n0",
+			ExecutionId: &core.WorkflowExecutionIdentifier{
+				Project: "proj",
+				Domain:  "dev",
+				Name:    "wfexecid",
+			},
+		}
+		_, err := s.GetTaskExecutionID(context.Background(), 0, nodeExecID)
+		assert.Error(t, err, "no task executions")
 	})
 }

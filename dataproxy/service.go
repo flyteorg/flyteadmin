@@ -264,8 +264,11 @@ func (s Service) GetTaskExecutionID(ctx context.Context, attempt int, nodeExecID
 		Limit:           1,
 		Filters:         fmt.Sprintf("eq(retry_attempt,%s)", strconv.Itoa(attempt)),
 	})
-	if err != nil || len(taskExecs.TaskExecutions) == 0 {
+	if err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "failed to list task executions [%v]. Error: %v", nodeExecID, err)
+	}
+	if len(taskExecs.TaskExecutions) == 0 {
+		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "no task executions were listed [%v]. Error: %v", nodeExecID, err)
 	}
 	taskExec := taskExecs.TaskExecutions[0]
 	return taskExec.Id, nil

@@ -164,3 +164,11 @@ func TestFlyteURLsFromTaskExecutionID(t *testing.T) {
 		assert.Equal(t, "", urls.GetDeck())
 	})
 }
+
+func TestMatchRegexDirectly(t *testing.T) {
+	result := MatchRegex(re, "flyte://v1/fs/dev/abc/n0-dn0-9-n0-n0/i")
+	assert.Equal(t, "", result["attempt"])
+
+	result = MatchRegex(re, "flyteff://v2/fs/dfdsaev/abc/n0-dn0-9-n0-n0/i")
+	assert.Nil(t, result)
+}
