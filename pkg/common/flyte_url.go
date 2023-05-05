@@ -46,13 +46,13 @@ func ParseFlyteURL(flyteURL string) (core.NodeExecutionIdentifier, *int, Artifac
 	domain := matches["domain"]
 	executionID := matches["exec"]
 	nodeID := matches["node"]
-	var attempt *int // nil means node execution, not a task execution
+	var attemptPtr *int // nil means node execution, not a task execution
 	if attempt := matches["attempt"]; len(attempt) > 0 {
 		a, err := strconv.Atoi(attempt)
 		if err != nil {
 			return core.NodeExecutionIdentifier{}, nil, ArtifactTypeUndefined, fmt.Errorf("failed to parse attempt [%v], %v", attempt, err)
 		}
-		attempt = &a
+		attemptPtr = &a
 	}
 	ioType, err := ArtifactTypeString(matches["artifactType"])
 	if err != nil {
@@ -66,7 +66,7 @@ func ParseFlyteURL(flyteURL string) (core.NodeExecutionIdentifier, *int, Artifac
 			Domain:  domain,
 			Name:    executionID,
 		},
-	}, attempt, ioType, nil
+	}, attemptPtr, ioType, nil
 }
 
 func FlyteURLsFromNodeExecutionID(nodeExecutionID core.NodeExecutionIdentifier, deck bool) *admin.FlyteURLs {
