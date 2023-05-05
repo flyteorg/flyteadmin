@@ -64,7 +64,10 @@ func addExecutionOverrides(taskPluginOverrides []*admin.PluginOverride,
 		}
 
 		executionConfig.OverwriteCache = workflowExecutionConfig.GetOverwriteCache()
-		executionConfig.EnvironmentVariables = workflowExecutionConfig.GetEnvs().Values
+
+		if workflowExecutionConfig.GetEnvs() != nil {
+			executionConfig.EnvironmentVariables = workflowExecutionConfig.GetEnvs().Values
+		}
 	}
 	if taskResources != nil {
 		var requests = v1alpha1.TaskResourceSpec{}
