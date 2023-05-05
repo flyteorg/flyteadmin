@@ -301,10 +301,10 @@ func ConstrainTaskResourceSet(ctx context.Context, spec runtimeInterfaces.TaskRe
 		EphemeralStorage: quantityToString(spec.EphemeralStorage),
 	}
 	maxesAsResourceSpec := admin.TaskResourceSpec{
-		Cpu:              quantityToString(spec.CPU),
-		Gpu:              quantityToString(spec.GPU),
-		Memory:           quantityToString(spec.Memory),
-		EphemeralStorage: quantityToString(spec.EphemeralStorage),
+		Cpu:              quantityToString(maxes.CPU),
+		Gpu:              quantityToString(maxes.GPU),
+		Memory:           quantityToString(maxes.Memory),
+		EphemeralStorage: quantityToString(maxes.EphemeralStorage),
 	}
 
 	r := ConstrainTaskResourceSpec(specAsResourceSpec, maxesAsResourceSpec)

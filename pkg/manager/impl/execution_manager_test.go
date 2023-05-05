@@ -3996,6 +3996,139 @@ func TestSetDefaults_OptionalRequiredResources(t *testing.T) {
 			},
 			task.Template.GetContainer()), fmt.Sprintf("%+v", task.Template.GetContainer()))
 	})
+
+	t.Run("respect non-required ddresources when defaults exist in config", func(t *testing.T) {
+		r := plugins.NewRegistry()
+		r.RegisterDefault(plugins.PluginIDWorkflowExecutor, &defaultTestExecutor)
+		execManager := NewExecutionManager(repositoryMocks.NewMockRepository(), r, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
+
+		zeroedLimitTask := &core.CompiledTask{
+			Template: &core.TaskTemplate{
+				Target: &core.TaskTemplate_Container{
+					Container: &core.Container{
+						Resources: &core.Resources{
+							Requests: []*core.Resources_ResourceEntry{
+								{
+									Name:  core.Resources_CPU,
+									Value: "200m",
+								},
+							},
+							Limits: []*core.Resources_ResourceEntry{
+								{
+									Name:  core.Resources_CPU,
+									Value: "0",
+								},
+								{
+									Name:  core.Resources_MEMORY,
+									Value: "0",
+								},
+							},
+						},
+					},
+				},
+				Id: &taskIdentifier,
+			},
+		}
+
+		execManager.(*ExecutionManager).setCompiledTaskDefaults(context.Background(), zeroedLimitTask, workflowengineInterfaces.TaskResources{
+			Limits: taskConfigLimits,
+			Defaults: runtimeInterfaces.TaskResourceSet{
+				CPU:              testutils.GetPtr(resource.MustParse("200m")),  // should be ignored
+				Memory:           testutils.GetPtr(resource.MustParse("200Gi")), // should get merged in
+				EphemeralStorage: testutils.GetPtr(resource.MustParse("100Mi")), // should get merged in
+			},
+		})
+		assert.True(t, proto.Equal(
+			&core.Container{
+				Resources: &core.Resources{
+					Requests: []*core.Resources_ResourceEntry{
+						{
+							Name:  core.Resources_CPU,
+							Value: "200m",
+						},
+						{
+							Name:  core.Resources_MEMORY,
+							Value: "200Gi",
+						},
+						{
+							Name:  core.Resources_EPHEMERAL_STORAGE,
+							Value: "100Mi",
+						},
+					},
+					Limits: []*core.Resources_ResourceEntry{
+						// zeros requested by the task are preserved
+						{
+							Name:  core.Resources_CPU,
+							Value: "0",
+						},
+						{
+							Name:  core.Resources_MEMORY,
+							Value: "0",
+						},
+						{
+							// task limit should be set to task request, which was 100Mi, the 501Mi from the taskConfigLimits
+							// should have just been used to gate the request.
+							Name:  core.Resources_EPHEMERAL_STORAGE,
+							Value: "100Mi",
+						},
+					},
+				},
+			},
+			zeroedLimitTask.Template.GetContainer()), fmt.Sprintf("Received value: %+v", zeroedLimitTask.Template.GetContainer()))
+
+		// Test the same task again but with different system limits
+		loweredEStoragePlatformLimits := runtimeInterfaces.TaskResourceSet{
+			CPU:              testutils.GetPtr(resource.MustParse("300m")),
+			GPU:              testutils.GetPtr(resource.MustParse("1")),
+			Memory:           nil,
+			EphemeralStorage: testutils.GetPtr(resource.MustParse("99Mi")),
+		}
+		execManager.(*ExecutionManager).setCompiledTaskDefaults(context.Background(), zeroedLimitTask, workflowengineInterfaces.TaskResources{
+			Limits: loweredEStoragePlatformLimits,
+			Defaults: runtimeInterfaces.TaskResourceSet{
+				CPU:              testutils.GetPtr(resource.MustParse("200m")),  // should be ignored
+				Memory:           testutils.GetPtr(resource.MustParse("200Gi")), // should get merged in
+				EphemeralStorage: testutils.GetPtr(resource.MustParse("100Mi")), // should get merged in
+			},
+		})
+		assert.True(t, proto.Equal(
+			&core.Container{
+				Resources: &core.Resources{
+					Requests: []*core.Resources_ResourceEntry{
+						{
+							Name:  core.Resources_CPU,
+							Value: "200m",
+						},
+						{
+							Name:  core.Resources_MEMORY,
+							Value: "200Gi",
+						},
+						{
+							Name:  core.Resources_EPHEMERAL_STORAGE,
+							Value: "99Mi",
+						},
+					},
+					Limits: []*core.Resources_ResourceEntry{
+						// zeros requested by the task are preserved
+						{
+							Name:  core.Resources_CPU,
+							Value: "0",
+						},
+						{
+							Name:  core.Resources_MEMORY,
+							Value: "0",
+						},
+						{
+							// task limit should be set to task request, which was 100Mi, the 501Mi from the taskConfigLimits
+							// should have just been used to gate the request.
+							Name:  core.Resources_EPHEMERAL_STORAGE,
+							Value: "99Mi",
+						},
+					},
+				},
+			},
+			zeroedLimitTask.Template.GetContainer()), fmt.Sprintf("Received value: %+v", zeroedLimitTask.Template.GetContainer()))
+	})
 }
 
 func TestGetResourcesDirectly(t *testing.T) {
