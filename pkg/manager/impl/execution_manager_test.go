@@ -1083,6 +1083,86 @@ func TestCreateExecutionOverwriteCache(t *testing.T) {
 	}
 }
 
+func TestCreateExecutionOverwriteEnvs(t *testing.T) {
+	tests := []struct {
+		name          string
+		task          bool
+		overwriteEnvs map[string]string
+		want          map[string]string
+	}{
+		{
+			name:          "LaunchPlanDefault",
+			task:          false,
+			overwriteEnvs: nil,
+			want:          nil,
+		},
+		{
+			name:          "LaunchPlanEnable",
+			task:          false,
+			overwriteEnvs: map[string]string{"foo": "bar"},
+			want:          map[string]string{"foo": "bar"},
+		},
+		{
+			name:          "TaskDefault",
+			task:          false,
+			overwriteEnvs: nil,
+			want:          nil,
+		},
+		{
+			name:          "TaskEnable",
+			task:          true,
+			overwriteEnvs: map[string]string{"foo": "bar"},
+			want:          map[string]string{"foo": "bar"},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			request := testutils.GetExecutionRequest()
+			if tt.task {
+				request.Spec.LaunchPlan.ResourceType = core.ResourceType_TASK
+			}
+			request.Spec.Envs.Values = tt.overwriteEnvs
+
+			repository := getMockRepositoryForExecTest()
+			setDefaultLpCallbackForExecTest(repository)
+			setDefaultTaskCallbackForExecTest(repository)
+
+			exCreateFunc := func(ctx context.Context, input models.Execution) error {
+				var spec admin.ExecutionSpec
+				err := proto.Unmarshal(input.Spec, &spec)
+				assert.Nil(t, err)
+
+				if tt.task {
+					assert.Equal(t, uint(0), input.LaunchPlanID)
+					assert.NotEqual(t, uint(0), input.TaskID)
+				} else {
+					assert.NotEqual(t, uint(0), input.LaunchPlanID)
+					assert.Equal(t, uint(0), input.TaskID)
+				}
+
+				assert.Equal(t, tt.overwriteEnvs, spec.GetEnvs().Values)
+
+				return nil
+			}
+
+			repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
+			mockExecutor := workflowengineMocks.WorkflowExecutor{}
+			mockExecutor.OnExecuteMatch(mock.Anything, mock.Anything, mock.Anything).Return(workflowengineInterfaces.ExecutionResponse{}, nil)
+			mockExecutor.OnID().Return("testMockExecutor")
+			r := plugins.NewRegistry()
+			r.RegisterDefault(plugins.PluginIDWorkflowExecutor, &mockExecutor)
+			execManager := NewExecutionManager(repository, r, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
+
+			_, err := execManager.CreateExecution(context.Background(), request, requestedAt)
+			assert.Nil(t, err)
+		})
+	}
+}
+
 func makeExecutionGetFunc(
 	t *testing.T, closureBytes []byte, startTime *time.Time) repositoryMocks.GetExecutionFunc {
 	return func(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
@@ -1181,6 +1261,39 @@ func makeExecutionOverwriteCacheGetFunc(
 
 		request := testutils.GetExecutionRequest()
 		request.Spec.OverwriteCache = overwriteCache
+
+		specBytes, err := proto.Marshal(request.Spec)
+		assert.Nil(t, err)
+
+		return models.Execution{
+			ExecutionKey: models.ExecutionKey{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			},
+			BaseModel: models.BaseModel{
+				ID: uint(8),
+			},
+			Spec:         specBytes,
+			Phase:        core.WorkflowExecution_QUEUED.String(),
+			Closure:      closureBytes,
+			LaunchPlanID: uint(1),
+			WorkflowID:   uint(2),
+			StartedAt:    startTime,
+			Cluster:      testCluster,
+		}, nil
+	}
+}
+
+func makeExecutionOverwriteEnvs(
+	t *testing.T, closureBytes []byte, startTime *time.Time, overwriteEnvs map[string]string) repositoryMocks.GetExecutionFunc {
+	return func(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
+		assert.Equal(t, "project", input.Project)
+		assert.Equal(t, "domain", input.Domain)
+		assert.Equal(t, "name", input.Name)
+
+		request := testutils.GetExecutionRequest()
+		request.Spec.Envs.Values = overwriteEnvs
 
 		specBytes, err := proto.Marshal(request.Spec)
 		assert.Nil(t, err)
@@ -1516,6 +1629,57 @@ func TestRelaunchExecutionOverwriteCacheOverride(t *testing.T) {
 		assert.NotNil(t, asd)
 		assert.True(t, createCalled)
 	})
+}
+
+func TestRelaunchExecutionEnvsOverride(t *testing.T) {
+	// Set up mocks.
+	repository := getMockRepositoryForExecTest()
+	setDefaultLpCallbackForExecTest(repository)
+	mockExecutor := workflowengineMocks.WorkflowExecutor{}
+	mockExecutor.OnExecuteMatch(mock.Anything, mock.Anything, mock.Anything).Return(workflowengineInterfaces.ExecutionResponse{}, nil)
+	mockExecutor.OnID().Return("testMockExecutor")
+	r := plugins.NewRegistry()
+	r.RegisterDefault(plugins.PluginIDWorkflowExecutor, &mockExecutor)
+	execManager := NewExecutionManager(repository, r, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
+	startTime := time.Now()
+	startTimeProto, _ := ptypes.TimestampProto(startTime)
+	existingClosure := admin.ExecutionClosure{
+		Phase:     core.WorkflowExecution_RUNNING,
+		StartedAt: startTimeProto,
+	}
+	existingClosureBytes, _ := proto.Marshal(&existingClosure)
+	env := map[string]string{"foo": "bar"}
+	executionGetFunc := makeExecutionOverwriteEnvs(t, existingClosureBytes, &startTime, env)
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
+
+	var createCalled bool
+	exCreateFunc := func(ctx context.Context, input models.Execution) error {
+		createCalled = true
+		assert.Equal(t, "relaunchy", input.Name)
+		assert.Equal(t, "domain", input.Domain)
+		assert.Equal(t, "project", input.Project)
+		assert.Equal(t, uint(8), input.SourceExecutionID)
+		var spec admin.ExecutionSpec
+		err := proto.Unmarshal(input.Spec, &spec)
+		assert.Nil(t, err)
+		assert.Equal(t, admin.ExecutionMetadata_RELAUNCH, spec.Metadata.Mode)
+		assert.Equal(t, int32(admin.ExecutionMetadata_RELAUNCH), input.Mode)
+		assert.NotNil(t, spec.GetEnvs())
+		assert.Equal(t, spec.GetEnvs().Values, env)
+		return nil
+	}
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
+
+	_, err := execManager.RelaunchExecution(context.Background(), admin.ExecutionRelaunchRequest{
+		Id: &core.WorkflowExecutionIdentifier{
+			Project: "project",
+			Domain:  "domain",
+			Name:    "name",
+		},
+		Name: "relaunchy",
+	}, requestedAt)
+	assert.Nil(t, err)
+	assert.True(t, createCalled)
 }
 
 func TestRecoverExecution(t *testing.T) {
@@ -1876,6 +2040,66 @@ func TestRecoverExecutionOverwriteCacheOverride(t *testing.T) {
 		},
 	}
 	assert.True(t, createCalled)
+	assert.True(t, proto.Equal(expectedResponse, response))
+}
+
+func TestRecoverExecutionEnvsOverride(t *testing.T) {
+	// Set up mocks.
+	repository := getMockRepositoryForExecTest()
+	setDefaultLpCallbackForExecTest(repository)
+	mockExecutor := workflowengineMocks.WorkflowExecutor{}
+	mockExecutor.OnExecuteMatch(mock.Anything, mock.Anything, mock.Anything).Return(workflowengineInterfaces.ExecutionResponse{}, nil)
+	mockExecutor.OnID().Return("testMockExecutor")
+	r := plugins.NewRegistry()
+	r.RegisterDefault(plugins.PluginIDWorkflowExecutor, &mockExecutor)
+	execManager := NewExecutionManager(repository, r, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
+	startTime := time.Now()
+	startTimeProto, _ := ptypes.TimestampProto(startTime)
+	existingClosure := admin.ExecutionClosure{
+		Phase:     core.WorkflowExecution_SUCCEEDED,
+		StartedAt: startTimeProto,
+	}
+	existingClosureBytes, _ := proto.Marshal(&existingClosure)
+	env := map[string]string{"foo": "bar"}
+	executionGetFunc := makeExecutionOverwriteEnvs(t, existingClosureBytes, &startTime, env)
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
+
+	exCreateFunc := func(ctx context.Context, input models.Execution) error {
+		assert.Equal(t, "recovered", input.Name)
+		assert.Equal(t, "domain", input.Domain)
+		assert.Equal(t, "project", input.Project)
+		assert.Equal(t, uint(8), input.SourceExecutionID)
+		var spec admin.ExecutionSpec
+		err := proto.Unmarshal(input.Spec, &spec)
+		assert.Nil(t, err)
+		assert.Equal(t, admin.ExecutionMetadata_RECOVERED, spec.Metadata.Mode)
+		assert.Equal(t, int32(admin.ExecutionMetadata_RECOVERED), input.Mode)
+		assert.NotNil(t, spec.GetEnvs())
+		assert.Equal(t, spec.GetEnvs().GetValues(), env)
+		return nil
+	}
+	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
+
+	// Issue request.
+	response, err := execManager.RecoverExecution(context.Background(), admin.ExecutionRecoverRequest{
+		Id: &core.WorkflowExecutionIdentifier{
+			Project: "project",
+			Domain:  "domain",
+			Name:    "name",
+		},
+		Name: "recovered",
+	}, requestedAt)
+
+	// And verify response.
+	assert.Nil(t, err)
+
+	expectedResponse := &admin.ExecutionCreateResponse{
+		Id: &core.WorkflowExecutionIdentifier{
+			Project: "project",
+			Domain:  "domain",
+			Name:    "recovered",
+		},
+	}
 	assert.True(t, proto.Equal(expectedResponse, response))
 }
 
