@@ -48,6 +48,13 @@ type PostgresConfig struct {
 	Debug        bool   `json:"debug" pflag:" Whether or not to start the database connection with debug mode enabled."`
 }
 
+type ExecutionTransformersConfig struct {
+	// TrimErrorMessages indicates whether error messages returned by the list workflow execution API should be trimmed.
+	TrimErrorMessages bool `json:"trimErrorMessages"`
+	// The maximum length of an error message returned by the list workflow execution API.
+	MaxErrorMessageLength int `json:"maxErrorMessageLength"`
+}
+
 // ApplicationConfig is the base configuration to start admin
 type ApplicationConfig struct {
 	// The RoleName key inserted as an annotation (https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/)
@@ -94,6 +101,9 @@ type ApplicationConfig struct {
 
 	// Enabling will use Storage (s3/gcs/etc) to offload static parts of CRDs.
 	UseOffloadedWorkflowClosure bool `json:"useOffloadedWorkflowClosure"`
+
+	// Configures the execution transformers
+	ListExecutionTransformersConfig ExecutionTransformersConfig `json:"listExecutionTransformersConfig"`
 }
 
 func (a *ApplicationConfig) GetRoleNameKey() string {

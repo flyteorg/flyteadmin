@@ -570,6 +570,7 @@ func TestFromExecutionModel_Aborted(t *testing.T) {
 }
 
 func TestFromExecutionModel_Error(t *testing.T) {
+	trimmedErrMessageLen := 10240
 	extraLongErrMsg := string(make([]byte, 2*trimmedErrMessageLen))
 	execErr := &core.ExecutionError{
 		Code:    "CODE",
@@ -590,7 +591,8 @@ func TestFromExecutionModel_Error(t *testing.T) {
 		Closure: executionClosureBytes,
 	}
 	execution, err := FromExecutionModel(executionModel, &ExecutionTransformerOptions{
-		TrimErrorMessage: true,
+		TrimErrorMessage:      true,
+		MaxErrorMessageLength: trimmedErrMessageLen,
 	})
 	expectedExecErr := execErr
 	expectedExecErr.Message = string(make([]byte, trimmedErrMessageLen))
