@@ -91,9 +91,10 @@ type SslOptions struct {
 
 // declare RateLimitConfig
 type RateLimitOptions struct {
-	RequestsPerSecond int
-	BurstSize         int
-	CleanupInterval   config.Duration
+	Enabled           bool            `json:"enabled"`
+	RequestsPerSecond int             `json:"requestsPerSecond"`
+	BurstSize         int             `json:"burstSize"`
+	CleanupInterval   config.Duration `json:"cleanupInterval"`
 }
 
 var defaultServerConfig = &ServerConfig{

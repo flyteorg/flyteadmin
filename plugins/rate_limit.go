@@ -27,7 +27,7 @@ type Limiter struct {
 // define a function named Allow that takes userID and returns RateLimitError
 // the function check if the user is in the map, if not, create a new accessRecords for the user
 // then it check if the user can access the resource, if not, return RateLimitError
-func (l *Limiter) Allow(userID string) RateLimitError {
+func (l *Limiter) Allow(userID string) error {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 	if _, ok := l.accessPerUser[userID]; !ok {
