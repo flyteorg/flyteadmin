@@ -80,12 +80,20 @@ type ServerSecurityOptions struct {
 	// These are the Access-Control-Request-Headers that the server will respond to.
 	// By default, the server will allow Accept, Accept-Language, Content-Language, and Content-Type.
 	// DeprecatedUser this setting to add any additional headers which are needed
-	AllowedHeaders []string `json:"allowedHeaders"`
+	AllowedHeaders []string         `json:"allowedHeaders"`
+	RateLimit      RateLimitOptions `json:"rateLimitOptions"`
 }
 
 type SslOptions struct {
 	CertificateFile string `json:"certificateFile"`
 	KeyFile         string `json:"keyFile"`
+}
+
+// declare RateLimitConfig
+type RateLimitOptions struct {
+	RequestsPerSecond int
+	BurstSize         int
+	CleanupInterval   config.Duration
 }
 
 var defaultServerConfig = &ServerConfig{
