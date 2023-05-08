@@ -5,6 +5,7 @@ import (
 
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	// pkg/runtime/interfaces/application_configuration.go
 	"testing"
@@ -54,7 +55,7 @@ func TestUpdateWorkflowAttributes(t *testing.T) {
 		createOrUpdateCalled = true
 		return nil
 	}
-	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+	manager := NewResourceManager(db, testutils.GetMockConfiguration())
 	_, err := manager.UpdateWorkflowAttributes(context.Background(), request)
 	assert.Nil(t, err)
 	assert.True(t, createOrUpdateCalled)
@@ -95,7 +96,7 @@ func TestUpdateWorkflowAttributes_CreateOrMerge(t *testing.T) {
 			createOrUpdateCalled = true
 			return nil
 		}
-		manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+		manager := NewResourceManager(db, testutils.GetMockConfiguration())
 		_, err := manager.UpdateWorkflowAttributes(context.Background(), request)
 		assert.NoError(t, err)
 		assert.True(t, createOrUpdateCalled)
@@ -144,7 +145,7 @@ func TestUpdateWorkflowAttributes_CreateOrMerge(t *testing.T) {
 			createOrUpdateCalled = true
 			return nil
 		}
-		manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+		manager := NewResourceManager(db, testutils.GetMockConfiguration())
 		_, err := manager.UpdateWorkflowAttributes(context.Background(), request)
 		assert.NoError(t, err)
 		assert.True(t, createOrUpdateCalled)
@@ -174,7 +175,7 @@ func TestGetWorkflowAttributes(t *testing.T) {
 			Attributes:   expectedSerializedAttrs,
 		}, nil
 	}
-	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+	manager := NewResourceManager(db, testutils.GetMockConfiguration())
 	response, err := manager.GetWorkflowAttributes(context.Background(), request)
 	assert.Nil(t, err)
 	assert.True(t, proto.Equal(&admin.WorkflowAttributesGetResponse{
@@ -203,7 +204,7 @@ func TestDeleteWorkflowAttributes(t *testing.T) {
 		assert.Equal(t, admin.MatchableResource_EXECUTION_QUEUE.String(), ID.ResourceType)
 		return nil
 	}
-	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+	manager := NewResourceManager(db, testutils.GetMockConfiguration())
 	_, err := manager.DeleteWorkflowAttributes(context.Background(), request)
 	assert.Nil(t, err)
 }
@@ -229,7 +230,7 @@ func TestUpdateProjectDomainAttributes(t *testing.T) {
 		createOrUpdateCalled = true
 		return nil
 	}
-	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+	manager := NewResourceManager(db, testutils.GetMockConfiguration())
 	_, err := manager.UpdateProjectDomainAttributes(context.Background(), request)
 	assert.Nil(t, err)
 	assert.True(t, createOrUpdateCalled)
@@ -268,7 +269,7 @@ func TestUpdateProjectDomainAttributes_CreateOrMerge(t *testing.T) {
 			createOrUpdateCalled = true
 			return nil
 		}
-		manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+		manager := NewResourceManager(db, testutils.GetMockConfiguration())
 		_, err := manager.UpdateProjectDomainAttributes(context.Background(), request)
 		assert.NoError(t, err)
 		assert.True(t, createOrUpdateCalled)
@@ -315,7 +316,7 @@ func TestUpdateProjectDomainAttributes_CreateOrMerge(t *testing.T) {
 			createOrUpdateCalled = true
 			return nil
 		}
-		manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+		manager := NewResourceManager(db, testutils.GetMockConfiguration())
 		_, err := manager.UpdateProjectDomainAttributes(context.Background(), request)
 		assert.NoError(t, err)
 		assert.True(t, createOrUpdateCalled)
@@ -343,7 +344,7 @@ func TestGetProjectDomainAttributes(t *testing.T) {
 			Attributes:   expectedSerializedAttrs,
 		}, nil
 	}
-	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+	manager := NewResourceManager(db, testutils.GetMockConfiguration())
 	response, err := manager.GetProjectDomainAttributes(context.Background(), request)
 	assert.Nil(t, err)
 	assert.True(t, proto.Equal(&admin.ProjectDomainAttributesGetResponse{
@@ -369,7 +370,7 @@ func TestDeleteProjectDomainAttributes(t *testing.T) {
 		assert.Equal(t, admin.MatchableResource_EXECUTION_QUEUE.String(), ID.ResourceType)
 		return nil
 	}
-	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+	manager := NewResourceManager(db, testutils.GetMockConfiguration())
 	_, err := manager.DeleteProjectDomainAttributes(context.Background(), request)
 	assert.Nil(t, err)
 }
@@ -394,7 +395,7 @@ func TestUpdateProjectAttributes(t *testing.T) {
 		createOrUpdateCalled = true
 		return nil
 	}
-	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+	manager := NewResourceManager(db, testutils.GetMockConfiguration())
 	_, err := manager.UpdateProjectAttributes(context.Background(), request)
 	assert.Nil(t, err)
 	assert.True(t, createOrUpdateCalled)
@@ -451,7 +452,7 @@ func TestUpdateProjectAttributes_CreateOrMerge(t *testing.T) {
 			createOrUpdateCalled = true
 			return nil
 		}
-		manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+		manager := NewResourceManager(db, testutils.GetMockConfiguration())
 		_, err := manager.UpdateProjectAttributes(context.Background(), request)
 		assert.NoError(t, err)
 		assert.True(t, createOrUpdateCalled)
@@ -497,21 +498,21 @@ func TestUpdateProjectAttributes_CreateOrMerge(t *testing.T) {
 			createOrUpdateCalled = true
 			return nil
 		}
-		manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+		manager := NewResourceManager(db, testutils.GetMockConfiguration())
 		_, err := manager.UpdateProjectAttributes(context.Background(), request)
 		assert.NoError(t, err)
 		assert.True(t, createOrUpdateCalled)
 	})
 }
 
-func TestGetProjectAttributes(t *testing.T) {
+func TestGetProjectAttributesWec(t *testing.T) {
 	request := admin.ProjectAttributesGetRequest{
 		Project:      project,
 		ResourceType: admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG,
 	}
 	db := mocks.NewMockRepository()
 
-	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+	manager := NewResourceManager(db, testutils.GetMockConfiguration())
 	db.ResourceRepo().(*mocks.MockResourceRepo).GetFunction = func(
 		ctx context.Context, ID repoInterfaces.ResourceID) (models.Resource, error) {
 
@@ -557,8 +558,10 @@ func TestGetProjectAttributes_ConfigLookup(t *testing.T) {
 		// return not found to trigger loading from config
 		return models.Resource{}, errors.NewFlyteAdminError(codes.NotFound, "not found message")
 	}
-	config := runtimeMocks.MockApplicationProvider{}
-	manager := NewResourceManager(db, &config)
+	appConfiguration := runtimeMocks.MockApplicationProvider{}
+	config := runtimeMocks.NewMockConfigurationProvider(&appConfiguration, nil, nil, nil, nil, nil).(*runtimeMocks.MockConfigurationProvider)
+
+	manager := NewResourceManager(db, config)
 
 	t.Run("config 1", func(t *testing.T) {
 		appConfig := runtimeInterfaces.ApplicationConfig{
@@ -567,7 +570,7 @@ func TestGetProjectAttributes_ConfigLookup(t *testing.T) {
 			Labels:               map[string]string{"lab1": "name"},
 			OutputLocationPrefix: "s3://test-bucket",
 		}
-		config.SetTopLevelConfig(appConfig)
+		appConfiguration.SetTopLevelConfig(appConfig)
 
 		response, err := manager.GetProjectAttributes(context.Background(), request)
 		assert.Nil(t, err)
@@ -599,7 +602,7 @@ func TestGetProjectAttributes_ConfigLookup(t *testing.T) {
 			MaxParallelism:   3,
 			AssumableIamRole: "myrole",
 		}
-		config.SetTopLevelConfig(appConfig)
+		appConfiguration.SetTopLevelConfig(appConfig)
 
 		response, err := manager.GetProjectAttributes(context.Background(), request)
 		assert.Nil(t, err)
@@ -625,7 +628,7 @@ func TestGetProjectAttributes_ConfigLookup(t *testing.T) {
 			MaxParallelism: 3,
 			Annotations:    map[string]string{"ann1": "val1"},
 		}
-		config.SetTopLevelConfig(appConfig)
+		appConfiguration.SetTopLevelConfig(appConfig)
 
 		response, err := manager.GetProjectAttributes(context.Background(), request)
 		assert.Nil(t, err)
@@ -653,7 +656,7 @@ func TestGetProjectAttributes_ConfigLookup(t *testing.T) {
 			Labels:               map[string]string{"lab1": "name"},
 			OutputLocationPrefix: "s3://test-bucket",
 		}
-		config.SetTopLevelConfig(appConfig)
+		appConfiguration.SetTopLevelConfig(appConfig)
 		request := admin.ProjectAttributesGetRequest{
 			Project:      project,
 			ResourceType: admin.MatchableResource_EXECUTION_QUEUE,
@@ -664,6 +667,457 @@ func TestGetProjectAttributes_ConfigLookup(t *testing.T) {
 		ec, ok := err.(errors.FlyteAdminError)
 		assert.True(t, ok)
 		assert.Equal(t, codes.NotFound, ec.Code())
+	})
+}
+
+func TestGetProjectAttributesTaskResource(t *testing.T) {
+	request := admin.ProjectAttributesGetRequest{
+		Project:      project,
+		ResourceType: admin.MatchableResource_TASK_RESOURCE,
+	}
+	db := mocks.NewMockRepository()
+
+	manager := NewResourceManager(db, testutils.GetMockConfiguration())
+	db.ResourceRepo().(*mocks.MockResourceRepo).GetRowsFunction = func(
+		ctx context.Context, ID repoInterfaces.ResourceID) ([]models.Resource, error) {
+
+		assert.Equal(t, project, ID.Project)
+		assert.Equal(t, "", ID.Domain)
+		assert.Equal(t, "", ID.Workflow)
+		assert.Equal(t, admin.MatchableResource_TASK_RESOURCE.String(), ID.ResourceType)
+		expectedSerializedAttrs, _ := proto.Marshal(testutils.TaskResourcesSample)
+		return []models.Resource{
+			{
+				Project:      project,
+				Domain:       "",
+				ResourceType: "resource",
+				Attributes:   expectedSerializedAttrs,
+			},
+		}, nil
+	}
+	response, err := manager.GetProjectAttributes(context.Background(), request)
+	assert.Nil(t, err)
+	assert.True(t, proto.Equal(&admin.ProjectAttributesGetResponse{
+		Attributes: &admin.ProjectAttributes{
+			Project:            project,
+			MatchingAttributes: testutils.TaskResourcesSample,
+		},
+	}, response))
+
+	// unrecognized errors are thrown
+	db.ResourceRepo().(*mocks.MockResourceRepo).GetRowsFunction = func(
+		ctx context.Context, ID repoInterfaces.ResourceID) ([]models.Resource, error) {
+
+		return []models.Resource{}, errors.NewFlyteAdminErrorf(5323, "random code")
+	}
+	_, err = manager.GetProjectAttributes(context.Background(), request)
+	assert.Error(t, err)
+}
+
+func TestGetProjectAttributesMTaskResource(t *testing.T) {
+	request := admin.ProjectAttributesGetRequest{
+		Project:      project,
+		ResourceType: admin.MatchableResource_TASK_RESOURCE,
+	}
+	db := mocks.NewMockRepository()
+
+	manager := NewResourceManager(db, testutils.GetMockConfiguration())
+	db.ResourceRepo().(*mocks.MockResourceRepo).GetRowsFunction = func(
+		ctx context.Context, ID repoInterfaces.ResourceID) ([]models.Resource, error) {
+
+		assert.Equal(t, project, ID.Project)
+		assert.Equal(t, "", ID.Domain)
+		assert.Equal(t, "", ID.Workflow)
+		assert.Equal(t, admin.MatchableResource_TASK_RESOURCE.String(), ID.ResourceType)
+		expectedSerializedAttrs, _ := proto.Marshal(testutils.TaskResourcesSample)
+		return []models.Resource{
+			{
+				Project:      project,
+				Domain:       "",
+				ResourceType: "resource",
+				Attributes:   expectedSerializedAttrs,
+			},
+		}, nil
+	}
+	response, err := manager.GetProjectAttributes(context.Background(), request)
+	assert.Nil(t, err)
+	assert.True(t, proto.Equal(&admin.ProjectAttributesGetResponse{
+		Attributes: &admin.ProjectAttributes{
+			Project:            project,
+			MatchingAttributes: testutils.TaskResourcesSample,
+		},
+	}, response))
+}
+
+func TestGetProjectAttributes_MergeTaskResourceConfigWithMatchableResources(t *testing.T) {
+	request := admin.ProjectAttributesGetRequest{
+		Project:      project,
+		ResourceType: admin.MatchableResource_TASK_RESOURCE,
+	}
+	db := mocks.NewMockRepository()
+	config := runtimeMocks.NewMockConfigurationProvider(nil, nil, nil, nil, nil, nil).(*runtimeMocks.MockConfigurationProvider)
+
+	manager := NewResourceManager(db, config)
+
+	t.Run("config no replacement, all from db", func(t *testing.T) {
+		db.ResourceRepo().(*mocks.MockResourceRepo).GetRowsFunction = func(
+			ctx context.Context, ID repoInterfaces.ResourceID) ([]models.Resource, error) {
+			matchingAttributes := &admin.MatchingAttributes{
+				Target: &admin.MatchingAttributes_TaskResourceAttributes{
+					TaskResourceAttributes: &admin.TaskResourceAttributes{
+						Defaults: &admin.TaskResourceSpec{
+							Cpu:              "1",
+							Gpu:              "2",
+							Memory:           "100Mi",
+							EphemeralStorage: "100Gi",
+						},
+						Limits: &admin.TaskResourceSpec{
+							Cpu:              "2",
+							Gpu:              "3",
+							Memory:           "200Mi",
+							EphemeralStorage: "300Gi",
+						},
+					},
+				},
+			}
+			expectedSerializedAttrs, _ := proto.Marshal(matchingAttributes)
+			return []models.Resource{
+				{
+					Project:      project,
+					Domain:       "",
+					ResourceType: "resource",
+					Attributes:   expectedSerializedAttrs,
+				},
+			}, nil
+		}
+
+		taskConfiguration := runtimeMocks.NewMockTaskResourceConfiguration(
+			runtimeInterfaces.TaskResourceSet{
+				CPU:              testutils.GetPtr(resource.MustParse("2")),
+				Memory:           testutils.GetPtr(resource.MustParse("200Mi")),
+				GPU:              testutils.GetPtr(resource.MustParse("0")),
+				EphemeralStorage: testutils.GetPtr(resource.MustParse("100Gi")),
+			},
+			runtimeInterfaces.TaskResourceSet{
+				CPU:    testutils.GetPtr(resource.MustParse("2")),
+				Memory: testutils.GetPtr(resource.MustParse("1Gi")),
+				GPU:    testutils.GetPtr(resource.MustParse("1")),
+			},
+		)
+		config.SetTaskResourceConfiguration(taskConfiguration)
+
+		response, err := manager.GetProjectAttributes(context.Background(), request)
+
+		assert.Nil(t, err)
+		tra := response.GetAttributes().GetMatchingAttributes().GetTaskResourceAttributes()
+		assert.True(t, proto.Equal(&admin.TaskResourceAttributes{
+			Defaults: &admin.TaskResourceSpec{
+				Cpu:              "1",
+				Gpu:              "2",
+				Memory:           "100Mi",
+				EphemeralStorage: "100Gi",
+			},
+			Limits: &admin.TaskResourceSpec{
+				Cpu:              "2",
+				Gpu:              "3",
+				Memory:           "200Mi",
+				EphemeralStorage: "300Gi",
+			},
+		}, tra))
+	})
+
+	t.Run("config merge some from config", func(t *testing.T) {
+		// returned by the database as matchable resource
+		db.ResourceRepo().(*mocks.MockResourceRepo).GetRowsFunction = func(
+			ctx context.Context, ID repoInterfaces.ResourceID) ([]models.Resource, error) {
+			matchingAttributes := &admin.MatchingAttributes{
+				Target: &admin.MatchingAttributes_TaskResourceAttributes{
+					TaskResourceAttributes: &admin.TaskResourceAttributes{
+						Defaults: &admin.TaskResourceSpec{
+							Cpu:              "1",
+							Memory:           "100Mi",
+							EphemeralStorage: "100Gi",
+						},
+						Limits: &admin.TaskResourceSpec{
+							Cpu:              "2",
+							EphemeralStorage: "300Gi",
+						},
+					},
+				},
+			}
+			expectedSerializedAttrs, _ := proto.Marshal(matchingAttributes)
+			return []models.Resource{
+				{
+					Project:      project,
+					Domain:       "",
+					ResourceType: "resource",
+					Attributes:   expectedSerializedAttrs,
+				}}, nil
+		}
+
+		taskConfiguration := runtimeMocks.NewMockTaskResourceConfiguration(
+			runtimeInterfaces.TaskResourceSet{
+				Memory:           testutils.GetPtr(resource.MustParse("200Mi")),
+				EphemeralStorage: testutils.GetPtr(resource.MustParse("100Gi")),
+			},
+			runtimeInterfaces.TaskResourceSet{
+				Memory: testutils.GetPtr(resource.MustParse("1Gi")),
+			},
+		)
+		config.SetTaskResourceConfiguration(taskConfiguration)
+
+		response, err := manager.GetProjectAttributes(context.Background(), request)
+
+		assert.Nil(t, err)
+		tra := response.GetAttributes().GetMatchingAttributes().GetTaskResourceAttributes()
+		assert.True(t, proto.Equal(&admin.TaskResourceAttributes{
+			Defaults: &admin.TaskResourceSpec{
+				Cpu:              "1",
+				Memory:           "100Mi",
+				EphemeralStorage: "100Gi",
+			},
+			Limits: &admin.TaskResourceSpec{
+				Cpu:              "2",
+				Memory:           "1Gi",
+				EphemeralStorage: "300Gi",
+			},
+		}, tra))
+	})
+
+	t.Run("config merge all limits from config", func(t *testing.T) {
+		db.ResourceRepo().(*mocks.MockResourceRepo).GetRowsFunction = func(
+			ctx context.Context, ID repoInterfaces.ResourceID) ([]models.Resource, error) {
+			matchingAttributes := &admin.MatchingAttributes{
+				Target: &admin.MatchingAttributes_TaskResourceAttributes{
+					TaskResourceAttributes: &admin.TaskResourceAttributes{
+						Defaults: &admin.TaskResourceSpec{
+							Cpu:              "1",
+							Memory:           "100Mi",
+							EphemeralStorage: "100Gi",
+						},
+						Limits: &admin.TaskResourceSpec{},
+					},
+				},
+			}
+			expectedSerializedAttrs, _ := proto.Marshal(matchingAttributes)
+			return []models.Resource{
+				{
+					Project:      project,
+					Domain:       "",
+					ResourceType: "resource",
+					Attributes:   expectedSerializedAttrs,
+				},
+			}, nil
+		}
+
+		taskConfiguration := runtimeMocks.NewMockTaskResourceConfiguration(
+			runtimeInterfaces.TaskResourceSet{
+				Memory:           testutils.GetPtr(resource.MustParse("200Mi")),
+				EphemeralStorage: testutils.GetPtr(resource.MustParse("101Gi")),
+			},
+			runtimeInterfaces.TaskResourceSet{
+				CPU:              testutils.GetPtr(resource.MustParse("2")),
+				Memory:           testutils.GetPtr(resource.MustParse("1Gi")),
+				EphemeralStorage: testutils.GetPtr(resource.MustParse("153Gi")),
+			},
+		)
+		config.SetTaskResourceConfiguration(taskConfiguration)
+
+		response, err := manager.GetProjectAttributes(context.Background(), request)
+		assert.Nil(t, err)
+		tra := response.GetAttributes().GetMatchingAttributes().GetTaskResourceAttributes()
+		assert.True(t, proto.Equal(&admin.TaskResourceAttributes{
+			Defaults: &admin.TaskResourceSpec{
+				Cpu:              "1",
+				Memory:           "100Mi",
+				EphemeralStorage: "100Gi",
+			},
+			Limits: &admin.TaskResourceSpec{
+				Cpu:              "2",
+				Memory:           "1Gi",
+				EphemeralStorage: "153Gi",
+			},
+		}, tra))
+	})
+
+	t.Run("base config limits limit matchable resources", func(t *testing.T) {
+		// returned by the database as matchable resource
+		db.ResourceRepo().(*mocks.MockResourceRepo).GetRowsFunction = func(
+			ctx context.Context, ID repoInterfaces.ResourceID) ([]models.Resource, error) {
+			matchingAttributes := &admin.MatchingAttributes{
+				Target: &admin.MatchingAttributes_TaskResourceAttributes{
+					TaskResourceAttributes: &admin.TaskResourceAttributes{
+						Defaults: &admin.TaskResourceSpec{
+							Cpu:              "3",
+							Memory:           "100Mi",
+							EphemeralStorage: "100Gi",
+						},
+						Limits: &admin.TaskResourceSpec{
+							Cpu: "4",
+						},
+					},
+				},
+			}
+			expectedSerializedAttrs, _ := proto.Marshal(matchingAttributes)
+			return []models.Resource{
+				{
+					Project:      project,
+					Domain:       "",
+					ResourceType: "resource",
+					Attributes:   expectedSerializedAttrs,
+				}}, nil
+		}
+
+		// This is the fake base system level configuration.
+		taskConfiguration := runtimeMocks.NewMockTaskResourceConfiguration(
+			runtimeInterfaces.TaskResourceSet{
+				CPU:              testutils.GetPtr(resource.MustParse("2")),
+				Memory:           testutils.GetPtr(resource.MustParse("200Mi")),
+				EphemeralStorage: testutils.GetPtr(resource.MustParse("5Gi")),
+			},
+			runtimeInterfaces.TaskResourceSet{
+				CPU:              testutils.GetPtr(resource.MustParse("2")),
+				Memory:           testutils.GetPtr(resource.MustParse("1Gi")),
+				EphemeralStorage: testutils.GetPtr(resource.MustParse("10Gi")),
+			},
+		)
+		config.SetTaskResourceConfiguration(taskConfiguration)
+
+		response, err := manager.GetProjectAttributes(context.Background(), request)
+
+		assert.Nil(t, err)
+		tra := response.GetAttributes().GetMatchingAttributes().GetTaskResourceAttributes()
+		assert.True(t, proto.Equal(&admin.TaskResourceAttributes{
+			Defaults: &admin.TaskResourceSpec{
+				Cpu:              "3",     // unch, because the matchable resource overrides the base config.
+				Memory:           "100Mi", // unch, lower than system limit of 1Gi
+				EphemeralStorage: "10Gi",  // cut from 100 to 10, because we inherit the system limit of 10Gi
+			},
+			Limits: &admin.TaskResourceSpec{
+				Cpu:              "4",    // unch, base config overridden by the matchable resource
+				Memory:           "1Gi",  // inherited from the system limit
+				EphemeralStorage: "10Gi", // inherited from the system limit
+			},
+		}, tra))
+	})
+
+	t.Run("config override even works if 0", func(t *testing.T) {
+		// returned by the database as matchable resource
+		db.ResourceRepo().(*mocks.MockResourceRepo).GetRowsFunction = func(
+			ctx context.Context, ID repoInterfaces.ResourceID) ([]models.Resource, error) {
+			matchingAttributes := &admin.MatchingAttributes{
+				Target: &admin.MatchingAttributes_TaskResourceAttributes{
+					TaskResourceAttributes: &admin.TaskResourceAttributes{
+						Defaults: &admin.TaskResourceSpec{
+							Cpu:    "2",
+							Memory: "2Gi",
+							Gpu:    "0",
+						},
+						Limits: &admin.TaskResourceSpec{
+							Memory: "0",
+						},
+					},
+				},
+			}
+			expectedSerializedAttrs, _ := proto.Marshal(matchingAttributes)
+			return []models.Resource{
+				{
+					Project:      project,
+					Domain:       "",
+					ResourceType: "resource",
+					Attributes:   expectedSerializedAttrs,
+				}}, nil
+		}
+
+		// This is the fake base system level configuration.
+		taskConfiguration := runtimeMocks.NewMockTaskResourceConfiguration(
+			runtimeInterfaces.TaskResourceSet{
+				Memory: testutils.GetPtr(resource.MustParse("200Mi")),
+				GPU:    testutils.GetPtr(resource.MustParse("1")),
+			},
+			runtimeInterfaces.TaskResourceSet{
+				Memory: testutils.GetPtr(resource.MustParse("1Gi")),
+			},
+		)
+		config.SetTaskResourceConfiguration(taskConfiguration)
+
+		response, err := manager.GetProjectAttributes(context.Background(), request)
+
+		assert.Nil(t, err)
+		tra := response.GetAttributes().GetMatchingAttributes().GetTaskResourceAttributes()
+		assert.True(t, proto.Equal(&admin.TaskResourceAttributes{
+			Defaults: &admin.TaskResourceSpec{
+				Cpu:    "2",
+				Gpu:    "0",
+				Memory: "2Gi",
+			},
+			Limits: &admin.TaskResourceSpec{
+				Memory: "0",
+			},
+		}, tra))
+	})
+}
+
+func TestGetProjectAttributes_TaskResourceConfigLookup(t *testing.T) {
+	request := admin.ProjectAttributesGetRequest{
+		Project:      project,
+		ResourceType: admin.MatchableResource_TASK_RESOURCE,
+	}
+	db := mocks.NewMockRepository()
+	db.ResourceRepo().(*mocks.MockResourceRepo).GetFunction = func(
+		ctx context.Context, ID repoInterfaces.ResourceID) (models.Resource, error) {
+		// return not found to trigger loading from config
+		return models.Resource{}, errors.NewFlyteAdminError(codes.NotFound, "not found message")
+	}
+	config := runtimeMocks.NewMockConfigurationProvider(nil, nil, nil, nil, nil, nil).(*runtimeMocks.MockConfigurationProvider)
+
+	manager := NewResourceManager(db, config)
+
+	// what is the treatment of 0s that are explicitly set
+	// what about missing things
+	t.Run("config 1", func(t *testing.T) {
+		taskConfiguration := runtimeMocks.NewMockTaskResourceConfiguration(
+			runtimeInterfaces.TaskResourceSet{
+				CPU:              testutils.GetPtr(resource.MustParse("2")),
+				Memory:           testutils.GetPtr(resource.MustParse("200Mi")),
+				GPU:              testutils.GetPtr(resource.MustParse("0")),
+				EphemeralStorage: testutils.GetPtr(resource.MustParse("100Gi")),
+			},
+			runtimeInterfaces.TaskResourceSet{
+				CPU:    testutils.GetPtr(resource.MustParse("2")),
+				Memory: testutils.GetPtr(resource.MustParse("1Gi")),
+				GPU:    testutils.GetPtr(resource.MustParse("1")),
+			},
+		)
+		config.SetTaskResourceConfiguration(taskConfiguration)
+
+		response, err := manager.GetProjectAttributes(context.Background(), request)
+		assert.Nil(t, err)
+		assert.True(t, proto.Equal(&admin.ProjectAttributesGetResponse{
+			Attributes: &admin.ProjectAttributes{
+				Project: project,
+				MatchingAttributes: &admin.MatchingAttributes{
+					Target: &admin.MatchingAttributes_TaskResourceAttributes{
+						TaskResourceAttributes: &admin.TaskResourceAttributes{
+							Defaults: &admin.TaskResourceSpec{
+								Cpu:              "2",
+								Gpu:              "0",
+								Memory:           "200Mi",
+								Storage:          "",
+								EphemeralStorage: "100Gi",
+							},
+							Limits: &admin.TaskResourceSpec{
+								Cpu:              "2",
+								Gpu:              "1",
+								Memory:           "1Gi",
+								Storage:          "",
+								EphemeralStorage: "",
+							},
+						},
+					},
+				},
+			},
+		}, response))
 	})
 }
 
@@ -680,7 +1134,7 @@ func TestDeleteProjectAttributes(t *testing.T) {
 		assert.Equal(t, admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG.String(), ID.ResourceType)
 		return nil
 	}
-	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+	manager := NewResourceManager(db, testutils.GetMockConfiguration())
 	_, err := manager.DeleteProjectAttributes(context.Background(), request)
 	assert.Nil(t, err)
 }
@@ -711,7 +1165,7 @@ func TestGetResource(t *testing.T) {
 			Attributes:   expectedSerializedAttrs,
 		}, nil
 	}
-	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+	manager := NewResourceManager(db, testutils.GetMockConfiguration())
 	response, err := manager.GetResource(context.Background(), request)
 	assert.Nil(t, err)
 	assert.Equal(t, request.Project, response.Project)
@@ -762,7 +1216,7 @@ func TestListAllResources(t *testing.T) {
 			},
 		}, nil
 	}
-	manager := NewResourceManager(db, testutils.GetApplicationConfigWithDefaultDomains())
+	manager := NewResourceManager(db, testutils.GetMockConfiguration())
 	response, err := manager.ListAll(context.Background(), admin.ListMatchableAttributesRequest{
 		ResourceType: admin.MatchableResource_CLUSTER_RESOURCE,
 	})

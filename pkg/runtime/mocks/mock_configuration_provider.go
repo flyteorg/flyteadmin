@@ -34,6 +34,10 @@ func (p *MockConfigurationProvider) TaskResourceConfiguration() interfaces.TaskR
 	return p.taskResourceConfiguration
 }
 
+func (p *MockConfigurationProvider) SetTaskResourceConfiguration(t interfaces.TaskResourceConfiguration) {
+	p.taskResourceConfiguration = t
+}
+
 func (p *MockConfigurationProvider) WhitelistConfiguration() interfaces.WhitelistConfiguration {
 	return p.whitelistConfiguration
 }

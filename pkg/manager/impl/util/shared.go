@@ -288,6 +288,7 @@ func GetMatchableResource(ctx context.Context, resourceManager interfaces.Resour
 // new object with the merged changes.
 // After settings project is done, can move this function back to execution manager. Currently shared with resource.
 func MergeIntoExecConfig(workflowExecConfig admin.WorkflowExecutionConfig, spec shared.WorkflowExecutionConfigInterface) admin.WorkflowExecutionConfig {
+
 	if workflowExecConfig.GetMaxParallelism() == 0 && spec.GetMaxParallelism() > 0 {
 		workflowExecConfig.MaxParallelism = spec.GetMaxParallelism()
 	}

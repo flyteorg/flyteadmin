@@ -11,6 +11,7 @@ type ResourceInterface interface {
 	ListAll(ctx context.Context, request admin.ListMatchableAttributesRequest) (
 		*admin.ListMatchableAttributesResponse, error)
 	GetResource(ctx context.Context, request ResourceRequest) (*ResourceResponse, error)
+	GetResourcesList(ctx context.Context, request ResourceRequest) (*ResourceResponseList, error)
 
 	UpdateProjectAttributes(ctx context.Context, request admin.ProjectAttributesUpdateRequest) (
 		*admin.ProjectAttributesUpdateResponse, error)
@@ -50,4 +51,13 @@ type ResourceResponse struct {
 	LaunchPlan   string
 	ResourceType string
 	Attributes   *admin.MatchingAttributes
+}
+
+type ResourceResponseList struct {
+	Project       string
+	Domain        string
+	Workflow      string
+	LaunchPlan    string
+	ResourceType  string
+	AttributeList []*admin.MatchingAttributes
 }

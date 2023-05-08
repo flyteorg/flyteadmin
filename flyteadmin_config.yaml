@@ -162,16 +162,23 @@ queues:
         - critical
     - tags:
         - default
-task_resources:
-  defaults:
-    cpu: 100m
-    memory: 200Mi
-    storage: 100M
-  limits:
-    cpu: 500m
-    gpu: 1
-    memory: 300Mi
-    storage: 10G
+#task_resources:
+#  defaults:
+#    cpu: 100m
+#    memory: 200Mi
+#    ephemeralStorage: 100M
+#  limits:
+#    cpu: 500m
+#    memory: 300Mi
+#    ephemeralStorage: 10G
+#task_resources:
+#  defaults:
+#    cpu: 100m
+#task_resources:
+#  defaults:
+#    ephemeralStorage: 500M
+#  limits:
+#    ephemeralStorage: 10G
 task_type_whitelist:
   sparkonk8s:
     - project: my_queue_1

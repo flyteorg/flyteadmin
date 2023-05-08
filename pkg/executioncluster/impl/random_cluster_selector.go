@@ -172,7 +172,7 @@ func NewRandomClusterSelector(listTargets interfaces.ListTargetsInterface, confi
 	}
 	return &RandomClusterSelector{
 		labelWeightedRandomMap:   labelWeightedRandomMap,
-		resourceManager:          resources.NewResourceManager(db, config.ApplicationConfiguration()),
+		resourceManager:          resources.NewResourceManager(db, config),
 		equalWeightedAllClusters: equalWeightedAllClusters,
 		ListTargetsInterface:     listTargets,
 		defaultExecutionLabel:    defaultExecutionLabel,

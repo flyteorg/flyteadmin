@@ -10,12 +10,15 @@ import (
 type CreateOrUpdateResourceFunction func(ctx context.Context, input models.Resource) error
 type GetResourceFunction func(ctx context.Context, ID interfaces.ResourceID) (
 	models.Resource, error)
+type GetRowsFunction func(ctx context.Context, ID interfaces.ResourceID) (
+	[]models.Resource, error)
 type ListAllResourcesFunction func(ctx context.Context, resourceType string) ([]models.Resource, error)
 type DeleteResourceFunction func(ctx context.Context, ID interfaces.ResourceID) error
 
 type MockResourceRepo struct {
 	CreateOrUpdateFunction CreateOrUpdateResourceFunction
 	GetFunction            GetResourceFunction
+	GetRowsFunction        GetRowsFunction
 	DeleteFunction         DeleteResourceFunction
 	ListAllFunction        ListAllResourcesFunction
 }
@@ -33,6 +36,15 @@ func (r *MockResourceRepo) Get(ctx context.Context, ID interfaces.ResourceID) (
 		return r.GetFunction(ctx, ID)
 	}
 	return models.Resource{}, nil
+}
+
+func (r *MockResourceRepo) GetRows(ctx context.Context, ID interfaces.ResourceID) (
+	[]models.Resource, error) {
+
+	if r.GetRowsFunction != nil {
+		return r.GetRowsFunction(ctx, ID)
+	}
+	return []models.Resource{}, nil
 }
 
 func (r *MockResourceRepo) GetRaw(ctx context.Context, ID interfaces.ResourceID) (

@@ -10,8 +10,6 @@ import (
 
 	"github.com/flyteorg/flyteadmin/plugins"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
-
 	"github.com/flyteorg/flyteadmin/auth"
 
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/resources"
@@ -184,12 +182,49 @@ func (m *ExecutionManager) addPluginOverrides(ctx context.Context, executionID *
 	return nil, nil
 }
 
-// TODO: Delete this code usage after the flyte v0.17.0 release
+// defaults should be a coalesce of task defaults, and platform defaults.
+// task limits should be the limits from the task, coalesced with the defaults from step one
+// then both should be limited by any platform limits.
+// anything 0 or empty is not set.
+// if both requests and limits end up empty, return nil. if one is empty, return nil for it
+func (m *ExecutionManager) getResources(ctx context.Context, taskResources *core.Resources, platformResources workflowengineInterfaces.TaskResources) *core.Resources {
+
+	// requests: coalesce(task request, platform default)
+	// limits: coalesce(task limits, task requests)
+	// check that defaults and limits are both below platform limit
+	var requestSet runtimeInterfaces.TaskResourceSet
+	var limitSet runtimeInterfaces.TaskResourceSet
+	if taskResources != nil && taskResources.GetRequests() != nil {
+		requestSet = util.GetTaskResourcesAndCoalesce(ctx, taskResources.GetRequests(), platformResources.Defaults)
+	} else {
+		requestSet = platformResources.Defaults
+	}
+	if taskResources != nil && taskResources.GetLimits() != nil {
+		limitSet = util.GetTaskResourcesAndCoalesce(ctx, taskResources.GetLimits(), requestSet)
+	} else {
+		limitSet = requestSet
+	}
+	adjustedRequestSet := util.ConstrainTaskResourceSet(ctx, requestSet, platformResources.Limits)
+	adjustedLimitSet := util.ConstrainTaskResourceSet(ctx, limitSet, platformResources.Limits)
+
+	// convert the sets back to core.Resources
+	requestEntries := util.ConvertTaskResourceSetToCoreResources(adjustedRequestSet)
+	limitEntries := util.ConvertTaskResourceSetToCoreResources(adjustedLimitSet)
+	if len(requestEntries) == 0 && len(limitEntries) == 0 {
+		return nil
+	}
+	res := core.Resources{}
+	if len(requestEntries) > 0 {
+		res.Requests = requestEntries
+	}
+	if len(limitEntries) > 0 {
+		res.Limits = limitEntries
+	}
+
+	return &res
+}
+
 // Assumes input contains a compiled task with a valid container resource execConfig.
-//
-// Note: The system will assign a system-default value for request but for limit it will deduce it from the request
-// itself => Limit := Min([Some-Multiplier X Request], System-Max). For now we are using a multiplier of 1. In
-// general we recommend the users to set limits close to requests for more predictability in the system.
 func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *core.CompiledTask,
 	platformTaskResources workflowengineInterfaces.TaskResources) {
 
@@ -204,99 +239,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 		return
 	}
 
-	if task.Template.GetContainer().Resources == nil {
-		// In case of no resources on the container, create empty requests and limits
-		// so the container will still have resources configure properly
-		task.Template.GetContainer().Resources = &core.Resources{
-			Requests: []*core.Resources_ResourceEntry{},
-			Limits:   []*core.Resources_ResourceEntry{},
-		}
-	}
-
-	var finalizedResourceRequests = make([]*core.Resources_ResourceEntry, 0)
-	var finalizedResourceLimits = make([]*core.Resources_ResourceEntry, 0)
-
-	// The IDL representation for container-type tasks represents resources as a list with string quantities.
-	// In order to easily reason about them we convert them to a set where we can O(1) fetch specific resources (e.g. CPU)
-	// and represent them as comparable quantities rather than strings.
-	taskResourceRequirements := util.GetCompleteTaskResourceRequirements(ctx, task.Template.Id, task)
-
-	cpu := flytek8s.AdjustOrDefaultResource(taskResourceRequirements.Defaults.CPU, taskResourceRequirements.Limits.CPU,
-		platformTaskResources.Defaults.CPU, platformTaskResources.Limits.CPU)
-	finalizedResourceRequests = append(finalizedResourceRequests, &core.Resources_ResourceEntry{
-		Name:  core.Resources_CPU,
-		Value: cpu.Request.String(),
-	})
-	finalizedResourceLimits = append(finalizedResourceLimits, &core.Resources_ResourceEntry{
-		Name:  core.Resources_CPU,
-		Value: cpu.Limit.String(),
-	})
-
-	memory := flytek8s.AdjustOrDefaultResource(taskResourceRequirements.Defaults.Memory, taskResourceRequirements.Limits.Memory,
-		platformTaskResources.Defaults.Memory, platformTaskResources.Limits.Memory)
-	finalizedResourceRequests = append(finalizedResourceRequests, &core.Resources_ResourceEntry{
-		Name:  core.Resources_MEMORY,
-		Value: memory.Request.String(),
-	})
-	finalizedResourceLimits = append(finalizedResourceLimits, &core.Resources_ResourceEntry{
-		Name:  core.Resources_MEMORY,
-		Value: memory.Limit.String(),
-	})
-
-	// Only assign ephemeral storage when it is either requested or limited in the task definition, or a platform
-	// default exists.
-	if !taskResourceRequirements.Defaults.EphemeralStorage.IsZero() ||
-		!taskResourceRequirements.Limits.EphemeralStorage.IsZero() ||
-		!platformTaskResources.Defaults.EphemeralStorage.IsZero() {
-		ephemeralStorage := flytek8s.AdjustOrDefaultResource(taskResourceRequirements.Defaults.EphemeralStorage, taskResourceRequirements.Limits.EphemeralStorage,
-			platformTaskResources.Defaults.EphemeralStorage, platformTaskResources.Limits.EphemeralStorage)
-		finalizedResourceRequests = append(finalizedResourceRequests, &core.Resources_ResourceEntry{
-			Name:  core.Resources_EPHEMERAL_STORAGE,
-			Value: ephemeralStorage.Request.String(),
-		})
-		finalizedResourceLimits = append(finalizedResourceLimits, &core.Resources_ResourceEntry{
-			Name:  core.Resources_EPHEMERAL_STORAGE,
-			Value: ephemeralStorage.Limit.String(),
-		})
-	}
-
-	// Only assign storage when it is either requested or limited in the task definition, or a platform
-	// default exists.
-	if !taskResourceRequirements.Defaults.Storage.IsZero() ||
-		!taskResourceRequirements.Limits.Storage.IsZero() ||
-		!platformTaskResources.Defaults.Storage.IsZero() {
-		storageResource := flytek8s.AdjustOrDefaultResource(taskResourceRequirements.Defaults.Storage, taskResourceRequirements.Limits.Storage,
-			platformTaskResources.Defaults.Storage, platformTaskResources.Limits.Storage)
-		finalizedResourceRequests = append(finalizedResourceRequests, &core.Resources_ResourceEntry{
-			Name:  core.Resources_STORAGE,
-			Value: storageResource.Request.String(),
-		})
-		finalizedResourceLimits = append(finalizedResourceLimits, &core.Resources_ResourceEntry{
-			Name:  core.Resources_STORAGE,
-			Value: storageResource.Limit.String(),
-		})
-	}
-
-	// Only assign gpu when it is either requested or limited in the task definition, or a platform default exists.
-	if !taskResourceRequirements.Defaults.GPU.IsZero() ||
-		!taskResourceRequirements.Limits.GPU.IsZero() ||
-		!platformTaskResources.Defaults.GPU.IsZero() {
-		gpu := flytek8s.AdjustOrDefaultResource(taskResourceRequirements.Defaults.GPU, taskResourceRequirements.Limits.GPU,
-			platformTaskResources.Defaults.GPU, platformTaskResources.Limits.GPU)
-		finalizedResourceRequests = append(finalizedResourceRequests, &core.Resources_ResourceEntry{
-			Name:  core.Resources_GPU,
-			Value: gpu.Request.String(),
-		})
-		finalizedResourceLimits = append(finalizedResourceLimits, &core.Resources_ResourceEntry{
-			Name:  core.Resources_GPU,
-			Value: gpu.Limit.String(),
-		})
-	}
-
-	task.Template.GetContainer().Resources = &core.Resources{
-		Requests: finalizedResourceRequests,
-		Limits:   finalizedResourceLimits,
-	}
+	task.Template.GetContainer().Resources = m.getResources(ctx, task.Template.GetContainer().Resources, platformTaskResources)
 }
 
 // Fetches inherited execution metadata including the parent node execution db model id and the source execution model id
@@ -1625,7 +1568,7 @@ func NewExecutionManager(db repositoryInterfaces.Repository, pluginRegistry *plu
 			"size in bytes of serialized execution outputs"),
 	}
 
-	resourceManager := resources.NewResourceManager(db, config.ApplicationConfiguration())
+	resourceManager := resources.NewResourceManager(db, config)
 	return &ExecutionManager{
 		db:                        db,
 		config:                    config,

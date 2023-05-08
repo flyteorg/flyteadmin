@@ -23,9 +23,9 @@ import (
 func getMockTaskResources() workflowengineInterfaces.TaskResources {
 	return workflowengineInterfaces.TaskResources{
 		Limits: runtimeInterfaces.TaskResourceSet{
-			Memory: resource.MustParse("500Mi"),
-			CPU:    resource.MustParse("200m"),
-			GPU:    resource.MustParse("8"),
+			Memory: testutils.GetPtr(resource.MustParse("500Mi")),
+			CPU:    testutils.GetPtr(resource.MustParse("200m")),
+			GPU:    testutils.GetPtr(resource.MustParse("8")),
 		},
 	}
 }
@@ -227,10 +227,10 @@ func TestValidateTaskTypeWhitelist(t *testing.T) {
 
 func TestTaskResourceSetToMap(t *testing.T) {
 	resourceSet := runtimeInterfaces.TaskResourceSet{
-		CPU:              resource.MustParse("100Mi"),
-		GPU:              resource.MustParse("2"),
-		Memory:           resource.MustParse("1.5Gi"),
-		EphemeralStorage: resource.MustParse("500Mi"),
+		CPU:              testutils.GetPtr(resource.MustParse("100Mi")),
+		GPU:              testutils.GetPtr(resource.MustParse("2")),
+		Memory:           testutils.GetPtr(resource.MustParse("1.5Gi")),
+		EphemeralStorage: testutils.GetPtr(resource.MustParse("500Mi")),
 	}
 	resourceSetMap := taskResourceSetToMap(resourceSet)
 	assert.Len(t, resourceSetMap, 4)
@@ -394,7 +394,7 @@ func TestValidateTaskResources_LimitGreaterThanConfig(t *testing.T) {
 	err := validateTaskResources(&core.Identifier{
 		Name: "name",
 	}, runtimeInterfaces.TaskResourceSet{
-		CPU: resource.MustParse("1Gi"),
+		CPU: testutils.GetPtr(resource.MustParse("1Gi")),
 	},
 		[]*core.Resources_ResourceEntry{
 			{
@@ -414,7 +414,7 @@ func TestValidateTaskResources_DefaultGreaterThanConfig(t *testing.T) {
 	err := validateTaskResources(&core.Identifier{
 		Name: "name",
 	}, runtimeInterfaces.TaskResourceSet{
-		CPU: resource.MustParse("1Gi"),
+		CPU: testutils.GetPtr(resource.MustParse("1Gi")),
 	},
 		[]*core.Resources_ResourceEntry{
 			{
@@ -448,7 +448,7 @@ func TestValidateTaskResources_GPULimitGreaterThanConfig(t *testing.T) {
 	err := validateTaskResources(&core.Identifier{
 		Name: "name",
 	}, runtimeInterfaces.TaskResourceSet{
-		GPU: resource.MustParse("1"),
+		GPU: testutils.GetPtr(resource.MustParse("1")),
 	},
 		[]*core.Resources_ResourceEntry{
 			{
@@ -468,7 +468,7 @@ func TestValidateTaskResources_GPUDefaultGreaterThanConfig(t *testing.T) {
 	err := validateTaskResources(&core.Identifier{
 		Name: "name",
 	}, runtimeInterfaces.TaskResourceSet{
-		GPU: resource.MustParse("1"),
+		GPU: testutils.GetPtr(resource.MustParse("1")),
 	},
 		[]*core.Resources_ResourceEntry{
 			{

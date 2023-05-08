@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flytestdlib/database"
 )
 
@@ -78,4 +79,30 @@ func (p *MockApplicationProvider) SetCloudEventsConfig(cloudEventConfig interfac
 
 func (p *MockApplicationProvider) GetCloudEventsConfig() *interfaces.CloudEventsConfig {
 	return &p.cloudEventConfig
+}
+
+func (p *MockApplicationProvider) GetAsWorkflowExecutionAttribute() admin.WorkflowExecutionConfig {
+	a := p.GetTopLevelConfig()
+
+	wec := admin.WorkflowExecutionConfig{
+		MaxParallelism: a.GetMaxParallelism(),
+		OverwriteCache: a.GetOverwriteCache(),
+		Interruptible:  a.GetInterruptible(),
+	}
+
+	// For the others, we only add the field when the field is set in the config.
+	if a.GetSecurityContext().RunAs.GetK8SServiceAccount() != "" || a.GetSecurityContext().RunAs.GetIamRole() != "" {
+		wec.SecurityContext = a.GetSecurityContext()
+	}
+	if a.GetRawOutputDataConfig().OutputLocationPrefix != "" {
+		wec.RawOutputDataConfig = a.GetRawOutputDataConfig()
+	}
+	if len(a.GetLabels().Values) > 0 {
+		wec.Labels = a.GetLabels()
+	}
+	if len(a.GetAnnotations().Values) > 0 {
+		wec.Annotations = a.GetAnnotations()
+	}
+
+	return wec
 }

@@ -114,7 +114,7 @@ func NewQueueAllocator(config runtimeInterfaces.Configuration, db repoInterfaces
 	queueAllocator := queueAllocatorImpl{
 		config:          config,
 		db:              db,
-		resourceManager: resources.NewResourceManager(db, config.ApplicationConfiguration()),
+		resourceManager: resources.NewResourceManager(db, config),
 	}
 	return &queueAllocator
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/flyteorg/flyteadmin/plugins"
 
 	"google.golang.org/grpc/status"
-
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/benbjohnson/clock"
@@ -87,12 +86,12 @@ var testCluster = "C1"
 var outputURI = "output uri"
 
 var resourceDefaults = runtimeInterfaces.TaskResourceSet{
-	CPU:    resource.MustParse("200m"),
-	Memory: resource.MustParse("200Gi"),
+	CPU:    testutils.GetPtr(resource.MustParse("200m")),
+	Memory: testutils.GetPtr(resource.MustParse("200Gi")),
 }
 var resourceLimits = runtimeInterfaces.TaskResourceSet{
-	CPU:    resource.MustParse("300m"),
-	Memory: resource.MustParse("500Gi"),
+	CPU:    testutils.GetPtr(resource.MustParse("300m")),
+	Memory: testutils.GetPtr(resource.MustParse("500Gi")),
 }
 
 func getLegacySpec() *admin.ExecutionSpec {
@@ -3754,16 +3753,16 @@ func TestSetDefaults(t *testing.T) {
 	execManager := NewExecutionManager(repositoryMocks.NewMockRepository(), r, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
 	execManager.(*ExecutionManager).setCompiledTaskDefaults(context.Background(), task, workflowengineInterfaces.TaskResources{
 		Defaults: runtimeInterfaces.TaskResourceSet{
-			CPU:              resource.MustParse("200m"),
-			GPU:              resource.MustParse("4"),
-			Memory:           resource.MustParse("200Gi"),
-			EphemeralStorage: resource.MustParse("500Mi"),
+			CPU:              testutils.GetPtr(resource.MustParse("200m")),
+			GPU:              testutils.GetPtr(resource.MustParse("4")),
+			Memory:           testutils.GetPtr(resource.MustParse("200Gi")),
+			EphemeralStorage: testutils.GetPtr(resource.MustParse("500Mi")),
 		},
 		Limits: runtimeInterfaces.TaskResourceSet{
-			CPU:              resource.MustParse("300m"),
-			GPU:              resource.MustParse("8"),
-			Memory:           resource.MustParse("500Gi"),
-			EphemeralStorage: resource.MustParse("501Mi"),
+			CPU:              testutils.GetPtr(resource.MustParse("300m")),
+			GPU:              testutils.GetPtr(resource.MustParse("8")),
+			Memory:           testutils.GetPtr(resource.MustParse("500Gi")),
+			EphemeralStorage: testutils.GetPtr(resource.MustParse("501Mi")),
 		},
 	})
 	assert.True(t, proto.Equal(
@@ -3839,15 +3838,15 @@ func TestSetDefaults_MissingRequests_ExistingRequestsPreserved(t *testing.T) {
 	execManager := NewExecutionManager(repositoryMocks.NewMockRepository(), r, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
 	execManager.(*ExecutionManager).setCompiledTaskDefaults(context.Background(), task, workflowengineInterfaces.TaskResources{
 		Defaults: runtimeInterfaces.TaskResourceSet{
-			CPU:    resource.MustParse("200m"),
-			GPU:    resource.MustParse("4"),
-			Memory: resource.MustParse("200Gi"),
+			CPU:    testutils.GetPtr(resource.MustParse("200m")),
+			GPU:    testutils.GetPtr(resource.MustParse("4")),
+			Memory: testutils.GetPtr(resource.MustParse("200Gi")),
 		},
 		Limits: runtimeInterfaces.TaskResourceSet{
-			CPU: resource.MustParse("300m"),
-			GPU: resource.MustParse("8"),
+			CPU: testutils.GetPtr(resource.MustParse("300m")),
+			GPU: testutils.GetPtr(resource.MustParse("8")),
 			// Because only the limit is set, this resource should not be injected.
-			EphemeralStorage: resource.MustParse("100"),
+			EphemeralStorage: testutils.GetPtr(resource.MustParse("100")),
 		},
 	})
 	assert.True(t, proto.Equal(
@@ -3888,10 +3887,10 @@ func TestSetDefaults_MissingRequests_ExistingRequestsPreserved(t *testing.T) {
 
 func TestSetDefaults_OptionalRequiredResources(t *testing.T) {
 	taskConfigLimits := runtimeInterfaces.TaskResourceSet{
-		CPU:              resource.MustParse("300m"),
-		GPU:              resource.MustParse("1"),
-		Memory:           resource.MustParse("500Gi"),
-		EphemeralStorage: resource.MustParse("501Mi"),
+		CPU:              testutils.GetPtr(resource.MustParse("300m")),
+		GPU:              testutils.GetPtr(resource.MustParse("1")),
+		Memory:           testutils.GetPtr(resource.MustParse("500Gi")),
+		EphemeralStorage: testutils.GetPtr(resource.MustParse("501Mi")),
 	}
 
 	task := &core.CompiledTask{
@@ -3917,8 +3916,8 @@ func TestSetDefaults_OptionalRequiredResources(t *testing.T) {
 		execManager := NewExecutionManager(repositoryMocks.NewMockRepository(), r, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
 		execManager.(*ExecutionManager).setCompiledTaskDefaults(context.Background(), task, workflowengineInterfaces.TaskResources{
 			Defaults: runtimeInterfaces.TaskResourceSet{
-				CPU:    resource.MustParse("200m"),
-				Memory: resource.MustParse("200Gi"),
+				CPU:    testutils.GetPtr(resource.MustParse("200m")),
+				Memory: testutils.GetPtr(resource.MustParse("200Gi")),
 			},
 			Limits: taskConfigLimits,
 		})
@@ -3957,9 +3956,9 @@ func TestSetDefaults_OptionalRequiredResources(t *testing.T) {
 		execManager.(*ExecutionManager).setCompiledTaskDefaults(context.Background(), task, workflowengineInterfaces.TaskResources{
 			Limits: taskConfigLimits,
 			Defaults: runtimeInterfaces.TaskResourceSet{
-				CPU:              resource.MustParse("200m"),
-				Memory:           resource.MustParse("200Gi"),
-				EphemeralStorage: resource.MustParse("1"),
+				CPU:              testutils.GetPtr(resource.MustParse("200m")),
+				Memory:           testutils.GetPtr(resource.MustParse("200Gi")),
+				EphemeralStorage: testutils.GetPtr(resource.MustParse("1")),
 			},
 		})
 		assert.True(t, proto.Equal(
@@ -3998,7 +3997,202 @@ func TestSetDefaults_OptionalRequiredResources(t *testing.T) {
 			task.Template.GetContainer()), fmt.Sprintf("%+v", task.Template.GetContainer()))
 	})
 
+	t.Run("respect non-required ddresources when defaults exist in config", func(t *testing.T) {
+		r := plugins.NewRegistry()
+		r.RegisterDefault(plugins.PluginIDWorkflowExecutor, &defaultTestExecutor)
+		execManager := NewExecutionManager(repositoryMocks.NewMockRepository(), r, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
+
+		zeroedLimitTask := &core.CompiledTask{
+			Template: &core.TaskTemplate{
+				Target: &core.TaskTemplate_Container{
+					Container: &core.Container{
+						Resources: &core.Resources{
+							Requests: []*core.Resources_ResourceEntry{
+								{
+									Name:  core.Resources_CPU,
+									Value: "200m",
+								},
+							},
+							Limits: []*core.Resources_ResourceEntry{
+								{
+									Name:  core.Resources_CPU,
+									Value: "0",
+								},
+								{
+									Name:  core.Resources_MEMORY,
+									Value: "0",
+								},
+							},
+						},
+					},
+				},
+				Id: &taskIdentifier,
+			},
+		}
+
+		execManager.(*ExecutionManager).setCompiledTaskDefaults(context.Background(), zeroedLimitTask, workflowengineInterfaces.TaskResources{
+			Limits: taskConfigLimits,
+			Defaults: runtimeInterfaces.TaskResourceSet{
+				CPU:              testutils.GetPtr(resource.MustParse("200m")),  // should be ignored
+				Memory:           testutils.GetPtr(resource.MustParse("200Gi")), // should get merged in
+				EphemeralStorage: testutils.GetPtr(resource.MustParse("100Mi")), // should get merged in
+			},
+		})
+		assert.True(t, proto.Equal(
+			&core.Container{
+				Resources: &core.Resources{
+					Requests: []*core.Resources_ResourceEntry{
+						{
+							Name:  core.Resources_CPU,
+							Value: "200m",
+						},
+						{
+							Name:  core.Resources_MEMORY,
+							Value: "200Gi",
+						},
+						{
+							Name:  core.Resources_EPHEMERAL_STORAGE,
+							Value: "100Mi",
+						},
+					},
+					Limits: []*core.Resources_ResourceEntry{
+						// zeros requested by the task are preserved
+						{
+							Name:  core.Resources_CPU,
+							Value: "0",
+						},
+						{
+							Name:  core.Resources_MEMORY,
+							Value: "0",
+						},
+						{
+							// task limit should be set to task request, which was 100Mi, the 501Mi from the taskConfigLimits
+							// should have just been used to gate the request.
+							Name:  core.Resources_EPHEMERAL_STORAGE,
+							Value: "100Mi",
+						},
+					},
+				},
+			},
+			zeroedLimitTask.Template.GetContainer()), fmt.Sprintf("Received value: %+v", zeroedLimitTask.Template.GetContainer()))
+
+		// Test the same task again but with different system limits
+		loweredEStoragePlatformLimits := runtimeInterfaces.TaskResourceSet{
+			CPU:              testutils.GetPtr(resource.MustParse("300m")),
+			GPU:              testutils.GetPtr(resource.MustParse("1")),
+			Memory:           nil,
+			EphemeralStorage: testutils.GetPtr(resource.MustParse("99Mi")),
+		}
+		execManager.(*ExecutionManager).setCompiledTaskDefaults(context.Background(), zeroedLimitTask, workflowengineInterfaces.TaskResources{
+			Limits: loweredEStoragePlatformLimits,
+			Defaults: runtimeInterfaces.TaskResourceSet{
+				CPU:              testutils.GetPtr(resource.MustParse("200m")),  // should be ignored
+				Memory:           testutils.GetPtr(resource.MustParse("200Gi")), // should get merged in
+				EphemeralStorage: testutils.GetPtr(resource.MustParse("100Mi")), // should get merged in
+			},
+		})
+		assert.True(t, proto.Equal(
+			&core.Container{
+				Resources: &core.Resources{
+					Requests: []*core.Resources_ResourceEntry{
+						{
+							Name:  core.Resources_CPU,
+							Value: "200m",
+						},
+						{
+							Name:  core.Resources_MEMORY,
+							Value: "200Gi",
+						},
+						{
+							Name:  core.Resources_EPHEMERAL_STORAGE,
+							Value: "99Mi",
+						},
+					},
+					Limits: []*core.Resources_ResourceEntry{
+						// zeros requested by the task are preserved
+						{
+							Name:  core.Resources_CPU,
+							Value: "0",
+						},
+						{
+							Name:  core.Resources_MEMORY,
+							Value: "0",
+						},
+						{
+							// task limit should be set to task request, which was 100Mi, the 501Mi from the taskConfigLimits
+							// should have just been used to gate the request.
+							Name:  core.Resources_EPHEMERAL_STORAGE,
+							Value: "99Mi",
+						},
+					},
+				},
+			},
+			zeroedLimitTask.Template.GetContainer()), fmt.Sprintf("Received value: %+v", zeroedLimitTask.Template.GetContainer()))
+	})
 }
+
+func TestGetResourcesDirectly(t *testing.T) {
+	taskConfigLimits := runtimeInterfaces.TaskResourceSet{
+		CPU:              testutils.GetPtr(resource.MustParse("300m")),
+		GPU:              testutils.GetPtr(resource.MustParse("1")),
+		Memory:           testutils.GetPtr(resource.MustParse("500Gi")),
+		EphemeralStorage: testutils.GetPtr(resource.MustParse("501Mi")),
+	}
+
+	t.Run("zero handling 1", func(t *testing.T) {
+		r := plugins.NewRegistry()
+		r.RegisterDefault(plugins.PluginIDWorkflowExecutor, &defaultTestExecutor)
+		execManager := NewExecutionManager(repositoryMocks.NewMockRepository(), r, getMockExecutionsConfigProvider(), getMockStorageForExecTest(context.Background()), mockScope.NewTestScope(), mockScope.NewTestScope(), &mockPublisher, mockExecutionRemoteURL, nil, nil, nil, nil, &eventWriterMocks.WorkflowExecutionEventWriter{})
+
+		taskResources := &core.Resources{
+			Requests: []*core.Resources_ResourceEntry{
+				{
+					Name:  core.Resources_CPU,
+					Value: "200m",
+				},
+				{
+					Name:  core.Resources_MEMORY,
+					Value: "0",
+				},
+			},
+		}
+		platformResources := workflowengineInterfaces.TaskResources{
+			Defaults: runtimeInterfaces.TaskResourceSet{
+				CPU:    testutils.GetPtr(resource.MustParse("200m")),
+				Memory: testutils.GetPtr(resource.MustParse("200Gi")),
+			},
+			Limits: taskConfigLimits,
+		}
+
+		result := execManager.(*ExecutionManager).getResources(context.Background(), taskResources, platformResources)
+
+		assert.True(t, proto.Equal(
+			&core.Resources{
+				Requests: []*core.Resources_ResourceEntry{
+					{
+						Name:  core.Resources_CPU,
+						Value: "200m",
+					},
+					{
+						Name:  core.Resources_MEMORY,
+						Value: "0",
+					},
+				},
+				Limits: []*core.Resources_ResourceEntry{
+					{
+						Name:  core.Resources_CPU,
+						Value: "200m",
+					},
+					{
+						Name:  core.Resources_MEMORY,
+						Value: "0",
+					},
+				},
+			},
+			result), fmt.Sprintf("Actual: %+v", result))
+	})
+}
+
 func TestCreateSingleTaskExecution(t *testing.T) {
 	repository := getMockRepositoryForExecTest()
 	var getCalledCount = 0

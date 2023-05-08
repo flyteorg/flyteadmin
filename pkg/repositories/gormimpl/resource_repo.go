@@ -153,6 +153,51 @@ func (r *ResourceRepo) GetProjectLevel(ctx context.Context, ID interfaces.Resour
 	return resources[0], nil
 }
 
+// GetRows returns rows at the given specificity, and lower, in descending order of specificity.
+// For example, if the resource ID has project, domain, and workflow, this will return the rows for an exact match,
+// as well as, just project and just project and domain, in that order.
+// Get returns the most-specific attribute setting for the given ResourceType.
+func (r *ResourceRepo) GetRows(ctx context.Context, ID interfaces.ResourceID) ([]models.Resource, error) {
+	if ID.ResourceType == "" {
+		return []models.Resource{}, r.errorTransformer.ToFlyteAdminError(flyteAdminDbErrors.GetInvalidInputError(fmt.Sprintf("%v", ID)))
+	}
+	var resources []models.Resource
+	timer := r.metrics.GetDuration.Start()
+
+	txWhereClause := "resource_type = ? AND domain IN (?) AND project IN (?) AND workflow IN (?) AND launch_plan IN (?)"
+	project := []string{""}
+	if ID.Project != "" {
+		project = append(project, ID.Project)
+	}
+
+	domain := []string{""}
+	if ID.Domain != "" {
+		domain = append(domain, ID.Domain)
+	}
+
+	workflow := []string{""}
+	if ID.Workflow != "" {
+		workflow = append(workflow, ID.Workflow)
+	}
+
+	launchPlan := []string{""}
+	if ID.LaunchPlan != "" {
+		launchPlan = append(launchPlan, ID.LaunchPlan)
+	}
+
+	tx := r.db.Where(txWhereClause, ID.ResourceType, domain, project, workflow, launchPlan)
+	tx.Order(priorityDescending).Find(&resources)
+	timer.Stop()
+
+	if (tx.Error != nil && errors.Is(tx.Error, gorm.ErrRecordNotFound)) || len(resources) == 0 {
+		return []models.Resource{}, flyteAdminErrors.NewFlyteAdminErrorf(codes.NotFound,
+			"Resource [%+v] not found", ID)
+	} else if tx.Error != nil {
+		return []models.Resource{}, r.errorTransformer.ToFlyteAdminError(tx.Error)
+	}
+	return resources, nil
+}
+
 func (r *ResourceRepo) GetRaw(ctx context.Context, ID interfaces.ResourceID) (models.Resource, error) {
 	if ID.Domain == "" || ID.ResourceType == "" {
 		return models.Resource{}, r.errorTransformer.ToFlyteAdminError(flyteAdminDbErrors.GetInvalidInputError(fmt.Sprintf("%v", ID)))

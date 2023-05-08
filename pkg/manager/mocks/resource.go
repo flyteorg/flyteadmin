@@ -24,6 +24,7 @@ type DeleteProjectDomainFunc func(ctx context.Context, request admin.ProjectDoma
 type ListResourceFunc func(ctx context.Context, request admin.ListMatchableAttributesRequest) (
 	*admin.ListMatchableAttributesResponse, error)
 type GetResourceFunc func(ctx context.Context, request interfaces.ResourceRequest) (*interfaces.ResourceResponse, error)
+type GetResourcesListFunc func(ctx context.Context, request interfaces.ResourceRequest) (*interfaces.ResourceResponseList, error)
 
 type MockResourceManager struct {
 	updateProjectDomainFunc UpdateProjectDomainFunc
@@ -31,6 +32,7 @@ type MockResourceManager struct {
 	DeleteFunc              DeleteProjectDomainFunc
 	ListFunc                ListResourceFunc
 	GetResourceFunc         GetResourceFunc
+	GetResourcesListFunc    GetResourcesListFunc
 	updateProjectAttrsFunc  UpdateProjectAttrsFunc
 	getProjectAttrFunc      GetProjectAttrFunc
 	deleteProjectAttrFunc   DeleteProjectAttrFunc
@@ -39,6 +41,13 @@ type MockResourceManager struct {
 func (m *MockResourceManager) GetResource(ctx context.Context, request interfaces.ResourceRequest) (*interfaces.ResourceResponse, error) {
 	if m.GetResourceFunc != nil {
 		return m.GetResourceFunc(ctx, request)
+	}
+	return nil, nil
+}
+
+func (m *MockResourceManager) GetResourcesList(ctx context.Context, request interfaces.ResourceRequest) (*interfaces.ResourceResponseList, error) {
+	if m.GetResourcesListFunc != nil {
+		return m.GetResourcesListFunc(ctx, request)
 	}
 	return nil, nil
 }
