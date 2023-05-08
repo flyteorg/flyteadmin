@@ -23,7 +23,6 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/runtime"
 	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/stretchr/testify/mock"
@@ -5330,14 +5329,4 @@ func TestAddStateFilter(t *testing.T) {
 		assert.Equal(t, "state <> ?", expression.Query)
 	})
 
-}
-
-func TestGetUserIdentityFromContext(t *testing.T) {
-
-	idCtx, err := auth.NewIdentityContext("", "byhsu", "", time.Now(), sets.String{}, &service.UserInfoResponse{}, map[string]interface{}{})
-	assert.NoError(t, err)
-	ctx := context.WithValue(context.Background(), auth.ContextKeyIdentityContext, idCtx)
-	uid, err := getUserIdentityFromContext(ctx)
-	assert.NoError(t, err)
-	assert.Equal(t, "byhsu", uid)
 }

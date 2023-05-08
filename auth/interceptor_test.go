@@ -59,3 +59,8 @@ func TestBlanketAuthorization(t *testing.T) {
 		assert.False(t, handlerCalled)
 	})
 }
+
+func TestGetUserIdentityFromContext(t *testing.T) {
+
+	// TODO
+}

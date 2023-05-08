@@ -413,7 +413,6 @@ func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admi
 	// https://github.com/flyteorg/flytepropeller/blob/03a6672960ed04e7687ba4f790fee9a02a4057fb/pkg/controller/nodes/subworkflow/launchplan/admin.go#L114
 	if workflowExecConfig.GetSecurityContext().GetRunAs().GetUserIdentifier() == "" {
 		workflowExecConfig.SecurityContext.RunAs.UserIdentifier, err = getUserIdentityFromContext(ctx)
-
 		if err != nil {
 			return nil, err
 		}
@@ -427,7 +426,7 @@ func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admi
 func getUserIdentityFromContext(ctx context.Context) (string, error) {
 	idCtx := auth.IdentityContextFromContext(ctx)
 
-	return idCtx.UserID(), nil
+	return idCtx.UserIdentity(), nil
 }
 
 func (m *ExecutionManager) getClusterAssignment(ctx context.Context, request *admin.ExecutionCreateRequest) (

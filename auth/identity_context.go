@@ -28,6 +28,8 @@ type IdentityContext struct {
 	appID           string
 	authenticatedAt time.Time
 	userInfo        *service.UserInfoResponse
+	// Contains unique identifier for users, which will be passed to SecurityContext
+	userIdentifier string
 	// Set to pointer just to keep this struct go-simple to support equal operator
 	scopes *sets.String
 	// Raw JWT token from the IDP. Set to a pointer to support the equal operator for this struct.
@@ -56,6 +58,10 @@ func (c IdentityContext) UserInfo() *service.UserInfoResponse {
 
 func (c IdentityContext) IsEmpty() bool {
 	return c == emptyIdentityContext
+}
+
+func (c IdentityContext) UserIdentity() string {
+	return c.userIdentity
 }
 
 func (c IdentityContext) Scopes() sets.String {
