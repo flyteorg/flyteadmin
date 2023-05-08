@@ -61,6 +61,18 @@ func TestBlanketAuthorization(t *testing.T) {
 }
 
 func TestGetUserIdentityFromContext(t *testing.T) {
+	identityContext := IdentityContext{
+		userID: "yeee",
+	}
 
-	// TODO
+	ctx := identityContext.WithContext(context.Background())
+
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		identityContext := IdentityContextFromContext(ctx)
+		userIdentifier := identityContext.UserIdentifier()
+		assert.Equal(t, userIdentifier, "yeee")
+		return nil, nil
+	}
+
+	UserIdentifierInterceptor(ctx, nil, nil, handler)
 }

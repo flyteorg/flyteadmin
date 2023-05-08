@@ -28,12 +28,15 @@ type IdentityContext struct {
 	appID           string
 	authenticatedAt time.Time
 	userInfo        *service.UserInfoResponse
-	// Contains unique identifier for users, which will be passed to SecurityContext
-	userIdentifier string
 	// Set to pointer just to keep this struct go-simple to support equal operator
 	scopes *sets.String
 	// Raw JWT token from the IDP. Set to a pointer to support the equal operator for this struct.
 	claims *claimsType
+	// userIdentifier stores a unique string that can be used to identify the user associated with a given task.
+	// This identifier is passed down to the ExecutionSpec and can be used for various purposes, such as setting the user identifier on a pod label.
+	// By default, the user identifier is filled with the value of IdentityContext.userID. However, you can customize your middleware to assign other values if needed.
+	// Providing a user identifier can be useful for tracking tasks and associating them with specific users, especially in multi-user environments.
+	userIdentifier string
 }
 
 func (c IdentityContext) Audience() string {
@@ -60,10 +63,6 @@ func (c IdentityContext) IsEmpty() bool {
 	return c == emptyIdentityContext
 }
 
-func (c IdentityContext) UserIdentity() string {
-	return c.userIdentity
-}
-
 func (c IdentityContext) Scopes() sets.String {
 	if c.scopes != nil {
 		return *c.scopes
@@ -77,6 +76,10 @@ func (c IdentityContext) Claims() map[string]interface{} {
 		return *c.claims
 	}
 	return make(map[string]interface{})
+}
+
+func (c IdentityContext) UserIdentifier() string {
+	return c.userIdentifier
 }
 
 func (c IdentityContext) WithContext(ctx context.Context) context.Context {
