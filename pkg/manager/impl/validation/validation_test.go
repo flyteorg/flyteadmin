@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -94,9 +95,94 @@ func TestValidateNamedEntityIdentifierListRequest(t *testing.T) {
 	}))
 }
 
+func TestValidateDescriptionEntityIdentifierGetRequest(t *testing.T) {
+	assert.Nil(t, ValidateDescriptionEntityGetRequest(admin.ObjectGetRequest{
+		Id: &core.Identifier{
+			ResourceType: core.ResourceType_WORKFLOW,
+			Project:      "project",
+			Domain:       "domain",
+			Name:         "name",
+			Version:      "v1",
+		},
+	}))
+
+	assert.NotNil(t, ValidateDescriptionEntityGetRequest(admin.ObjectGetRequest{
+		Id: &core.Identifier{
+			Project: "project",
+		},
+	}))
+
+	assert.NotNil(t, ValidateDescriptionEntityGetRequest(admin.ObjectGetRequest{
+		Id: &core.Identifier{
+			ResourceType: core.ResourceType_WORKFLOW,
+			Project:      "project",
+		},
+	}))
+}
+
+func TestValidateDescriptionEntityListRequest(t *testing.T) {
+	assert.Nil(t, ValidateDescriptionEntityListRequest(admin.DescriptionEntityListRequest{
+		ResourceType: core.ResourceType_WORKFLOW,
+		Id: &admin.NamedEntityIdentifier{
+			Project: "project",
+			Domain:  "domain",
+			Name:    "name",
+		},
+		Limit: 1,
+	}))
+
+	assert.NotNil(t, ValidateDescriptionEntityListRequest(admin.DescriptionEntityListRequest{
+		ResourceType: core.ResourceType_WORKFLOW,
+		Id: &admin.NamedEntityIdentifier{
+			Project: "project",
+			Domain:  "domain",
+			Name:    "name",
+		},
+	}))
+
+	assert.NotNil(t, ValidateDescriptionEntityListRequest(admin.DescriptionEntityListRequest{
+		Id: nil,
+	}))
+
+	assert.NotNil(t, ValidateDescriptionEntityListRequest(admin.DescriptionEntityListRequest{
+		ResourceType: core.ResourceType_WORKFLOW,
+		Id:           nil,
+	}))
+
+	assert.NotNil(t, ValidateDescriptionEntityListRequest(admin.DescriptionEntityListRequest{
+		ResourceType: core.ResourceType_WORKFLOW,
+		Id: &admin.NamedEntityIdentifier{
+			Domain: "domain",
+		},
+	}))
+
+	assert.NotNil(t, ValidateDescriptionEntityListRequest(admin.DescriptionEntityListRequest{
+		ResourceType: core.ResourceType_WORKFLOW,
+		Id: &admin.NamedEntityIdentifier{
+			Project: "project",
+		},
+	}))
+
+	assert.NotNil(t, ValidateDescriptionEntityListRequest(admin.DescriptionEntityListRequest{
+		ResourceType: core.ResourceType_WORKFLOW,
+		Id: &admin.NamedEntityIdentifier{
+			Project: "project",
+			Domain:  "domain",
+		},
+	}))
+}
+
 func TestValidateVersion(t *testing.T) {
 	err := ValidateVersion("")
 	assert.EqualError(t, err, "missing version")
+
+	t.Run("url safe versions only", func(t *testing.T) {
+		assert.NoError(t, ValidateVersion("Foo123"))
+		for _, reservedChar := range uriReservedChars {
+			invalidVersion := fmt.Sprintf("foo%c", reservedChar)
+			assert.NotNil(t, ValidateVersion(invalidVersion))
+		}
+	})
 }
 
 func TestValidateListTaskRequest(t *testing.T) {

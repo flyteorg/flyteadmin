@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"google.golang.org/protobuf/types/known/structpb"
+
 	"github.com/flyteorg/flyteadmin/auth/config"
 	"github.com/flyteorg/flyteadmin/auth/interfaces/mocks"
 	"github.com/flyteorg/flyteadmin/pkg/common"
@@ -43,10 +45,14 @@ func setupMockedAuthContextAtEndpoint(endpoint string) *mocks.AuthenticationCont
 		},
 		Scopes: []string{"openid", "other"},
 	}
+	dummyHTTPClient := &http.Client{
+		Timeout: IdpConnectionTimeout,
+	}
 	mockAuthCtx.OnCookieManagerMatch().Return(mockCookieHandler)
 	mockCookieHandler.OnSetTokenCookiesMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	mockCookieHandler.OnSetUserInfoCookieMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	mockAuthCtx.OnOAuth2ClientConfigMatch(mock.Anything).Return(&dummyOAuth2Config)
+	mockAuthCtx.OnGetHTTPClient().Return(dummyHTTPClient)
 	return mockAuthCtx
 }
 
@@ -296,12 +302,23 @@ func TestUserInfoForwardResponseHander(t *testing.T) {
 	ctx := context.Background()
 	handler := GetUserInfoForwardResponseHandler()
 	w := httptest.NewRecorder()
+	additionalClaims := map[string]interface{}{
+		"cid": "cid-id",
+		"ver": 1,
+	}
+	additionalClaimsStruct, err := structpb.NewStruct(additionalClaims)
+	assert.NoError(t, err)
 	resp := service.UserInfoResponse{
-		Subject: "user-id",
+		Subject:          "user-id",
+		AdditionalClaims: additionalClaimsStruct,
 	}
 	assert.NoError(t, handler(ctx, w, &resp))
 	assert.Contains(t, w.Result().Header, "X-User-Subject")
 	assert.Equal(t, w.Result().Header["X-User-Subject"], []string{"user-id"})
+	assert.Contains(t, w.Result().Header, "X-User-Claim-Cid")
+	assert.Equal(t, w.Result().Header["X-User-Claim-Cid"], []string{"\"cid-id\""})
+	assert.Contains(t, w.Result().Header, "X-User-Claim-Ver")
+	assert.Equal(t, w.Result().Header["X-User-Claim-Ver"], []string{"1"})
 
 	w = httptest.NewRecorder()
 	unrelatedResp := service.OAuth2MetadataResponse{}
