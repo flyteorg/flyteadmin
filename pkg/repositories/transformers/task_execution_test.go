@@ -600,6 +600,7 @@ func TestFromTaskExecutionModel(t *testing.T) {
 }
 
 func TestFromTaskExecutionModel_Error(t *testing.T) {
+	trimmedErrMessageLen := 10240
 	extraLongErrMsg := string(make([]byte, 2*trimmedErrMessageLen))
 	execErr := &core.ExecutionError{
 		Code:    "CODE",
@@ -633,7 +634,8 @@ func TestFromTaskExecutionModel_Error(t *testing.T) {
 		Closure:  closureBytes,
 	}
 	taskExecution, err := FromTaskExecutionModel(taskExecutionModel, &ExecutionTransformerOptions{
-		TrimErrorMessage: true,
+		TrimErrorMessage:      true,
+		MaxErrorMessageLength: trimmedErrMessageLen,
 	})
 
 	expectedExecErr := execErr
@@ -653,7 +655,8 @@ func TestFromTaskExecutionModel_Error(t *testing.T) {
 	})
 	taskExecutionModel.Closure = closureBytes
 	taskExecution, err = FromTaskExecutionModel(taskExecutionModel, &ExecutionTransformerOptions{
-		TrimErrorMessage: true,
+		TrimErrorMessage:      true,
+		MaxErrorMessageLength: trimmedErrMessageLen,
 	})
 	expectedExecErr = execErr
 	expectedExecErr.Message = string(make([]byte, 10))

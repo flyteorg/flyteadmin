@@ -528,6 +528,7 @@ func TestFromNodeExecutionModel(t *testing.T) {
 }
 
 func TestFromNodeExecutionModel_Error(t *testing.T) {
+	trimmedErrMessageLen := 10240
 	extraLongErrMsg := string(make([]byte, 2*trimmedErrMessageLen))
 	execErr := &core.ExecutionError{
 		Code:    "CODE",
@@ -551,7 +552,10 @@ func TestFromNodeExecutionModel_Error(t *testing.T) {
 		NodeExecutionMetadata: nodeExecutionMetadataBytes,
 		InputURI:              "input uri",
 		Duration:              duration,
-	}, &ExecutionTransformerOptions{TrimErrorMessage: true})
+	}, &ExecutionTransformerOptions{
+		TrimErrorMessage:      true,
+		MaxErrorMessageLength: trimmedErrMessageLen,
+	})
 	assert.Nil(t, err)
 
 	expectedExecErr := execErr

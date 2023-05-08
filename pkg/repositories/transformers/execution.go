@@ -22,8 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-const trimmedErrMessageLen = 100
-
 var clusterReassignablePhases = sets.NewString(core.WorkflowExecution_UNDEFINED.String(), core.WorkflowExecution_QUEUED.String())
 
 // CreateExecutionModelInput encapsulates request parameters for calls to CreateExecutionModel.
@@ -47,13 +45,11 @@ type CreateExecutionModelInput struct {
 }
 
 type ExecutionTransformerOptions struct {
-	TrimErrorMessage bool
+	TrimErrorMessage      bool
+	MaxErrorMessageLength int
 }
 
 var DefaultExecutionTransformerOptions = &ExecutionTransformerOptions{}
-var ListExecutionTransformerOptions = &ExecutionTransformerOptions{
-	TrimErrorMessage: true,
-}
 
 // CreateExecutionModel transforms a ExecutionCreateRequest to a Execution model
 func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, error) {
@@ -328,8 +324,8 @@ func FromExecutionModel(executionModel models.Execution, opts *ExecutionTransfor
 	}
 	if closure.GetError() != nil && opts != nil && opts.TrimErrorMessage && len(closure.GetError().Message) > 0 {
 		trimmedErrOutputResult := closure.GetError()
-		if len(trimmedErrOutputResult.Message) > trimmedErrMessageLen {
-			trimmedErrOutputResult.Message = trimmedErrOutputResult.Message[0:trimmedErrMessageLen]
+		if len(trimmedErrOutputResult.Message) > opts.MaxErrorMessageLength {
+			trimmedErrOutputResult.Message = trimmedErrOutputResult.Message[0:opts.MaxErrorMessageLength]
 		}
 		closure.OutputResult = &admin.ExecutionClosure_Error{
 			Error: trimmedErrOutputResult,

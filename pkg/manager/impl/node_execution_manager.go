@@ -333,6 +333,11 @@ func (m *NodeExecutionManager) transformNodeExecutionModel(ctx context.Context, 
 
 func (m *NodeExecutionManager) transformNodeExecutionModelList(ctx context.Context, nodeExecutionModels []models.NodeExecution) ([]*admin.NodeExecution, error) {
 	nodeExecutions := make([]*admin.NodeExecution, len(nodeExecutionModels))
+	listExecutionTransformer := &transformers.ExecutionTransformerOptions{
+		TrimErrorMessage:      m.config.ApplicationConfiguration().GetTopLevelConfig().ListExecutionTransformersConfig.TrimErrorMessages,
+		MaxErrorMessageLength: m.config.ApplicationConfiguration().GetTopLevelConfig().ListExecutionTransformersConfig.MaxErrorMessageLength,
+	}
+
 	for idx, nodeExecutionModel := range nodeExecutionModels {
 		nodeExecution, err := m.transformNodeExecutionModel(ctx, nodeExecutionModel, &core.NodeExecutionIdentifier{
 			ExecutionId: &core.WorkflowExecutionIdentifier{
@@ -341,7 +346,7 @@ func (m *NodeExecutionManager) transformNodeExecutionModelList(ctx context.Conte
 				Name:    nodeExecutionModel.Name,
 			},
 			NodeId: nodeExecutionModel.NodeID,
-		}, transformers.ListExecutionTransformerOptions)
+		}, listExecutionTransformer)
 		if err != nil {
 			return nil, err
 		}

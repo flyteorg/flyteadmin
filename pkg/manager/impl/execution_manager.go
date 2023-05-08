@@ -1442,7 +1442,12 @@ func (m *ExecutionManager) ListExecutions(
 		logger.Debugf(ctx, "Failed to list executions using input [%+v] with err %v", listExecutionsInput, err)
 		return nil, err
 	}
-	executionList, err := transformers.FromExecutionModels(output.Executions, transformers.ListExecutionTransformerOptions)
+
+	listExecutionTransformer := &transformers.ExecutionTransformerOptions{
+		TrimErrorMessage:      m.config.ApplicationConfiguration().GetTopLevelConfig().ListExecutionTransformersConfig.TrimErrorMessages,
+		MaxErrorMessageLength: m.config.ApplicationConfiguration().GetTopLevelConfig().ListExecutionTransformersConfig.MaxErrorMessageLength,
+	}
+	executionList, err := transformers.FromExecutionModels(output.Executions, listExecutionTransformer)
 	if err != nil {
 		logger.Errorf(ctx,
 			"Failed to transform execution models [%+v] with err: %v", output.Executions, err)

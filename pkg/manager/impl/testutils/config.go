@@ -30,5 +30,8 @@ func GetApplicationConfigWithDefaultDomains() runtimeInterfaces.ApplicationConfi
 		Scheme: common.Local, SignedURL: runtimeInterfaces.SignedURL{
 			Enabled: true,
 		}})
+
+	config.GetTopLevelConfig().ListExecutionTransformersConfig.TrimErrorMessages = true
+	config.GetTopLevelConfig().ListExecutionTransformersConfig.MaxErrorMessageLength = 10240
 	return &config
 }

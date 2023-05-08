@@ -537,7 +537,8 @@ func TestTransformNodeExecutionModelList(t *testing.T) {
 		})
 
 	manager := NodeExecutionManager{
-		db: repository,
+		db:     repository,
+		config: getMockExecutionsConfigProvider(),
 	}
 	nodeExecutions, err := manager.transformNodeExecutionModelList(ctx, []models.NodeExecution{
 		{
