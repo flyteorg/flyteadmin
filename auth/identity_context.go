@@ -78,16 +78,22 @@ func (c IdentityContext) Claims() map[string]interface{} {
 	return make(map[string]interface{})
 }
 
-func (c IdentityContext) UserIdentifier() string {
-	return c.userIdentifier
-}
-
 func (c IdentityContext) WithContext(ctx context.Context) context.Context {
 	return context.WithValue(ctx, ContextKeyIdentityContext, c)
 }
 
 func (c IdentityContext) AuthenticatedAt() time.Time {
 	return c.authenticatedAt
+}
+
+func (c IdentityContext) UserIdentifier() string {
+	return c.userIdentifier
+}
+
+// SetUserIdentifier allows you to explicitly set user identifier
+func (c *IdentityContext) SetUserIdentifier(id string) IdentityContext {
+	c.userIdentifier = id
+	return *c
 }
 
 // NewIdentityContext creates a new IdentityContext.

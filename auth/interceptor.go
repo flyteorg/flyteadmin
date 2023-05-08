@@ -23,11 +23,11 @@ func BlanketAuthorization(ctx context.Context, req interface{}, _ *grpc.UnarySer
 	return handler(ctx, req)
 }
 
+// UserIdentifierInterceptor injects identityContext.UserID() to identityContext.userIdentifier
 func UserIdentifierInterceptor(ctx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (
 	resp interface{}, err error) {
 	identityContext := IdentityContextFromContext(ctx)
-	// By default, userIdentifier is set to UserID
-	identityContext.userIdentifier = identityContext.UserID()
+	identityContext.SetUserIdentifier(identityContext.UserID())
 	ctx = identityContext.WithContext(ctx)
 	return handler(ctx, req)
 }
