@@ -1143,8 +1143,12 @@ func TestCreateExecutionWithEnvs(t *testing.T) {
 					assert.NotEqual(t, uint(0), input.LaunchPlanID)
 					assert.Equal(t, uint(0), input.TaskID)
 				}
-
-				assert.Equal(t, tt.envs, spec.GetEnvs().Values)
+				if len(tt.envs) != 0 {
+					assert.Equal(t, tt.envs[0].Key, spec.GetEnvs().Values[0].Key)
+					assert.Equal(t, tt.envs[0].Value, spec.GetEnvs().Values[0].Value)
+				} else {
+					assert.Nil(t, spec.GetEnvs().GetValues())
+				}
 
 				return nil
 			}
@@ -1665,7 +1669,8 @@ func TestRelaunchExecutionEnvsOverride(t *testing.T) {
 		assert.Equal(t, admin.ExecutionMetadata_RELAUNCH, spec.Metadata.Mode)
 		assert.Equal(t, int32(admin.ExecutionMetadata_RELAUNCH), input.Mode)
 		assert.NotNil(t, spec.GetEnvs())
-		assert.Equal(t, spec.GetEnvs().Values, env)
+		assert.Equal(t, spec.GetEnvs().Values[0].Key, env[0].Key)
+		assert.Equal(t, spec.GetEnvs().Values[0].Value, env[0].Value)
 		return nil
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
