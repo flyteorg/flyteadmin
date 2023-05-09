@@ -91,7 +91,7 @@ func (c IdentityContext) UserIdentifier() string {
 }
 
 // SetUserIdentifier allows you to explicitly set user identifier
-func (c IdentityContext) SetUserIdentifier(id string) {
+func (c *IdentityContext) SetUserIdentifier(id string) {
 	c.userIdentifier = id
 }
 
