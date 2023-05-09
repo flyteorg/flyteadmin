@@ -1087,8 +1087,8 @@ func TestCreateExecutionWithEnvs(t *testing.T) {
 	tests := []struct {
 		name string
 		task bool
-		envs map[string]string
-		want map[string]string
+		envs []*core.KeyValuePair
+		want []*core.KeyValuePair
 	}{
 		{
 			name: "LaunchPlanDefault",
@@ -1099,8 +1099,8 @@ func TestCreateExecutionWithEnvs(t *testing.T) {
 		{
 			name: "LaunchPlanEnable",
 			task: false,
-			envs: map[string]string{"foo": "bar"},
-			want: map[string]string{"foo": "bar"},
+			envs: []*core.KeyValuePair{{Key: "foo", Value: "bar"}},
+			want: []*core.KeyValuePair{{Key: "foo", Value: "bar"}},
 		},
 		{
 			name: "TaskDefault",
@@ -1111,8 +1111,8 @@ func TestCreateExecutionWithEnvs(t *testing.T) {
 		{
 			name: "TaskEnable",
 			task: true,
-			envs: map[string]string{"foo": "bar"},
-			want: map[string]string{"foo": "bar"},
+			envs: []*core.KeyValuePair{{Key: "foo", Value: "bar"}},
+			want: []*core.KeyValuePair{{Key: "foo", Value: "bar"}},
 		},
 	}
 
@@ -1286,7 +1286,7 @@ func makeExecutionOverwriteCacheGetFunc(
 }
 
 func makeExecutionWithEnvs(
-	t *testing.T, closureBytes []byte, startTime *time.Time, envs map[string]string) repositoryMocks.GetExecutionFunc {
+	t *testing.T, closureBytes []byte, startTime *time.Time, envs []*core.KeyValuePair) repositoryMocks.GetExecutionFunc {
 	return func(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
 		assert.Equal(t, "project", input.Project)
 		assert.Equal(t, "domain", input.Domain)
@@ -1648,7 +1648,7 @@ func TestRelaunchExecutionEnvsOverride(t *testing.T) {
 		StartedAt: startTimeProto,
 	}
 	existingClosureBytes, _ := proto.Marshal(&existingClosure)
-	env := map[string]string{"foo": "bar"}
+	env := []*core.KeyValuePair{{Key: "foo", Value: "bar"}}
 	executionGetFunc := makeExecutionWithEnvs(t, existingClosureBytes, &startTime, env)
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
 
@@ -2060,7 +2060,7 @@ func TestRecoverExecutionEnvsOverride(t *testing.T) {
 		StartedAt: startTimeProto,
 	}
 	existingClosureBytes, _ := proto.Marshal(&existingClosure)
-	env := map[string]string{"foo": "bar"}
+	env := []*core.KeyValuePair{{Key: "foo", Value: "bar"}}
 	executionGetFunc := makeExecutionWithEnvs(t, existingClosureBytes, &startTime, env)
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetGetCallback(executionGetFunc)
 
@@ -4432,7 +4432,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 	requestMaxParallelism := int32(10)
 	requestInterruptible := false
 	requestOverwriteCache := false
-	requestEnvironmentVariables := map[string]string{"hello": "world"}
+	requestEnvironmentVariables := []*core.KeyValuePair{{Key: "hello", Value: "world"}}
 
 	launchPlanLabels := map[string]string{"launchPlanLabelKey": "launchPlanLabelValue"}
 	launchPlanAnnotations := map[string]string{"launchPlanAnnotationKey": "launchPlanAnnotationValue"}
@@ -4442,7 +4442,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 	launchPlanMaxParallelism := int32(50)
 	launchPlanInterruptible := true
 	launchPlanOverwriteCache := true
-	launchPlanEnvironmentVariables := map[string]string{"foo": "bar"}
+	launchPlanEnvironmentVariables := []*core.KeyValuePair{{Key: "foo", Value: "bar"}}
 
 	applicationConfig := runtime.NewConfigurationProvider()
 
@@ -5030,7 +5030,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 			launchPlan := &admin.LaunchPlan{
 				Spec: &admin.LaunchPlanSpec{
 					Interruptible: &wrappers.BoolValue{Value: true},
-					Envs:          &admin.Envs{Values: map[string]string{"foo": "bar"}},
+					Envs:          &admin.Envs{Values: []*core.KeyValuePair{{Key: "foo", Value: "bar"}}},
 				},
 			}
 
@@ -5042,7 +5042,9 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 			assert.Nil(t, execConfig.GetRawOutputDataConfig())
 			assert.Nil(t, execConfig.GetLabels())
 			assert.Nil(t, execConfig.GetAnnotations())
-			assert.Equal(t, "bar", execConfig.Envs.Values["foo"])
+			assert.Equal(t, 1, len(execConfig.Envs.Values))
+			assert.Equal(t, "foo", execConfig.Envs.Values[0].Key)
+			assert.Equal(t, "bar", execConfig.Envs.Values[0].Value)
 		})
 		t.Run("launch plan with no interruptible override specified", func(t *testing.T) {
 			request := &admin.ExecutionCreateRequest{

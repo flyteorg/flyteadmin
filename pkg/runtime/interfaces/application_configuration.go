@@ -170,8 +170,15 @@ func (a *ApplicationConfig) GetOverwriteCache() bool {
 }
 
 func (a *ApplicationConfig) GetEnvs() *admin.Envs {
+	var envs []*core.KeyValuePair
+	for k, v := range a.Envs {
+		envs = append(envs, &core.KeyValuePair{
+			Key:   k,
+			Value: v,
+		})
+	}
 	return &admin.Envs{
-		Values: a.Envs,
+		Values: envs,
 	}
 }
 
