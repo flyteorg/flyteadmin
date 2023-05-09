@@ -74,5 +74,6 @@ func TestGetUserIdentityFromContext(t *testing.T) {
 		return nil, nil
 	}
 
-	UserIdentifierInterceptor(ctx, nil, nil, handler)
+	_, err := UserIdentifierInterceptor(ctx, nil, nil, handler)
+	assert.NoError(t, err)
 }
