@@ -64,7 +64,7 @@ jobs:
     with:
       version: v1.1.92
       dockerfile: Dockerfile
-      push: true
+      push: false
       repository: ${{ github.repository }}
     secrets:
       FLYTE_BOT_PAT: ${{ secrets.FLYTE_BOT_PAT }}
@@ -72,10 +72,9 @@ jobs:
 
   push-docker-image-flytescheduler:
     name: Build & Push Flytescheduler Image
-    needs: [ bump_version ]
     uses: flyteorg/flytetools/.github/workflows/publish.yml@master
     with:
-      version: ${{ needs.bump_version.outputs.version }}
+      version: v1.1.92
       push: true
       repository: flyteorg/flytescheduler
       dockerfile: scheduler.Dockerfile
