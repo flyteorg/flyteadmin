@@ -2075,7 +2075,8 @@ func TestRecoverExecutionEnvsOverride(t *testing.T) {
 		assert.Equal(t, admin.ExecutionMetadata_RECOVERED, spec.Metadata.Mode)
 		assert.Equal(t, int32(admin.ExecutionMetadata_RECOVERED), input.Mode)
 		assert.NotNil(t, spec.GetEnvs())
-		assert.Equal(t, spec.GetEnvs().GetValues(), env)
+		assert.Equal(t, spec.GetEnvs().GetValues()[0].Key, env[0].Key)
+		assert.Equal(t, spec.GetEnvs().GetValues()[0].Value, env[0].Value)
 		return nil
 	}
 	repository.ExecutionRepo().(*repositoryMocks.MockExecutionRepo).SetCreateCallback(exCreateFunc)
