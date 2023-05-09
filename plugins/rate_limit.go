@@ -16,13 +16,15 @@ import (
 
 type RateLimitExceeded error
 
-// define a struct that contains a map of rate limiters, and a time stamp of last access and a mutex to protect the map
+// accessRecords stores the rate limiter and the last access time
 type accessRecords struct {
 	limiter    *rate.Limiter
 	lastAccess time.Time
 }
 
+// LimiterStore stores the access records for each user
 type LimiterStore struct {
+	// accessPerUser is a synchronized map of userID to accessRecords
 	accessPerUser   map[string]*accessRecords
 	mutex           *sync.Mutex
 	requestPerSec   int
@@ -30,9 +32,7 @@ type LimiterStore struct {
 	cleanupInterval time.Duration
 }
 
-// define a function named Allow that takes userID and returns RateLimitError
-// the function check if the user is in the map, if not, create a new accessRecords for the user
-// then it check if the user can access the resource, if not, return RateLimitError
+// Allow takes a userID and returns an error if the user has exceeded the rate limit
 func (l *LimiterStore) Allow(userID string) error {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()

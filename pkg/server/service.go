@@ -98,6 +98,9 @@ func newGRPCServer(ctx context.Context, pluginRegistry *plugins.Registry, cfg *c
 	} else {
 		logger.Infof(ctx, "Creating gRPC server without authentication")
 		chainedUnaryInterceptors = grpcmiddleware.ChainUnaryServer(grpcprometheus.UnaryServerInterceptor)
+		if cfg.Security.RateLimit.Enabled {
+			logger.Warningf(ctx, "Rate limit is enabled but auth is not")
+		}
 	}
 
 	serverOpts := []grpc.ServerOption{

@@ -281,6 +281,62 @@ func TestServerConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_security.rateLimit.enabled", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("security.rateLimit.enabled", testValue)
+			if vBool, err := cmdFlags.GetBool("security.rateLimit.enabled"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vBool), &actual.Security.RateLimit.Enabled)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_security.rateLimit.requestsPerSecond", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("security.rateLimit.requestsPerSecond", testValue)
+			if vInt, err := cmdFlags.GetInt("security.rateLimit.requestsPerSecond"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vInt), &actual.Security.RateLimit.RequestsPerSecond)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_security.rateLimit.burstSize", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("security.rateLimit.burstSize", testValue)
+			if vInt, err := cmdFlags.GetInt("security.rateLimit.burstSize"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vInt), &actual.Security.RateLimit.BurstSize)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_security.rateLimit.cleanupInterval", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := defaultServerConfig.Security.RateLimit.CleanupInterval.String()
+
+			cmdFlags.Set("security.rateLimit.cleanupInterval", testValue)
+			if vString, err := cmdFlags.GetString("security.rateLimit.cleanupInterval"); err == nil {
+				testDecodeJson_ServerConfig(t, fmt.Sprintf("%v", vString), &actual.Security.RateLimit.CleanupInterval)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 	t.Run("Test_grpc.port", func(t *testing.T) {
 
 		t.Run("Override", func(t *testing.T) {
