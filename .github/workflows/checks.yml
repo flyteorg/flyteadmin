@@ -60,10 +60,9 @@ jobs:
 
   push_docker_image:
     name: Build & Push Flyteadmin Image
-    needs: [ bump_version ]
     uses: flyteorg/flytetools/.github/workflows/publish.yml@master
     with:
-      version: ${{ needs.bump_version.outputs.version }}
+      version: v1.1.92
       dockerfile: Dockerfile
       push: true
       repository: ${{ github.repository }}
