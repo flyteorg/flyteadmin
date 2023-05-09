@@ -168,7 +168,7 @@ func TestAddExecutionOverrides(t *testing.T) {
 	})
 	t.Run("Override environment variables", func(t *testing.T) {
 		workflowExecutionConfig := &admin.WorkflowExecutionConfig{
-			Envs: &admin.Envs{Values: map[string]string{"key": "value"}},
+			Envs: &admin.Envs{Values: []*core.KeyValuePair{{Key: "key", Value: "value"}}},
 		}
 		workflow := &v1alpha1.FlyteWorkflow{}
 		addExecutionOverrides(nil, workflowExecutionConfig, nil, nil, workflow)
