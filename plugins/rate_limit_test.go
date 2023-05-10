@@ -15,7 +15,7 @@ func TestNewRateLimiter(t *testing.T) {
 }
 
 func TestLimiterAllow(t *testing.T) {
-	rlStore := newRateLimitStore(1, 1, time.Second)
+	rlStore := newRateLimitStore(1, 1, 10*time.Second)
 	assert.NoError(t, rlStore.Allow("hello"))
 	assert.Error(t, rlStore.Allow("hello"))
 	time.Sleep(time.Second)
@@ -97,13 +97,30 @@ func TestRateLimiterLimitWithoutUserIdentity(t *testing.T) {
 func TestRateLimiterUpdateLastAccessTime(t *testing.T) {
 	rlStore := newRateLimitStore(2, 2, time.Second)
 	assert.NoError(t, rlStore.Allow("hello"))
-	firstAccessTime := rlStore.accessPerUser["hello"].lastAccess
+	// get last access time
+
+	accessRecord, _ := rlStore.accessPerUser.Load("hello")
+	accessRecord.(*accessRecords).mutex.Lock()
+	firstAccessTime := accessRecord.(*accessRecords).lastAccess
+	accessRecord.(*accessRecords).mutex.Unlock()
+
 	assert.NoError(t, rlStore.Allow("hello"))
-	secondAccessTime := rlStore.accessPerUser["hello"].lastAccess
+
+	accessRecord, _ = rlStore.accessPerUser.Load("hello")
+	accessRecord.(*accessRecords).mutex.Lock()
+	secondAccessTime := accessRecord.(*accessRecords).lastAccess
+	accessRecord.(*accessRecords).mutex.Unlock()
+
 	assert.True(t, secondAccessTime.After(firstAccessTime))
+
 	// Verify that the last access time is updated even when user is rate limited
 	assert.Error(t, rlStore.Allow("hello"))
-	thirdAccessTime := rlStore.accessPerUser["hello"].lastAccess
+
+	accessRecord, _ = rlStore.accessPerUser.Load("hello")
+	accessRecord.(*accessRecords).mutex.Lock()
+	thirdAccessTime := accessRecord.(*accessRecords).lastAccess
+	accessRecord.(*accessRecords).mutex.Unlock()
+
 	assert.True(t, thirdAccessTime.After(secondAccessTime))
 
 }
