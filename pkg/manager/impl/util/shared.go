@@ -298,7 +298,7 @@ func MergeIntoExecConfig(workflowExecConfig admin.WorkflowExecutionConfig, spec 
 		if spec.GetSecurityContext().GetRunAs() != nil &&
 			(len(spec.GetSecurityContext().GetRunAs().GetK8SServiceAccount()) > 0 ||
 				len(spec.GetSecurityContext().GetRunAs().GetIamRole()) > 0 ||
-				len(spec.GetSecurityContext().GetRunAs().GetUserIdentifier()) > 0) {
+				len(spec.GetSecurityContext().GetRunAs().GetExecutionIdentity()) > 0) {
 			workflowExecConfig.SecurityContext = spec.GetSecurityContext()
 		}
 	}

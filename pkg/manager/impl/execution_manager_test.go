@@ -4320,7 +4320,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 		assert.Equal(t, requestOutputLocationPrefix, execConfig.RawOutputDataConfig.OutputLocationPrefix)
 		assert.Equal(t, requestLabels, execConfig.GetLabels().Values)
 		assert.Equal(t, requestAnnotations, execConfig.GetAnnotations().Values)
-		assert.Equal(t, "yeee", execConfig.GetSecurityContext().GetRunAs().GetUserIdentifier())
+		assert.Equal(t, "yeee", execConfig.GetSecurityContext().GetRunAs().GetExecutionIdentity())
 	})
 	t.Run("request with partial config", func(t *testing.T) {
 		request := &admin.ExecutionCreateRequest{

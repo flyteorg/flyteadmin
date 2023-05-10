@@ -69,7 +69,7 @@ func TestGetUserIdentityFromContext(t *testing.T) {
 
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		identityContext := IdentityContextFromContext(ctx)
-		userIdentifier := identityContext.UserIdentifier()
+		userIdentifier := identityContext.ExecutionUserIdentifier()
 		assert.Equal(t, userIdentifier, "yeee")
 		return nil, nil
 	}
