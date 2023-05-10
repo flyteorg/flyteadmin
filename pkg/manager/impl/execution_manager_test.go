@@ -4308,7 +4308,7 @@ func TestGetExecutionConfigOverrides(t *testing.T) {
 			},
 		}
 		identityContext, err := auth.NewIdentityContext("", "", "", time.Now(), sets.String{}, nil, nil)
-		identityContext.SetUserIdentifier("yeee")
+		identityContext = identityContext.WithExecutionUserIdentifier("yeee")
 		assert.NoError(t, err)
 		ctx := identityContext.WithContext(context.Background())
 		execConfig, err := executionManager.getExecutionConfig(ctx, request, nil)
