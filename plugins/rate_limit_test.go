@@ -97,8 +97,13 @@ func TestRateLimiterLimitWithoutUserIdentity(t *testing.T) {
 func TestRateLimiterUpdateLastAccessTime(t *testing.T) {
 	rlStore := newRateLimitStore(2, 2, time.Second)
 	assert.NoError(t, rlStore.Allow("hello"))
-	lastAccessTime := rlStore.accessPerUser["hello"].lastAccess
+	firstAccessTime := rlStore.accessPerUser["hello"].lastAccess
 	assert.NoError(t, rlStore.Allow("hello"))
-	newAccessTime := rlStore.accessPerUser["hello"].lastAccess
-	assert.True(t, newAccessTime.After(lastAccessTime))
+	secondAccessTime := rlStore.accessPerUser["hello"].lastAccess
+	assert.True(t, secondAccessTime.After(firstAccessTime))
+	// Verify that the last access time is updated even when user is rate limited
+	assert.Error(t, rlStore.Allow("hello"))
+	thirdAccessTime := rlStore.accessPerUser["hello"].lastAccess
+	assert.True(t, thirdAccessTime.After(secondAccessTime))
+
 }
