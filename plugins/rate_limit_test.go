@@ -93,3 +93,12 @@ func TestRateLimiterLimitWithoutUserIdentity(t *testing.T) {
 	err := rateLimit.Limit(ctx)
 	assert.Error(t, err)
 }
+
+func TestRateLimiterUpdateLastAccessTime(t *testing.T) {
+	rlStore := newRateLimitStore(2, 2, time.Second)
+	assert.NoError(t, rlStore.Allow("hello"))
+	lastAccessTime := rlStore.accessPerUser["hello"].lastAccess
+	assert.NoError(t, rlStore.Allow("hello"))
+	newAccessTime := rlStore.accessPerUser["hello"].lastAccess
+	assert.True(t, newAccessTime.After(lastAccessTime))
+}

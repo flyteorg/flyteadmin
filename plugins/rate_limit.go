@@ -42,6 +42,7 @@ func (l *LimiterStore) Allow(userID string) error {
 			limiter:    rate.NewLimiter(rate.Limit(l.requestPerSec), l.burstSize),
 		}
 	}
+	l.accessPerUser[userID].lastAccess = time.Now()
 
 	if !l.accessPerUser[userID].limiter.Allow() {
 		return RateLimitExceeded(fmt.Errorf("rate limit exceeded"))
