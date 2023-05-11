@@ -28,8 +28,8 @@ func TestGetClaims(t *testing.T) {
 func TestWithExecutionUserIdentifier(t *testing.T) {
 	idctx, err := NewIdentityContext("", "", "", time.Now(), sets.String{}, nil, nil)
 	assert.NoError(t, err)
-	newIdCtx := idctx.WithExecutionUserIdentifier("byhsu")
+	newIDCtx := idctx.WithExecutionUserIdentifier("byhsu")
 	// make sure the original one is intact
 	assert.Equal(t, "", idctx.ExecutionUserIdentifier())
-	assert.Equal(t, "byhsu", newIdCtx.ExecutionUserIdentifier())
+	assert.Equal(t, "byhsu", newIDCtx.ExecutionUserIdentifier())
 }
