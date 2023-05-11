@@ -43,27 +43,19 @@ jobs:
     name: Check Go Generate
     uses: flyteorg/flytetools/.github/workflows/go_generate.yml@master
 
-  bump_version:
-    name: Bump Version
-    if: ${{ github.event_name != 'pull_request' }}
-    needs: [ endtoend,  integration, lint, tests, generate ] # Only to ensure it can successfully build
-    uses: flyteorg/flytetools/.github/workflows/bump_version.yml@master
-    secrets:
-      FLYTE_BOT_PAT: ${{ secrets.FLYTE_BOT_PAT }}
-
   goreleaser:
     name: Goreleaser
-    needs: [ bump_version ] # Only to ensure it can successfully build
+    needs: [ endtoend,  integration, lint, tests, generate ]
     uses: flyteorg/flytetools/.github/workflows/goreleaser.yml@master
     secrets:
       FLYTE_BOT_PAT: ${{ secrets.FLYTE_BOT_PAT }}
 
   push_docker_image:
     name: Build & Push Flyteadmin Image
-    needs: [ bump_version ]
+    needs: [ endtoend,  integration, lint, tests, generate ]
     uses: flyteorg/flytetools/.github/workflows/publish.yml@master
     with:
-      version: ${{ needs.bump_version.outputs.version }}
+      version: v1.1.88.1
       dockerfile: Dockerfile
       push: true
       repository: ${{ github.repository }}
@@ -74,10 +66,10 @@ jobs:
 
   push-docker-image-flytescheduler:
     name: Build & Push Flytescheduler Image
-    needs: [ bump_version ]
+    needs: [ endtoend,  integration, lint, tests, generate ]
     uses: flyteorg/flytetools/.github/workflows/publish.yml@master
     with:
-      version: ${{ needs.bump_version.outputs.version }}
+      version: v1.1.88.1
       push: true
       repository: flyteorg/flytescheduler
       dockerfile: scheduler.Dockerfile
