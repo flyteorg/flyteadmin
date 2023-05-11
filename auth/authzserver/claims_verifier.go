@@ -59,7 +59,7 @@ func verifyClaims(expectedAudience sets.String, claimsRaw map[string]interface{}
 	}
 
 	EmailKey := "email"
-	// In some cases, "user_info" field not exists in raw claim,
+	// In some cases, "user_info" field doesn't exist in the raw claim,
 	// but we can get email from "email" field
 	if emailClaim, found := claimsRaw[EmailKey]; found {
 		email := emailClaim.(string)
