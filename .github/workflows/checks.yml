@@ -43,14 +43,6 @@ jobs:
     name: Check Go Generate
     uses: flyteorg/flytetools/.github/workflows/go_generate.yml@master
 
-  bump_version:
-    name: Bump Version
-    if: ${{ github.event_name != 'pull_request' }}
-    needs: [ endtoend,  integration, lint, tests, generate ] # Only to ensure it can successfully build
-    uses: flyteorg/flytetools/.github/workflows/bump_version.yml@master
-    secrets:
-      FLYTE_BOT_PAT: ${{ secrets.FLYTE_BOT_PAT }}
-
   goreleaser:
     name: Goreleaser
     needs: [ endtoend,  integration, lint, tests, generate ]
