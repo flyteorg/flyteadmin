@@ -29,7 +29,6 @@ type LimiterStore struct {
 	accessPerUser   *sync.Map
 	requestPerSec   int
 	burstSize       int
-	mutex           *sync.Mutex
 	cleanupInterval time.Duration
 }
 
@@ -55,8 +54,6 @@ func (l *LimiterStore) Allow(userID string) error {
 
 // clean removes the access records for users who have not accessed the system for a while
 func (l *LimiterStore) clean() {
-	l.mutex.Lock()
-	defer l.mutex.Unlock()
 	l.accessPerUser.Range(func(key, value interface{}) bool {
 		value.(*accessRecords).mutex.Lock()
 		defer value.(*accessRecords).mutex.Unlock()
@@ -70,7 +67,6 @@ func (l *LimiterStore) clean() {
 func newRateLimitStore(requestPerSec int, burstSize int, cleanupInterval time.Duration) *LimiterStore {
 	l := &LimiterStore{
 		accessPerUser:   &sync.Map{},
-		mutex:           &sync.Mutex{},
 		requestPerSec:   requestPerSec,
 		burstSize:       burstSize,
 		cleanupInterval: cleanupInterval,
