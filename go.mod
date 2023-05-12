@@ -14,8 +14,8 @@ require (
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/evanphx/json-patch v4.12.0+incompatible
 	github.com/flyteorg/flyteidl v1.5.5
-	github.com/flyteorg/flyteplugins v1.0.40
-	github.com/flyteorg/flytepropeller v1.1.70
+	github.com/flyteorg/flyteplugins v1.0.56
+	github.com/flyteorg/flytepropeller v1.1.87
 	github.com/flyteorg/flytestdlib v1.0.15
 	github.com/flyteorg/stow v0.3.6
 	github.com/ghodss/yaml v1.0.0
@@ -209,3 +209,7 @@ require (
 )
 
 replace github.com/robfig/cron/v3 => github.com/unionai/cron/v3 v3.0.2-0.20220915080349-5790c370e63a
+
+// Retracted versions
+// This was published in error when attempting to create 1.5.1 Flyte release.
+retract v1.1.94
