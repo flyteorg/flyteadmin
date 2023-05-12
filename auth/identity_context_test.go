@@ -30,6 +30,6 @@ func TestWithExecutionUserIdentifier(t *testing.T) {
 	assert.NoError(t, err)
 	newIDCtx := idctx.WithExecutionUserIdentifier("byhsu")
 	// make sure the original one is intact
-	assert.Equal(t, "", idctx.ExecutionUserIdentifier())
-	assert.Equal(t, "byhsu", newIDCtx.ExecutionUserIdentifier())
+	assert.Equal(t, "", idctx.ExecutionIdentity())
+	assert.Equal(t, "byhsu", newIDCtx.ExecutionIdentity())
 }

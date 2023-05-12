@@ -32,11 +32,11 @@ type IdentityContext struct {
 	scopes *sets.String
 	// Raw JWT token from the IDP. Set to a pointer to support the equal operator for this struct.
 	claims *claimsType
-	// executionUserIdentifier stores a unique string that can be used to identify the user associated with a given task.
+	// executionIdentity stores a unique string that can be used to identify the user associated with a given task.
 	// This identifier is passed down to the ExecutionSpec and can be used for various purposes, such as setting the user identifier on a pod label.
 	// By default, the execution user identifier is filled with the value of IdentityContext.userID. However, you can customize your middleware to assign other values if needed.
 	// Providing a user identifier can be useful for tracking tasks and associating them with specific users, especially in multi-user environments.
-	executionUserIdentifier string
+	executionIdentity string
 }
 
 func (c IdentityContext) Audience() string {
@@ -86,13 +86,13 @@ func (c IdentityContext) AuthenticatedAt() time.Time {
 	return c.authenticatedAt
 }
 
-func (c IdentityContext) ExecutionUserIdentifier() string {
-	return c.executionUserIdentifier
+func (c IdentityContext) ExecutionIdentity() string {
+	return c.executionIdentity
 }
 
-// WithExecutionUserIdentifier creates a copy of the original identity context and attach ExecutionUserIdentifier
+// WithExecutionUserIdentifier creates a copy of the original identity context and attach ExecutionIdentity
 func (c IdentityContext) WithExecutionUserIdentifier(euid string) IdentityContext {
-	c.executionUserIdentifier = euid
+	c.executionIdentity = euid
 	return c
 }
 
