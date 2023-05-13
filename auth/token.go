@@ -79,7 +79,6 @@ func GRPCGetIdentityFromAccessToken(ctx context.Context, authCtx interfaces.Auth
 	interfaces.IdentityContext, error) {
 
 	tokenStr, err := grpcauth.AuthFromMD(ctx, BearerScheme)
-	logger.Debugf(ctx, "Access Token = %v", tokenStr)
 	if err != nil {
 		logger.Debugf(ctx, "Could not retrieve bearer token from metadata %v", err)
 		return nil, errors.Wrapf(ErrJwtValidation, err, "Could not retrieve bearer token from metadata")
@@ -100,7 +99,6 @@ func GRPCGetIdentityFromIDToken(ctx context.Context, clientID string, provider *
 	interfaces.IdentityContext, error) {
 
 	tokenStr, err := grpcauth.AuthFromMD(ctx, IDTokenScheme)
-	logger.Debugf(ctx, "ID Token = %v", tokenStr)
 	if err != nil {
 		logger.Debugf(ctx, "Could not retrieve id token from metadata %v", err)
 		return nil, errors.Wrapf(ErrJwtValidation, err, "Could not retrieve id token from metadata")
