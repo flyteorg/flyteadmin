@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 	"unicode"
 
 	"github.com/flyteorg/flyteadmin/pkg/errors"
@@ -17,7 +16,6 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/logger"
-	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc/codes"
 )
 
