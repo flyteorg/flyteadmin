@@ -26,7 +26,6 @@ const maxNodeIDLength = 63
 var defaultRetryStrategy = core.RetryStrategy{
 	Retries: 3,
 }
-var defaultTimeout = ptypes.DurationProto(24 * time.Hour)
 
 const systemNamePrefix = ".flytegen.%s"
 
@@ -102,7 +101,6 @@ func CreateOrGetWorkflowModel(
 						Metadata: &core.NodeMetadata{
 							Name:    generateNodeNameFromTask(taskIdentifier.Name),
 							Retries: &defaultRetryStrategy,
-							Timeout: defaultTimeout,
 						},
 						Inputs: generateBindings(*task.Closure.CompiledTask.Template.Interface.Inputs, noInputNodeID),
 						Target: &core.Node_TaskNode{
