@@ -64,7 +64,6 @@ func TestScheduleJob(t *testing.T) {
 	}
 	wg := &sync.WaitGroup{}
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			wg.Add(1)
 			timedFuncWithSchedule := func(jobCtx context.Context, schedule models.SchedulableEntity, scheduleTime time.Time) error {
