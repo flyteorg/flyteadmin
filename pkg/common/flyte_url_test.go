@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -171,4 +172,111 @@ func TestMatchRegexDirectly(t *testing.T) {
 
 	result = MatchRegex(re, "flyteff://v2/fs/dfdsaev/abc/n0-dn0-9-n0-n0/i")
 	assert.Nil(t, result)
+}
+
+func TestDirectRegexMatching(t *testing.T) {
+	t.Run("regex with specific output no attempt", func(t *testing.T) {
+		matches := MatchRegex(reSpecificOutput, "flyte://v1/fs/dev/abc/n0/o/o0")
+		fmt.Println(matches)
+
+	})
+
+	t.Run("regex with specific output no attempt", func(t *testing.T) {
+		matches := MatchRegex(reSpecificOutput, "flyte://v1/fs/dev/abc/n0-dn0-9-n0-n0/o/o0")
+		fmt.Println(matches)
+	})
+
+	t.Run("regex with specific output with attempt", func(t *testing.T) {
+		matches := MatchRegex(reSpecificOutput, "flyte://v1/fs/dev/abc/n0-dn0-9-n0-n0/5/o/o0")
+		fmt.Println(matches)
+
+		normal := MatchRegex(re, "flyte://v1/fs/dev/abc/n0-dn0-9-n0-n0/5/o/o0")
+		assert.Equal(t, 0, len(normal))
+	})
+}
+
+func TestTryMatches(t *testing.T) {
+	t.Run("workflow level", func(t *testing.T) {
+		x := tryMatches("fdjskflds")
+		assert.Nil(t, x)
+
+		x = tryMatches("flyte://v1/fs/dev/abc/n0/o/o0")
+		assert.Equal(t, "o0", x["OutputName"])
+
+		x = tryMatches("flyte://v1/fs/dev/abc/n0/3/o/o0")
+		assert.Equal(t, "fs", x["project"])
+		assert.Equal(t, "dev", x["domain"])
+		assert.Equal(t, "o0", x["OutputName"])
+		assert.Equal(t, "3", x["attempt"])
+		assert.Equal(t, "n0", x["node"])
+		assert.Equal(t, "abc", x["exec"])
+
+		x = tryMatches("flyte://v1/fs/dev/abc/n0/3/i")
+		assert.Equal(t, "fs", x["project"])
+		assert.Equal(t, "dev", x["domain"])
+		assert.Equal(t, "", x["OutputName"])
+		assert.Equal(t, "3", x["attempt"])
+		assert.Equal(t, "n0", x["node"])
+		assert.Equal(t, "abc", x["exec"])
+
+		x = tryMatches("flyte://v1/fs/dev/abc/n0/i")
+		assert.Equal(t, "fs", x["project"])
+		assert.Equal(t, "dev", x["domain"])
+		assert.Equal(t, "", x["OutputName"])
+		assert.Equal(t, "", x["attempt"])
+		assert.Equal(t, "n0", x["node"])
+		assert.Equal(t, "abc", x["exec"])
+	})
+}
+
+func TestParseFlyteURLToExecution(t *testing.T) {
+	t.Run("node and attempt url with output", func(t *testing.T) {
+		x, err := ParseFlyteURLToExecution("flyte://v1/fs/dev/abc/n0/3/o/o0")
+		assert.NoError(t, err)
+		assert.Nil(t, x.NodeExecID)
+		assert.Nil(t, x.PartialTaskExecID.TaskId)
+		assert.Equal(t, "fs", x.PartialTaskExecID.NodeExecutionId.ExecutionId.Project)
+		assert.Equal(t, "dev", x.PartialTaskExecID.NodeExecutionId.ExecutionId.Domain)
+		assert.Equal(t, "abc", x.PartialTaskExecID.NodeExecutionId.ExecutionId.Name)
+		assert.Equal(t, "n0", x.PartialTaskExecID.NodeExecutionId.NodeId)
+		assert.Equal(t, uint32(3), x.PartialTaskExecID.GetRetryAttempt())
+		assert.Equal(t, "o0", x.OutputName)
+	})
+
+	t.Run("node and attempt url no output", func(t *testing.T) {
+		x, err := ParseFlyteURLToExecution("flyte://v1/fs/dev/abc/n0/3/o")
+		assert.NoError(t, err)
+		assert.Nil(t, x.NodeExecID)
+		assert.Nil(t, x.PartialTaskExecID.TaskId)
+		assert.Equal(t, "fs", x.PartialTaskExecID.NodeExecutionId.ExecutionId.Project)
+		assert.Equal(t, "dev", x.PartialTaskExecID.NodeExecutionId.ExecutionId.Domain)
+		assert.Equal(t, "abc", x.PartialTaskExecID.NodeExecutionId.ExecutionId.Name)
+		assert.Equal(t, "n0", x.PartialTaskExecID.NodeExecutionId.NodeId)
+		assert.Equal(t, uint32(3), x.PartialTaskExecID.GetRetryAttempt())
+		assert.Equal(t, "", x.OutputName)
+	})
+
+	t.Run("node url with output", func(t *testing.T) {
+		x, err := ParseFlyteURLToExecution("flyte://v1/fs/dev/abc/n0/o/o0")
+		assert.NoError(t, err)
+		assert.NotNil(t, x.NodeExecID)
+		assert.Nil(t, x.PartialTaskExecID)
+		assert.Equal(t, "fs", x.NodeExecID.ExecutionId.Project)
+		assert.Equal(t, "dev", x.NodeExecID.ExecutionId.Domain)
+		assert.Equal(t, "abc", x.NodeExecID.ExecutionId.Name)
+		assert.Equal(t, "n0", x.NodeExecID.NodeId)
+		assert.Equal(t, "o0", x.OutputName)
+	})
+
+	t.Run("node url no output", func(t *testing.T) {
+		x, err := ParseFlyteURLToExecution("flyte://v1/fs/dev/abc/n0/o")
+		assert.NoError(t, err)
+		assert.NotNil(t, x.NodeExecID)
+		assert.Nil(t, x.PartialTaskExecID)
+		assert.Equal(t, "fs", x.NodeExecID.ExecutionId.Project)
+		assert.Equal(t, "dev", x.NodeExecID.ExecutionId.Domain)
+		assert.Equal(t, "abc", x.NodeExecID.ExecutionId.Name)
+		assert.Equal(t, "n0", x.NodeExecID.NodeId)
+		assert.Equal(t, "", x.OutputName)
+	})
 }
