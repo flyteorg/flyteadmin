@@ -201,12 +201,12 @@ func TestTryMatches(t *testing.T) {
 		assert.Nil(t, x)
 
 		x = tryMatches("flyte://v1/fs/dev/abc/n0/o/o0")
-		assert.Equal(t, "o0", x["OutputName"])
+		assert.Equal(t, "o0", x["LiteralName"])
 
 		x = tryMatches("flyte://v1/fs/dev/abc/n0/3/o/o0")
 		assert.Equal(t, "fs", x["project"])
 		assert.Equal(t, "dev", x["domain"])
-		assert.Equal(t, "o0", x["OutputName"])
+		assert.Equal(t, "o0", x["LiteralName"])
 		assert.Equal(t, "3", x["attempt"])
 		assert.Equal(t, "n0", x["node"])
 		assert.Equal(t, "abc", x["exec"])
@@ -214,7 +214,7 @@ func TestTryMatches(t *testing.T) {
 		x = tryMatches("flyte://v1/fs/dev/abc/n0/3/i")
 		assert.Equal(t, "fs", x["project"])
 		assert.Equal(t, "dev", x["domain"])
-		assert.Equal(t, "", x["OutputName"])
+		assert.Equal(t, "", x["LiteralName"])
 		assert.Equal(t, "3", x["attempt"])
 		assert.Equal(t, "n0", x["node"])
 		assert.Equal(t, "abc", x["exec"])
@@ -222,7 +222,7 @@ func TestTryMatches(t *testing.T) {
 		x = tryMatches("flyte://v1/fs/dev/abc/n0/i")
 		assert.Equal(t, "fs", x["project"])
 		assert.Equal(t, "dev", x["domain"])
-		assert.Equal(t, "", x["OutputName"])
+		assert.Equal(t, "", x["LiteralName"])
 		assert.Equal(t, "", x["attempt"])
 		assert.Equal(t, "n0", x["node"])
 		assert.Equal(t, "abc", x["exec"])
@@ -240,7 +240,7 @@ func TestParseFlyteURLToExecution(t *testing.T) {
 		assert.Equal(t, "abc", x.PartialTaskExecID.NodeExecutionId.ExecutionId.Name)
 		assert.Equal(t, "n0", x.PartialTaskExecID.NodeExecutionId.NodeId)
 		assert.Equal(t, uint32(3), x.PartialTaskExecID.GetRetryAttempt())
-		assert.Equal(t, "o0", x.OutputName)
+		assert.Equal(t, "o0", x.LiteralName)
 	})
 
 	t.Run("node and attempt url no output", func(t *testing.T) {
@@ -253,7 +253,7 @@ func TestParseFlyteURLToExecution(t *testing.T) {
 		assert.Equal(t, "abc", x.PartialTaskExecID.NodeExecutionId.ExecutionId.Name)
 		assert.Equal(t, "n0", x.PartialTaskExecID.NodeExecutionId.NodeId)
 		assert.Equal(t, uint32(3), x.PartialTaskExecID.GetRetryAttempt())
-		assert.Equal(t, "", x.OutputName)
+		assert.Equal(t, "", x.LiteralName)
 	})
 
 	t.Run("node url with output", func(t *testing.T) {
@@ -265,7 +265,7 @@ func TestParseFlyteURLToExecution(t *testing.T) {
 		assert.Equal(t, "dev", x.NodeExecID.ExecutionId.Domain)
 		assert.Equal(t, "abc", x.NodeExecID.ExecutionId.Name)
 		assert.Equal(t, "n0", x.NodeExecID.NodeId)
-		assert.Equal(t, "o0", x.OutputName)
+		assert.Equal(t, "o0", x.LiteralName)
 	})
 
 	t.Run("node url no output", func(t *testing.T) {
@@ -277,6 +277,6 @@ func TestParseFlyteURLToExecution(t *testing.T) {
 		assert.Equal(t, "dev", x.NodeExecID.ExecutionId.Domain)
 		assert.Equal(t, "abc", x.NodeExecID.ExecutionId.Name)
 		assert.Equal(t, "n0", x.NodeExecID.NodeId)
-		assert.Equal(t, "", x.OutputName)
+		assert.Equal(t, "", x.LiteralName)
 	})
 }

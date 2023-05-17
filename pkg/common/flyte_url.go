@@ -24,8 +24,7 @@ const (
 
 var re = regexp.MustCompile("flyte://v1/(?P<project>[a-zA-Z0-9_-]+)/(?P<domain>[a-zA-Z0-9_-]+)/(?P<exec>[a-zA-Z0-9_-]+)/(?P<node>[a-zA-Z0-9_-]+)(?:/(?P<attempt>[0-9]+))?/(?P<IOType>[iod])$")
 
-// todo: add input
-var reSpecificOutput = regexp.MustCompile("flyte://v1/(?P<project>[a-zA-Z0-9_-]+)/(?P<domain>[a-zA-Z0-9_-]+)/(?P<exec>[a-zA-Z0-9_-]+)/(?P<node>[a-zA-Z0-9_-]+)(?:/(?P<attempt>[0-9]+))?/(?P<IOType>[io])/(?P<OutputName>[a-zA-Z0-9_-]+)$")
+var reSpecificOutput = regexp.MustCompile("flyte://v1/(?P<project>[a-zA-Z0-9_-]+)/(?P<domain>[a-zA-Z0-9_-]+)/(?P<exec>[a-zA-Z0-9_-]+)/(?P<node>[a-zA-Z0-9_-]+)(?:/(?P<attempt>[0-9]+))?/(?P<IOType>[io])/(?P<LiteralName>[a-zA-Z0-9_-]+)$")
 
 func MatchRegex(reg *regexp.Regexp, input string) map[string]string {
 	names := reg.SubexpNames()
@@ -45,11 +44,11 @@ type ParsedExecution struct {
 	NodeExecID *core.NodeExecutionIdentifier
 
 	// This is returned in the case where the user requested a specific attempt. But the TaskID portion of this
-	// will be empty
+	// will be empty since that information is not encapsulated in the flyte url.
 	PartialTaskExecID *core.TaskExecutionIdentifier
 
-	// Assume always an output for now, can add support for inputs if required
-	OutputName string
+	// The name of the input or output in the literal map
+	LiteralName string
 
 	IOType ArtifactType
 }
@@ -88,7 +87,7 @@ func ParseFlyteURLToExecution(flyteURL string) (ParsedExecution, error) {
 	if err != nil {
 		return ParsedExecution{}, err
 	}
-	outputName := matches["OutputName"] // may be empty
+	literalName := matches["LiteralName"] // may be empty
 
 	// node and task level outputs
 	nodeExecID := core.NodeExecutionIdentifier{
@@ -114,14 +113,14 @@ func ParseFlyteURLToExecution(flyteURL string) (ParsedExecution, error) {
 		return ParsedExecution{
 			PartialTaskExecID: &taskExecID,
 			IOType:            ioType,
-			OutputName:        outputName,
+			LiteralName:       literalName,
 		}, nil
 	}
 
 	return ParsedExecution{
-		NodeExecID: &nodeExecID,
-		IOType:     ioType,
-		OutputName: outputName,
+		NodeExecID:  &nodeExecID,
+		IOType:      ioType,
+		LiteralName: literalName,
 	}, nil
 
 }
