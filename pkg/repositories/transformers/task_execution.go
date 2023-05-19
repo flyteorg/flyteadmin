@@ -11,6 +11,10 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 
 	jsonpatch "github.com/evanphx/json-patch"
+	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
+	_struct "github.com/golang/protobuf/ptypes/struct"
+
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
@@ -18,9 +22,6 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/flyteorg/flytestdlib/logger"
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
-	_struct "github.com/golang/protobuf/ptypes/struct"
 
 	"google.golang.org/grpc/codes"
 )
@@ -40,8 +41,13 @@ func addTaskStartedState(request *admin.TaskExecutionEventRequest, taskExecution
 	if err != nil {
 		return errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal occurredAt with error: %v", err)
 	}
-	taskExecutionModel.StartedAt = &occurredAt
-	closure.StartedAt = request.Event.OccurredAt
+	//Updated the startedAt timestamp only if its not set.
+	// The task start event should already be updating this through addTaskStartedState
+	// This check makes sure any out of order
+	if taskExecutionModel.StartedAt == nil {
+		taskExecutionModel.StartedAt = &occurredAt
+		closure.StartedAt = request.Event.OccurredAt
+	}
 	return nil
 }
 
