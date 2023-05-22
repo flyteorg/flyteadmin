@@ -602,6 +602,29 @@ func TestFromExecutionModel_Error(t *testing.T) {
 	assert.True(t, proto.Equal(expectedExecErr, execution.Closure.GetError()))
 }
 
+func TestFromExecutionModel_OverwriteNamespace(t *testing.T) {
+	abortCause := "abort cause"
+	executionClosureBytes, _ := proto.Marshal(&admin.ExecutionClosure{
+		Phase: core.WorkflowExecution_RUNNING,
+	})
+	executionModel := models.Execution{
+		ExecutionKey: models.ExecutionKey{
+			Project: "project",
+			Domain:  "domain",
+			Name:    "name",
+		},
+		Phase:      core.WorkflowExecution_RUNNING.String(),
+		AbortCause: abortCause,
+		Closure:    executionClosureBytes,
+	}
+	overwrittenNamespace := "ns"
+	execution, err := FromExecutionModel(executionModel, &ExecutionTransformerOptions{
+		DefaultNamespace: overwrittenNamespace,
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, execution.GetSpec().GetMetadata().GetSystemMetadata().Namespace, overwrittenNamespace)
+}
+
 func TestFromExecutionModels(t *testing.T) {
 	spec := testutils.GetExecutionRequest().Spec
 	specBytes, _ := proto.Marshal(spec)

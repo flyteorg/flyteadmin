@@ -49,6 +49,7 @@ type CreateExecutionModelInput struct {
 
 type ExecutionTransformerOptions struct {
 	TrimErrorMessage bool
+	DefaultNamespace string
 }
 
 var DefaultExecutionTransformerOptions = &ExecutionTransformerOptions{}
@@ -324,6 +325,19 @@ func FromExecutionModel(executionModel models.Execution, opts *ExecutionTransfor
 	if err = proto.Unmarshal(executionModel.Spec, &spec); err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal spec")
 	}
+	if len(opts.DefaultNamespace) > 0 {
+		if spec.Metadata == nil {
+			spec.Metadata = &admin.ExecutionMetadata{}
+		}
+		if spec.Metadata.SystemMetadata == nil {
+			spec.Metadata.SystemMetadata = &admin.SystemMetadata{}
+		}
+		if len(spec.GetMetadata().GetSystemMetadata().Namespace) == 0 {
+			logger.Infof(context.TODO(), "setting execution system metadata namespace to [%s]", opts.DefaultNamespace)
+			spec.Metadata.SystemMetadata.Namespace = opts.DefaultNamespace
+		}
+	}
+
 	var closure admin.ExecutionClosure
 	if err = proto.Unmarshal(executionModel.Closure, &closure); err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal closure")
