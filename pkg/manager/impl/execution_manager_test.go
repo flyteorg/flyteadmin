@@ -287,6 +287,7 @@ func TestCreateExecution(t *testing.T) {
 			assert.Equal(t, rawOutput, spec.RawOutputDataConfig.OutputLocationPrefix)
 			assert.True(t, proto.Equal(spec.ClusterAssignment, &clusterAssignment))
 			assert.Equal(t, "launch_plan", input.LaunchEntity)
+			assert.Equal(t, spec.GetMetadata().GetSystemMetadata().Namespace, "project-domain")
 			return nil
 		})
 	setDefaultLpCallbackForExecTest(repository)

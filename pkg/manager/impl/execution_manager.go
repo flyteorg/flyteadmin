@@ -650,6 +650,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		UserInputsURI:         userInputsURI,
 		SecurityContext:       executionConfig.SecurityContext,
 		LaunchEntity:          taskIdentifier.ResourceType,
+		Namespace:             namespace,
 	})
 	if err != nil {
 		logger.Infof(ctx, "Failed to create execution model in transformer for id: [%+v] with err: %v",
@@ -905,6 +906,7 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		UserInputsURI:         userInputsURI,
 		SecurityContext:       executionConfig.SecurityContext,
 		LaunchEntity:          launchPlan.Id.ResourceType,
+		Namespace:             namespace,
 	})
 	if err != nil {
 		logger.Infof(ctx, "Failed to create execution model in transformer for id: [%+v] with err: %v",

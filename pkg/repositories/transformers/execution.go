@@ -44,6 +44,7 @@ type CreateExecutionModelInput struct {
 	UserInputsURI         storage.DataReference
 	SecurityContext       *core.SecurityContext
 	LaunchEntity          core.ResourceType
+	Namespace             string
 }
 
 type ExecutionTransformerOptions struct {
@@ -63,6 +64,7 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 	}
 	requestSpec.Metadata.SystemMetadata = &admin.SystemMetadata{
 		ExecutionCluster: input.Cluster,
+		Namespace:        input.Namespace,
 	}
 	requestSpec.SecurityContext = input.SecurityContext
 	spec, err := proto.Marshal(requestSpec)
