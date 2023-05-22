@@ -319,7 +319,7 @@ func GetExecutionIdentifier(executionModel *models.Execution) core.WorkflowExecu
 	}
 }
 
-func FromExecutionModel(executionModel models.Execution, opts *ExecutionTransformerOptions) (*admin.Execution, error) {
+func FromExecutionModel(ctx context.Context, executionModel models.Execution, opts *ExecutionTransformerOptions) (*admin.Execution, error) {
 	var spec admin.ExecutionSpec
 	var err error
 	if err = proto.Unmarshal(executionModel.Spec, &spec); err != nil {
@@ -333,7 +333,7 @@ func FromExecutionModel(executionModel models.Execution, opts *ExecutionTransfor
 			spec.Metadata.SystemMetadata = &admin.SystemMetadata{}
 		}
 		if len(spec.GetMetadata().GetSystemMetadata().Namespace) == 0 {
-			logger.Infof(context.TODO(), "setting execution system metadata namespace to [%s]", opts.DefaultNamespace)
+			logger.Infof(ctx, "setting execution system metadata namespace to [%s]", opts.DefaultNamespace)
 			spec.Metadata.SystemMetadata.Namespace = opts.DefaultNamespace
 		}
 	}
@@ -398,10 +398,10 @@ func PopulateDefaultStateChangeDetails(executionModel models.Execution) (*admin.
 	}, nil
 }
 
-func FromExecutionModels(executionModels []models.Execution, opts *ExecutionTransformerOptions) ([]*admin.Execution, error) {
+func FromExecutionModels(ctx context.Context, executionModels []models.Execution, opts *ExecutionTransformerOptions) ([]*admin.Execution, error) {
 	executions := make([]*admin.Execution, len(executionModels))
 	for idx, executionModel := range executionModels {
-		execution, err := FromExecutionModel(executionModel, opts)
+		execution, err := FromExecutionModel(ctx, executionModel, opts)
 		if err != nil {
 			return nil, err
 		}

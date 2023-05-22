@@ -531,7 +531,7 @@ func TestFromExecutionModel(t *testing.T) {
 		StartedAt:    &startedAt,
 		State:        &stateInt,
 	}
-	execution, err := FromExecutionModel(executionModel, DefaultExecutionTransformerOptions)
+	execution, err := FromExecutionModel(context.TODO(), executionModel, DefaultExecutionTransformerOptions)
 	assert.Nil(t, err)
 	assert.True(t, proto.Equal(&admin.Execution{
 		Id: &core.WorkflowExecutionIdentifier{
@@ -559,7 +559,7 @@ func TestFromExecutionModel_Aborted(t *testing.T) {
 		AbortCause: abortCause,
 		Closure:    executionClosureBytes,
 	}
-	execution, err := FromExecutionModel(executionModel, DefaultExecutionTransformerOptions)
+	execution, err := FromExecutionModel(context.TODO(), executionModel, DefaultExecutionTransformerOptions)
 	assert.Nil(t, err)
 	assert.Equal(t, core.WorkflowExecution_ABORTED, execution.Closure.Phase)
 	assert.True(t, proto.Equal(&admin.AbortMetadata{
@@ -567,7 +567,7 @@ func TestFromExecutionModel_Aborted(t *testing.T) {
 	}, execution.Closure.GetAbortMetadata()))
 
 	executionModel.Phase = core.WorkflowExecution_RUNNING.String()
-	execution, err = FromExecutionModel(executionModel, DefaultExecutionTransformerOptions)
+	execution, err = FromExecutionModel(context.TODO(), executionModel, DefaultExecutionTransformerOptions)
 	assert.Nil(t, err)
 	assert.Empty(t, execution.Closure.GetAbortCause())
 }
@@ -592,7 +592,7 @@ func TestFromExecutionModel_Error(t *testing.T) {
 		Phase:   core.WorkflowExecution_FAILED.String(),
 		Closure: executionClosureBytes,
 	}
-	execution, err := FromExecutionModel(executionModel, &ExecutionTransformerOptions{
+	execution, err := FromExecutionModel(context.TODO(), executionModel, &ExecutionTransformerOptions{
 		TrimErrorMessage: true,
 	})
 	expectedExecErr := execErr
@@ -618,7 +618,7 @@ func TestFromExecutionModel_OverwriteNamespace(t *testing.T) {
 		Closure:    executionClosureBytes,
 	}
 	overwrittenNamespace := "ns"
-	execution, err := FromExecutionModel(executionModel, &ExecutionTransformerOptions{
+	execution, err := FromExecutionModel(context.TODO(), executionModel, &ExecutionTransformerOptions{
 		DefaultNamespace: overwrittenNamespace,
 	})
 	assert.NoError(t, err)
@@ -667,7 +667,7 @@ func TestFromExecutionModels(t *testing.T) {
 			State:        &stateInt,
 		},
 	}
-	executions, err := FromExecutionModels(executionModels, DefaultExecutionTransformerOptions)
+	executions, err := FromExecutionModels(context.TODO(), executionModels, DefaultExecutionTransformerOptions)
 	assert.Nil(t, err)
 	assert.Len(t, executions, 1)
 	assert.True(t, proto.Equal(&admin.Execution{
