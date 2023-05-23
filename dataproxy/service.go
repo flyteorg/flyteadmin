@@ -390,19 +390,19 @@ func (s Service) GetData(ctx context.Context, req *service.GetDataRequest) (
 		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "failed to validate resolve artifact request. Error: %v", err)
 	}
 
-	executions, err := common.ParseFlyteURLToExecution(req.GetFlyteUrl())
+	execution, err := common.ParseFlyteURLToExecution(req.GetFlyteUrl())
 	if err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "failed to parse artifact url Error: %v", err)
 	}
 
-	if executions.NodeExecID != nil {
-		return s.GetDataFromNodeExecution(ctx, *executions.NodeExecID, executions.IOType, executions.LiteralName)
-	} else if executions.PartialTaskExecID != nil {
-		taskExecID, err := s.GetCompleteTaskExecutionID(ctx, *executions.PartialTaskExecID)
+	if execution.NodeExecID != nil {
+		return s.GetDataFromNodeExecution(ctx, *execution.NodeExecID, execution.IOType, execution.LiteralName)
+	} else if execution.PartialTaskExecID != nil {
+		taskExecID, err := s.GetCompleteTaskExecutionID(ctx, *execution.PartialTaskExecID)
 		if err != nil {
 			return nil, err
 		}
-		return s.GetDataFromTaskExecution(ctx, *taskExecID, executions.IOType, executions.LiteralName)
+		return s.GetDataFromTaskExecution(ctx, *taskExecID, execution.IOType, execution.LiteralName)
 	}
 
 	return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "failed to parse get data request %v", req)
