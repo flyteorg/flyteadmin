@@ -38,7 +38,6 @@ func (p *Processor) run() error {
 		p.systemMetrics.MessageTotal.Inc()
 		// Currently this is safe because Gizmo takes a string and casts it to a byte array.
 		stringMsg := string(msg.Message())
-
 		var snsJSONFormat map[string]interface{}
 
 		// At Lyft, SNS populates SQS. This results in the message body of SQS having the SNS message format.
@@ -80,7 +79,7 @@ func (p *Processor) run() error {
 		}
 
 		if err = proto.Unmarshal(notificationBytes, &payload); err != nil {
-			logger.Debugf(context.Background(), "failed to unmarshal to notification object from decoded string[%s] from message [%s] with err: %v", valueString, stringMsg, err)
+			logger.Errorf(context.Background(), "failed to unmarshal to notification object from decoded string[%s] from message [%s] with err: %v", valueString, stringMsg, err)
 			p.systemMetrics.MessageDecodingError.Inc()
 			p.markMessageDone(msg)
 			continue

@@ -1284,15 +1284,16 @@ func (m *ExecutionManager) CreateWorkflowEvent(ctx context.Context, request admi
 		if err != nil {
 			// The only errors that publishNotifications will forward are those related
 			// to unexpected data and transformation errors.
-			logger.Debugf(ctx, "failed to publish notifications for CreateWorkflowEvent [%+v] due to err: %v",
+			logger.Errorf(ctx, "failed to publish notifications for CreateWorkflowEvent [%+v] due to err: %v",
 				request, err)
 			return nil, err
 		}
+		logger.Info(ctx, "publish webhook event", request)
 		err = m.publishWebhookNotifications(ctx, request, *executionModel)
 		if err != nil {
 			// The only errors that publishNotifications will forward are those related
 			// to unexpected data and transformation errors.
-			logger.Debugf(ctx, "failed to publish notifications for CreateWorkflowEvent [%+v] due to err: %v",
+			logger.Errorf(ctx, "failed to publish notifications for CreateWorkflowEvent [%+v] due to err: %v",
 				request, err)
 			return nil, err
 		}
@@ -1563,7 +1564,7 @@ func (m *ExecutionManager) publishWebhookNotifications(ctx context.Context, requ
 		return errors.NewFlyteAdminErrorf(codes.Internal, "Failed to transform execution [%+v] with err: %v", request.Event.ExecutionId, err)
 	}
 	var notificationsList = adminExecution.Closure.Notifications
-	logger.Debugf(ctx, "publishing notifications for execution [%+v] in state [%+v] for notifications [%+v]",
+	logger.Info(ctx, "publishing notifications for execution [%+v] in state [%+v] for notifications [%+v]",
 		request.Event.ExecutionId, request.Event.Phase, notificationsList)
 	// payloads[phase][name] = body
 	payloads := make(map[string]string)
@@ -1590,9 +1591,9 @@ func (m *ExecutionManager) publishWebhookNotifications(ctx context.Context, requ
 
 		// Errors seen while publishing a message are considered non-fatal to the method and will not result
 		// in the method returning an error.
-		if err = m.webhookClient.Publish(ctx, "slack ", payload); err != nil {
+		if err = m.webhookClient.Publish(ctx, "slack", payload); err != nil {
 			m.systemMetrics.PublishNotificationError.Inc()
-			logger.Infof(ctx, "error publishing email notification [%+v] with err: [%v]", notification, err)
+			logger.Infof(ctx, "error publishing slack notification [%+v] with err: [%v]", notification, err)
 		}
 	}
 	return nil
