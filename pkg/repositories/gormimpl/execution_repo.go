@@ -22,14 +22,28 @@ type ExecutionRepo struct {
 	metrics          gormMetrics
 }
 
-func (r *ExecutionRepo) Create(ctx context.Context, input models.Execution) error {
+func (r *ExecutionRepo) Create(ctx context.Context, input models.Execution, tags []models.ExecutionTags) error {
 	timer := r.metrics.CreateDuration.Start()
-	tx := r.db.Omit("id").Create(&input)
+	// tx := r.db.Omit("id").Create(&input)
+	// if tx.Error != nil {
+	// 	return r.errorTransformer.ToFlyteAdminError(tx.Error)
+	// }
+	err := r.db.Transaction(func(_ *gorm.DB) error {
+		if len(tags) != 0 {
+			tx := r.db.Create(tags)
+			if tx.Error != nil {
+				return r.errorTransformer.ToFlyteAdminError(tx.Error)
+			}
+		}
+		tx := r.db.Omit("id").Create(&input)
+		if tx.Error != nil {
+			return r.errorTransformer.ToFlyteAdminError(tx.Error)
+		}
+
+		return nil
+	})
 	timer.Stop()
-	if tx.Error != nil {
-		return r.errorTransformer.ToFlyteAdminError(tx.Error)
-	}
-	return nil
+	return err
 }
 
 func (r *ExecutionRepo) Get(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {

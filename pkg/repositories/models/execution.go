@@ -61,3 +61,8 @@ type Execution struct {
 	// The resource type of the entity used to launch the execution, one of 'launch_plan' or 'task'
 	LaunchEntity string
 }
+
+type ExecutionTags struct {
+	ExecutionKey
+	Tag string `gorm:"primary_key;column:execution_tag" valid:"length(0|255)"`
+}

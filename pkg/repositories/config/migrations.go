@@ -445,6 +445,16 @@ var LegacyMigrations = []*gormigrate.Migration{
 			return tx.Model(&models.Execution{}).Migrator().DropColumn(&models.Execution{}, "launch_entity")
 		},
 	},
+	// Create execution tags table
+	{
+		ID: "2023-05-26-execution-tags",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&models.ExecutionTags{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Migrator().DropTable("execution_tags")
+		},
+	},
 }
 
 var NoopMigrations = []*gormigrate.Migration{
