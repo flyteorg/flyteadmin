@@ -22,31 +22,22 @@ type ExecutionRepo struct {
 	metrics          gormMetrics
 }
 
-func (r *ExecutionRepo) Create(ctx context.Context, input models.Execution, tags []models.ExecutionTags) error {
-	timer := r.metrics.CreateDuration.Start()
-	// tx := r.db.Omit("id").Create(&input)
-	// if tx.Error != nil {
-	// 	return r.errorTransformer.ToFlyteAdminError(tx.Error)
-	// }
-	err := r.db.Transaction(func(_ *gorm.DB) error {
-		if len(tags) != 0 {
-			tx := r.db.Create(tags)
-			if tx.Error != nil {
-				return r.errorTransformer.ToFlyteAdminError(tx.Error)
-			}
-		}
-		tx := r.db.Omit("id").Create(&input)
-		if tx.Error != nil {
-			return r.errorTransformer.ToFlyteAdminError(tx.Error)
-		}
+var leftJoinExecutionToTags = fmt.Sprintf(
+	"LEFT JOIN %s ON %s.project = %s.execution_project AND %s.domain = %s.execution_domain AND %s.name = %s.execution_name", executionTagsTableName, executionTagsTableName, executionTableName,
+	executionTagsTableName, executionTableName,
+	executionTagsTableName, executionTableName)
 
-		return nil
-	})
+func (r *ExecutionRepo) Create(ctx context.Context, input models.Execution) error {
+	timer := r.metrics.CreateDuration.Start()
+	tx := r.db.Omit("id").Create(&input)
 	timer.Stop()
-	return err
+	if tx.Error != nil {
+		return r.errorTransformer.ToFlyteAdminError(tx.Error)
+	}
+	return nil
 }
 
-func (r *ExecutionRepo) Get(ctx context.Context, input interfaces.Identifier) (models.Execution, error) {
+func (r *ExecutionRepo) Get(_ context.Context, input interfaces.Identifier) (models.Execution, error) {
 	var execution models.Execution
 	timer := r.metrics.GetDuration.Start()
 	tx := r.db.Where(&models.Execution{
@@ -80,7 +71,7 @@ func (r *ExecutionRepo) Update(ctx context.Context, execution models.Execution) 
 	return nil
 }
 
-func (r *ExecutionRepo) List(ctx context.Context, input interfaces.ListResourceInput) (
+func (r *ExecutionRepo) List(_ context.Context, input interfaces.ListResourceInput) (
 	interfaces.ExecutionCollectionOutput, error) {
 	var err error
 	// First validate input.

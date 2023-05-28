@@ -60,9 +60,11 @@ type Execution struct {
 	State *int32 `gorm:"index;default:0"`
 	// The resource type of the entity used to launch the execution, one of 'launch_plan' or 'task'
 	LaunchEntity string
+
+	Tags []ExecutionTag `gorm:"many2many:execution_execution_tags;"`
 }
 
-type ExecutionTags struct {
-	ExecutionKey
-	Tag string `gorm:"primary_key;column:execution_tag" valid:"length(0|255)"`
+type ExecutionTag struct {
+	BaseModel
+	Name string `gorm:"primary_key;column:name" valid:"length(0|255)"`
 }

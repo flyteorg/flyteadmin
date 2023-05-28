@@ -445,14 +445,24 @@ var LegacyMigrations = []*gormigrate.Migration{
 			return tx.Model(&models.Execution{}).Migrator().DropColumn(&models.Execution{}, "launch_entity")
 		},
 	},
-	// Create execution tags table
+	// Create execution tags table.
 	{
-		ID: "2023-05-26-execution-tags",
+		ID: "2023-05-27-execution_tags",
 		Migrate: func(tx *gorm.DB) error {
-			return tx.AutoMigrate(&models.ExecutionTags{})
+			return tx.AutoMigrate(&models.ExecutionTag{})
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return tx.Migrator().DropTable("execution_tags")
+		},
+	},
+	// Add execution <-> execution-tags join table.
+	{
+		ID: "2023-05-28-execution_execution_tags",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&models.Execution{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Migrator().DropTable("execution_execution_tags")
 		},
 	},
 }

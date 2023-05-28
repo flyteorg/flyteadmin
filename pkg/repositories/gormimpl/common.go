@@ -29,6 +29,8 @@ const taskTableName = "tasks"
 const workflowTableName = "workflows"
 const descriptionEntityTableName = "description_entities"
 
+const executionTagsTableName = "execution_tags"
+
 const limit = "limit"
 const filters = "filters"
 

@@ -45,6 +45,7 @@ type CreateExecutionModelInput struct {
 	SecurityContext       *core.SecurityContext
 	LaunchEntity          core.ResourceType
 	Namespace             string
+	Tags                  []string
 }
 
 type ExecutionTransformerOptions struct {
@@ -99,6 +100,11 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 	}
 
 	activeExecution := int32(admin.ExecutionState_EXECUTION_ACTIVE)
+	tags := make([]models.ExecutionTag, len(input.Tags))
+	for i, tag := range input.Tags {
+		tags[i] = models.ExecutionTag{Name: tag}
+	}
+
 	executionModel := &models.Execution{
 		ExecutionKey: models.ExecutionKey{
 			Project: input.WorkflowExecutionID.Project,
@@ -119,6 +125,7 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 		User:                  requestSpec.Metadata.Principal,
 		State:                 &activeExecution,
 		LaunchEntity:          strings.ToLower(input.LaunchEntity.String()),
+		Tags:                  tags,
 	}
 	// A reference launch entity can be one of either or a task OR launch plan. Traditionally, workflows are executed
 	// with a reference launch plan which is why this behavior is the default below.
