@@ -22,8 +22,8 @@ type ExecutionRepo struct {
 	metrics          gormMetrics
 }
 
-var leftJoinExecutionToTags = fmt.Sprintf(
-	"LEFT JOIN %s ON %s.project = %s.execution_project AND %s.domain = %s.execution_domain AND %s.name = %s.execution_name", executionTagsTableName, executionTagsTableName, executionTableName,
+var joinExecutionToTags = fmt.Sprintf(
+	"JOIN %s ON %s.execution_project = %s.execution_project AND %s.execution_domain = %s.execution_domain AND %s.execution_name = %s.execution_name", executionTagsTableName, executionTagsTableName, executionTableName,
 	executionTagsTableName, executionTableName,
 	executionTagsTableName, executionTableName)
 
@@ -79,7 +79,7 @@ func (r *ExecutionRepo) List(_ context.Context, input interfaces.ListResourceInp
 		return interfaces.ExecutionCollectionOutput{}, err
 	}
 	var executions []models.Execution
-	tx := r.db.Limit(input.Limit).Offset(input.Offset)
+	tx := r.db.Limit(input.Limit).Offset(input.Offset).Preload("Tags")
 	// And add join condition as required by user-specified filters (which can potentially include join table attrs).
 	if ok := input.JoinTableEntities[common.LaunchPlan]; ok {
 		tx = tx.Joins(fmt.Sprintf("INNER JOIN %s ON %s.launch_plan_id = %s.id",
@@ -93,6 +93,19 @@ func (r *ExecutionRepo) List(_ context.Context, input interfaces.ListResourceInp
 		tx = tx.Joins(fmt.Sprintf("INNER JOIN %s ON %s.task_id = %s.id",
 			taskTableName, executionTableName, taskTableName))
 	}
+
+	if ok := input.JoinTableEntities[common.ExecutionExecutionTag]; ok {
+		tx = tx.Joins(fmt.Sprintf("INNER JOIN %s ON %s.execution_name = %s.execution_name",
+			executionTagsTableName, executionTableName, executionTagsTableName))
+	}
+
+	//tx = tx.Where("execution_name IN (?)", r.db.Table("execution_execution_tags").
+	//	Select("execution_name").
+	//	Where("execution_tag_name IN ?", []string{"mlfloow", "name2"}))
+
+	// tx = tx.Joins(fmt.Sprintf("INNER JOIN %s ON %s.execution_name = %s.execution_name",
+	//	executionTagsTableName, executionTableName, executionTagsTableName))
+	// tx = tx.Where(fmt.Sprintf("%s.execution_tag_name IN ?", executionTagsTableName), []string{"mlflow", "name2"})
 
 	// Apply filters
 	tx, err = applyScopedFilters(tx, input.InlineFilters, input.MapFilters)

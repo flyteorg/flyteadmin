@@ -52,16 +52,18 @@ const filterFieldEntityPrefixFmt = "%s."
 const secondsFormat = "%vs"
 
 var filterFieldEntityPrefix = map[string]common.Entity{
-	"task":                  common.Task,
-	"workflow":              common.Workflow,
-	"launch_plan":           common.LaunchPlan,
-	"execution":             common.Execution,
-	"node_execution":        common.NodeExecution,
-	"task_execution":        common.TaskExecution,
-	"entities":              common.NamedEntity,
-	"named_entity_metadata": common.NamedEntityMetadata,
-	"project":               common.Project,
-	"signal":                common.Signal,
+	"task":                    common.Task,
+	"workflow":                common.Workflow,
+	"launch_plan":             common.LaunchPlan,
+	"execution":               common.Execution,
+	"node_execution":          common.NodeExecution,
+	"task_execution":          common.TaskExecution,
+	"entities":                common.NamedEntity,
+	"named_entity_metadata":   common.NamedEntityMetadata,
+	"project":                 common.Project,
+	"signal":                  common.Signal,
+	"execution_tag":           common.ExecutionTag,
+	"execution_execution_tag": common.ExecutionExecutionTag,
 }
 
 func parseField(field string, primaryEntity common.Entity) (common.Entity, string) {
