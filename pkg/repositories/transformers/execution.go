@@ -416,7 +416,7 @@ func TrimErrorMessage(errMsg string) string {
 		return errMsg
 	}
 	minLength := trimmedErrMessageLen
-	for len(errMsg) >= minLength && utf8.ValidString(errMsg[:minLength]) == false {
+	for len(errMsg) >= minLength && !utf8.ValidString(errMsg[:minLength]) {
 		minLength++
 	}
 	return errMsg[:minLength]
