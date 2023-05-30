@@ -3,10 +3,6 @@ package transformers
 import (
 	"context"
 	"fmt"
-	"strings"
-	"time"
-	"unicode/utf8"
-
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
@@ -17,6 +13,8 @@ import (
 	"github.com/flyteorg/flytestdlib/storage"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	"strings"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -412,12 +410,8 @@ func FromExecutionModels(ctx context.Context, executionModels []models.Execution
 
 // TrimErrorMessage return the smallest possible trimmed error message >= trimmedErrMessageLen bytes in length that still forms a valid utf-8 string
 func TrimErrorMessage(errMsg string) string {
-	if len(errMsg) < trimmedErrMessageLen {
+	if len(errMsg) <= trimmedErrMessageLen {
 		return errMsg
 	}
-	minLength := trimmedErrMessageLen
-	for len(errMsg) >= minLength && !utf8.ValidString(errMsg[:minLength]) {
-		minLength++
-	}
-	return errMsg[:minLength]
+	return strings.ToValidUTF8(errMsg[:trimmedErrMessageLen], "")
 }
