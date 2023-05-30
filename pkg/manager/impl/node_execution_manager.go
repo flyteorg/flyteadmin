@@ -408,18 +408,11 @@ func (m *NodeExecutionManager) listNodeExecutions(
 	if len(output.NodeExecutions) == int(limit) {
 		token = strconv.Itoa(offset + len(output.NodeExecutions))
 	}
-	logger.Infof(ctx, "using [%s] as pagination token", token)
-	logger.Infof(ctx, "transforming node executions [%+v]", output.NodeExecutions)
 	nodeExecutionList, err := m.transformNodeExecutionModelList(ctx, output.NodeExecutions)
 	if err != nil {
 		logger.Debugf(ctx, "failed to transform node execution models for request with err: %v", err)
 		return nil, err
 	}
-	logger.Infof(ctx, "node execution models are [%+v]", nodeExecutionList)
-	logger.Infof(ctx, "would return response [%+v]", &admin.NodeExecutionList{
-		NodeExecutions: nodeExecutionList,
-		Token:          token,
-	})
 
 	return &admin.NodeExecutionList{
 		NodeExecutions: nodeExecutionList,
