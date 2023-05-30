@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
 
@@ -602,6 +603,30 @@ func TestFromExecutionModel_Error(t *testing.T) {
 	assert.True(t, proto.Equal(expectedExecErr, execution.Closure.GetError()))
 }
 
+func TestFromExecutionModel_ValidUTF8TrimmedErrorMsg(t *testing.T) {
+	errMsg := "[1/1] currentAttempt done. Last Error: USER::                   │\n│ ❱  760 │   │   │   │   return __callback(*args, **kwargs)                    │\n│                                                                              │\n│ /usr/local/lib/python3.10/site-packages/flytekit/bin/entrypoint.py:508 in    │\n│ fast_execute_task_cmd                                                        │\n│                                                                              │\n│ ❱ 508 │   subprocess.run(cmd, check=True)                                    │\n│                                                                              │\n│ /usr/local/lib/python3.10/subprocess.py:526 in run                           │\n│                                                                              │\n│ ❱  526 │   │   │   raise CalledProcessError(retcode, process.args,           │\n╰──────────────────────────────────────────────────────────────────────────────╯\nCalledProcessError: Command '['pyflyte-execute', '--inputs', \n's3://union-oc-production-demo/metadata/propeller/flytetester-development-awh8z9\nwmnc5hlp687vdn/n0/data/inputs.pb', '--output-prefix', \n's3://union-oc-production-demo/metadata/propeller/flytetester-development-awh8z9\nwmnc5hlp687vdn/n0/data/0', '--raw-output-data-prefix', \n's3://union-oc-production-demo/v7/awh8z9wmnc5hlp687vdn-n0-0', \n'--checkpoint-path', \n's3://union-oc-production-demo/v7/awh8z9wmnc5hlp687vdn-n0-0/_flytecheckpoints', \n'--prev-checkpoint', '\"\"', '--dynamic-addl-distro', \n's3://union-oc-production-demo/flytetester/development/IGBXBBQ4ZJWPO32U2HLEJKUA2\nU======/fast546b1d707386b561ac69681c08470be5.tar.gz', '--dynamic-dest-dir', \n'/root', '--resolver', \n'flytekit.core.python_auto_container.default_task_resolver', '--', \n'task-module', 'workflows.example', 'task-name', 'get_pandas_dataframe']' \nreturned non-zero exit status 1.\n"
+
+	executionClosureBytes, _ := proto.Marshal(&admin.ExecutionClosure{
+		Phase:        core.WorkflowExecution_FAILED,
+		OutputResult: &admin.ExecutionClosure_Error{Error: &core.ExecutionError{Message: errMsg}},
+	})
+	executionModel := models.Execution{
+		ExecutionKey: models.ExecutionKey{
+			Project: "project",
+			Domain:  "domain",
+			Name:    "name",
+		},
+		Phase:   core.WorkflowExecution_FAILED.String(),
+		Closure: executionClosureBytes,
+	}
+	execution, err := FromExecutionModel(context.TODO(), executionModel, &ExecutionTransformerOptions{
+		TrimErrorMessage: true,
+	})
+	assert.NoError(t, err)
+	errMsgAreValidUTF8 := utf8.Valid([]byte(execution.GetClosure().GetError().GetMessage()))
+	assert.True(t, errMsgAreValidUTF8)
+}
+
 func TestFromExecutionModel_OverwriteNamespace(t *testing.T) {
 	abortCause := "abort cause"
 	executionClosureBytes, _ := proto.Marshal(&admin.ExecutionClosure{
@@ -874,4 +899,11 @@ func TestUpdateExecutionModelStateChangeDetails(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.False(t, strings.Contains(err.Error(), "Failed to unmarshal execution closure"))
 	})
+}
+
+func TestTrimErrorMessage(t *testing.T) {
+	errMsg := "[1/1] currentAttempt done. Last Error: USER::                   │\n│ ❱  760 │   │   │   │   return __callback(*args, **kwargs)                    │\n│                                                                              │\n│ /usr/local/lib/python3.10/site-packages/flytekit/bin/entrypoint.py:508 in    │\n│ fast_execute_task_cmd                                                        │\n│                                                                              │\n│ ❱ 508 │   subprocess.run(cmd, check=True)                                    │\n│                                                                              │\n│ /usr/local/lib/python3.10/subprocess.py:526 in run                           │\n│                                                                              │\n│ ❱  526 │   │   │   raise CalledProcessError(retcode, process.args,           │\n╰──────────────────────────────────────────────────────────────────────────────╯\nCalledProcessError: Command '['pyflyte-execute', '--inputs', \n's3://union-oc-production-demo/metadata/propeller/flytetester-development-awh8z9\nwmnc5hlp687vdn/n0/data/inputs.pb', '--output-prefix', \n's3://union-oc-production-demo/metadata/propeller/flytetester-development-awh8z9\nwmnc5hlp687vdn/n0/data/0', '--raw-output-data-prefix', \n's3://union-oc-production-demo/v7/awh8z9wmnc5hlp687vdn-n0-0', \n'--checkpoint-path', \n's3://union-oc-production-demo/v7/awh8z9wmnc5hlp687vdn-n0-0/_flytecheckpoints', \n'--prev-checkpoint', '\"\"', '--dynamic-addl-distro', \n's3://union-oc-production-demo/flytetester/development/IGBXBBQ4ZJWPO32U2HLEJKUA2\nU======/fast546b1d707386b561ac69681c08470be5.tar.gz', '--dynamic-dest-dir', \n'/root', '--resolver', \n'flytekit.core.python_auto_container.default_task_resolver', '--', \n'task-module', 'workflows.example', 'task-name', 'get_pandas_dataframe']' \nreturned non-zero exit status 1.\n"
+	trimmedErrMessage := TrimErrorMessage(errMsg)
+	errMsgAreValidUTF8 := utf8.Valid([]byte(trimmedErrMessage))
+	assert.True(t, errMsgAreValidUTF8)
 }
