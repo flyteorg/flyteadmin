@@ -342,11 +342,14 @@ func FromExecutionModel(ctx context.Context, executionModel models.Execution, op
 	if err = proto.Unmarshal(executionModel.Closure, &closure); err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal closure")
 	}
+	logger.Infof(ctx, "possibly trimming error message for [%+v]", executionModel.ExecutionKey)
 	if closure.GetError() != nil && opts != nil && opts.TrimErrorMessage && len(closure.GetError().Message) > 0 {
 		trimmedErrOutputResult := closure.GetError()
+		logger.Infof(ctx, "overwriting original error message [%+v]", trimmedErrOutputResult.Message)
 		if len(trimmedErrOutputResult.Message) > trimmedErrMessageLen {
 			trimmedErrOutputResult.Message = trimmedErrOutputResult.Message[0:trimmedErrMessageLen]
 		}
+		logger.Infof(ctx, "with trimmed message [%+v]", trimmedErrOutputResult)
 		closure.OutputResult = &admin.ExecutionClosure_Error{
 			Error: trimmedErrOutputResult,
 		}
