@@ -22,11 +22,6 @@ type ExecutionRepo struct {
 	metrics          gormMetrics
 }
 
-var joinExecutionToTags = fmt.Sprintf(
-	"JOIN %s ON %s.execution_project = %s.execution_project AND %s.execution_domain = %s.execution_domain AND %s.execution_name = %s.execution_name", executionAdminTagsTableName, executionAdminTagsTableName, executionTableName,
-	executionAdminTagsTableName, executionTableName,
-	executionAdminTagsTableName, executionTableName)
-
 func (r *ExecutionRepo) Create(ctx context.Context, input models.Execution) error {
 	timer := r.metrics.CreateDuration.Start()
 	tx := r.db.Omit("id").Create(&input)
@@ -98,14 +93,6 @@ func (r *ExecutionRepo) List(_ context.Context, input interfaces.ListResourceInp
 		tx = tx.Joins(fmt.Sprintf("INNER JOIN %s ON %s.execution_name = %s.execution_name",
 			executionAdminTagsTableName, executionTableName, executionAdminTagsTableName))
 	}
-
-	//tx = tx.Where("execution_name IN (?)", r.db.Table("execution_execution_tags").
-	//	Select("execution_name").
-	//	Where("execution_tag_name IN ?", []string{"mlfloow", "name2"}))
-
-	// tx = tx.Joins(fmt.Sprintf("INNER JOIN %s ON %s.execution_name = %s.execution_name",
-	//	executionAdminTagsTableName, executionTableName, executionAdminTagsTableName))
-	// tx = tx.Where(fmt.Sprintf("%s.execution_tag_name IN ?", executionAdminTagsTableName), []string{"mlflow", "name2"})
 
 	// Apply filters
 	tx, err = applyScopedFilters(tx, input.InlineFilters, input.MapFilters)
