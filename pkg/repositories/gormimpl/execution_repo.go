@@ -23,9 +23,9 @@ type ExecutionRepo struct {
 }
 
 var joinExecutionToTags = fmt.Sprintf(
-	"JOIN %s ON %s.execution_project = %s.execution_project AND %s.execution_domain = %s.execution_domain AND %s.execution_name = %s.execution_name", executionTagsTableName, executionTagsTableName, executionTableName,
-	executionTagsTableName, executionTableName,
-	executionTagsTableName, executionTableName)
+	"JOIN %s ON %s.execution_project = %s.execution_project AND %s.execution_domain = %s.execution_domain AND %s.execution_name = %s.execution_name", executionAdminTagsTableName, executionAdminTagsTableName, executionTableName,
+	executionAdminTagsTableName, executionTableName,
+	executionAdminTagsTableName, executionTableName)
 
 func (r *ExecutionRepo) Create(ctx context.Context, input models.Execution) error {
 	timer := r.metrics.CreateDuration.Start()
@@ -79,7 +79,7 @@ func (r *ExecutionRepo) List(_ context.Context, input interfaces.ListResourceInp
 		return interfaces.ExecutionCollectionOutput{}, err
 	}
 	var executions []models.Execution
-	tx := r.db.Limit(input.Limit).Offset(input.Offset).Preload("Tags")
+	tx := r.db.Limit(input.Limit).Offset(input.Offset)
 	// And add join condition as required by user-specified filters (which can potentially include join table attrs).
 	if ok := input.JoinTableEntities[common.LaunchPlan]; ok {
 		tx = tx.Joins(fmt.Sprintf("INNER JOIN %s ON %s.launch_plan_id = %s.id",
@@ -94,9 +94,9 @@ func (r *ExecutionRepo) List(_ context.Context, input interfaces.ListResourceInp
 			taskTableName, executionTableName, taskTableName))
 	}
 
-	if ok := input.JoinTableEntities[common.ExecutionExecutionTag]; ok {
+	if ok := input.JoinTableEntities[common.ExecutionAdminTag]; ok {
 		tx = tx.Joins(fmt.Sprintf("INNER JOIN %s ON %s.execution_name = %s.execution_name",
-			executionTagsTableName, executionTableName, executionTagsTableName))
+			executionAdminTagsTableName, executionTableName, executionAdminTagsTableName))
 	}
 
 	//tx = tx.Where("execution_name IN (?)", r.db.Table("execution_execution_tags").
@@ -104,8 +104,8 @@ func (r *ExecutionRepo) List(_ context.Context, input interfaces.ListResourceInp
 	//	Where("execution_tag_name IN ?", []string{"mlfloow", "name2"}))
 
 	// tx = tx.Joins(fmt.Sprintf("INNER JOIN %s ON %s.execution_name = %s.execution_name",
-	//	executionTagsTableName, executionTableName, executionTagsTableName))
-	// tx = tx.Where(fmt.Sprintf("%s.execution_tag_name IN ?", executionTagsTableName), []string{"mlflow", "name2"})
+	//	executionAdminTagsTableName, executionTableName, executionAdminTagsTableName))
+	// tx = tx.Where(fmt.Sprintf("%s.execution_tag_name IN ?", executionAdminTagsTableName), []string{"mlflow", "name2"})
 
 	// Apply filters
 	tx, err = applyScopedFilters(tx, input.InlineFilters, input.MapFilters)

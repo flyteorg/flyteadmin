@@ -28,8 +28,7 @@ const taskExecutionTableName = "task_executions"
 const taskTableName = "tasks"
 const workflowTableName = "workflows"
 const descriptionEntityTableName = "description_entities"
-
-const executionTagsTableName = "execution_execution_tags"
+const executionAdminTagsTableName = "execution_admin_tags"
 
 const limit = "limit"
 const filters = "filters"
@@ -37,17 +36,17 @@ const filters = "filters"
 var identifierGroupBy = fmt.Sprintf("%s, %s, %s", Project, Domain, Name)
 
 var entityToTableName = map[common.Entity]string{
-	common.Execution:             "executions",
-	common.LaunchPlan:            "launch_plans",
-	common.NodeExecution:         "node_executions",
-	common.NodeExecutionEvent:    "node_execution_events",
-	common.Task:                  "tasks",
-	common.TaskExecution:         "task_executions",
-	common.Workflow:              "workflows",
-	common.NamedEntity:           "entities",
-	common.NamedEntityMetadata:   "named_entity_metadata",
-	common.Signal:                "signals",
-	common.ExecutionExecutionTag: "execution_execution_tags",
+	common.Execution:           "executions",
+	common.LaunchPlan:          "launch_plans",
+	common.NodeExecution:       "node_executions",
+	common.NodeExecutionEvent:  "node_execution_events",
+	common.Task:                "tasks",
+	common.TaskExecution:       "task_executions",
+	common.Workflow:            "workflows",
+	common.NamedEntity:         "entities",
+	common.NamedEntityMetadata: "named_entity_metadata",
+	common.Signal:              "signals",
+	common.ExecutionAdminTag:   "execution_admin_tags",
 }
 
 var innerJoinExecToNodeExec = fmt.Sprintf(
