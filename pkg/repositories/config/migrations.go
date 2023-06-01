@@ -449,7 +449,7 @@ var LegacyMigrations = []*gormigrate.Migration{
 	{
 		ID: "2023-05-27-execution_tags",
 		Migrate: func(tx *gorm.DB) error {
-			return tx.AutoMigrate(&models.ExecutionTag{})
+			return tx.AutoMigrate(&models.AdminTag{})
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return tx.Migrator().DropTable("execution_tags")

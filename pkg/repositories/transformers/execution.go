@@ -100,9 +100,9 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 	}
 
 	activeExecution := int32(admin.ExecutionState_EXECUTION_ACTIVE)
-	tags := make([]models.ExecutionTag, len(input.Tags))
+	tags := make([]models.AdminTag, len(input.Tags))
 	for i, tag := range input.Tags {
-		tags[i] = models.ExecutionTag{Name: tag}
+		tags[i] = models.AdminTag{Name: tag}
 	}
 
 	executionModel := &models.Execution{

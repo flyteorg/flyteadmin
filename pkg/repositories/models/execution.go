@@ -61,10 +61,10 @@ type Execution struct {
 	// The resource type of the entity used to launch the execution, one of 'launch_plan' or 'task'
 	LaunchEntity string
 
-	Tags []ExecutionTag `gorm:"many2many:execution_execution_tags;"`
+	Tags []AdminTag `gorm:"many2many:execution_admin_tags;"`
 }
 
-type ExecutionTag struct {
+type AdminTag struct {
 	BaseModel
 	Name string `gorm:"primary_key;column:name" valid:"length(0|255)"`
 }
