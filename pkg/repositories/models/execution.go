@@ -1,6 +1,7 @@
 package models
 
 import (
+	"gorm.io/gorm"
 	"time"
 
 	"github.com/flyteorg/flytestdlib/storage"
@@ -65,6 +66,6 @@ type Execution struct {
 }
 
 type AdminTag struct {
-	BaseModel
-	Name string `gorm:"primary_key;column:name" valid:"length(0|255)"`
+	gorm.Model
+	Name string `valid:"length(0|255)"`
 }

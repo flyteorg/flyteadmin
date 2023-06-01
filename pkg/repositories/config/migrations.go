@@ -447,7 +447,7 @@ var LegacyMigrations = []*gormigrate.Migration{
 	},
 	// Create admin tags table.
 	{
-		ID: "2023-05-31-admin_tags",
+		ID: "2023-06-01-admin_tags",
 		Migrate: func(tx *gorm.DB) error {
 			return tx.AutoMigrate(&models.AdminTag{})
 		},
@@ -457,7 +457,7 @@ var LegacyMigrations = []*gormigrate.Migration{
 	},
 	// Add execution <-> admin_tags join table.
 	{
-		ID: "2023-05-31-execution_admin_tags",
+		ID: "2023-06-01-execution_admin_tags",
 		Migrate: func(tx *gorm.DB) error {
 			return tx.AutoMigrate(&models.Execution{})
 		},
