@@ -607,10 +607,12 @@ func (c *controller) Sync(ctx context.Context) error {
 				logger.Debugf(ctx, "Successfully created kubernetes resources for [%s]", namespace)
 				stats.Add(newStats)
 			}
+
+			logger.Infof(ctx, "Completed cluster resource creation loop for namespace [%s] with stats: [%+v]", namespace, newStats)
 		}
 	}
 
-	logger.Infof(ctx, "Completed cluster resource creation loop with stats: %+v", stats)
+	logger.Infof(ctx, "Completed cluster resource creation loop with stats: [%+v]", stats)
 
 	if len(errs) > 0 {
 		return errors.NewCollectedFlyteAdminError(codes.Internal, errs)
