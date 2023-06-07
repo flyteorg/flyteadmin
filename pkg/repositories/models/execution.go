@@ -61,7 +61,7 @@ type Execution struct {
 	State *int32 `gorm:"index;default:0"`
 	// The resource type of the entity used to launch the execution, one of 'launch_plan' or 'task'
 	LaunchEntity string
-
+	// Tags associated with the execution
 	Tags []AdminTag `gorm:"many2many:execution_admin_tags;"`
 }
 
