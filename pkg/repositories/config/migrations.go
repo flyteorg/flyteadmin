@@ -1089,7 +1089,7 @@ var NoopMigrations = []*gormigrate.Migration{
 		Migrate: func(tx *gorm.DB) error {
 			type AdminTag struct {
 				gorm.Model
-				Name string `valid:"length(0|255)"`
+				Name string `gorm:"size:255"`
 			}
 
 			return tx.AutoMigrate(&AdminTag{})
@@ -1104,7 +1104,7 @@ var NoopMigrations = []*gormigrate.Migration{
 		Migrate: func(tx *gorm.DB) error {
 			type AdminTag struct {
 				gorm.Model
-				Name string `valid:"length(0|255)"`
+				Name string `gorm:"size:255"`
 			}
 
 			type ExecutionKey struct {

@@ -45,7 +45,6 @@ type CreateExecutionModelInput struct {
 	SecurityContext       *core.SecurityContext
 	LaunchEntity          core.ResourceType
 	Namespace             string
-	Tags                  []string
 }
 
 type ExecutionTransformerOptions struct {
@@ -100,8 +99,8 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 	}
 
 	activeExecution := int32(admin.ExecutionState_EXECUTION_ACTIVE)
-	tags := make([]models.AdminTag, len(input.Tags))
-	for i, tag := range input.Tags {
+	tags := make([]models.AdminTag, len(input.RequestSpec.Tags))
+	for i, tag := range input.RequestSpec.Tags {
 		tags[i] = models.AdminTag{Name: tag}
 	}
 

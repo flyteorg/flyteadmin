@@ -907,7 +907,6 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		SecurityContext:       executionConfig.SecurityContext,
 		LaunchEntity:          launchPlan.Id.ResourceType,
 		Namespace:             namespace,
-		Tags:                  request.Spec.Tags,
 	})
 	if err != nil {
 		logger.Infof(ctx, "Failed to create execution model in transformer for id: [%+v] with err: %v",
