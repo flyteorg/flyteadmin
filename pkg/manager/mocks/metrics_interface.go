@@ -55,3 +55,44 @@ func (_m *MetricsInterface) GetExecutionMetrics(ctx context.Context, request adm
 
 	return r0, r1
 }
+
+type MetricsInterface_GetFlyteKitMetrics struct {
+	*mock.Call
+}
+
+func (_m MetricsInterface_GetFlyteKitMetrics) Return(_a0 *admin.WorkflowExecutionGetMetricsResponse, _a1 error) *MetricsInterface_GetFlyteKitMetrics {
+	return &MetricsInterface_GetFlyteKitMetrics{Call: _m.Call.Return(_a0, _a1)}
+}
+
+func (_m *MetricsInterface) OnGetFlyteKitMetrics(ctx context.Context, request admin.NodeExecutionGetRequest) *MetricsInterface_GetFlyteKitMetrics {
+	c_call := _m.On("GetFlyteKitMetrics", ctx, request)
+	return &MetricsInterface_GetFlyteKitMetrics{Call: c_call}
+}
+
+func (_m *MetricsInterface) OnGetFlyteKitMetricsMatch(matchers ...interface{}) *MetricsInterface_GetFlyteKitMetrics {
+	c_call := _m.On("GetFlyteKitMetrics", matchers...)
+	return &MetricsInterface_GetFlyteKitMetrics{Call: c_call}
+}
+
+// GetFlyteKitMetrics provides a mock function with given fields: ctx, request
+func (_m *MetricsInterface) GetFlyteKitMetrics(ctx context.Context, request admin.NodeExecutionGetRequest) (*admin.WorkflowExecutionGetMetricsResponse, error) {
+	ret := _m.Called(ctx, request)
+
+	var r0 *admin.WorkflowExecutionGetMetricsResponse
+	if rf, ok := ret.Get(0).(func(context.Context, admin.NodeExecutionGetRequest) *admin.WorkflowExecutionGetMetricsResponse); ok {
+		r0 = rf(ctx, request)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*admin.WorkflowExecutionGetMetricsResponse)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, admin.NodeExecutionGetRequest) error); ok {
+		r1 = rf(ctx, request)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}

@@ -668,9 +668,15 @@ func (m *MetricsManager) GetExecutionMetrics(ctx context.Context,
 	return &admin.WorkflowExecutionGetMetricsResponse{Span: span}, nil
 }
 
-func (m *MetricsManager) getFlyteKitSpans(ctx context.Context, spanURI string) (*core.Span, error) {
-	fmt.Println("For test only, Span URI:", spanURI)
-	blob, err := m.urlData.Get(ctx, spanURI)
+func (m *MetricsManager) GetFlyteKitMetrics(ctx context.Context,
+	request admin.NodeExecutionGetRequest) (*admin.WorkflowExecutionGetMetricsResponse, error) {
+
+	nodeExecution, err := m.nodeExecutionManager.GetNodeExecution(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+
+	blob, err := m.urlData.Get(ctx, nodeExecution.Closure.SpanUri)
 	if err != nil {
 		return nil, err
 	}
@@ -680,22 +686,8 @@ func (m *MetricsManager) getFlyteKitSpans(ctx context.Context, spanURI string) (
 	if err != nil {
 		return nil, err
 	}
-	return &flyteKitSpan, nil
-}
 
-func (m *MetricsManager) GetFlyteKitMetrics(ctx context.Context,
-	request admin.NodeExecutionGetRequest) (*admin.WorkflowExecutionGetMetricsResponse, error) {
-	nodeExecution, err := m.nodeExecutionManager.GetNodeExecution(ctx, request)
-	if err != nil {
-		return nil, err
-	}
-
-	flyteKitSpan, err := m.getFlyteKitSpans(ctx, nodeExecution.Closure.SpanUri)
-	if err != nil {
-		return nil, err
-	}
-
-	return &admin.WorkflowExecutionGetMetricsResponse{Span: flyteKitSpan}, nil
+	return &admin.WorkflowExecutionGetMetricsResponse{Span: &flyteKitSpan}, nil
 }
 
 // NewMetricsManager returns a new MetricsManager constructed with the provided arguments.
