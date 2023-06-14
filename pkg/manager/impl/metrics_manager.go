@@ -648,23 +648,6 @@ func (m *MetricsManager) parseTaskNodeExecution(ctx context.Context, nodeExecuti
 	return nil
 }
 
-func printSpans(span *core.Span, prefix string) {
-	switch id := span.Id.(type) {
-	case *core.Span_WorkflowId:
-		fmt.Println(prefix, "Workflow ID:", id.WorkflowId)
-	case *core.Span_NodeId:
-		fmt.Println(prefix, "Node ID:", id.NodeId)
-	case *core.Span_TaskId:
-		fmt.Println(prefix, "Task ID:", id.TaskId)
-	case *core.Span_OperationId:
-		fmt.Println(prefix, "Operation ID:", id.OperationId)
-	}
-
-	for _, childSpan := range span.Spans {
-		printSpans(childSpan, prefix+"-")
-	}
-}
-
 // GetExecutionMetrics returns a Span hierarchically breaking down the workflow execution into a collection of
 // Categorical and Reference Spans.
 func (m *MetricsManager) GetExecutionMetrics(ctx context.Context,
@@ -685,9 +668,9 @@ func (m *MetricsManager) GetExecutionMetrics(ctx context.Context,
 	return &admin.WorkflowExecutionGetMetricsResponse{Span: span}, nil
 }
 
-func (m *MetricsManager) getFlyteKitSpans(ctx context.Context, spanUri string) (*core.Span, error) {
-	fmt.Println("For test only, Span URI:", spanUri)
-	blob, err := m.urlData.Get(ctx, spanUri)
+func (m *MetricsManager) getFlyteKitSpans(ctx context.Context, spanURI string) (*core.Span, error) {
+	fmt.Println("For test only, Span URI:", spanURI)
+	blob, err := m.urlData.Get(ctx, spanURI)
 	if err != nil {
 		return nil, err
 	}
@@ -701,7 +684,7 @@ func (m *MetricsManager) getFlyteKitSpans(ctx context.Context, spanUri string) (
 }
 
 func (m *MetricsManager) GetFlyteKitMetrics(ctx context.Context,
-	request admin.NodeExecutionGetRequest,) (*admin.WorkflowExecutionGetMetricsResponse, error) {
+	request admin.NodeExecutionGetRequest) (*admin.WorkflowExecutionGetMetricsResponse, error) {
 	nodeExecution, err := m.nodeExecutionManager.GetNodeExecution(ctx, request)
 	if err != nil {
 		return nil, err

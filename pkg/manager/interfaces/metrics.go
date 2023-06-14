@@ -13,6 +13,6 @@ type MetricsInterface interface {
 	GetExecutionMetrics(ctx context.Context, request admin.WorkflowExecutionGetMetricsRequest) (
 		*admin.WorkflowExecutionGetMetricsResponse, error)
 
-	GetFlyteKitMetrics(ctx context.Context,request admin.NodeExecutionGetRequest) (
+	GetFlyteKitMetrics(ctx context.Context, request admin.NodeExecutionGetRequest) (
 		*admin.WorkflowExecutionGetMetricsResponse, error)
 }
