@@ -178,7 +178,7 @@ func NewAdminServer(ctx context.Context, pluginRegistry *plugins.Registry, confi
 		ProjectManager:           manager.NewProjectManager(repo, configuration),
 		ResourceManager:          resources.NewResourceManager(repo, configuration.ApplicationConfiguration()),
 		MetricsManager: manager.NewMetricsManager(workflowManager, executionManager, nodeExecutionManager,
-			taskExecutionManager, adminScope.NewSubScope("metrics_manager")),
+			taskExecutionManager, adminScope.NewSubScope("metrics_manager"), urlData, dataStorageClient),
 		Metrics: InitMetrics(adminScope),
 	}
 }

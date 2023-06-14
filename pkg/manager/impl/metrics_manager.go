@@ -20,6 +20,9 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	dataInterfaces "github.com/flyteorg/flyteadmin/pkg/data/interfaces"
+	"github.com/flyteorg/flytestdlib/storage"
 )
 
 const (
@@ -59,6 +62,8 @@ type MetricsManager struct {
 	nodeExecutionManager interfaces.NodeExecutionInterface
 	taskExecutionManager interfaces.TaskExecutionInterface
 	metrics              metrics
+	urlData              dataInterfaces.RemoteURLInterface
+	storageClient        *storage.DataStore
 }
 
 // createOperationSpan returns a Span defined by the provided arguments.
@@ -643,6 +648,23 @@ func (m *MetricsManager) parseTaskNodeExecution(ctx context.Context, nodeExecuti
 	return nil
 }
 
+func printSpans(span *core.Span, prefix string) {
+	switch id := span.Id.(type) {
+	case *core.Span_WorkflowId:
+		fmt.Println(prefix, "Workflow ID:", id.WorkflowId)
+	case *core.Span_NodeId:
+		fmt.Println(prefix, "Node ID:", id.NodeId)
+	case *core.Span_TaskId:
+		fmt.Println(prefix, "Task ID:", id.TaskId)
+	case *core.Span_OperationId:
+		fmt.Println(prefix, "Operation ID:", id.OperationId)
+	}
+
+	for _, childSpan := range span.Spans {
+		printSpans(childSpan, prefix+"-")
+	}
+}
+
 // GetExecutionMetrics returns a Span hierarchically breaking down the workflow execution into a collection of
 // Categorical and Reference Spans.
 func (m *MetricsManager) GetExecutionMetrics(ctx context.Context,
@@ -663,13 +685,44 @@ func (m *MetricsManager) GetExecutionMetrics(ctx context.Context,
 	return &admin.WorkflowExecutionGetMetricsResponse{Span: span}, nil
 }
 
+func (m *MetricsManager) getFlyteKitSpans(ctx context.Context, spanUri string) (*core.Span, error) {
+	fmt.Println("For test only, Span URI:", spanUri)
+	blob, err := m.urlData.Get(ctx, spanUri)
+	if err != nil {
+		return nil, err
+	}
+
+	var flyteKitSpan core.Span
+	err = m.storageClient.ReadProtobuf(ctx, storage.DataReference(blob.Url), &flyteKitSpan)
+	if err != nil {
+		return nil, err
+	}
+	return &flyteKitSpan, nil
+}
+
+func (m *MetricsManager) GetFlyteKitMetrics(ctx context.Context,
+	request admin.NodeExecutionGetRequest,) (*admin.WorkflowExecutionGetMetricsResponse, error) {
+	nodeExecution, err := m.nodeExecutionManager.GetNodeExecution(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+
+	flyteKitSpan, err := m.getFlyteKitSpans(ctx, nodeExecution.Closure.SpanUri)
+	if err != nil {
+		return nil, err
+	}
+
+	return &admin.WorkflowExecutionGetMetricsResponse{Span: flyteKitSpan}, nil
+}
+
 // NewMetricsManager returns a new MetricsManager constructed with the provided arguments.
 func NewMetricsManager(
 	workflowManager interfaces.WorkflowInterface,
 	executionManager interfaces.ExecutionInterface,
 	nodeExecutionManager interfaces.NodeExecutionInterface,
 	taskExecutionManager interfaces.TaskExecutionInterface,
-	scope promutils.Scope) interfaces.MetricsInterface {
+	scope promutils.Scope, urlData dataInterfaces.RemoteURLInterface, storageClient *storage.DataStore,
+) interfaces.MetricsInterface {
 	metrics := metrics{
 		Scope: scope,
 	}
@@ -680,5 +733,7 @@ func NewMetricsManager(
 		nodeExecutionManager: nodeExecutionManager,
 		taskExecutionManager: taskExecutionManager,
 		metrics:              metrics,
+		urlData:              urlData,
+		storageClient:        storageClient,
 	}
 }
