@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"google.golang.org/grpc/metadata"
 	"net"
 	"net/http"
+	"net/textproto"
 	"strings"
 	"time"
 
@@ -69,6 +71,35 @@ func SetMetricKeys(appConfig *runtimeIfaces.ApplicationConfig) {
 	if len(keys) > 0 {
 		labeled.SetMetricKeys(keys...)
 	}
+}
+
+func isCustomHeader(key string) bool {
+	return strings.HasPrefix(textproto.CanonicalMIMEHeaderKey(key), "X-")
+}
+
+// CustomHeaderClientInterceptor adds custom headers to outgoing metadata
+func CustomHeaderClientInterceptor(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+	// Extract custom headers from incoming metadata
+	incomingMD, ok := metadata.FromIncomingContext(ctx)
+	logger.Debugf(ctx, "incoming metadata [%+v]", incomingMD)
+	if ok {
+		var outgoingMetadataPairs []string
+		for key, values := range incomingMD {
+			if isCustomHeader(key) {
+				for _, val := range values {
+					outgoingMetadataPairs = append(outgoingMetadataPairs, key, val)
+				}
+			}
+		}
+
+		// Create a new context with the updated metadata
+		ctx = metadata.AppendToOutgoingContext(ctx, outgoingMetadataPairs...)
+	}
+	outgoingMD, _ := metadata.FromOutgoingContext(ctx)
+	logger.Debugf(ctx, "set outgoing metadata [%+v]", outgoingMD)
+
+	// Invoke the gRPC call with the updated context
+	return invoker(ctx, method, req, reply, cc, opts...)
 }
 
 // Creates a new gRPC Server with all the configuration
@@ -300,6 +331,8 @@ func serveGatewayInsecure(ctx context.Context, pluginRegistry *plugins.Registry,
 		grpcOptions = append(grpcOptions,
 			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(cfg.GrpcConfig.MaxMessageSizeBytes)))
 	}
+	grpcOptions = append(grpcOptions, grpc.WithChainUnaryInterceptor(CustomHeaderClientInterceptor))
+
 	httpServer, err := newHTTPServer(ctx, cfg, authCfg, authCtx, additionalHandlers, cfg.GetGrpcHostAddress(), grpcOptions...)
 	if err != nil {
 		return err
@@ -402,6 +435,7 @@ func serveGatewaySecure(ctx context.Context, pluginRegistry *plugins.Registry, c
 		serverOpts = append(serverOpts,
 			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(cfg.GrpcConfig.MaxMessageSizeBytes)))
 	}
+	serverOpts = append(serverOpts, grpc.WithChainUnaryInterceptor(CustomHeaderClientInterceptor))
 	httpServer, err := newHTTPServer(ctx, cfg, authCfg, authCtx, additionalHandlers, cfg.GetHostAddress(), serverOpts...)
 	if err != nil {
 		return err
