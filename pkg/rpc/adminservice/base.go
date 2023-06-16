@@ -114,7 +114,9 @@ func NewAdminServer(ctx context.Context, pluginRegistry *plugins.Registry, confi
 	webhookProcessors := webhook.NewWebhookProcessors(*configuration.ApplicationConfiguration().GetWebhookNotificationConfig(), adminScope)
 	go func() {
 		logger.Info(ctx, "Started processing webhook events.")
-		webhookProcessors[0].StartProcessing()
+		for _, webhookProcessor := range webhookProcessors {
+			webhookProcessor.StartProcessing()
+		}
 	}()
 
 	// Configure workflow scheduler async processes.

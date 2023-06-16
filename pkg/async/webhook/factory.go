@@ -20,6 +20,9 @@ var enable64decoding = false
 
 func GetWebhook(config runtimeInterfaces.WebHookConfig, scope promutils.Scope) webhookInterfaces.Webhook {
 	// TODO: Get others webhooks
+	if config.Name == "slack" {
+		return implementations.NewSlackWebhook(config, scope)
+	}
 	return implementations.NewSlackWebhook(config, scope)
 }
 

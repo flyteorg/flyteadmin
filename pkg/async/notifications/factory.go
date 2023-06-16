@@ -130,7 +130,7 @@ func NewNotificationsProcessor(config runtimeInterfaces.NotificationsConfig, sco
 }
 
 func NewWebhookNotificationsPublisher(config runtimeInterfaces.WebhookNotificationsConfig, scope promutils.Scope) interfaces.Publisher {
-	logger.Infof(context.Background(), "Starting webhook notification publisher  [%s]", config.Type)
+	logger.Infof(context.Background(), "Starting webhook notification publisher [%s]", config.Type)
 	cfg := runtimeInterfaces.NotificationsConfig{
 		Type: config.Type,
 		NotificationsPublisherConfig: runtimeInterfaces.NotificationsPublisherConfig{

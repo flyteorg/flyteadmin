@@ -1566,7 +1566,7 @@ func (m *ExecutionManager) publishWebhookNotifications(ctx context.Context, requ
 	var notificationsList = adminExecution.Closure.Notifications
 	logger.Info(ctx, "publishing notifications for execution [%+v] in state [%+v] for notifications [%+v]",
 		request.Event.ExecutionId, request.Event.Phase, notificationsList)
-	// payloads[phase][name] = body
+	// TODO: payloads[phase][name] = body
 	payloads := make(map[string]string)
 	for _, w := range m.config.ApplicationConfiguration().GetWebhookNotificationConfig().WebhooksConfig {
 		payloads[w.Name] = w.Payload
