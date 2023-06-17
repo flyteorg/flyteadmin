@@ -668,10 +668,13 @@ func (m *MetricsManager) GetExecutionMetrics(ctx context.Context,
 	return &admin.WorkflowExecutionGetMetricsResponse{Span: span}, nil
 }
 
-func (m *MetricsManager) GetFlyteKitMetrics(ctx context.Context,
-	request admin.NodeExecutionGetRequest) (*admin.WorkflowExecutionGetMetricsResponse, error) {
+func (m *MetricsManager) GetTaskMetrics(ctx context.Context,
+	request admin.GetTaskMetricsRequest) (*admin.GetTaskMetricsResponse, error) {
 
-	nodeExecution, err := m.nodeExecutionManager.GetNodeExecution(ctx, request)
+	nodeExecution, err := m.nodeExecutionManager.GetNodeExecution(ctx, admin.NodeExecutionGetRequest{
+		Id: request.Id,
+	},
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -687,7 +690,7 @@ func (m *MetricsManager) GetFlyteKitMetrics(ctx context.Context,
 		return nil, err
 	}
 
-	return &admin.WorkflowExecutionGetMetricsResponse{Span: &flyteKitSpan}, nil
+	return &admin.GetTaskMetricsResponse{Span: &flyteKitSpan}, nil
 }
 
 // NewMetricsManager returns a new MetricsManager constructed with the provided arguments.

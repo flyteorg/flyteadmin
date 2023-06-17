@@ -159,21 +159,21 @@ func (m *AdminService) GetExecutionMetrics(
 	return response, nil
 }
 
-func (m *AdminService) GetFlyteKitMetrics(
-	ctx context.Context, request *admin.NodeExecutionGetRequest) (*admin.WorkflowExecutionGetMetricsResponse, error) {
+func (m *AdminService) GetTaskMetrics(
+	ctx context.Context, request *admin.GetTaskMetricsRequest) (*admin.GetTaskMetricsResponse, error) {
 	defer m.interceptPanic(ctx, request)
 	if request == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Incorrect request, nil requests not allowed")
 	}
-	var response *admin.WorkflowExecutionGetMetricsResponse
+	var response *admin.GetTaskMetricsResponse
 	var err error
-	m.Metrics.executionEndpointMetrics.GetFlyteKitMetrics.Time(func() {
-		response, err = m.MetricsManager.GetFlyteKitMetrics(ctx, *request)
+	m.Metrics.executionEndpointMetrics.GetTaskMetrics.Time(func() {
+		response, err = m.MetricsManager.GetTaskMetrics(ctx, *request)
 	})
 	if err != nil {
-		return nil, util.TransformAndRecordError(err, &m.Metrics.executionEndpointMetrics.GetFlyteKitMetrics)
+		return nil, util.TransformAndRecordError(err, &m.Metrics.executionEndpointMetrics.GetTaskMetrics)
 	}
-	m.Metrics.executionEndpointMetrics.GetFlyteKitMetrics.Success()
+	m.Metrics.executionEndpointMetrics.GetTaskMetrics.Success()
 	return response, nil
 }
 
