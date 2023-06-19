@@ -77,13 +77,13 @@ func (s Service) CreateUploadLocation(ctx context.Context, req *service.CreateUp
 	}
 
 	md5 := base64.StdEncoding.EncodeToString(req.ContentMd5)
-	urlSafeMd5 := base32.StdEncoding.EncodeToString(req.ContentMd5)
 
 	var prefix string
 	if req.FilenameRoot != "" {
 		prefix = req.FilenameRoot
 	} else {
-		prefix = urlSafeMd5
+		// url safe base32 encoding
+		prefix = base32.StdEncoding.EncodeToString(req.ContentMd5)
 	}
 	storagePath, err := createStorageLocation(ctx, s.dataStore, s.cfg.Upload,
 		req.Project, req.Domain, prefix, req.Filename)
