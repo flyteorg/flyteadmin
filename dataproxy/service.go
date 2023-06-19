@@ -79,7 +79,7 @@ func (s Service) CreateUploadLocation(ctx context.Context, req *service.CreateUp
 	md5 := base64.StdEncoding.EncodeToString(req.ContentMd5)
 
 	var prefix string
-	if req.FilenameRoot != "" {
+	if len(req.FilenameRoot) > 0 {
 		prefix = req.FilenameRoot
 	} else {
 		// url safe base32 encoding
