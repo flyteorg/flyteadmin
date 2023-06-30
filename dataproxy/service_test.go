@@ -87,6 +87,9 @@ func TestCreateUploadLocation(t *testing.T) {
 
 func TestCreateDownloadLink(t *testing.T) {
 	dataStore := commonMocks.GetMockStorageClient()
+	dataStore.ComposedProtobufStore.(*commonMocks.TestDataStore).HeadCb = func(ctx context.Context, reference storage.DataReference) (storage.Metadata, error) {
+		return existsMetadata{}, nil
+	}
 	nodeExecutionManager := &mocks.MockNodeExecutionManager{}
 	nodeExecutionManager.SetGetNodeExecutionFunc(func(ctx context.Context, request admin.NodeExecutionGetRequest) (*admin.NodeExecution, error) {
 		return &admin.NodeExecution{
@@ -126,6 +129,19 @@ func TestCreateDownloadLink(t *testing.T) {
 			},
 		})
 		assert.NoError(t, err)
+	})
+
+	t.Run("nonexistent URI", func(t *testing.T) {
+		dataStore.ComposedProtobufStore.(*commonMocks.TestDataStore).HeadCb = func(ctx context.Context, reference storage.DataReference) (storage.Metadata, error) {
+			return nonexistentMetadata{}, nil
+		}
+		_, err = s.CreateDownloadLink(context.Background(), &service.CreateDownloadLinkRequest{
+			ArtifactType: service.ArtifactType_ARTIFACT_TYPE_DECK,
+			Source: &service.CreateDownloadLinkRequest_NodeExecutionId{
+				NodeExecutionId: &core.NodeExecutionIdentifier{},
+			},
+		})
+		assert.Error(t, err)
 	})
 }
 
@@ -349,4 +365,24 @@ func TestService_Error(t *testing.T) {
 		_, err := s.GetTaskExecutionID(context.Background(), 0, nodeExecID)
 		assert.Error(t, err, "no task executions")
 	})
+}
+
+type existsMetadata struct{}
+
+func (e existsMetadata) Exists() bool {
+	return true
+}
+
+func (e existsMetadata) Size() int64 {
+	return int64(1)
+}
+
+type nonexistentMetadata struct{}
+
+func (e nonexistentMetadata) Exists() bool {
+	return false
+}
+
+func (e nonexistentMetadata) Size() int64 {
+	return int64(0)
 }
