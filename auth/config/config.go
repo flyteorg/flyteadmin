@@ -113,7 +113,7 @@ var (
 					},
 					"flytepropeller": {
 						ID:            "flytepropeller",
-						Secret:        []byte(`$2a$06$pxs1AkG81Kvrhpml1QiLSOQaTk9eePrU/7Yab9y07h3x0TglbaoT6`), // = "foobar"
+						Secret:        []byte(`$2a$06$d6PQn2QAFU3cL5V8MDkeuuk63xubqUxNxjtfPw.Fc9MgV6vpmyOIy`), // Change this.
 						RedirectURIs:  []string{"http://localhost:3846/callback"},
 						ResponseTypes: []string{"token"},
 						GrantTypes:    []string{"refresh_token", "client_credentials"},
@@ -152,6 +152,9 @@ type Config struct {
 	// the `secure` setting.
 	AuthorizedURIs []config.URL `json:"authorizedUris" pflag:"-,Optional: Defines the set of URIs that clients are allowed to visit the service on. If set, the system will attempt to match the incoming host to the first authorized URIs and use that (including the scheme) when generating metadata endpoints and when validating audience and issuer claims. If not provided, the urls will be deduced based on the request url and the 'secure' setting."`
 
+	// HTTPProxyURL allows operators to access external OAuth2 servers using an external HTTP Proxy
+	HTTPProxyURL config.URL `json:"httpProxyURL" pflag:",OPTIONAL: HTTP Proxy to be used for OAuth requests."`
+
 	// UserAuth settings used to authenticate end users in web-browsers.
 	UserAuth UserAuthConfig `json:"userAuth" pflag:",Defines Auth options for users."`
 
@@ -187,6 +190,8 @@ type ExternalAuthorizationServer struct {
 	BaseURL             config.URL `json:"baseUrl" pflag:",This should be the base url of the authorization server that you are trying to hit. With Okta for instance, it will look something like https://company.okta.com/oauth2/abcdef123456789/"`
 	AllowedAudience     []string   `json:"allowedAudience" pflag:",Optional: A list of allowed audiences. If not provided, the audience is expected to be the public Uri of the service."`
 	MetadataEndpointURL config.URL `json:"metadataUrl" pflag:",Optional: If the server doesn't support /.well-known/oauth-authorization-server, you can set a custom metadata url here.'"`
+	// HTTPProxyURL allows operators to access external OAuth2 servers using an external HTTP Proxy
+	HTTPProxyURL config.URL `json:"httpProxyURL" pflag:",OPTIONAL: HTTP Proxy to be used for OAuth requests."`
 }
 
 // OAuth2Options defines settings for app auth.
@@ -214,6 +219,9 @@ type UserAuthConfig struct {
 	// OpenID defines settings for connecting and trusting an OpenIDConnect provider.
 	OpenID OpenIDOptions `json:"openId" pflag:",OpenID Configuration for User Auth"`
 	// Possibly add basicAuth & SAML/p support.
+
+	// HTTPProxyURL allows operators to access external OAuth2 servers using an external HTTP Proxy
+	HTTPProxyURL config.URL `json:"httpProxyURL" pflag:",OPTIONAL: HTTP Proxy to be used for OAuth requests."`
 
 	// Secret names, defaults are set in DefaultConfig variable above but are possible to override through configs.
 	CookieHashKeySecretName  string         `json:"cookieHashKeySecretName" pflag:",OPTIONAL: Secret name to use for cookie hash key."`

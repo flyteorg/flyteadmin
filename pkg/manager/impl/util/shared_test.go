@@ -3,8 +3,11 @@ package util
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/golang/protobuf/ptypes/wrappers"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	commonMocks "github.com/flyteorg/flyteadmin/pkg/common/mocks"
@@ -563,4 +566,221 @@ func TestGetMatchableResource(t *testing.T) {
 		_, err := GetMatchableResource(context.Background(), resourceManager, resourceType, project, domain, "")
 		assert.NotNil(t, err)
 	})
+}
+
+func TestGetDescriptionEntityModel(t *testing.T) {
+	repository := repositoryMocks.NewMockRepository()
+	t.Run("Get Description Entity model", func(t *testing.T) {
+		entity, err := GetDescriptionEntityModel(context.Background(), repository,
+			core.Identifier{
+				ResourceType: core.ResourceType_TASK,
+				Project:      project,
+				Domain:       domain,
+				Name:         name,
+				Version:      version,
+			})
+		assert.Nil(t, err)
+		assert.NotNil(t, entity)
+		assert.Equal(t, "hello world", entity.ShortDescription)
+	})
+
+	t.Run("Failed to get DescriptionEntity model", func(t *testing.T) {
+		getFunction := func(input interfaces.GetDescriptionEntityInput) (models.DescriptionEntity, error) {
+			return models.DescriptionEntity{}, flyteAdminErrors.NewFlyteAdminErrorf(codes.NotFound, "NotFound")
+		}
+		repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetGetCallback(getFunction)
+		entity, err := GetDescriptionEntityModel(context.Background(), repository,
+			core.Identifier{
+				ResourceType: core.ResourceType_TASK,
+				Project:      project,
+				Domain:       domain,
+				Name:         name,
+				Version:      version,
+			})
+		assert.Error(t, err)
+		assert.Equal(t, "", entity.Name)
+	})
+}
+
+func TestGetDescriptionEntity(t *testing.T) {
+	repository := repositoryMocks.NewMockRepository()
+	t.Run("Get Description Entity", func(t *testing.T) {
+		entity, err := GetDescriptionEntity(context.Background(), repository,
+			core.Identifier{
+				ResourceType: core.ResourceType_TASK,
+				Project:      project,
+				Domain:       domain,
+				Name:         name,
+				Version:      version,
+			})
+		assert.Nil(t, err)
+		assert.NotNil(t, entity)
+		assert.Equal(t, "hello world", entity.ShortDescription)
+	})
+
+	t.Run("Failed to get DescriptionEntity", func(t *testing.T) {
+		getFunction := func(input interfaces.GetDescriptionEntityInput) (models.DescriptionEntity, error) {
+			return models.DescriptionEntity{}, flyteAdminErrors.NewFlyteAdminErrorf(codes.NotFound, "NotFound")
+		}
+		repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetGetCallback(getFunction)
+		entity, err := GetDescriptionEntity(context.Background(), repository,
+			core.Identifier{
+				ResourceType: core.ResourceType_TASK,
+				Project:      project,
+				Domain:       domain,
+				Name:         name,
+				Version:      version,
+			})
+		assert.Error(t, err)
+		assert.Nil(t, entity)
+
+		getFunction = func(input interfaces.GetDescriptionEntityInput) (models.DescriptionEntity, error) {
+			return models.DescriptionEntity{LongDescription: []byte("???")}, nil
+		}
+		repository.DescriptionEntityRepo().(*repositoryMocks.MockDescriptionEntityRepo).SetGetCallback(getFunction)
+		entity, err = GetDescriptionEntity(context.Background(), repository,
+			core.Identifier{
+				ResourceType: core.ResourceType_TASK,
+				Project:      project,
+				Domain:       domain,
+				Name:         name,
+				Version:      version,
+			})
+		assert.Error(t, err)
+		assert.Nil(t, entity)
+	})
+}
+
+func TestMergeIntoExecConfig(t *testing.T) {
+	var res admin.WorkflowExecutionConfig
+	parameters := []struct {
+		higher, lower, expected admin.WorkflowExecutionConfig
+	}{
+		// Max Parallelism taken from higher
+		{
+			admin.WorkflowExecutionConfig{
+				MaxParallelism: 5,
+				RawOutputDataConfig: &admin.RawOutputDataConfig{
+					OutputLocationPrefix: "s3://test-bucket",
+				},
+				Labels: &admin.Labels{
+					Values: map[string]string{"lab1": "val1"},
+				},
+				Annotations: &admin.Annotations{
+					Values: map[string]string{"ann1": "annval"},
+				},
+			},
+			admin.WorkflowExecutionConfig{
+				MaxParallelism: 0,
+				RawOutputDataConfig: &admin.RawOutputDataConfig{
+					OutputLocationPrefix: "s3://asdf",
+				},
+				Labels: &admin.Labels{
+					Values: map[string]string{"lab1": "oldvalue"},
+				},
+			},
+			admin.WorkflowExecutionConfig{
+				MaxParallelism: 5,
+				RawOutputDataConfig: &admin.RawOutputDataConfig{
+					OutputLocationPrefix: "s3://test-bucket",
+				},
+				Labels: &admin.Labels{
+					Values: map[string]string{"lab1": "val1"},
+				},
+				Annotations: &admin.Annotations{
+					Values: map[string]string{"ann1": "annval"},
+				},
+			},
+		},
+
+		// Values that are set to empty in higher priority get overwritten
+		{
+			admin.WorkflowExecutionConfig{
+				RawOutputDataConfig: &admin.RawOutputDataConfig{
+					OutputLocationPrefix: "",
+				},
+				Labels: &admin.Labels{
+					Values: map[string]string{},
+				},
+				Annotations: &admin.Annotations{
+					Values: map[string]string{},
+				},
+			},
+			admin.WorkflowExecutionConfig{
+				RawOutputDataConfig: &admin.RawOutputDataConfig{
+					OutputLocationPrefix: "s3://asdf",
+				},
+				Labels: &admin.Labels{
+					Values: map[string]string{"lab1": "oldvalue"},
+				},
+				Annotations: &admin.Annotations{
+					Values: map[string]string{"ann1": "annval"},
+				},
+			},
+			admin.WorkflowExecutionConfig{
+				RawOutputDataConfig: &admin.RawOutputDataConfig{
+					OutputLocationPrefix: "s3://asdf",
+				},
+				Labels: &admin.Labels{
+					Values: map[string]string{"lab1": "oldvalue"},
+				},
+				Annotations: &admin.Annotations{
+					Values: map[string]string{"ann1": "annval"},
+				},
+			},
+		},
+
+		// Values that are not set at all get merged in
+		{
+			admin.WorkflowExecutionConfig{},
+			admin.WorkflowExecutionConfig{
+				RawOutputDataConfig: &admin.RawOutputDataConfig{
+					OutputLocationPrefix: "s3://asdf",
+				},
+				Labels: &admin.Labels{
+					Values: map[string]string{"lab1": "oldvalue"},
+				},
+				Annotations: &admin.Annotations{
+					Values: map[string]string{"ann1": "annval"},
+				},
+			},
+			admin.WorkflowExecutionConfig{
+				RawOutputDataConfig: &admin.RawOutputDataConfig{
+					OutputLocationPrefix: "s3://asdf",
+				},
+				Labels: &admin.Labels{
+					Values: map[string]string{"lab1": "oldvalue"},
+				},
+				Annotations: &admin.Annotations{
+					Values: map[string]string{"ann1": "annval"},
+				},
+			},
+		},
+
+		// Interruptible
+		{
+			admin.WorkflowExecutionConfig{
+				Interruptible: &wrappers.BoolValue{
+					Value: false,
+				},
+			},
+			admin.WorkflowExecutionConfig{
+				Interruptible: &wrappers.BoolValue{
+					Value: true,
+				},
+			},
+			admin.WorkflowExecutionConfig{
+				Interruptible: &wrappers.BoolValue{
+					Value: false,
+				},
+			},
+		},
+	}
+
+	for i := range parameters {
+		t.Run(fmt.Sprintf("Testing [%v]", i), func(t *testing.T) {
+			res = MergeIntoExecConfig(parameters[i].higher, &parameters[i].lower)
+			assert.True(t, proto.Equal(&parameters[i].expected, &res))
+		})
+	}
 }

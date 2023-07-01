@@ -34,17 +34,19 @@ import (
 
 type AdminService struct {
 	service.UnimplementedAdminServiceServer
-	TaskManager          interfaces.TaskInterface
-	WorkflowManager      interfaces.WorkflowInterface
-	LaunchPlanManager    interfaces.LaunchPlanInterface
-	ExecutionManager     interfaces.ExecutionInterface
-	NodeExecutionManager interfaces.NodeExecutionInterface
-	TaskExecutionManager interfaces.TaskExecutionInterface
-	ProjectManager       interfaces.ProjectInterface
-	ResourceManager      interfaces.ResourceInterface
-	NamedEntityManager   interfaces.NamedEntityInterface
-	VersionManager       interfaces.VersionInterface
-	Metrics              AdminMetrics
+	TaskManager              interfaces.TaskInterface
+	WorkflowManager          interfaces.WorkflowInterface
+	LaunchPlanManager        interfaces.LaunchPlanInterface
+	ExecutionManager         interfaces.ExecutionInterface
+	NodeExecutionManager     interfaces.NodeExecutionInterface
+	TaskExecutionManager     interfaces.TaskExecutionInterface
+	ProjectManager           interfaces.ProjectInterface
+	ResourceManager          interfaces.ResourceInterface
+	NamedEntityManager       interfaces.NamedEntityInterface
+	VersionManager           interfaces.VersionInterface
+	DescriptionEntityManager interfaces.DescriptionEntityInterface
+	MetricsManager           interfaces.MetricsInterface
+	Metrics                  AdminMetrics
 }
 
 // Intercepts all admin requests to handle panics during execution.
@@ -92,7 +94,7 @@ func NewAdminServer(ctx context.Context, pluginRegistry *plugins.Registry, confi
 		repo)
 	workflowBuilder := workflowengineImpl.NewFlyteWorkflowBuilder(
 		adminScope.NewSubScope("builder").NewSubScope("flytepropeller"))
-	workflowExecutor := workflowengineImpl.NewK8sWorkflowExecutor(execCluster, workflowBuilder)
+	workflowExecutor := workflowengineImpl.NewK8sWorkflowExecutor(configuration, execCluster, workflowBuilder, dataStorageClient)
 	logger.Info(ctx, "Successfully created a workflow executor engine")
 	pluginRegistry.RegisterDefault(plugins.PluginIDWorkflowExecutor, workflowExecutor)
 
@@ -132,6 +134,7 @@ func NewAdminServer(ctx context.Context, pluginRegistry *plugins.Registry, confi
 		repo, configuration, workflowengineImpl.NewCompiler(), dataStorageClient, applicationConfiguration.GetMetadataStoragePrefix(),
 		adminScope.NewSubScope("workflow_manager"))
 	namedEntityManager := manager.NewNamedEntityManager(repo, configuration, adminScope.NewSubScope("named_entity_manager"))
+	descriptionEntityManager := manager.NewDescriptionEntityManager(repo, configuration, adminScope.NewSubScope("description_entity_manager"))
 
 	executionEventWriter := eventWriter.NewWorkflowExecutionEventWriter(repo, applicationConfiguration.GetAsyncEventsBufferSize())
 	go func() {
@@ -155,21 +158,27 @@ func NewAdminServer(ctx context.Context, pluginRegistry *plugins.Registry, confi
 		nodeExecutionEventWriter.Run()
 	}()
 
+	nodeExecutionManager := manager.NewNodeExecutionManager(repo, configuration, applicationConfiguration.GetMetadataStoragePrefix(), dataStorageClient,
+		adminScope.NewSubScope("node_execution_manager"), urlData, eventPublisher, cloudEventPublisher, nodeExecutionEventWriter)
+	taskExecutionManager := manager.NewTaskExecutionManager(repo, configuration, dataStorageClient,
+		adminScope.NewSubScope("task_execution_manager"), urlData, eventPublisher, cloudEventPublisher)
+
 	logger.Info(ctx, "Initializing a new AdminService")
 	return &AdminService{
 		TaskManager: manager.NewTaskManager(repo, configuration, workflowengineImpl.NewCompiler(),
 			adminScope.NewSubScope("task_manager")),
-		WorkflowManager:    workflowManager,
-		LaunchPlanManager:  launchPlanManager,
-		ExecutionManager:   executionManager,
-		NamedEntityManager: namedEntityManager,
-		VersionManager:     versionManager,
-		NodeExecutionManager: manager.NewNodeExecutionManager(repo, configuration, applicationConfiguration.GetMetadataStoragePrefix(), dataStorageClient,
-			adminScope.NewSubScope("node_execution_manager"), urlData, eventPublisher, cloudEventPublisher, nodeExecutionEventWriter),
-		TaskExecutionManager: manager.NewTaskExecutionManager(repo, configuration, dataStorageClient,
-			adminScope.NewSubScope("task_execution_manager"), urlData, eventPublisher, cloudEventPublisher),
-		ProjectManager:  manager.NewProjectManager(repo, configuration),
-		ResourceManager: resources.NewResourceManager(repo, configuration.ApplicationConfiguration()),
-		Metrics:         InitMetrics(adminScope),
+		WorkflowManager:          workflowManager,
+		LaunchPlanManager:        launchPlanManager,
+		ExecutionManager:         executionManager,
+		NamedEntityManager:       namedEntityManager,
+		DescriptionEntityManager: descriptionEntityManager,
+		VersionManager:           versionManager,
+		NodeExecutionManager:     nodeExecutionManager,
+		TaskExecutionManager:     taskExecutionManager,
+		ProjectManager:           manager.NewProjectManager(repo, configuration),
+		ResourceManager:          resources.NewResourceManager(repo, configuration.ApplicationConfiguration()),
+		MetricsManager: manager.NewMetricsManager(workflowManager, executionManager, nodeExecutionManager,
+			taskExecutionManager, adminScope.NewSubScope("metrics_manager")),
+		Metrics: InitMetrics(adminScope),
 	}
 }

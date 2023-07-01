@@ -3,15 +3,18 @@ package interfaces
 import (
 	"io/ioutil"
 
+	"github.com/flyteorg/flyteadmin/pkg/config"
+
 	"github.com/pkg/errors"
 )
 
 // Holds details about a cluster used for workflow execution.
 type ClusterConfig struct {
-	Name     string `json:"name"`
-	Endpoint string `json:"endpoint"`
-	Auth     Auth   `json:"auth"`
-	Enabled  bool   `json:"enabled"`
+	Name             string                   `json:"name"`
+	Endpoint         string                   `json:"endpoint"`
+	Auth             Auth                     `json:"auth"`
+	Enabled          bool                     `json:"enabled"`
+	KubeClientConfig *config.KubeClientConfig `json:"kubeClientConfig,omitempty"`
 }
 
 type Auth struct {
@@ -42,8 +45,9 @@ func (auth Auth) GetToken() (string, error) {
 }
 
 type Clusters struct {
-	ClusterConfigs  []ClusterConfig            `json:"clusterConfigs"`
-	LabelClusterMap map[string][]ClusterEntity `json:"labelClusterMap"`
+	ClusterConfigs        []ClusterConfig            `json:"clusterConfigs"`
+	LabelClusterMap       map[string][]ClusterEntity `json:"labelClusterMap"`
+	DefaultExecutionLabel string                     `json:"defaultExecutionLabel"`
 }
 
 //go:generate mockery -name ClusterConfiguration -case=underscore -output=../mocks -case=underscore
@@ -56,4 +60,7 @@ type ClusterConfiguration interface {
 
 	// Returns label cluster map for routing
 	GetLabelClusterMap() map[string][]ClusterEntity
+
+	// Returns default execution label used as fallback if no execution cluster was explicitly defined.
+	GetDefaultExecutionLabel() string
 }

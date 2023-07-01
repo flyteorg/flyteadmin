@@ -8,22 +8,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
-
-	"golang.org/x/oauth2"
-
-	"github.com/flyteorg/flyteadmin/pkg/common"
-	"google.golang.org/grpc/peer"
-
-	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
-
 	"github.com/flyteorg/flyteadmin/auth/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 	"github.com/flyteorg/flytestdlib/errors"
 	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
+	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/runtime/protoiface"
 )
 
 const (
@@ -33,6 +30,7 @@ const (
 )
 
 type HTTPRequestToMetadataAnnotator func(ctx context.Context, request *http.Request) metadata.MD
+type UserInfoForwardResponseHandler func(ctx context.Context, w http.ResponseWriter, m protoiface.MessageV1) error
 
 type AuthenticatedClientMeta struct {
 	ClientIds     []string
@@ -59,6 +57,7 @@ func RegisterHandlers(ctx context.Context, handler interfaces.HandlerRegisterer,
 func RefreshTokensIfExists(ctx context.Context, authCtx interfaces.AuthenticationContext, authHandler http.HandlerFunc) http.HandlerFunc {
 
 	return func(writer http.ResponseWriter, request *http.Request) {
+		ctx = context.WithValue(ctx, oauth2.HTTPClient, authCtx.GetHTTPClient())
 		// Since we only do one thing if there are no errors anywhere along the chain, we can save code by just
 		// using one variable and checking for errors at the end.
 		idToken, accessToken, refreshToken, err := authCtx.CookieManager().RetrieveTokenValues(ctx, request)
@@ -141,6 +140,8 @@ func GetCallbackHandler(ctx context.Context, authCtx interfaces.AuthenticationCo
 	return func(writer http.ResponseWriter, request *http.Request) {
 		logger.Debugf(ctx, "Running callback handler... for RequestURI %v", request.RequestURI)
 		authorizationCode := request.FormValue(AuthorizationResponseCodeType)
+
+		ctx = context.WithValue(ctx, oauth2.HTTPClient, authCtx.GetHTTPClient())
 
 		err := VerifyCsrfCookie(ctx, request)
 		if err != nil {
@@ -308,6 +309,7 @@ func GetHTTPRequestCookieToMetadataHandler(authCtx interfaces.AuthenticationCont
 			return nil
 		}
 
+		// IDtoken is injected into grpc authorization metadata
 		meta := metadata.MD{
 			DefaultAuthorizationHeader: []string{fmt.Sprintf("%s %s", IDTokenScheme, idToken)},
 		}
@@ -395,6 +397,7 @@ func QueryUserInfo(ctx context.Context, identityContext interfaces.IdentityConte
 	return QueryUserInfoUsingAccessToken(ctx, request, authCtx, accessToken)
 }
 
+// Extract User info from access token for HTTP request
 func QueryUserInfoUsingAccessToken(ctx context.Context, originalRequest *http.Request, authCtx interfaces.AuthenticationContext, accessToken string) (
 	*service.UserInfoResponse, error) {
 
@@ -441,5 +444,26 @@ func GetLogoutEndpointHandler(ctx context.Context, authCtx interfaces.Authentica
 		if redirectURL := queryParams.Get(RedirectURLParameter); redirectURL != "" {
 			http.Redirect(writer, request, redirectURL, http.StatusTemporaryRedirect)
 		}
+	}
+}
+
+func GetUserInfoForwardResponseHandler() UserInfoForwardResponseHandler {
+	return func(ctx context.Context, w http.ResponseWriter, m protoiface.MessageV1) error {
+		info, ok := m.(*service.UserInfoResponse)
+		if ok {
+			if info.AdditionalClaims != nil {
+				for k, v := range info.AdditionalClaims.GetFields() {
+					jsonBytes, err := v.MarshalJSON()
+					if err != nil {
+						logger.Warningf(ctx, "failed to marshal claim [%s] to json: %v", k, err)
+						continue
+					}
+					header := fmt.Sprintf("X-User-Claim-%s", strings.ReplaceAll(k, "_", "-"))
+					w.Header().Set(header, string(jsonBytes))
+				}
+			}
+			w.Header().Set("X-User-Subject", info.Subject)
+		}
+		return nil
 	}
 }

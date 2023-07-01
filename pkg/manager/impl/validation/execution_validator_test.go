@@ -99,7 +99,7 @@ func TestValidateExecInputsWrongType(t *testing.T) {
 		lpRequest.Spec.FixedInputs,
 		lpRequest.Spec.DefaultInputs,
 	)
-	assert.EqualError(t, err, "invalid foo input wrong type")
+	assert.EqualError(t, err, "invalid foo input wrong type. Expected simple:STRING , but got simple:INTEGER ")
 }
 
 func TestValidateExecInputsExtraInputs(t *testing.T) {
@@ -162,9 +162,9 @@ func TestValidExecutionId(t *testing.T) {
 }
 
 func TestValidExecutionIdInvalidLength(t *testing.T) {
-	err := CheckValidExecutionID("abcdeasdasdasdasdasdasdasd123", "a")
+	err := CheckValidExecutionID("abcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabc", "a")
 	assert.NotNil(t, err)
-	assert.EqualError(t, err, "size of a exceeded length 20 : abcdeasdasdasdasdasdasdasd123")
+	assert.EqualError(t, err, "size of a exceeded length 63 : abcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabc")
 }
 
 func TestValidExecutionIdInvalidChars(t *testing.T) {

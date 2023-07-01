@@ -96,6 +96,7 @@ func getMockExecutionResponseFromDb(expected models.Execution) map[string]interf
 	execution["execution_updated_at"] = expected.ExecutionUpdatedAt
 	execution["duration"] = expected.Duration
 	execution["mode"] = expected.Mode
+	execution["launch_entity"] = expected.LaunchEntity
 	return execution
 }
 
@@ -118,6 +119,7 @@ func TestGetExecution(t *testing.T) {
 		StartedAt:          &executionStartedAt,
 		ExecutionCreatedAt: &createdAt,
 		ExecutionUpdatedAt: &executionUpdatedAt,
+		LaunchEntity:       "task",
 	}
 
 	executions := make([]map[string]interface{}, 0)
@@ -213,7 +215,7 @@ func TestListExecutions_Filters(t *testing.T) {
 
 	GlobalMock := mocket.Catcher.Reset()
 	// Only match on queries that append the name filter
-	GlobalMock.NewMock().WithQuery(`SELECT * FROM "executions" WHERE executions.execution_project = $1 AND executions.execution_domain = $2 AND executions.execution_name = $3 AND (executions.workflow_id = $4) LIMIT 20`).WithReply(executions[0:1])
+	GlobalMock.NewMock().WithQuery(`SELECT * FROM "executions" WHERE executions.execution_project = $1 AND executions.execution_domain = $2 AND executions.execution_name = $3 AND executions.workflow_id = $4 LIMIT 20`).WithReply(executions[0:1])
 
 	collection, err := executionRepo.List(context.Background(), interfaces.ListResourceInput{
 		InlineFilters: []common.InlineFilter{
@@ -303,6 +305,7 @@ func TestListExecutionsForWorkflow(t *testing.T) {
 		Spec:         []byte{3, 4},
 		StartedAt:    &executionStartedAt,
 		Duration:     time.Hour,
+		LaunchEntity: "launch_plan",
 	})
 	executions = append(executions, execution)
 
@@ -310,7 +313,7 @@ func TestListExecutionsForWorkflow(t *testing.T) {
 	GlobalMock.Logging = true
 
 	// Only match on queries that append expected filters
-	GlobalMock.NewMock().WithQuery(`SELECT "executions"."id","executions"."created_at","executions"."updated_at","executions"."deleted_at","executions"."execution_project","executions"."execution_domain","executions"."execution_name","executions"."launch_plan_id","executions"."workflow_id","executions"."task_id","executions"."phase","executions"."closure","executions"."spec","executions"."started_at","executions"."execution_created_at","executions"."execution_updated_at","executions"."duration","executions"."abort_cause","executions"."mode","executions"."source_execution_id","executions"."parent_node_execution_id","executions"."cluster","executions"."inputs_uri","executions"."user_inputs_uri","executions"."error_kind","executions"."error_code","executions"."user","executions"."state" FROM "executions" INNER JOIN workflows ON executions.workflow_id = workflows.id INNER JOIN tasks ON executions.task_id = tasks.id WHERE executions.execution_project = $1 AND executions.execution_domain = $2 AND executions.execution_name = $3 AND (workflows.name = $4) AND tasks.name = $5 LIMIT 20`).WithReply(executions)
+	GlobalMock.NewMock().WithQuery(`SELECT "executions"."id","executions"."created_at","executions"."updated_at","executions"."deleted_at","executions"."execution_project","executions"."execution_domain","executions"."execution_name","executions"."launch_plan_id","executions"."workflow_id","executions"."task_id","executions"."phase","executions"."closure","executions"."spec","executions"."started_at","executions"."execution_created_at","executions"."execution_updated_at","executions"."duration","executions"."abort_cause","executions"."mode","executions"."source_execution_id","executions"."parent_node_execution_id","executions"."cluster","executions"."inputs_uri","executions"."user_inputs_uri","executions"."error_kind","executions"."error_code","executions"."user","executions"."state","executions"."launch_entity" FROM "executions" INNER JOIN workflows ON executions.workflow_id = workflows.id INNER JOIN tasks ON executions.task_id = tasks.id WHERE executions.execution_project = $1 AND executions.execution_domain = $2 AND executions.execution_name = $3 AND workflows.name = $4 AND tasks.name = $5 LIMIT 20`).WithReply(executions)
 
 	collection, err := executionRepo.List(context.Background(), interfaces.ListResourceInput{
 		InlineFilters: []common.InlineFilter{
@@ -341,5 +344,44 @@ func TestListExecutionsForWorkflow(t *testing.T) {
 		assert.Equal(t, []byte{3, 4}, execution.Spec)
 		assert.Equal(t, executionStartedAt, *execution.StartedAt)
 		assert.Equal(t, time.Hour, execution.Duration)
+		assert.Equal(t, "launch_plan", execution.LaunchEntity)
 	}
+}
+
+func TestCountExecutions(t *testing.T) {
+	executionRepo := NewExecutionRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
+
+	GlobalMock := mocket.Catcher.Reset()
+	GlobalMock.NewMock().WithQuery(
+		`SELECT count(*) FROM "executions"`).WithReply([]map[string]interface{}{{"rows": 2}})
+
+	count, err := executionRepo.Count(context.Background(), interfaces.CountResourceInput{})
+	assert.NoError(t, err)
+	assert.Equal(t, int64(2), count)
+}
+
+func TestCountExecutions_Filters(t *testing.T) {
+	executionRepo := NewExecutionRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
+
+	GlobalMock := mocket.Catcher.Reset()
+	GlobalMock.NewMock().WithQuery(
+		`SELECT count(*) FROM "executions" INNER JOIN workflows ON executions.workflow_id = workflows.id INNER JOIN tasks ON executions.task_id = tasks.id WHERE executions.phase = $1 AND "error_code" IS NULL`,
+	).WithReply([]map[string]interface{}{{"rows": 3}})
+
+	count, err := executionRepo.Count(context.Background(), interfaces.CountResourceInput{
+		InlineFilters: []common.InlineFilter{
+			getEqualityFilter(common.Execution, "phase", core.WorkflowExecution_FAILED.String()),
+		},
+		MapFilters: []common.MapFilter{
+			common.NewMapFilter(map[string]interface{}{
+				"error_code": nil,
+			}),
+		},
+		JoinTableEntities: map[common.Entity]bool{
+			common.Workflow: true,
+			common.Task:     true,
+		},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, int64(3), count)
 }

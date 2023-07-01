@@ -158,6 +158,22 @@ func TestAddExecutionOverrides(t *testing.T) {
 		assert.NotNil(t, workflow.ExecutionConfig.Interruptible)
 		assert.True(t, *workflow.ExecutionConfig.Interruptible)
 	})
+	t.Run("skip cache", func(t *testing.T) {
+		workflowExecutionConfig := &admin.WorkflowExecutionConfig{
+			OverwriteCache: true,
+		}
+		workflow := &v1alpha1.FlyteWorkflow{}
+		addExecutionOverrides(nil, workflowExecutionConfig, nil, nil, workflow)
+		assert.True(t, workflow.ExecutionConfig.OverwriteCache)
+	})
+	t.Run("Override environment variables", func(t *testing.T) {
+		workflowExecutionConfig := &admin.WorkflowExecutionConfig{
+			Envs: &admin.Envs{Values: []*core.KeyValuePair{{Key: "key", Value: "value"}}},
+		}
+		workflow := &v1alpha1.FlyteWorkflow{}
+		addExecutionOverrides(nil, workflowExecutionConfig, nil, nil, workflow)
+		assert.Equal(t, workflow.ExecutionConfig.EnvironmentVariables, map[string]string{"key": "value"})
+	})
 }
 
 func TestPrepareFlyteWorkflow(t *testing.T) {

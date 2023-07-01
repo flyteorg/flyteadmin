@@ -3,6 +3,7 @@ package transformers
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
@@ -20,6 +21,8 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
+
+const trimmedErrMessageLen = 100
 
 var clusterReassignablePhases = sets.NewString(core.WorkflowExecution_UNDEFINED.String(), core.WorkflowExecution_QUEUED.String())
 
@@ -40,6 +43,18 @@ type CreateExecutionModelInput struct {
 	InputsURI             storage.DataReference
 	UserInputsURI         storage.DataReference
 	SecurityContext       *core.SecurityContext
+	LaunchEntity          core.ResourceType
+	Namespace             string
+}
+
+type ExecutionTransformerOptions struct {
+	TrimErrorMessage bool
+	DefaultNamespace string
+}
+
+var DefaultExecutionTransformerOptions = &ExecutionTransformerOptions{}
+var ListExecutionTransformerOptions = &ExecutionTransformerOptions{
+	TrimErrorMessage: true,
 }
 
 // CreateExecutionModel transforms a ExecutionCreateRequest to a Execution model
@@ -50,6 +65,7 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 	}
 	requestSpec.Metadata.SystemMetadata = &admin.SystemMetadata{
 		ExecutionCluster: input.Cluster,
+		Namespace:        input.Namespace,
 	}
 	requestSpec.SecurityContext = input.SecurityContext
 	spec, err := proto.Marshal(requestSpec)
@@ -102,6 +118,7 @@ func CreateExecutionModel(input CreateExecutionModelInput) (*models.Execution, e
 		UserInputsURI:         input.UserInputsURI,
 		User:                  requestSpec.Metadata.Principal,
 		State:                 &activeExecution,
+		LaunchEntity:          strings.ToLower(input.LaunchEntity.String()),
 	}
 	// A reference launch entity can be one of either or a task OR launch plan. Traditionally, workflows are executed
 	// with a reference launch plan which is why this behavior is the default below.
@@ -302,15 +319,36 @@ func GetExecutionIdentifier(executionModel *models.Execution) core.WorkflowExecu
 	}
 }
 
-func FromExecutionModel(executionModel models.Execution) (*admin.Execution, error) {
+func FromExecutionModel(ctx context.Context, executionModel models.Execution, opts *ExecutionTransformerOptions) (*admin.Execution, error) {
 	var spec admin.ExecutionSpec
 	var err error
 	if err = proto.Unmarshal(executionModel.Spec, &spec); err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal spec")
 	}
+	if len(opts.DefaultNamespace) > 0 {
+		if spec.Metadata == nil {
+			spec.Metadata = &admin.ExecutionMetadata{}
+		}
+		if spec.Metadata.SystemMetadata == nil {
+			spec.Metadata.SystemMetadata = &admin.SystemMetadata{}
+		}
+		if len(spec.GetMetadata().GetSystemMetadata().Namespace) == 0 {
+			logger.Infof(ctx, "setting execution system metadata namespace to [%s]", opts.DefaultNamespace)
+			spec.Metadata.SystemMetadata.Namespace = opts.DefaultNamespace
+		}
+	}
+
 	var closure admin.ExecutionClosure
 	if err = proto.Unmarshal(executionModel.Closure, &closure); err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to unmarshal closure")
+	}
+	if closure.GetError() != nil && opts != nil && opts.TrimErrorMessage && len(closure.GetError().Message) > 0 {
+		trimmedErrOutputResult := closure.GetError()
+		trimmedErrMessage := TrimErrorMessage(trimmedErrOutputResult.GetMessage())
+		trimmedErrOutputResult.Message = trimmedErrMessage
+		closure.OutputResult = &admin.ExecutionClosure_Error{
+			Error: trimmedErrOutputResult,
+		}
 	}
 
 	if closure.StateChangeDetails == nil {
@@ -359,14 +397,22 @@ func PopulateDefaultStateChangeDetails(executionModel models.Execution) (*admin.
 	}, nil
 }
 
-func FromExecutionModels(executionModels []models.Execution) ([]*admin.Execution, error) {
+func FromExecutionModels(ctx context.Context, executionModels []models.Execution, opts *ExecutionTransformerOptions) ([]*admin.Execution, error) {
 	executions := make([]*admin.Execution, len(executionModels))
 	for idx, executionModel := range executionModels {
-		execution, err := FromExecutionModel(executionModel)
+		execution, err := FromExecutionModel(ctx, executionModel, opts)
 		if err != nil {
 			return nil, err
 		}
 		executions[idx] = execution
 	}
 	return executions, nil
+}
+
+// TrimErrorMessage return the smallest possible trimmed error message >= trimmedErrMessageLen bytes in length that still forms a valid utf-8 string
+func TrimErrorMessage(errMsg string) string {
+	if len(errMsg) <= trimmedErrMessageLen {
+		return errMsg
+	}
+	return strings.ToValidUTF8(errMsg[:trimmedErrMessageLen], "")
 }

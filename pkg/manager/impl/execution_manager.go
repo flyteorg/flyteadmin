@@ -14,8 +14,6 @@ import (
 
 	"github.com/flyteorg/flyteadmin/auth"
 
-	"k8s.io/apimachinery/pkg/api/resource"
-
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/resources"
 
 	dataInterfaces "github.com/flyteorg/flyteadmin/pkg/data/interfaces"
@@ -51,7 +49,6 @@ import (
 	"github.com/benbjohnson/clock"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/wrappers"
 )
 
 const childContainerQueueKey = "child_queue"
@@ -187,39 +184,6 @@ func (m *ExecutionManager) addPluginOverrides(ctx context.Context, executionID *
 	return nil, nil
 }
 
-type completeTaskResources struct {
-	Defaults runtimeInterfaces.TaskResourceSet
-	Limits   runtimeInterfaces.TaskResourceSet
-}
-
-func getTaskResourcesAsSet(ctx context.Context, identifier *core.Identifier,
-	resourceEntries []*core.Resources_ResourceEntry, resourceName string) runtimeInterfaces.TaskResourceSet {
-
-	result := runtimeInterfaces.TaskResourceSet{}
-	for _, entry := range resourceEntries {
-		switch entry.Name {
-		case core.Resources_CPU:
-			result.CPU = parseQuantityNoError(ctx, identifier.String(), fmt.Sprintf("%v.cpu", resourceName), entry.Value)
-		case core.Resources_MEMORY:
-			result.Memory = parseQuantityNoError(ctx, identifier.String(), fmt.Sprintf("%v.memory", resourceName), entry.Value)
-		case core.Resources_EPHEMERAL_STORAGE:
-			result.EphemeralStorage = parseQuantityNoError(ctx, identifier.String(),
-				fmt.Sprintf("%v.ephemeral storage", resourceName), entry.Value)
-		case core.Resources_GPU:
-			result.GPU = parseQuantityNoError(ctx, identifier.String(), "gpu", entry.Value)
-		}
-	}
-
-	return result
-}
-
-func getCompleteTaskResourceRequirements(ctx context.Context, identifier *core.Identifier, task *core.CompiledTask) completeTaskResources {
-	return completeTaskResources{
-		Defaults: getTaskResourcesAsSet(ctx, identifier, task.GetTemplate().GetContainer().Resources.Requests, "requests"),
-		Limits:   getTaskResourcesAsSet(ctx, identifier, task.GetTemplate().GetContainer().Resources.Limits, "limits"),
-	}
-}
-
 // TODO: Delete this code usage after the flyte v0.17.0 release
 // Assumes input contains a compiled task with a valid container resource execConfig.
 //
@@ -255,7 +219,7 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 	// The IDL representation for container-type tasks represents resources as a list with string quantities.
 	// In order to easily reason about them we convert them to a set where we can O(1) fetch specific resources (e.g. CPU)
 	// and represent them as comparable quantities rather than strings.
-	taskResourceRequirements := getCompleteTaskResourceRequirements(ctx, task.Template.Id, task)
+	taskResourceRequirements := util.GetCompleteTaskResourceRequirements(ctx, task.Template.Id, task)
 
 	cpu := flytek8s.AdjustOrDefaultResource(taskResourceRequirements.Defaults.CPU, taskResourceRequirements.Limits.CPU,
 		platformTaskResources.Defaults.CPU, platformTaskResources.Limits.CPU)
@@ -335,68 +299,6 @@ func (m *ExecutionManager) setCompiledTaskDefaults(ctx context.Context, task *co
 	}
 }
 
-func parseQuantityNoError(ctx context.Context, ownerID, name, value string) resource.Quantity {
-	q, err := resource.ParseQuantity(value)
-	if err != nil {
-		logger.Infof(ctx, "Failed to parse owner's [%s] resource [%s]'s value [%s] with err: %v", ownerID, name, value, err)
-	}
-
-	return q
-}
-
-func fromAdminProtoTaskResourceSpec(ctx context.Context, spec *admin.TaskResourceSpec) runtimeInterfaces.TaskResourceSet {
-	result := runtimeInterfaces.TaskResourceSet{}
-	if len(spec.Cpu) > 0 {
-		result.CPU = parseQuantityNoError(ctx, "project", "cpu", spec.Cpu)
-	}
-
-	if len(spec.Memory) > 0 {
-		result.Memory = parseQuantityNoError(ctx, "project", "memory", spec.Memory)
-	}
-
-	if len(spec.Storage) > 0 {
-		result.Storage = parseQuantityNoError(ctx, "project", "storage", spec.Storage)
-	}
-
-	if len(spec.EphemeralStorage) > 0 {
-		result.EphemeralStorage = parseQuantityNoError(ctx, "project", "ephemeral storage", spec.EphemeralStorage)
-	}
-
-	if len(spec.Gpu) > 0 {
-		result.GPU = parseQuantityNoError(ctx, "project", "gpu", spec.Gpu)
-	}
-
-	return result
-}
-
-func (m *ExecutionManager) getTaskResources(ctx context.Context, workflow *core.Identifier) workflowengineInterfaces.TaskResources {
-	resource, err := m.resourceManager.GetResource(ctx, interfaces.ResourceRequest{
-		Project:      workflow.Project,
-		Domain:       workflow.Domain,
-		Workflow:     workflow.Name,
-		ResourceType: admin.MatchableResource_TASK_RESOURCE,
-	})
-
-	if err != nil {
-		logger.Warningf(ctx, "Failed to fetch override values when assigning task resource default values for [%+v]: %v",
-			workflow, err)
-	}
-
-	logger.Debugf(ctx, "Assigning task requested resources for [%+v]", workflow)
-	var taskResourceAttributes = workflowengineInterfaces.TaskResources{}
-	if resource != nil && resource.Attributes != nil && resource.Attributes.GetTaskResourceAttributes() != nil {
-		taskResourceAttributes.Defaults = fromAdminProtoTaskResourceSpec(ctx, resource.Attributes.GetTaskResourceAttributes().Defaults)
-		taskResourceAttributes.Limits = fromAdminProtoTaskResourceSpec(ctx, resource.Attributes.GetTaskResourceAttributes().Limits)
-	} else {
-		taskResourceAttributes = workflowengineInterfaces.TaskResources{
-			Defaults: m.config.TaskResourceConfiguration().GetDefaults(),
-			Limits:   m.config.TaskResourceConfiguration().GetLimits(),
-		}
-	}
-
-	return taskResourceAttributes
-}
-
 // Fetches inherited execution metadata including the parent node execution db model id and the source execution model id
 // as well as sets request spec metadata with the inherited principal and adjusted nesting data.
 func (m *ExecutionManager) getInheritedExecMetadata(ctx context.Context, requestSpec *admin.ExecutionSpec,
@@ -421,7 +323,7 @@ func (m *ExecutionManager) getInheritedExecMetadata(ctx context.Context, request
 	}
 	sourceExecutionID = sourceExecutionModel.ID
 	requestSpec.Metadata.Principal = sourceExecutionModel.User
-	sourceExecution, err := transformers.FromExecutionModel(*sourceExecutionModel)
+	sourceExecution, err := transformers.FromExecutionModel(ctx, *sourceExecutionModel, transformers.DefaultExecutionTransformerOptions)
 	if err != nil {
 		logger.Errorf(ctx, "Failed transform parent execution model for child execution [%+v] with err: %v", workflowExecutionID, err)
 		return parentNodeExecutionID, sourceExecutionID, err
@@ -434,59 +336,6 @@ func (m *ExecutionManager) getInheritedExecMetadata(ctx context.Context, request
 	return parentNodeExecutionID, sourceExecutionID, nil
 }
 
-// WorkflowExecutionConfigInterface is used as common interface for capturing the common behavior catering to the needs
-// of fetching the WorkflowExecutionConfig across LaunchPlanSpec, ExecutionCreateRequest
-// MatchableResource_WORKFLOW_EXECUTION_CONFIG and ApplicationConfig
-type WorkflowExecutionConfigInterface interface {
-	// GetMaxParallelism Can be used to control the number of parallel nodes to run within the workflow. This is useful to achieve fairness.
-	GetMaxParallelism() int32
-	// GetRawOutputDataConfig Encapsulates user settings pertaining to offloaded data (i.e. Blobs, Schema, query data, etc.).
-	GetRawOutputDataConfig() *admin.RawOutputDataConfig
-	// GetSecurityContext Indicates security context permissions for executions triggered with this matchable attribute.
-	GetSecurityContext() *core.SecurityContext
-	// GetAnnotations Custom annotations to be applied to a triggered execution resource.
-	GetAnnotations() *admin.Annotations
-	// GetLabels Custom labels to be applied to a triggered execution resource.
-	GetLabels() *admin.Labels
-	// GetInterruptible indicates a workflow should be flagged as interruptible for a single execution. If omitted, the workflow's default is used.
-	GetInterruptible() *wrappers.BoolValue
-}
-
-// Merge into workflowExecConfig from spec and return true if any value has been changed
-func mergeIntoExecConfig(workflowExecConfig admin.WorkflowExecutionConfig, spec WorkflowExecutionConfigInterface) admin.WorkflowExecutionConfig {
-	if workflowExecConfig.GetMaxParallelism() == 0 && spec.GetMaxParallelism() > 0 {
-		workflowExecConfig.MaxParallelism = spec.GetMaxParallelism()
-	}
-
-	if workflowExecConfig.GetSecurityContext() == nil && spec.GetSecurityContext() != nil {
-		if spec.GetSecurityContext().GetRunAs() != nil &&
-			(len(spec.GetSecurityContext().GetRunAs().GetK8SServiceAccount()) > 0 ||
-				len(spec.GetSecurityContext().GetRunAs().GetIamRole()) > 0) {
-			workflowExecConfig.SecurityContext = spec.GetSecurityContext()
-		}
-	}
-	// Launchplan spec has label, annotation and rawOutputDataConfig initialized with empty values.
-	// Hence we do a deep check in the following conditions before assignment
-	if (workflowExecConfig.GetRawOutputDataConfig() == nil ||
-		len(workflowExecConfig.GetRawOutputDataConfig().GetOutputLocationPrefix()) == 0) &&
-		(spec.GetRawOutputDataConfig() != nil && len(spec.GetRawOutputDataConfig().OutputLocationPrefix) > 0) {
-		workflowExecConfig.RawOutputDataConfig = spec.GetRawOutputDataConfig()
-	}
-	if (workflowExecConfig.GetLabels() == nil || len(workflowExecConfig.GetLabels().Values) == 0) &&
-		(spec.GetLabels() != nil && len(spec.GetLabels().Values) > 0) {
-		workflowExecConfig.Labels = spec.GetLabels()
-	}
-	if (workflowExecConfig.GetAnnotations() == nil || len(workflowExecConfig.GetAnnotations().Values) == 0) &&
-		(spec.GetAnnotations() != nil && len(spec.GetAnnotations().Values) > 0) {
-		workflowExecConfig.Annotations = spec.GetAnnotations()
-	}
-
-	if workflowExecConfig.GetInterruptible() == nil && spec.GetInterruptible() != nil {
-		workflowExecConfig.Interruptible = spec.GetInterruptible()
-	}
-	return workflowExecConfig
-}
-
 // Produces execution-time attributes for workflow execution.
 // Defaults to overridable execution values set in the execution create request, then looks at the launch plan values
 // (if any) before defaulting to values set in the matchable resource db and further if matchable resources don't
@@ -495,28 +344,47 @@ func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admi
 	launchPlan *admin.LaunchPlan) (*admin.WorkflowExecutionConfig, error) {
 
 	workflowExecConfig := admin.WorkflowExecutionConfig{}
-	// merge the request spec into workflowExecConfig
-	workflowExecConfig = mergeIntoExecConfig(workflowExecConfig, request.Spec)
+	// Merge the request spec into workflowExecConfig
+	workflowExecConfig = util.MergeIntoExecConfig(workflowExecConfig, request.Spec)
 
 	var workflowName string
 	if launchPlan != nil && launchPlan.Spec != nil {
-		// merge the launch plan spec into workflowExecConfig
-		workflowExecConfig = mergeIntoExecConfig(workflowExecConfig, launchPlan.Spec)
+		// Merge the launch plan spec into workflowExecConfig
+		workflowExecConfig = util.MergeIntoExecConfig(workflowExecConfig, launchPlan.Spec)
 		if launchPlan.Spec.WorkflowId != nil {
 			workflowName = launchPlan.Spec.WorkflowId.Name
 		}
 	}
 
+	// This will get the most specific Workflow Execution Config.
 	matchableResource, err := util.GetMatchableResource(ctx, m.resourceManager,
 		admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG, request.Project, request.Domain, workflowName)
 	if err != nil {
 		return nil, err
 	}
-
 	if matchableResource != nil && matchableResource.Attributes.GetWorkflowExecutionConfig() != nil {
 		// merge the matchable resource workflow execution config into workflowExecConfig
-		workflowExecConfig = mergeIntoExecConfig(workflowExecConfig,
+		workflowExecConfig = util.MergeIntoExecConfig(workflowExecConfig,
 			matchableResource.Attributes.GetWorkflowExecutionConfig())
+	}
+
+	// To match what the front-end will display to the user, we need to do the project level query too.
+	// This searches only for a direct match, and will not merge in system config level defaults like the
+	// GetProjectAttributes call does, since that's done below.
+	// The reason we need to do the project level query is for the case where some configs (say max parallelism)
+	// is set on the project level, but other items (say service account) is set on the project-domain level.
+	// In this case you want to use the project-domain service account, the project-level max parallelism, and
+	// system level defaults for the rest.
+	// See FLYTE-2322 for more background information.
+	projectMatchableResource, err := util.GetMatchableResource(ctx, m.resourceManager,
+		admin.MatchableResource_WORKFLOW_EXECUTION_CONFIG, request.Project, "", "")
+	if err != nil {
+		return nil, err
+	}
+	if projectMatchableResource != nil && projectMatchableResource.Attributes.GetWorkflowExecutionConfig() != nil {
+		// merge the matchable resource workflow execution config into workflowExecConfig
+		workflowExecConfig = util.MergeIntoExecConfig(workflowExecConfig,
+			projectMatchableResource.Attributes.GetWorkflowExecutionConfig())
 	}
 
 	// Backward compatibility changes to get security context from auth role.
@@ -530,14 +398,27 @@ func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admi
 			len(resolvedSecurityCtx.GetRunAs().GetIamRole()) > 0) {
 		workflowExecConfig.SecurityContext = resolvedSecurityCtx
 	}
-	//  merge the application config into workflowExecConfig. If even the deprecated fields are not set
-	workflowExecConfig = mergeIntoExecConfig(workflowExecConfig, m.config.ApplicationConfiguration().GetTopLevelConfig())
+
+	// Merge the application config into workflowExecConfig. If even the deprecated fields are not set
+	workflowExecConfig = util.MergeIntoExecConfig(workflowExecConfig, m.config.ApplicationConfiguration().GetTopLevelConfig())
 	// Explicitly set the security context if its nil since downstream we expect this settings to be available
 	if workflowExecConfig.GetSecurityContext() == nil {
 		workflowExecConfig.SecurityContext = &core.SecurityContext{
 			RunAs: &core.Identity{},
 		}
 	}
+
+	if workflowExecConfig.GetSecurityContext().GetRunAs() == nil {
+		workflowExecConfig.SecurityContext.RunAs = &core.Identity{}
+	}
+
+	// In the case of reference_launch_plan subworkflow, the context comes from flytepropeller instead of the user side, so user auth is missing.
+	// We skip getUserIdentityFromContext but can still get ExecUserId because flytepropeller passes it in the execution request.
+	// https://github.com/flyteorg/flytepropeller/blob/03a6672960ed04e7687ba4f790fee9a02a4057fb/pkg/controller/nodes/subworkflow/launchplan/admin.go#L114
+	if workflowExecConfig.GetSecurityContext().GetRunAs().GetExecutionIdentity() == "" {
+		workflowExecConfig.SecurityContext.RunAs.ExecutionIdentity = auth.IdentityContextFromContext(ctx).ExecutionIdentity()
+	}
+
 	logger.Infof(ctx, "getting the workflow execution config from application configuration")
 	// Defaults to one from the application config
 	return &workflowExecConfig, nil
@@ -610,6 +491,18 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		return nil, nil, err
 	}
 
+	executionInputs, err := validation.CheckAndFetchInputsForExecution(
+		request.Inputs,
+		launchPlan.Spec.FixedInputs,
+		launchPlan.Closure.ExpectedInputs,
+	)
+	if err != nil {
+		logger.Debugf(ctx, "Failed to CheckAndFetchInputsForExecution with request.Inputs: %+v"+
+			"fixed inputs: %+v and expected inputs: %+v with err %v",
+			request.Inputs, launchPlan.Spec.FixedInputs, launchPlan.Closure.ExpectedInputs, err)
+		return nil, nil, err
+	}
+
 	name := util.GetExecutionName(request)
 	workflowExecutionID := core.WorkflowExecutionIdentifier{
 		Project: request.Project,
@@ -635,7 +528,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	}
 
 	// Dynamically assign task resource defaults.
-	platformTaskResources := m.getTaskResources(ctx, workflow.Id)
+	platformTaskResources := util.GetTaskResources(ctx, workflow.Id, m.resourceManager, m.config.TaskResourceConfiguration())
 	for _, t := range workflow.Closure.CompiledWorkflow.Tasks {
 		m.setCompiledTaskDefaults(ctx, t, platformTaskResources)
 	}
@@ -682,7 +575,7 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 	}
 
 	executionParameters := workflowengineInterfaces.ExecutionParameters{
-		Inputs:              request.Inputs,
+		Inputs:              executionInputs,
 		AcceptedAt:          requestedAt,
 		Labels:              labels,
 		Annotations:         annotations,
@@ -708,12 +601,13 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 
 	workflowExecutor := plugins.Get[workflowengineInterfaces.WorkflowExecutor](m.pluginRegistry, plugins.PluginIDWorkflowExecutor)
 	execInfo, err := workflowExecutor.Execute(ctx, workflowengineInterfaces.ExecutionData{
-		Namespace:               namespace,
-		ExecutionID:             &workflowExecutionID,
-		ReferenceWorkflowName:   workflow.Id.Name,
-		ReferenceLaunchPlanName: launchPlan.Id.Name,
-		WorkflowClosure:         workflow.Closure.CompiledWorkflow,
-		ExecutionParameters:     executionParameters,
+		Namespace:                namespace,
+		ExecutionID:              &workflowExecutionID,
+		ReferenceWorkflowName:    workflow.Id.Name,
+		ReferenceLaunchPlanName:  launchPlan.Id.Name,
+		WorkflowClosure:          workflow.Closure.CompiledWorkflow,
+		WorkflowClosureReference: storage.DataReference(workflowModel.RemoteClosureIdentifier),
+		ExecutionParameters:      executionParameters,
 	})
 
 	if err != nil {
@@ -755,6 +649,8 @@ func (m *ExecutionManager) launchSingleTaskExecution(
 		InputsURI:             inputsURI,
 		UserInputsURI:         userInputsURI,
 		SecurityContext:       executionConfig.SecurityContext,
+		LaunchEntity:          taskIdentifier.ResourceType,
+		Namespace:             namespace,
 	})
 	if err != nil {
 		logger.Infof(ctx, "Failed to create execution model in transformer for id: [%+v] with err: %v",
@@ -797,7 +693,8 @@ func resolveSecurityCtx(ctx context.Context, executionConfigSecurityCtx *core.Se
 	// Use security context from the executionConfigSecurityCtx if its set and non empty or else resolve from authRole
 	if executionConfigSecurityCtx != nil && executionConfigSecurityCtx.RunAs != nil &&
 		(len(executionConfigSecurityCtx.RunAs.K8SServiceAccount) > 0 ||
-			len(executionConfigSecurityCtx.RunAs.IamRole) > 0) {
+			len(executionConfigSecurityCtx.RunAs.IamRole) > 0 ||
+			len(executionConfigSecurityCtx.RunAs.ExecutionIdentity) > 0) {
 		return executionConfigSecurityCtx
 	}
 	logger.Warn(ctx, "Setting security context from auth Role")
@@ -845,12 +742,24 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		return nil, nil, err
 	}
 
-	workflow, err := util.GetWorkflow(ctx, m.db, m.storageClient, *launchPlan.Spec.WorkflowId)
-
+	workflowModel, err := util.GetWorkflowModel(ctx, m.db, *launchPlan.Spec.WorkflowId)
 	if err != nil {
 		logger.Debugf(ctx, "Failed to get workflow with id %+v with err %v", launchPlan.Spec.WorkflowId, err)
 		return nil, nil, err
 	}
+	workflow, err := transformers.FromWorkflowModel(workflowModel)
+	if err != nil {
+		logger.Debugf(ctx, "Failed to get workflow with id %+v with err %v", launchPlan.Spec.WorkflowId, err)
+		return nil, nil, err
+	}
+	closure, err := util.FetchAndGetWorkflowClosure(ctx, m.storageClient, workflowModel.RemoteClosureIdentifier)
+	if err != nil {
+		logger.Debugf(ctx, "Failed to get workflow with id %+v with err %v", launchPlan.Spec.WorkflowId, err)
+		return nil, nil, err
+	}
+	closure.CreatedAt = workflow.Closure.CreatedAt
+	workflow.Closure = closure
+
 	name := util.GetExecutionName(request)
 	workflowExecutionID := core.WorkflowExecutionIdentifier{
 		Project: request.Project,
@@ -872,8 +781,8 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		return nil, nil, err
 	}
 
-	platformTaskResources := m.getTaskResources(ctx, workflow.Id)
 	// Dynamically assign task resource defaults.
+	platformTaskResources := util.GetTaskResources(ctx, workflow.Id, m.resourceManager, m.config.TaskResourceConfiguration())
 	for _, task := range workflow.Closure.CompiledWorkflow.Tasks {
 		m.setCompiledTaskDefaults(ctx, task, platformTaskResources)
 	}
@@ -948,12 +857,13 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 
 	workflowExecutor := plugins.Get[workflowengineInterfaces.WorkflowExecutor](m.pluginRegistry, plugins.PluginIDWorkflowExecutor)
 	execInfo, err := workflowExecutor.Execute(ctx, workflowengineInterfaces.ExecutionData{
-		Namespace:               namespace,
-		ExecutionID:             &workflowExecutionID,
-		ReferenceWorkflowName:   workflow.Id.Name,
-		ReferenceLaunchPlanName: launchPlan.Id.Name,
-		WorkflowClosure:         workflow.Closure.CompiledWorkflow,
-		ExecutionParameters:     executionParameters,
+		Namespace:                namespace,
+		ExecutionID:              &workflowExecutionID,
+		ReferenceWorkflowName:    workflow.Id.Name,
+		ReferenceLaunchPlanName:  launchPlan.Id.Name,
+		WorkflowClosure:          workflow.Closure.CompiledWorkflow,
+		WorkflowClosureReference: storage.DataReference(workflowModel.RemoteClosureIdentifier),
+		ExecutionParameters:      executionParameters,
 	})
 
 	if err != nil {
@@ -995,6 +905,8 @@ func (m *ExecutionManager) launchExecutionAndPrepareModel(
 		InputsURI:             inputsURI,
 		UserInputsURI:         userInputsURI,
 		SecurityContext:       executionConfig.SecurityContext,
+		LaunchEntity:          launchPlan.Id.ResourceType,
+		Namespace:             namespace,
 	})
 	if err != nil {
 		logger.Infof(ctx, "Failed to create execution model in transformer for id: [%+v] with err: %v",
@@ -1055,7 +967,7 @@ func (m *ExecutionManager) RelaunchExecution(
 		logger.Debugf(ctx, "Failed to get execution model for request [%+v] with err %v", request, err)
 		return nil, err
 	}
-	existingExecution, err := transformers.FromExecutionModel(*existingExecutionModel)
+	existingExecution, err := transformers.FromExecutionModel(ctx, *existingExecutionModel, transformers.DefaultExecutionTransformerOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -1081,6 +993,7 @@ func (m *ExecutionManager) RelaunchExecution(
 	}
 	executionSpec.Metadata.Mode = admin.ExecutionMetadata_RELAUNCH
 	executionSpec.Metadata.ReferenceExecution = existingExecution.Id
+	executionSpec.OverwriteCache = request.GetOverwriteCache()
 	var executionModel *models.Execution
 	ctx, executionModel, err = m.launchExecutionAndPrepareModel(ctx, admin.ExecutionCreateRequest{
 		Project: request.Id.Project,
@@ -1111,7 +1024,7 @@ func (m *ExecutionManager) RecoverExecution(
 		logger.Debugf(ctx, "Failed to get execution model for request [%+v] with err %v", request, err)
 		return nil, err
 	}
-	existingExecution, err := transformers.FromExecutionModel(*existingExecutionModel)
+	existingExecution, err := transformers.FromExecutionModel(ctx, *existingExecutionModel, transformers.DefaultExecutionTransformerOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -1162,7 +1075,7 @@ func (m *ExecutionManager) emitScheduledWorkflowMetrics(
 		return
 	}
 	// Find the reference launch plan to get the kickoff time argument
-	execution, err := transformers.FromExecutionModel(*executionModel)
+	execution, err := transformers.FromExecutionModel(ctx, *executionModel, transformers.DefaultExecutionTransformerOptions)
 	if err != nil {
 		logger.Warningf(context.Background(),
 			"failed to transform execution model when emitting scheduled workflow execution stats with for "+
@@ -1405,7 +1318,11 @@ func (m *ExecutionManager) GetExecution(
 		logger.Debugf(ctx, "Failed to get execution model for request [%+v] with err: %v", request, err)
 		return nil, err
 	}
-	execution, transformerErr := transformers.FromExecutionModel(*executionModel)
+	namespace := common.GetNamespaceName(
+		m.config.NamespaceMappingConfiguration().GetNamespaceTemplate(), request.GetId().GetProject(), request.GetId().GetDomain())
+	execution, transformerErr := transformers.FromExecutionModel(ctx, *executionModel, &transformers.ExecutionTransformerOptions{
+		DefaultNamespace: namespace,
+	})
 	if transformerErr != nil {
 		logger.Debugf(ctx, "Failed to transform execution model [%+v] to proto object with err: %v", request.Id,
 			transformerErr)
@@ -1448,7 +1365,7 @@ func (m *ExecutionManager) GetExecutionData(
 		logger.Debugf(ctx, "Failed to get execution model for request [%+v] with err: %v", request, err)
 		return nil, err
 	}
-	execution, err := transformers.FromExecutionModel(*executionModel)
+	execution, err := transformers.FromExecutionModel(ctx, *executionModel, transformers.DefaultExecutionTransformerOptions)
 	if err != nil {
 		logger.Debugf(ctx, "Failed to transform execution model [%+v] to proto object with err: %v", request.Id, err)
 		return nil, err
@@ -1548,7 +1465,7 @@ func (m *ExecutionManager) ListExecutions(
 		logger.Debugf(ctx, "Failed to list executions using input [%+v] with err %v", listExecutionsInput, err)
 		return nil, err
 	}
-	executionList, err := transformers.FromExecutionModels(output.Executions)
+	executionList, err := transformers.FromExecutionModels(ctx, output.Executions, transformers.ListExecutionTransformerOptions)
 	if err != nil {
 		logger.Errorf(ctx,
 			"Failed to transform execution models [%+v] with err: %v", output.Executions, err)
@@ -1578,7 +1495,7 @@ func (m *ExecutionManager) ListExecutions(
 func (m *ExecutionManager) publishNotifications(ctx context.Context, request admin.WorkflowExecutionEventRequest,
 	execution models.Execution) error {
 	// Notifications are stored in the Spec object of an admin.Execution object.
-	adminExecution, err := transformers.FromExecutionModel(execution)
+	adminExecution, err := transformers.FromExecutionModel(ctx, execution, transformers.DefaultExecutionTransformerOptions)
 	if err != nil {
 		// This shouldn't happen because execution manager marshaled the data into models.Execution.
 		m.systemMetrics.TransformerError.Inc()
@@ -1650,8 +1567,9 @@ func (m *ExecutionManager) TerminateExecution(
 		logger.Infof(ctx, "couldn't find execution [%+v] to save termination cause", request.Id)
 		return nil, err
 	}
+
 	if common.IsExecutionTerminal(core.WorkflowExecution_Phase(core.WorkflowExecution_Phase_value[executionModel.Phase])) {
-		return nil, errors.NewFlyteAdminError(codes.PermissionDenied, "Cannot abort an already terminate workflow execution")
+		return nil, errors.NewAlreadyInTerminalStateError(ctx, "Cannot abort an already terminate workflow execution", executionModel.Phase)
 	}
 
 	err = transformers.SetExecutionAborting(&executionModel, request.Cause, getUser(ctx))
@@ -1659,6 +1577,7 @@ func (m *ExecutionManager) TerminateExecution(
 		logger.Debugf(ctx, "failed to add abort metadata for execution [%+v] with err: %v", request.Id, err)
 		return nil, err
 	}
+
 	err = m.db.ExecutionRepo().Update(ctx, executionModel)
 	if err != nil {
 		logger.Debugf(ctx, "failed to save abort cause for terminated execution: %+v with err: %v", request.Id, err)

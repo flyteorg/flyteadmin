@@ -57,9 +57,20 @@ func addExecutionOverrides(taskPluginOverrides []*admin.PluginOverride,
 	}
 	if workflowExecutionConfig != nil {
 		executionConfig.MaxParallelism = uint32(workflowExecutionConfig.MaxParallelism)
+
 		if workflowExecutionConfig.GetInterruptible() != nil {
 			interruptible := workflowExecutionConfig.GetInterruptible().GetValue()
 			executionConfig.Interruptible = &interruptible
+		}
+
+		executionConfig.OverwriteCache = workflowExecutionConfig.GetOverwriteCache()
+
+		envs := make(map[string]string)
+		if workflowExecutionConfig.GetEnvs() != nil {
+			for _, v := range workflowExecutionConfig.GetEnvs().Values {
+				envs[v.Key] = v.Value
+			}
+			executionConfig.EnvironmentVariables = envs
 		}
 	}
 	if taskResources != nil {

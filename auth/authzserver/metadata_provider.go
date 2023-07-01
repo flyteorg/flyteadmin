@@ -64,7 +64,17 @@ func (s OAuth2MetadataProvider) GetOAuth2Metadata(ctx context.Context, r *servic
 			externalMetadataURL = baseURL.ResolveReference(oauth2MetadataEndpoint)
 		}
 
-		response, err := http.Get(externalMetadataURL.String())
+		httpClient := &http.Client{}
+
+		if len(s.cfg.HTTPProxyURL.String()) > 0 {
+			// create a transport that uses the proxy
+			transport := &http.Transport{
+				Proxy: http.ProxyURL(&s.cfg.HTTPProxyURL.URL),
+			}
+			httpClient.Transport = transport
+		}
+
+		response, err := httpClient.Get(externalMetadataURL.String())
 		if err != nil {
 			return nil, err
 		}
@@ -90,6 +100,7 @@ func (s OAuth2MetadataProvider) GetPublicClientConfig(context.Context, *service.
 		RedirectUri:              s.cfg.AppAuth.ThirdParty.FlyteClientConfig.RedirectURI,
 		Scopes:                   s.cfg.AppAuth.ThirdParty.FlyteClientConfig.Scopes,
 		AuthorizationMetadataKey: s.cfg.GrpcAuthorizationHeader,
+		Audience:                 s.cfg.AppAuth.ThirdParty.FlyteClientConfig.Audience,
 	}, nil
 }
 

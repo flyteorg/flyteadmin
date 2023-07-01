@@ -41,6 +41,7 @@ func GetValidTaskRequest() admin.TaskCreateRequest {
 					},
 				},
 			},
+			Description: &admin.DescriptionEntity{ShortDescription: "hello"},
 		},
 	}
 }
@@ -119,6 +120,7 @@ func GetWorkflowRequest() admin.WorkflowCreateRequest {
 					},
 				},
 			},
+			Description: &admin.DescriptionEntity{ShortDescription: "hello"},
 		},
 	}
 }
@@ -219,6 +221,7 @@ func GetExecutionRequest() admin.ExecutionCreateRequest {
 				},
 			},
 			RawOutputDataConfig: &admin.RawOutputDataConfig{OutputLocationPrefix: "default_raw_output"},
+			Envs:                &admin.Envs{},
 		},
 		Inputs: &core.LiteralMap{
 			Literals: map[string]*core.Literal{

@@ -1,7 +1,6 @@
 package interfaces
 
 import (
-	"github.com/Shopify/sarama"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/config"
@@ -78,6 +77,11 @@ type ApplicationConfig struct {
 	Annotations map[string]string `json:"annotations,omitempty"`
 	// Interruptible indicates whether all tasks should be run as interruptible by default (unless specified otherwise via the execution/workflow/task definition)
 	Interruptible bool `json:"interruptible"`
+	// OverwriteCache indicates all workflows and tasks should skip all their cached results and re-compute their outputs,
+	// overwriting any already stored data.
+	// Note that setting this setting to `true` effectively disabled all caching in Flyte as all executions launched
+	// will have their OverwriteCache setting enabled.
+	OverwriteCache bool `json:"overwriteCache"`
 
 	// Optional: security context override to apply this execution.
 	// iam_role references the fully qualified name of Identity & Access Management role to impersonate.
@@ -87,6 +91,12 @@ type ApplicationConfig struct {
 
 	// Prefix for where offloaded data from user workflows will be written
 	OutputLocationPrefix string `json:"outputLocationPrefix"`
+
+	// Enabling will use Storage (s3/gcs/etc) to offload static parts of CRDs.
+	UseOffloadedWorkflowClosure bool `json:"useOffloadedWorkflowClosure"`
+
+	// Environment variables to be set for the execution.
+	Envs map[string]string `json:"envs,omitempty"`
 }
 
 func (a *ApplicationConfig) GetRoleNameKey() string {
@@ -155,6 +165,50 @@ func (a *ApplicationConfig) GetInterruptible() *wrappers.BoolValue {
 	}
 }
 
+func (a *ApplicationConfig) GetOverwriteCache() bool {
+	return a.OverwriteCache
+}
+
+func (a *ApplicationConfig) GetEnvs() *admin.Envs {
+	var envs []*core.KeyValuePair
+	for k, v := range a.Envs {
+		envs = append(envs, &core.KeyValuePair{
+			Key:   k,
+			Value: v,
+		})
+	}
+	return &admin.Envs{
+		Values: envs,
+	}
+}
+
+// GetAsWorkflowExecutionConfig returns the WorkflowExecutionConfig as extracted from this object
+func (a *ApplicationConfig) GetAsWorkflowExecutionConfig() admin.WorkflowExecutionConfig {
+	// These values should always be set as their fallback values equals to their zero value or nil,
+	// providing a sensible default even if the actual value was not set.
+	wec := admin.WorkflowExecutionConfig{
+		MaxParallelism: a.GetMaxParallelism(),
+		OverwriteCache: a.GetOverwriteCache(),
+		Interruptible:  a.GetInterruptible(),
+	}
+
+	// For the others, we only add the field when the field is set in the config.
+	if a.GetSecurityContext().RunAs.GetK8SServiceAccount() != "" || a.GetSecurityContext().RunAs.GetIamRole() != "" {
+		wec.SecurityContext = a.GetSecurityContext()
+	}
+	if a.GetRawOutputDataConfig().OutputLocationPrefix != "" {
+		wec.RawOutputDataConfig = a.GetRawOutputDataConfig()
+	}
+	if len(a.GetLabels().Values) > 0 {
+		wec.Labels = a.GetLabels()
+	}
+	if len(a.GetAnnotations().Values) > 0 {
+		wec.Annotations = a.GetAnnotations()
+	}
+
+	return wec
+}
+
 // This section holds common config for AWS
 type AWSConfig struct {
 	Region string `json:"region"`
@@ -166,7 +220,8 @@ type GCPConfig struct {
 }
 
 type KafkaConfig struct {
-	Version sarama.KafkaVersion
+	// The version of Kafka, e.g. 2.1.0, 0.8.2.0
+	Version string `json:"version"`
 	// kafka broker addresses
 	Brokers []string `json:"brokers"`
 }
@@ -316,10 +371,16 @@ type FlyteWorkflowExecutorConfig struct {
 	// eg : 100 TPS will send at the max 100 schedule requests to admin per sec.
 	// Burst specifies burst traffic count
 	AdminRateLimit *AdminRateLimit `json:"adminRateLimit"`
+	// Defaults to using user local timezone where the scheduler is deployed.
+	UseUTCTz bool `json:"useUTCTz"`
 }
 
 func (f *FlyteWorkflowExecutorConfig) GetAdminRateLimit() *AdminRateLimit {
 	return f.AdminRateLimit
+}
+
+func (f *FlyteWorkflowExecutorConfig) GetUseUTCTz() bool {
+	return f.UseUTCTz
 }
 
 type AdminRateLimit struct {

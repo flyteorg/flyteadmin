@@ -16,7 +16,8 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-const allowedExecutionNameLength = 20
+// Maximum value length of a Kubernetes label
+const allowedExecutionNameLength = 63
 
 var executionIDRegex = regexp.MustCompile(`^[a-z][a-z\-0-9]*$`)
 
@@ -103,7 +104,7 @@ func CheckAndFetchInputsForExecution(
 		} else {
 			inputType := validators.LiteralTypeForLiteral(executionInputMap[name])
 			if !validators.AreTypesCastable(inputType, expectedInput.GetVar().GetType()) {
-				return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "invalid %s input wrong type", name)
+				return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "invalid %s input wrong type. Expected %s, but got %s", name, expectedInput.GetVar().GetType(), inputType)
 			}
 		}
 	}

@@ -161,16 +161,15 @@ func (w *WorkflowManager) CreateWorkflow(
 	}
 
 	// Assert that a matching workflow doesn't already exist before uploading the workflow closure.
-	existingMatchingWorkflow, err := util.GetWorkflowModel(ctx, w.db, *request.Id)
+	existingWorkflowModel, err := util.GetWorkflowModel(ctx, w.db, *request.Id)
 	// Check that no identical or conflicting workflows exist.
 	if err == nil {
 		// A workflow's structure is uniquely defined by its collection of nodes.
-		if bytes.Equal(workflowDigest, existingMatchingWorkflow.Digest) {
-			return nil, errors.NewFlyteAdminErrorf(
-				codes.AlreadyExists, "identical workflow already exists with id %v", request.Id)
+		if bytes.Equal(workflowDigest, existingWorkflowModel.Digest) {
+			return nil, errors.NewWorkflowExistsIdenticalStructureError(ctx, &request)
 		}
-		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
-			"workflow with different structure already exists with id %v", request.Id)
+		// A workflow exists with different structure
+		return nil, errors.NewWorkflowExistsDifferentStructureError(ctx, &request)
 	} else if flyteAdminError, ok := err.(errors.FlyteAdminError); !ok || flyteAdminError.Code() != codes.NotFound {
 		logger.Debugf(ctx, "Failed to get workflow for comparison in CreateWorkflow with ID [%+v] with err %v",
 			request.Id, err)
@@ -203,11 +202,21 @@ func (w *WorkflowManager) CreateWorkflow(
 			finalizedRequest, remoteClosureDataRef.String(), err)
 		return nil, err
 	}
-	if err = w.db.WorkflowRepo().Create(ctx, workflowModel); err != nil {
+	descriptionModel, err := transformers.CreateDescriptionEntityModel(request.Spec.Description, *request.Id)
+	if err != nil {
+		logger.Errorf(ctx,
+			"Failed to transform description model [%+v] with err: %v", request.Spec.Description, err)
+		return nil, err
+	}
+	if descriptionModel != nil {
+		workflowModel.ShortDescription = descriptionModel.ShortDescription
+	}
+	if err = w.db.WorkflowRepo().Create(ctx, workflowModel, descriptionModel); err != nil {
 		logger.Infof(ctx, "Failed to create workflow model [%+v] with err %v", request.Id, err)
 		return nil, err
 	}
 	w.metrics.TypedInterfaceSizeBytes.Observe(float64(len(workflowModel.TypedInterface)))
+
 	return &admin.WorkflowCreateResponse{}, nil
 }
 
