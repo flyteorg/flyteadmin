@@ -78,6 +78,9 @@ func (s Service) CreateUploadLocation(ctx context.Context, req *service.CreateUp
 			return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to check if file exists at location [%s], Error: %v", knownLocation.String(), err)
 		}
 		if metadata.Exists() {
+			// Basically if the file exists, then error unless the user also provided a hash and it matches.
+			// Keep in mind this is just a best effort attempt. There can easily be race conditions where two users
+			// request the same file at the same time and one of the writes is lost.
 			if len(req.ContentMd5) == 0 {
 				return nil, errors.NewFlyteAdminErrorf(codes.AlreadyExists, "file already exists at location [%v], specify a matching hash if you wish to rewrite", knownLocation)
 			}
