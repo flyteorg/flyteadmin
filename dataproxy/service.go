@@ -51,12 +51,36 @@ type Service struct {
 func (s Service) CreateUploadLocation(ctx context.Context, req *service.CreateUploadLocationRequest) (
 	*service.CreateUploadLocationResponse, error) {
 
+	// Basically if the full file name is user specified (non random, non-hash-derived), then we need to check if it exists.
+	// If it exists, and a hash was provided, then check if it matches. If it matches, then proceed as normal otherwise fail.
+	// If it doesn't exist, then proceed as normal.
+
 	if len(req.Project) == 0 || len(req.Domain) == 0 {
 		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "project and domain are required parameters")
 	}
 
-	if len(req.ContentMd5) == 0 {
-		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "content_md5 is a required parameter")
+	// At least one of the hash or manually given prefix must be provided.
+	if len(req.FilenameRoot) == 0 && len(req.ContentMd5) == 0 {
+		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
+			"content_md5 or filename_root is a required parameter")
+	}
+
+	// If we fall in here, that means that the full path is deterministic and we should check for existence.
+	if len(req.Filename) > 0 && len(req.FilenameRoot) > 0 {
+		knownLocation, err := createStorageLocation(ctx, s.dataStore, s.cfg.Upload,
+			req.Project, req.Domain, req.FilenameRoot, req.Filename)
+		if err != nil {
+			return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to create storage location, Error: %v", err)
+		}
+		metadata, err := s.dataStore.Head(ctx, knownLocation)
+		if err != nil {
+			return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to check if file exists at location [%s], Error: %v", knownLocation.String(), err)
+		}
+		if metadata.Exists() {
+			// TODO: Check if the hash matches after etag support is added to flytestdlib
+			logger.Warningf(ctx, "File already exists at location [%v]", knownLocation)
+			return nil, errors.NewFlyteAdminErrorf(codes.AlreadyExists, "file already exists at location [%v]", knownLocation)
+		}
 	}
 
 	if expiresIn := req.ExpiresIn; expiresIn != nil {

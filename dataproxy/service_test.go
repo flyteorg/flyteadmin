@@ -1,6 +1,7 @@
 package dataproxy
 
 import (
+	"bytes"
 	"context"
 	"testing"
 	"time"
@@ -82,6 +83,33 @@ func TestCreateUploadLocation(t *testing.T) {
 			ExpiresIn: durationpb.New(-time.Hour),
 		})
 		assert.Error(t, err)
+	})
+}
+
+func TestCreateUploadLocationMore(t *testing.T) {
+	dataStore, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
+	assert.NoError(t, err)
+	nodeExecutionManager := &mocks.MockNodeExecutionManager{}
+	taskExecutionManager := &mocks.MockTaskExecutionManager{}
+	s, err := NewService(config.DataProxyConfig{}, nodeExecutionManager, dataStore, taskExecutionManager)
+	assert.NoError(t, err)
+
+	exists, err := createStorageLocation(context.TODO(), s.dataStore, s.cfg.Upload,
+		"flytesnacks", "development", "known_parent_folder", "myfile.txt")
+	assert.NoError(t, err)
+	err = dataStore.WriteRaw(context.TODO(), exists, 5, storage.Options{}, bytes.NewReader([]byte("hello")))
+	assert.NoError(t, err)
+
+	// TODO: Add to this test after etag support is added.
+	t.Run("already exists errors, also no content md5 required", func(t *testing.T) {
+		_, err = s.CreateUploadLocation(context.Background(), &service.CreateUploadLocationRequest{
+			Project:      "flytesnacks",
+			Domain:       "development",
+			Filename:     "myfile.txt",
+			ContentMd5:   nil,
+			FilenameRoot: "known_parent_folder",
+		})
+		assert.ErrorContainsf(t, err, "already exists", "expected error to contain already exists")
 	})
 }
 
