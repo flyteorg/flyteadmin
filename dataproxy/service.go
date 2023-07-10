@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base32"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"net/url"
 	"reflect"
@@ -77,9 +78,18 @@ func (s Service) CreateUploadLocation(ctx context.Context, req *service.CreateUp
 			return nil, errors.NewFlyteAdminErrorf(codes.Internal, "failed to check if file exists at location [%s], Error: %v", knownLocation.String(), err)
 		}
 		if metadata.Exists() {
-			// TODO: Check if the hash matches after etag support is added to flytestdlib
-			logger.Warningf(ctx, "File already exists at location [%v]", knownLocation)
-			return nil, errors.NewFlyteAdminErrorf(codes.AlreadyExists, "file already exists at location [%v]", knownLocation)
+			if len(req.ContentMd5) == 0 {
+				return nil, errors.NewFlyteAdminErrorf(codes.AlreadyExists, "file already exists at location [%v], specify a matching hash if you wish to rewrite", knownLocation)
+			}
+			// Re-encode the hash 3-ways to support matching, hex, base32 and base64
+			hexDigest := hex.EncodeToString(req.ContentMd5)
+			base32Digest := base32.StdEncoding.EncodeToString(req.ContentMd5)
+			base64Digest := base64.StdEncoding.EncodeToString(req.ContentMd5)
+			if hexDigest != metadata.Etag() && base32Digest != metadata.Etag() && base64Digest != metadata.Etag() {
+				logger.Debug(ctx, "File already exists at location [%v] but hashes do not match", knownLocation)
+				return nil, errors.NewFlyteAdminErrorf(codes.AlreadyExists, "file already exists at location [%v], specify a matching hash if you wish to rewrite", knownLocation)
+			}
+			logger.Debug(ctx, "File already exists at location [%v] but allowing rewrite", knownLocation)
 		}
 	}
 
