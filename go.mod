@@ -16,7 +16,7 @@ require (
 	github.com/flyteorg/flyteidl v1.5.11
 	github.com/flyteorg/flyteplugins v1.0.67
 	github.com/flyteorg/flytepropeller v1.1.98
-	github.com/flyteorg/flytestdlib v1.0.18-0.20230710171104-facee26a5cde
+	github.com/flyteorg/flytestdlib v1.0.20
 	github.com/flyteorg/stow v0.3.6
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-gormigrate/gormigrate/v2 v2.0.0
