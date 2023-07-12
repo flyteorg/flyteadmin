@@ -8,11 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/flyteorg/flyteadmin/auth/interfaces"
-	"github.com/flyteorg/flyteadmin/pkg/common"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
-	"github.com/flyteorg/flytestdlib/errors"
-	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
@@ -21,6 +16,13 @@ import (
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/runtime/protoiface"
+
+	"github.com/flyteorg/flyteadmin/auth/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteadmin/plugins"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
+	"github.com/flyteorg/flytestdlib/errors"
+	"github.com/flyteorg/flytestdlib/logger"
 )
 
 const (
@@ -29,6 +31,7 @@ const (
 	FromHTTPVal          = "true"
 )
 
+type PreRedirectHookFunc func(ctx context.Context) error
 type HTTPRequestToMetadataAnnotator func(ctx context.Context, request *http.Request) metadata.MD
 type UserInfoForwardResponseHandler func(ctx context.Context, w http.ResponseWriter, m protoiface.MessageV1) error
 
@@ -39,11 +42,11 @@ type AuthenticatedClientMeta struct {
 	Subject       string
 }
 
-func RegisterHandlers(ctx context.Context, handler interfaces.HandlerRegisterer, authCtx interfaces.AuthenticationContext) {
+func RegisterHandlers(ctx context.Context, handler interfaces.HandlerRegisterer, authCtx interfaces.AuthenticationContext, pluginRegistry *plugins.Registry) {
 	// Add HTTP handlers for OAuth2 endpoints
 	handler.HandleFunc("/login", RefreshTokensIfExists(ctx, authCtx,
 		GetLoginHandler(ctx, authCtx)))
-	handler.HandleFunc("/callback", GetCallbackHandler(ctx, authCtx))
+	handler.HandleFunc("/callback", GetCallbackHandler(ctx, authCtx, pluginRegistry))
 
 	// The metadata endpoint is an RFC-defined constant, but we need a leading / for the handler to pattern match correctly.
 	handler.HandleFunc(fmt.Sprintf("/%s", OIdCMetadataEndpoint), GetOIdCMetadataEndpointRedirectHandler(ctx, authCtx))
@@ -129,14 +132,13 @@ func GetLoginHandler(ctx context.Context, authCtx interfaces.AuthenticationConte
 				logger.Errorf(ctx, "Was not able to create a redirect cookie")
 			}
 		}
-
 		http.Redirect(writer, request, url, http.StatusTemporaryRedirect)
 	}
 }
 
 // GetCallbackHandler returns a handler that is called by the OIdC provider with the authorization code to complete
 // the user authentication flow.
-func GetCallbackHandler(ctx context.Context, authCtx interfaces.AuthenticationContext) http.HandlerFunc {
+func GetCallbackHandler(ctx context.Context, authCtx interfaces.AuthenticationContext, pluginRegistry *plugins.Registry) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		logger.Debugf(ctx, "Running callback handler... for RequestURI %v", request.RequestURI)
 		authorizationCode := request.FormValue(AuthorizationResponseCodeType)
@@ -178,6 +180,13 @@ func GetCallbackHandler(ctx context.Context, authCtx interfaces.AuthenticationCo
 			return
 		}
 
+		preRedirectHook := plugins.Get[PreRedirectHookFunc](pluginRegistry, plugins.PluginIDPreRedirectHook)
+		if preRedirectHook != nil {
+			if err := preRedirectHook(ctx); err != nil {
+				logger.Errorf(ctx, "failed the preRedirect hook due to %v", err)
+				writer.WriteHeader(http.StatusInternalServerError)
+			}
+		}
 		redirectURL := getAuthFlowEndRedirect(ctx, authCtx, request)
 		http.Redirect(writer, request, redirectURL, http.StatusTemporaryRedirect)
 	}
