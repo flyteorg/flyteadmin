@@ -66,8 +66,15 @@ func RefreshTokensIfExists(ctx context.Context, authCtx interfaces.Authenticatio
 			authHandler(writer, request)
 			return
 		}
+		logger.Debugf(ctx, "403debug refreshToken %v", refreshToken)
 
 		_, err = ParseIDTokenAndValidate(ctx, authCtx.Options().UserAuth.OpenID.ClientID, idToken, authCtx.OidcProvider())
+		if err != nil {
+			logger.Debugf(ctx, "403debug got err parsing id token: %v", err)
+		}
+		if err != nil && errors.IsCausedBy(err, ErrTokenExpired) {
+			logger.Debugf(ctx, "403debug expired id token found")
+		}
 		if err != nil && errors.IsCausedBy(err, ErrTokenExpired) && len(refreshToken) > 0 {
 			logger.Debugf(ctx, "Expired id token found, attempting to refresh")
 			newToken, err := GetRefreshedToken(ctx, authCtx.OAuth2ClientConfig(GetPublicURL(ctx, request, authCtx.Options())), accessToken, refreshToken)

@@ -163,6 +163,7 @@ func (c CookieManager) SetTokenCookies(ctx context.Context, writer http.Response
 	}
 
 	// Set the refresh cookie if there is a refresh token
+	logger.Infof(ctx, "403debug refresh token %v", token.RefreshToken)
 	if token.RefreshToken != "" {
 		refreshCookie, err := NewSecureCookie(refreshTokenCookieName, token.RefreshToken, c.hashKey, c.blockKey, c.domain, c.getHTTPSameSitePolicy())
 		if err != nil {
@@ -181,7 +182,7 @@ func getLogoutAccessCookie() *http.Cookie {
 		Value:    "",
 		MaxAge:   0,
 		HttpOnly: true,
-		Expires:  time.Now().Add(-1 * time.Hour),
+		Expires:  time.Now().Add(-1 * time.Minute),
 	}
 }
 
@@ -191,7 +192,7 @@ func getLogoutRefreshCookie() *http.Cookie {
 		Value:    "",
 		MaxAge:   0,
 		HttpOnly: true,
-		Expires:  time.Now().Add(-1 * time.Hour),
+		Expires:  time.Now().Add(-1 * time.Minute),
 	}
 }
 

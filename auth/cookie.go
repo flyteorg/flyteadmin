@@ -174,14 +174,17 @@ func NewRedirectCookie(ctx context.Context, redirectURL string) *http.Cookie {
 // in this package's Config object.
 func getAuthFlowEndRedirect(ctx context.Context, authCtx interfaces.AuthenticationContext, request *http.Request) string {
 	queryParams := request.URL.Query()
+	logger.Infof(ctx, "403debug auth flow end redirect query params  [%+v]", queryParams)
 	// Use the redirect URL specified in the request if one is available.
 	if redirectURL := queryParams.Get(RedirectURLParameter); len(redirectURL) > 0 {
+		logger.Infof(ctx, "403debug auth redirectURL [%+v]", redirectURL)
 		return redirectURL
 	}
 
 	cookie, err := request.Cookie(redirectURLCookieName)
 	if err != nil {
 		logger.Debugf(ctx, "Could not detect end-of-flow redirect url cookie")
+		logger.Infof(ctx, "403debug using redirect url [%s]", authCtx.Options().UserAuth.RedirectURL.String())
 		return authCtx.Options().UserAuth.RedirectURL.String()
 	}
 

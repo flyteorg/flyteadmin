@@ -88,9 +88,9 @@ var (
 				},
 			},
 			SelfAuthServer: AuthorizationServer{
-				AccessTokenLifespan:                   config.Duration{Duration: 30 * time.Minute},
-				RefreshTokenLifespan:                  config.Duration{Duration: 60 * time.Minute},
-				AuthorizationCodeLifespan:             config.Duration{Duration: 5 * time.Minute},
+				AccessTokenLifespan:                   config.Duration{Duration: 30 * time.Second},
+				RefreshTokenLifespan:                  config.Duration{Duration: 60 * time.Second},
+				AuthorizationCodeLifespan:             config.Duration{Duration: 1 * time.Minute},
 				ClaimSymmetricEncryptionKeySecretName: SecretNameClaimSymmetricKey,
 				TokenSigningRSAKeySecretName:          SecretNameTokenSigningRSAKey,
 				OldTokenSigningRSAKeySecretName:       SecretNameOldTokenSigningRSAKey,

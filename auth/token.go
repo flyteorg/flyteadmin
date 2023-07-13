@@ -65,6 +65,7 @@ func ParseIDTokenAndValidate(ctx context.Context, clientID, rawIDToken string, p
 		flyteErr := errors.Wrapf(ErrJwtValidation, err, "jwt parse with claims failed")
 		// TODO: Contribute an errors package to the go-oidc library for proper error handling
 		if strings.Contains(err.Error(), "token is expired") {
+			logger.Debugf(ctx, "403debug token is expired")
 			return idToken, errors.Wrapf(ErrTokenExpired, flyteErr, "token is expired")
 		}
 
