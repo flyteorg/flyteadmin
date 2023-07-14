@@ -182,10 +182,12 @@ func GetCallbackHandler(ctx context.Context, authCtx interfaces.AuthenticationCo
 
 		preRedirectHook := plugins.Get[PreRedirectHookFunc](pluginRegistry, plugins.PluginIDPreRedirectHook)
 		if preRedirectHook != nil {
+			logger.Infof(ctx, "preRedirect hook is set")
 			if err := preRedirectHook(ctx); err != nil {
 				logger.Errorf(ctx, "failed the preRedirect hook due to %v", err)
 				writer.WriteHeader(http.StatusInternalServerError)
 			}
+			logger.Infof(ctx, "Successfully called the preRedirect hook")
 		}
 		redirectURL := getAuthFlowEndRedirect(ctx, authCtx, request)
 		http.Redirect(writer, request, redirectURL, http.StatusTemporaryRedirect)
