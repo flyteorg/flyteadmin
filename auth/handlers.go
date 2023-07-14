@@ -31,7 +31,7 @@ const (
 	FromHTTPVal          = "true"
 )
 
-type PreRedirectHookFunc func(ctx context.Context) error
+type PreRedirectHookFunc func(ctx context.Context, authCtx interfaces.AuthenticationContext, request *http.Request, w http.ResponseWriter) error
 type HTTPRequestToMetadataAnnotator func(ctx context.Context, request *http.Request) metadata.MD
 type UserInfoForwardResponseHandler func(ctx context.Context, w http.ResponseWriter, m protoiface.MessageV1) error
 
@@ -189,13 +189,13 @@ func GetCallbackHandler(ctx context.Context, authCtx interfaces.AuthenticationCo
 		preRedirectHook := plugins.Get[PreRedirectHookFunc](pluginRegistry, plugins.PluginIDPreRedirectHook)
 		if preRedirectHook != nil {
 			logger.Infof(ctx, "preRedirect hook is set")
-			if err := preRedirectHook(ctx); err != nil {
+			if err := preRedirectHook(ctx, authCtx, request, writer); err != nil {
 				logger.Errorf(ctx, "failed the preRedirect hook due to %v", err)
 				writer.WriteHeader(http.StatusInternalServerError)
+				return
 			}
 			logger.Infof(ctx, "Successfully called the preRedirect hook")
 		}
-
 		redirectURL := getAuthFlowEndRedirect(ctx, authCtx, request)
 		logger.Infof(ctx, "Going to perform the redirect with redirectURl %v", redirectURL)
 		http.Redirect(writer, request, redirectURL, http.StatusTemporaryRedirect)
