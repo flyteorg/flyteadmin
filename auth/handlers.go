@@ -189,27 +189,12 @@ func GetCallbackHandler(ctx context.Context, authCtx interfaces.AuthenticationCo
 		preRedirectHook := plugins.Get[PreRedirectHookFunc](pluginRegistry, plugins.PluginIDPreRedirectHook)
 		if preRedirectHook != nil {
 			logger.Infof(ctx, "preRedirect hook is set")
-			redirectHookCtx := ctx
-			if idTokenRaw, converted := token.Extra(idTokenExtra).(string); converted {
-				identityContext, err := IdentityContextFromIDTokenToken(redirectHookCtx, idTokenRaw, authCtx.Options().UserAuth.OpenID.ClientID,
-					authCtx.OidcProvider(), userInfo)
-				if err != nil {
-					logger.Errorf(redirectHookCtx, "failed to get identity context from the IDToken due to %v", err)
-					writer.WriteHeader(http.StatusInternalServerError)
-					return
-				}
-				redirectHookCtx = identityContext.WithContext(ctx)
-			} else {
-				logger.Errorf(redirectHookCtx, "failed to get IDToken from the exchanged token with the auth server")
-				writer.WriteHeader(http.StatusInternalServerError)
-			}
-
-			if err := preRedirectHook(redirectHookCtx, authCtx, request, writer); err != nil {
-				logger.Errorf(redirectHookCtx, "failed the preRedirect hook due to %v", err)
+			if err := preRedirectHook(ctx, authCtx, request, writer); err != nil {
+				logger.Errorf(ctx, "failed the preRedirect hook due to %v", err)
 				writer.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			logger.Infof(redirectHookCtx, "Successfully called the preRedirect hook")
+			logger.Infof(ctx, "Successfully called the preRedirect hook")
 		}
 		redirectURL := getAuthFlowEndRedirect(ctx, authCtx, request)
 		logger.Infof(ctx, "Going to perform the redirect with redirectURl %v", redirectURL)
