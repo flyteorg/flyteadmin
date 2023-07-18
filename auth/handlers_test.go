@@ -153,7 +153,7 @@ func TestGetCallbackHandler(t *testing.T) {
 
 	t.Run("forbidden request when accessing user info", func(t *testing.T) {
 		mockAuthCtx := setupMockedAuthContextAtEndpoint(localServer.URL)
-		callbackHandlerFunc := GetCallbackHandler(ctx, mockAuthCtx)
+		callbackHandlerFunc := GetCallbackHandler(ctx, mockAuthCtx, nil)
 		request := httptest.NewRequest("GET", localServer.URL+"/callback", nil)
 		addCsrfCookie(request)
 		addStateString(request)
