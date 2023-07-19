@@ -1085,7 +1085,21 @@ var NoopMigrations = []*gormigrate.Migration{
 	},
 
 	{
-		ID: "pg-noop-2023-06-07-admin-tags",
+		ID: "2023-06-19-id-sequence-to-bigint",
+		Migrate: func(tx *gorm.DB) error {
+			db, err := tx.DB()
+			if err != nil {
+				return err
+			}
+			return alterIDSequenceType(db)
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil
+		},
+	},
+
+	{
+		ID: "2023-07-19-admin-tags",
 		Migrate: func(tx *gorm.DB) error {
 			type AdminTag struct {
 				gorm.Model
@@ -1100,7 +1114,7 @@ var NoopMigrations = []*gormigrate.Migration{
 	},
 
 	{
-		ID: "pg-noop-2023-06-07-noop-execution-admin-tags",
+		ID: "2023-07-19-noop-execution-admin-tags",
 		Migrate: func(tx *gorm.DB) error {
 			type AdminTag struct {
 				gorm.Model
@@ -1164,19 +1178,6 @@ var NoopMigrations = []*gormigrate.Migration{
 			}
 
 			return tx.AutoMigrate(&Execution{})
-		},
-	},
-	{
-		ID: "2023-06-19-id-sequence-to-bigint",
-		Migrate: func(tx *gorm.DB) error {
-			db, err := tx.DB()
-			if err != nil {
-				return err
-			}
-			return alterIDSequenceType(db)
-		},
-		Rollback: func(tx *gorm.DB) error {
-			return nil
 		},
 	},
 }

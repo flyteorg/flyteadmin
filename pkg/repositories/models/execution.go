@@ -68,5 +68,5 @@ type Execution struct {
 
 type AdminTag struct {
 	gorm.Model
-	Name string `valid:"length(0|255)"`
+	Name string
 }
