@@ -1165,6 +1165,16 @@ var NoopMigrations = []*gormigrate.Migration{
 
 			return tx.AutoMigrate(&Execution{})
 		},
+	},
+	{
+		ID: "2023-06-19-id-sequence-to-bigint",
+		Migrate: func(tx *gorm.DB) error {
+			db, err := tx.DB()
+			if err != nil {
+				return err
+			}
+			return alterIDSequenceType(db)
+		},
 		Rollback: func(tx *gorm.DB) error {
 			return nil
 		},
@@ -1174,11 +1184,20 @@ var NoopMigrations = []*gormigrate.Migration{
 var Migrations = append(LegacyMigrations, NoopMigrations...)
 
 func alterTableColumnType(db *sql.DB, columnName, columnType string) error {
-
 	var err error
 	for _, table := range tables {
 		if _, err = db.Exec(fmt.Sprintf(`ALTER TABLE IF EXISTS %s ALTER COLUMN "%s" TYPE %s`, table, columnName,
 			columnType)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func alterIDSequenceType(db *sql.DB) error {
+	var err error
+	for _, table := range tables {
+		if _, err = db.Exec(fmt.Sprintf(`ALTER SEQUENCE IF EXISTS %s_id_seq AS bigint NO MAXVALUE`, table)); err != nil {
 			return err
 		}
 	}
