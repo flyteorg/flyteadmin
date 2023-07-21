@@ -16,10 +16,10 @@ type Processor struct {
 	interfaces.BaseProcessor
 }
 
-func (p *Processor) run() error {
+func (p *Processor) Run() error {
 	var emailMessage admin.EmailMessage
 	var err error
-	p.BaseProcessor.StartProcessing()
+
 	for msg := range p.Sub.Start() {
 		p.SystemMetrics.MessageTotal.Inc()
 		stringMsg := string(msg.Message())

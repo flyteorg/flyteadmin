@@ -26,7 +26,7 @@ func NewGcpProcessor(sub pubsub.Subscriber, emailer interfaces.Emailer, scope pr
 	}
 }
 
-func (p *GcpProcessor) run() error {
+func (p *GcpProcessor) Run() error {
 	var emailMessage admin.EmailMessage
 
 	for msg := range p.Sub.Start() {

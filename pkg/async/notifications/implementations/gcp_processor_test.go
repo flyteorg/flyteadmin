@@ -41,7 +41,7 @@ func TestGcpProcessor_StartProcessing(t *testing.T) {
 		return nil
 	}
 	mockGcpEmailer.SetSendEmailFunc(sendEmailValidationFunc)
-	assert.Nil(t, testGcpProcessor.(*GcpProcessor).run())
+	assert.Nil(t, testGcpProcessor.(*GcpProcessor).Run())
 
 	// Check fornumber of messages processed.
 	m := &dto.Metric{}
@@ -56,7 +56,7 @@ func TestGcpProcessor_StartProcessingNoMessages(t *testing.T) {
 	testGcpProcessor := NewGcpProcessor(&testGcpSubscriber, &mockGcpEmailer, promutils.NewTestScope())
 
 	// Expect no errors are returned.
-	assert.Nil(t, testGcpProcessor.(*GcpProcessor).run())
+	assert.Nil(t, testGcpProcessor.(*GcpProcessor).Run())
 
 	// Check fornumber of messages processed.
 	m := &dto.Metric{}
@@ -74,7 +74,7 @@ func TestGcpProcessor_StartProcessingError(t *testing.T) {
 	testGcpSubscriber.GivenErrError = ret
 
 	testGcpProcessor := NewGcpProcessor(&testGcpSubscriber, &mockGcpEmailer, promutils.NewTestScope())
-	assert.Equal(t, ret, testGcpProcessor.(*GcpProcessor).run())
+	assert.Equal(t, ret, testGcpProcessor.(*GcpProcessor).Run())
 }
 
 func TestGcpProcessor_StartProcessingEmailError(t *testing.T) {
@@ -89,7 +89,7 @@ func TestGcpProcessor_StartProcessingEmailError(t *testing.T) {
 	testGcpProcessor := NewGcpProcessor(&testGcpSubscriber, &mockGcpEmailer, promutils.NewTestScope())
 
 	// Even if there is an error in sending an email StartProcessing will return no errors.
-	assert.Nil(t, testGcpProcessor.(*GcpProcessor).run())
+	assert.Nil(t, testGcpProcessor.(*GcpProcessor).Run())
 
 	// Check for an email error stat.
 	m := &dto.Metric{}

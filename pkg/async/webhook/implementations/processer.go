@@ -2,8 +2,6 @@ package implementations
 
 import (
 	"context"
-	"time"
-
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/util"
 	repoInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
@@ -12,7 +10,6 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"github.com/NYTimes/gizmo/pubsub"
-	"github.com/flyteorg/flyteadmin/pkg/async"
 	"github.com/flyteorg/flyteadmin/pkg/async/notifications"
 	"github.com/flyteorg/flyteadmin/pkg/async/notifications/interfaces"
 	webhookInterfaces "github.com/flyteorg/flyteadmin/pkg/async/webhook/interfaces"
@@ -27,16 +24,7 @@ type Processor struct {
 	interfaces.BaseProcessor
 }
 
-func (p *Processor) StartProcessing() {
-	for {
-		logger.Warningf(context.Background(), "Starting webhook processor")
-		err := p.run()
-		logger.Errorf(context.Background(), "error with running processor err: [%v] ", err)
-		time.Sleep(async.RetryDelay)
-	}
-}
-
-func (p *Processor) run() error {
+func (p *Processor) Run() error {
 	var payload admin.WebhookPayload
 	var request admin.WorkflowExecutionEventRequest
 	var err error

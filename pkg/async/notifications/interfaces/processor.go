@@ -12,20 +12,24 @@ import (
 	"time"
 )
 
-// Exposes the common methods required for a subscriber.
+// Processor Exposes the common methods required for a subscriber.
 // There is one ProcessNotification per type.
 type Processor interface {
 
-	// Starts processing messages from the underlying subscriber.
+	// StartProcessing Starts processing messages from the subscriber.
 	// If the channel closes gracefully, no error will be returned.
 	// If the underlying channel experiences errors,
 	// an error is returned and the channel is closed.
 	StartProcessing()
 
-	// This should be invoked when the application is shutting down.
+	// StopProcessing This should be invoked when the application is shutting down.
 	// If StartProcessing() returned an error, StopProcessing() will return an error because
 	// the channel was already closed.
 	StopProcessing() error
+
+	// Run This is the main method that processes the messages from the underlying subscriber.
+	// If the underlying channel returns errors, an error is returned and the channel is closed.
+	Run() error
 }
 
 type BaseProcessor struct {
@@ -33,20 +37,41 @@ type BaseProcessor struct {
 	SystemMetrics ProcessorSystemMetrics
 }
 
-// StartProcessing Currently only email is the supported notification because slack and pagerduty both use
-// email client to trigger those notifications.
-// When Pagerduty and other notifications are supported, a publisher per type should be created.
+func (p *BaseProcessor) Run() error {
+	return errors.New("run() is not implemented")
+}
+
+func process(p Processor) error {
+	return p.Run()
+}
+
+// StartProcessing Starts processing messages from the subscriber.
 func (p *BaseProcessor) StartProcessing() {
 	for {
 		logger.Warningf(context.Background(), "Starting notifications processor")
-		err := p.run()
+		err := process(p)
 		logger.Errorf(context.Background(), "error with running processor err: [%v] ", err)
 		time.Sleep(async.RetryDelay)
 	}
 }
 
-func (p *BaseProcessor) run() error {
-	return errors.New("run() is not implemented")
+// StopProcessing This should be invoked when the application is shutting down.
+func (p *BaseProcessor) StopProcessing() error {
+	// Note: If the underlying channel is already closed, then Stop() will return an error.
+	err := p.Sub.Stop()
+	if err != nil {
+		p.SystemMetrics.StopError.Inc()
+		logger.Errorf(context.Background(), "Failed to stop the subscriber channel gracefully with err: %v", err)
+	}
+	return err
+}
+
+// MarkMessageDone Marks the message as done in the message queue.
+func (p *BaseProcessor) MarkMessageDone(message pubsub.SubscriberMessage) {
+	if err := message.Done(); err != nil {
+		p.SystemMetrics.MessageDoneError.Inc()
+		logger.Errorf(context.Background(), "failed to mark message as Done() in processor with err: %v", err)
+	}
 }
 
 // FromPubSubMessage Parse the message from GCP PubSub and return the message subject and the message body.
@@ -120,21 +145,4 @@ func (p *BaseProcessor) FromSQSMessage(msg pubsub.SubscriberMessage) (string, []
 		return "", nil, false
 	}
 	return subject, messageBytes, true
-}
-
-func (p *BaseProcessor) StopProcessing() error {
-	// Note: If the underlying channel is already closed, then Stop() will return an error.
-	err := p.Sub.Stop()
-	if err != nil {
-		p.SystemMetrics.StopError.Inc()
-		logger.Errorf(context.Background(), "Failed to stop the subscriber channel gracefully with err: %v", err)
-	}
-	return err
-}
-
-func (p *BaseProcessor) MarkMessageDone(message pubsub.SubscriberMessage) {
-	if err := message.Done(); err != nil {
-		p.SystemMetrics.MessageDoneError.Inc()
-		logger.Errorf(context.Background(), "failed to mark message as Done() in processor with err: %v", err)
-	}
 }
