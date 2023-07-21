@@ -1099,11 +1099,11 @@ var NoopMigrations = []*gormigrate.Migration{
 	},
 
 	{
-		ID: "2023-07-19-admin-tags",
+		ID: "2023-07-20-admin-tags",
 		Migrate: func(tx *gorm.DB) error {
 			type AdminTag struct {
 				gorm.Model
-				Name string `gorm:"size:255"`
+				Name string `gorm:"index:,unique;size:255"`
 			}
 
 			return tx.AutoMigrate(&AdminTag{})
@@ -1114,11 +1114,11 @@ var NoopMigrations = []*gormigrate.Migration{
 	},
 
 	{
-		ID: "2023-07-19-noop-execution-admin-tags",
+		ID: "2023-07-20-noop-execution-admin-tags",
 		Migrate: func(tx *gorm.DB) error {
 			type AdminTag struct {
 				gorm.Model
-				Name string `gorm:"size:255"`
+				Name string `gorm:"index:,unique;size:255"`
 			}
 
 			type ExecutionKey struct {

@@ -68,5 +68,5 @@ type Execution struct {
 
 type AdminTag struct {
 	gorm.Model
-	Name string
+	Name string `gorm:"index:,unique;size:255"`
 }
