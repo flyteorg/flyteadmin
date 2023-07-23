@@ -67,6 +67,9 @@ func GetEmailer(config runtimeInterfaces.NotificationsConfig, scope promutils.Sc
 			sesClient,
 		)
 	case common.Local:
+		/*
+
+		 */
 		fallthrough
 	default:
 		logger.Infof(context.Background(), "Using default noop emailer implementation for config type [%s]", config.Type)
@@ -121,7 +124,14 @@ func NewNotificationsProcessor(config runtimeInterfaces.NotificationsConfig, sco
 		emailer = GetEmailer(config, scope)
 		return implementations.NewGcpProcessor(sub, emailer, scope)
 	case common.Local:
-		fallthrough
+		// TODO: Implement local processor for sandbox image.
+		/*
+
+			emailer = GetEmailer(config, scope)
+			return implementations.NewSandboxProcessor(sub, emailer, scope)
+		*/
+		emailer = GetEmailer(config, scope)
+		return implementations.NewSandboxProcessor(emailer)
 	default:
 		logger.Infof(context.Background(),
 			"Using default noop notifications processor implementation for config type [%s]", config.Type)
@@ -129,6 +139,7 @@ func NewNotificationsProcessor(config runtimeInterfaces.NotificationsConfig, sco
 	}
 }
 
+// push notifications to a topic
 func NewNotificationsPublisher(config runtimeInterfaces.NotificationsConfig, scope promutils.Scope) interfaces.Publisher {
 	reconnectAttempts := config.ReconnectAttempts
 	reconnectDelay := time.Duration(config.ReconnectDelaySeconds) * time.Second
@@ -172,7 +183,10 @@ func NewNotificationsPublisher(config runtimeInterfaces.NotificationsConfig, sco
 		}
 		return implementations.NewPublisher(publisher, scope)
 	case common.Local:
-		fallthrough
+		// push notifications to a topic
+		// use message queue to send notifications
+		// chan is pass by reference in golang
+		return implementations.NewSandboxPublisher()
 	default:
 		logger.Infof(context.Background(),
 			"Using default noop notifications publisher implementation for config type [%s]", config.Type)
