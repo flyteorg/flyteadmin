@@ -10,19 +10,31 @@ on:
       - master
 
 jobs:
+  setup-go:
+    name: Set up Go 
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: "1.19.10"
+
   lint:
     name: Lint
     uses: flyteorg/flytetools/.github/workflows/lint.yml@pin-go-version-to-1.19.10
+    with:
+      go-version: "1.19.10"
 
   tests:
     name: Unit Tests
-    uses: flyteorg/flytetools/.github/workflows/tests.yml@master
+    uses: flyteorg/flytetools/.github/workflows/tests.yml@pin-go-version-to-1.19.10
+    with:
+      go-version: "1.19.10"
     secrets:
       FLYTE_BOT_PAT: ${{ secrets.FLYTE_BOT_PAT }}
 
   docker-build:
     name: Docker Build Images
-    uses: flyteorg/flytetools/.github/workflows/docker_build.yml@master
+    uses: flyteorg/flytetools/.github/workflows/docker_build.yml@pin-go-version-to-1.19.10
 
   endtoend:
     name: End2End Test
@@ -35,13 +47,16 @@ jobs:
   integration:
     name: Integration Test
     needs: [ docker-build ]
-    uses: flyteorg/flytetools/.github/workflows/integration.yml@master
+    uses: flyteorg/flytetools/.github/workflows/integration.yml@pin-go-version-to-1.19.10
     with:
       cache_key: ${{ needs.docker-build.outputs.cache_key }}
+      go-version: "1.19.10"
 
   generate:
     name: Check Go Generate
-    uses: flyteorg/flytetools/.github/workflows/go_generate.yml@master
+    uses: flyteorg/flytetools/.github/workflows/go_generate.yml@pin-go-version-to-1.19.10
+    with:
+      go-version: "1.19.10"
 
   bump_version:
     name: Bump Version
