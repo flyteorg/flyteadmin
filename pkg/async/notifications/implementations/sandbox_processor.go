@@ -13,14 +13,13 @@ import (
 
 type SandboxProcessor struct {
 	email interfaces.Emailer
-	// systemMetrics processorSystemMetrics
 }
 
 func (p *SandboxProcessor) StartProcessing() {
 	for {
 		logger.Warningf(context.Background(), "Starting SandBox notifications processor")
 		err := p.run()
-		logger.Errorf(context.Background(), "error with running SandBox processor err: [%v] ", err)
+		logger.Errorf(context.Background(), "error with running processor err: [%v] ", err)
 		time.Sleep(async.RetryDelay)
 	}
 }
@@ -28,20 +27,24 @@ func (p *SandboxProcessor) StartProcessing() {
 func (p *SandboxProcessor) run() error {
 	var emailMessage admin.EmailMessage
 
-	// use select instead
-	select {
-	case msg := <-msgChan:
-		err := proto.Unmarshal(msg, &emailMessage)
-		if err != nil {
-			logger.Errorf(context.Background(), "error with unmarshalling message [%v] ", err)
+	for {
+		select {
+		case msg := <-msgChan:
+			err := proto.Unmarshal(msg, &emailMessage)
+			if err != nil {
+				logger.Errorf(context.Background(), "error with unmarshalling message [%v]", err)
+				return err
+			}
+
+			err = p.email.SendEmail(context.Background(), emailMessage)
+			if err != nil {
+				logger.Errorf(context.Background(), "error with sendemail message [%v] ", err)
+				return err
+			}
+		default:
+			logger.Debugf(context.Background(), "no message to process")
 		}
-		err = p.email.SendEmail(context.Background(), emailMessage)
-	default:
-		logger.Debugf(context.Background(), "no message to process")
 	}
-
-	return nil
-
 }
 
 func (p *SandboxProcessor) StopProcessing() error {
@@ -52,6 +55,5 @@ func (p *SandboxProcessor) StopProcessing() error {
 func NewSandboxProcessor(emailer interfaces.Emailer) interfaces.Processor {
 	return &SandboxProcessor{
 		email: emailer,
-		// systemMetrics: newProcessorSystemMetrics(scope.NewSubScope("sandbox_processor")),
 	}
 }

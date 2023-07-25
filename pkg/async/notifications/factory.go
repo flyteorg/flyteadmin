@@ -67,10 +67,7 @@ func GetEmailer(config runtimeInterfaces.NotificationsConfig, scope promutils.Sc
 			sesClient,
 		)
 	case common.Local:
-		/*
-
-		 */
-		fallthrough
+		return implementations.NewSendGridEmailer(config, scope)
 	default:
 		logger.Infof(context.Background(), "Using default noop emailer implementation for config type [%s]", config.Type)
 		return implementations.NewNoopEmail()
