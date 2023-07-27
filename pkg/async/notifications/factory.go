@@ -121,12 +121,6 @@ func NewNotificationsProcessor(config runtimeInterfaces.NotificationsConfig, sco
 		emailer = GetEmailer(config, scope)
 		return implementations.NewGcpProcessor(sub, emailer, scope)
 	case common.Local:
-		// TODO: Implement local processor for sandbox image.
-		/*
-
-			emailer = GetEmailer(config, scope)
-			return implementations.NewSandboxProcessor(sub, emailer, scope)
-		*/
 		emailer = GetEmailer(config, scope)
 		return implementations.NewSandboxProcessor(emailer)
 	default:
@@ -136,7 +130,6 @@ func NewNotificationsProcessor(config runtimeInterfaces.NotificationsConfig, sco
 	}
 }
 
-// push notifications to a topic
 func NewNotificationsPublisher(config runtimeInterfaces.NotificationsConfig, scope promutils.Scope) interfaces.Publisher {
 	reconnectAttempts := config.ReconnectAttempts
 	reconnectDelay := time.Duration(config.ReconnectDelaySeconds) * time.Second
@@ -180,9 +173,6 @@ func NewNotificationsPublisher(config runtimeInterfaces.NotificationsConfig, sco
 		}
 		return implementations.NewPublisher(publisher, scope)
 	case common.Local:
-		// push notifications to a topic
-		// use message queue to send notifications
-		// chan is pass by reference in golang
 		return implementations.NewSandboxPublisher()
 	default:
 		logger.Infof(context.Background(),
