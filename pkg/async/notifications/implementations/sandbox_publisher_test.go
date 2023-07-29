@@ -9,10 +9,8 @@ import (
 )
 
 func TestSandboxPublisher_Publish(t *testing.T) {
-	// Initialize the sandbox publisher
 	publisher := NewSandboxPublisher()
 
-	// Create a channel to communicate failures
 	errChan := make(chan string)
 
 	go func() {
@@ -24,7 +22,6 @@ func TestSandboxPublisher_Publish(t *testing.T) {
 		}
 	}()
 
-	// Run the Publish method
 	err := publisher.Publish(context.Background(), "NOTIFICATION_TYPE", &testEmail)
 
 	// Check if there was an error in the goroutine
@@ -35,6 +32,5 @@ func TestSandboxPublisher_Publish(t *testing.T) {
 		// no error from the goroutine
 	}
 
-	// Ensure there was no error in the Publish method
 	assert.Nil(t, err)
 }

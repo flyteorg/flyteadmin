@@ -66,8 +66,10 @@ func GetEmailer(config runtimeInterfaces.NotificationsConfig, scope promutils.Sc
 			scope,
 			sesClient,
 		)
-	case common.Local:
+	case common.Sandbox:
 		return implementations.NewSendGridEmailer(config, scope)
+	case common.Local:
+		fallthrough
 	default:
 		logger.Infof(context.Background(), "Using default noop emailer implementation for config type [%s]", config.Type)
 		return implementations.NewNoopEmail()
@@ -120,9 +122,11 @@ func NewNotificationsProcessor(config runtimeInterfaces.NotificationsConfig, sco
 		}
 		emailer = GetEmailer(config, scope)
 		return implementations.NewGcpProcessor(sub, emailer, scope)
-	case common.Local:
+	case common.Sandbox:
 		emailer = GetEmailer(config, scope)
 		return implementations.NewSandboxProcessor(emailer)
+	case common.Local:
+		fallthrough
 	default:
 		logger.Infof(context.Background(),
 			"Using default noop notifications processor implementation for config type [%s]", config.Type)
@@ -172,8 +176,10 @@ func NewNotificationsPublisher(config runtimeInterfaces.NotificationsConfig, sco
 			panic(err)
 		}
 		return implementations.NewPublisher(publisher, scope)
-	case common.Local:
+	case common.Sandbox:
 		return implementations.NewSandboxPublisher()
+	case common.Local:
+		fallthrough
 	default:
 		logger.Infof(context.Background(),
 			"Using default noop notifications publisher implementation for config type [%s]", config.Type)
