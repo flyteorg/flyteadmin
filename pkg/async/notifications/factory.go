@@ -66,8 +66,6 @@ func GetEmailer(config runtimeInterfaces.NotificationsConfig, scope promutils.Sc
 			scope,
 			sesClient,
 		)
-	case common.Sandbox:
-		return implementations.NewSendGridEmailer(config, scope)
 	case common.Local:
 		fallthrough
 	default:

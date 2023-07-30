@@ -43,6 +43,7 @@ func (p *SandboxProcessor) run() error {
 			}
 		default:
 			logger.Debugf(context.Background(), "no message to process")
+			return nil
 		}
 	}
 }
