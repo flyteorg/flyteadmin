@@ -216,5 +216,5 @@ retract v1.1.94
 
 // go mod edit -replace github.com/flyteorg/stow=github.com/gvashishtha/stow@master
 // go mod tidy
-
+// docker build . --platform=linux/amd64
 replace github.com/flyteorg/stow => github.com/gvashishtha/stow v0.0.0-20220715154935-e9c5e6f473ac
