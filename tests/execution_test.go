@@ -245,14 +245,14 @@ func TestCreateWorkflowExecutionsWithTags(t *testing.T) {
 	client, conn := GetTestAdminServiceClient()
 	defer conn.Close()
 
-	resp, err := client.CreateExecution(ctx, &admin.ExecutionCreateRequest{
+	_, err := client.CreateExecution(ctx, &admin.ExecutionCreateRequest{
 		Project: "project1",
 		Domain:  "domain1",
 		Name:    "name5",
 		Spec:    &admin.ExecutionSpec{Tags: []string{"hello", "flyte"}},
 	})
 	assert.Nil(t, err)
-	resp, err := client.CreateExecution(ctx, &admin.ExecutionCreateRequest{
+	_, err = client.CreateExecution(ctx, &admin.ExecutionCreateRequest{
 		Project: "project1",
 		Domain:  "domain1",
 		Name:    "name6",
