@@ -237,6 +237,30 @@ func TestListWorkflowExecutionsWithTags(t *testing.T) {
 	assert.Equal(t, len(resp.Executions), 2)
 }
 
+func TestCreateWorkflowExecutionsWithTags(t *testing.T) {
+	truncateAllTablesForTestingOnly()
+	populateWorkflowExecutionsForTestingOnly()
+
+	ctx := context.Background()
+	client, conn := GetTestAdminServiceClient()
+	defer conn.Close()
+
+	resp, err := client.CreateExecution(ctx, &admin.ExecutionCreateRequest{
+		Project: "project1",
+		Domain:  "domain1",
+		Name:    "name5",
+		Spec:    &admin.ExecutionSpec{Tags: []string{"hello", "flyte"}},
+	})
+	assert.Nil(t, err)
+	resp, err := client.CreateExecution(ctx, &admin.ExecutionCreateRequest{
+		Project: "project1",
+		Domain:  "domain1",
+		Name:    "name6",
+		Spec:    &admin.ExecutionSpec{Tags: []string{"hello", "flyte"}},
+	})
+	assert.Nil(t, err)
+}
+
 func TestListWorkflowExecutions_Filters(t *testing.T) {
 	truncateAllTablesForTestingOnly()
 	populateWorkflowExecutionsForTestingOnly()
