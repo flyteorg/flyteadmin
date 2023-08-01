@@ -214,9 +214,10 @@ replace github.com/robfig/cron/v3 => github.com/unionai/cron/v3 v3.0.2-0.2022091
 // This was published in error when attempting to create 1.5.1 Flyte release.
 retract v1.1.94
 
-// go mod edit -replace github.com/flyteorg/stow=github.com/gvashishtha/stow@master
+// go mod edit -replace github.com/flyteorg/stow=github.com/gvashishtha/stow
 // go mod tidy
 // docker build . --platform=linux/amd64
-replace github.com/flyteorg/stow => github.com/gvashishtha/stow v0.0.0-20220715154935-e9c5e6f473ac
 
 replace github.com/flyteorg/flytestdlib => github.com/gvashishtha/flytestdlib v0.0.0-20230801174554-0c6829454663
+
+replace github.com/flyteorg/stow => github.com/gvashishtha/stow v0.0.0-20230801152247-78e3158c973a
