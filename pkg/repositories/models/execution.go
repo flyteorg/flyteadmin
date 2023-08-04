@@ -1,6 +1,7 @@
 package models
 
 import (
+	"gorm.io/gorm/clause"
 	"time"
 
 	"gorm.io/gorm"
@@ -69,4 +70,12 @@ type Execution struct {
 type AdminTag struct {
 	gorm.Model
 	Name string `gorm:"index:,unique;size:255"`
+}
+
+func (b *AdminTag) BeforeCreate(tx *gorm.DB) (err error) {
+	tx.Statement.AddClause(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "name"}},            // key column
+		DoUpdates: clause.AssignmentColumns([]string{"name"}), // column needed to be updated
+	})
+	return nil
 }
