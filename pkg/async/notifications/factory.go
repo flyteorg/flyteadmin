@@ -3,6 +3,7 @@ package notifications
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/flyteorg/flyteadmin/pkg/async"
@@ -27,6 +28,9 @@ const maxRetries = 3
 
 var enable64decoding = false
 
+var msgChan chan []byte
+var once sync.Once
+
 type PublisherConfig struct {
 	TopicName string
 }
@@ -39,6 +43,13 @@ type ProcessorConfig struct {
 type EmailerConfig struct {
 	SenderEmail string
 	BaseURL     string
+}
+
+// For sandbox only
+func CreateMsgChan() {
+	once.Do(func() {
+		msgChan = make(chan []byte)
+	})
 }
 
 func GetEmailer(config runtimeInterfaces.NotificationsConfig, scope promutils.Scope) interfaces.Emailer {
@@ -122,7 +133,7 @@ func NewNotificationsProcessor(config runtimeInterfaces.NotificationsConfig, sco
 		return implementations.NewGcpProcessor(sub, emailer, scope)
 	case common.Sandbox:
 		emailer = GetEmailer(config, scope)
-		return implementations.NewSandboxProcessor(emailer)
+		return implementations.NewSandboxProcessor(msgChan, emailer)
 	case common.Local:
 		fallthrough
 	default:
@@ -175,7 +186,8 @@ func NewNotificationsPublisher(config runtimeInterfaces.NotificationsConfig, sco
 		}
 		return implementations.NewPublisher(publisher, scope)
 	case common.Sandbox:
-		return implementations.NewSandboxPublisher()
+		CreateMsgChan()
+		return implementations.NewSandboxPublisher(msgChan)
 	case common.Local:
 		fallthrough
 	default:

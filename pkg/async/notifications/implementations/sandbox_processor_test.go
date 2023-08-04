@@ -24,8 +24,8 @@ func TestSandboxProcessor_UnmarshalMessage(t *testing.T) {
 }
 
 func TestSandboxProcessor_StartProcessing(t *testing.T) {
-
-	testSandboxProcessor := NewSandboxProcessor(&mockSandboxEmailer)
+	msgChan := make(chan []byte, 1)
+	testSandboxProcessor := NewSandboxProcessor(msgChan, &mockSandboxEmailer)
 
 	sendEmailValidationFunc := func(ctx context.Context, email admin.EmailMessage) error {
 		assert.Equal(t, testEmail.Body, email.Body)

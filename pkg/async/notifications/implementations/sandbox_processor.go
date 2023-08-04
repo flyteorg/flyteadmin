@@ -12,7 +12,8 @@ import (
 )
 
 type SandboxProcessor struct {
-	email interfaces.Emailer
+	email   interfaces.Emailer
+	msgChan chan []byte
 }
 
 func (p *SandboxProcessor) StartProcessing() {
@@ -29,7 +30,7 @@ func (p *SandboxProcessor) run() error {
 
 	for {
 		select {
-		case msg := <-msgChan:
+		case msg := <-p.msgChan:
 			err := proto.Unmarshal(msg, &emailMessage)
 			if err != nil {
 				logger.Errorf(context.Background(), "error with unmarshalling message [%v]", err)
@@ -53,8 +54,9 @@ func (p *SandboxProcessor) StopProcessing() error {
 	return nil
 }
 
-func NewSandboxProcessor(emailer interfaces.Emailer) interfaces.Processor {
+func NewSandboxProcessor(msgChan chan []byte, emailer interfaces.Emailer) interfaces.Processor {
 	return &SandboxProcessor{
-		email: emailer,
+		msgChan: msgChan,
+		email:   emailer,
 	}
 }

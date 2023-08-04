@@ -7,9 +7,9 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-type SandboxPublisher struct{}
-
-var msgChan = make(chan []byte)
+type SandboxPublisher struct {
+	msgChan chan []byte
+}
 
 func (p *SandboxPublisher) Publish(ctx context.Context, notificationType string, msg proto.Message) error {
 	logger.Debugf(ctx, "Publishing the following message [%s]", msg.String())
@@ -21,11 +21,13 @@ func (p *SandboxPublisher) Publish(ctx context.Context, notificationType string,
 		return err
 	}
 
-	msgChan <- data
+	p.msgChan <- data
 
 	return nil
 }
 
-func NewSandboxPublisher() *SandboxPublisher {
-	return &SandboxPublisher{}
+func NewSandboxPublisher(msgChan chan []byte) *SandboxPublisher {
+	return &SandboxPublisher{
+		msgChan: msgChan,
+	}
 }
