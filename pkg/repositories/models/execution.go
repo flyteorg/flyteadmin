@@ -1,8 +1,9 @@
 package models
 
 import (
-	"gorm.io/gorm/clause"
 	"time"
+
+	"gorm.io/gorm/clause"
 
 	"gorm.io/gorm"
 
