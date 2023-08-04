@@ -1099,7 +1099,7 @@ var NoopMigrations = []*gormigrate.Migration{
 	},
 
 	{
-		ID: "2023-07-20-admin-tags",
+		ID: "2023-08-04-admin-tags",
 		Migrate: func(tx *gorm.DB) error {
 			type AdminTag struct {
 				gorm.Model
@@ -1114,7 +1114,7 @@ var NoopMigrations = []*gormigrate.Migration{
 	},
 
 	{
-		ID: "2023-07-20-noop-execution-admin-tags",
+		ID: "2023-08-04-noop-migration-execution-admin-tags",
 		Migrate: func(tx *gorm.DB) error {
 			type AdminTag struct {
 				gorm.Model
