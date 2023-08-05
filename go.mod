@@ -16,8 +16,8 @@ require (
 	github.com/flyteorg/flyteidl v1.5.11
 	github.com/flyteorg/flyteplugins v1.0.67
 	github.com/flyteorg/flytepropeller v1.1.98
-	github.com/flyteorg/flytestdlib v1.0.20
-	github.com/flyteorg/stow v0.3.6
+	github.com/flyteorg/flytestdlib v1.0.22
+	github.com/flyteorg/stow v0.3.7
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-gormigrate/gormigrate/v2 v2.0.0
 	github.com/gogo/protobuf v1.3.2
@@ -213,11 +213,3 @@ replace github.com/robfig/cron/v3 => github.com/unionai/cron/v3 v3.0.2-0.2022091
 // Retracted versions
 // This was published in error when attempting to create 1.5.1 Flyte release.
 retract v1.1.94
-
-// go mod edit -replace github.com/flyteorg/stow=github.com/gvashishtha/stow
-// go mod tidy
-// docker build . --platform=linux/amd64
-
-replace github.com/flyteorg/flytestdlib => github.com/gvashishtha/flytestdlib v0.0.0-20230801174554-0c6829454663
-
-replace github.com/flyteorg/stow => github.com/gvashishtha/stow v0.0.0-20230801152247-78e3158c973a
