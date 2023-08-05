@@ -6,22 +6,10 @@ import (
 
 	"github.com/flyteorg/flyteadmin/pkg/async/notifications/mocks"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 )
 
 var mockSandboxEmailer mocks.MockEmailer
-
-func TestSandboxProcessor_UnmarshalMessage(t *testing.T) {
-	var emailMessage admin.EmailMessage
-	err := proto.Unmarshal(msg, &emailMessage)
-	assert.Nil(t, err)
-
-	assert.Equal(t, emailMessage.Body, testEmail.Body)
-	assert.Equal(t, emailMessage.RecipientsEmail, testEmail.RecipientsEmail)
-	assert.Equal(t, emailMessage.SubjectLine, testEmail.SubjectLine)
-	assert.Equal(t, emailMessage.SenderEmail, testEmail.SenderEmail)
-}
 
 func TestSandboxProcessor_StartProcessing(t *testing.T) {
 	msgChan := make(chan []byte, 1)

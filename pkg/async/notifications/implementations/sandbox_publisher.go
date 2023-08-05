@@ -8,7 +8,7 @@ import (
 )
 
 type SandboxPublisher struct {
-	msgChan chan []byte
+	pubChan chan<- []byte
 }
 
 func (p *SandboxPublisher) Publish(ctx context.Context, notificationType string, msg proto.Message) error {
@@ -21,13 +21,13 @@ func (p *SandboxPublisher) Publish(ctx context.Context, notificationType string,
 		return err
 	}
 
-	p.msgChan <- data
+	p.pubChan <- data
 
 	return nil
 }
 
-func NewSandboxPublisher(msgChan chan []byte) *SandboxPublisher {
+func NewSandboxPublisher(pubChan chan<- []byte) *SandboxPublisher {
 	return &SandboxPublisher{
-		msgChan: msgChan,
+		pubChan: pubChan,
 	}
 }
