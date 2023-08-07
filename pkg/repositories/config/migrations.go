@@ -1114,7 +1114,7 @@ var NoopMigrations = []*gormigrate.Migration{
 	},
 
 	{
-		ID: "2023-08-04-noop-migration-execution-admin-tags",
+		ID: "2023-08-04-execution-admin-tags", // A join table used to associate executions with tags
 		Migrate: func(tx *gorm.DB) error {
 			type AdminTag struct {
 				gorm.Model
