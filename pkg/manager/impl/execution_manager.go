@@ -344,12 +344,14 @@ func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admi
 	launchPlan *admin.LaunchPlan) (*admin.WorkflowExecutionConfig, error) {
 
 	workflowExecConfig := admin.WorkflowExecutionConfig{}
+	logger.Debugf(ctx, "workflowExecConfig: merging config [%+v] with request spec: [%+v]", workflowExecConfig, request.Spec)
 	// Merge the request spec into workflowExecConfig
 	workflowExecConfig = util.MergeIntoExecConfig(workflowExecConfig, request.Spec)
 
 	var workflowName string
 	if launchPlan != nil && launchPlan.Spec != nil {
 		// Merge the launch plan spec into workflowExecConfig
+		logger.Debugf(ctx, "workflowExecConfig: merging config [%+v] with launch plan spec: [%+v]", workflowExecConfig, launchPlan.Spec)
 		workflowExecConfig = util.MergeIntoExecConfig(workflowExecConfig, launchPlan.Spec)
 		if launchPlan.Spec.WorkflowId != nil {
 			workflowName = launchPlan.Spec.WorkflowId.Name
@@ -363,6 +365,7 @@ func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admi
 		return nil, err
 	}
 	if matchableResource != nil && matchableResource.Attributes.GetWorkflowExecutionConfig() != nil {
+		logger.Debugf(ctx, "workflowExecConfig: merging config [%+v] with overridable workflow execution config: [%+v]", workflowExecConfig, matchableResource.Attributes.GetWorkflowExecutionConfig())
 		// merge the matchable resource workflow execution config into workflowExecConfig
 		workflowExecConfig = util.MergeIntoExecConfig(workflowExecConfig,
 			matchableResource.Attributes.GetWorkflowExecutionConfig())
@@ -383,6 +386,7 @@ func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admi
 	}
 	if projectMatchableResource != nil && projectMatchableResource.Attributes.GetWorkflowExecutionConfig() != nil {
 		// merge the matchable resource workflow execution config into workflowExecConfig
+		logger.Debugf(ctx, "workflowExecConfig: merging config [%+v] with overridable project execution config: [%+v]", workflowExecConfig, projectMatchableResource.Attributes.GetWorkflowExecutionConfig())
 		workflowExecConfig = util.MergeIntoExecConfig(workflowExecConfig,
 			projectMatchableResource.Attributes.GetWorkflowExecutionConfig())
 	}
@@ -400,6 +404,7 @@ func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admi
 	}
 
 	// Merge the application config into workflowExecConfig. If even the deprecated fields are not set
+	logger.Debugf(ctx, "workflowExecConfig: merging config [%+v] with overridable top level application config: [%+v]", workflowExecConfig, m.config.ApplicationConfiguration().GetTopLevelConfig())
 	workflowExecConfig = util.MergeIntoExecConfig(workflowExecConfig, m.config.ApplicationConfiguration().GetTopLevelConfig())
 	// Explicitly set the security context if its nil since downstream we expect this settings to be available
 	if workflowExecConfig.GetSecurityContext() == nil {
@@ -421,6 +426,7 @@ func (m *ExecutionManager) getExecutionConfig(ctx context.Context, request *admi
 
 	logger.Infof(ctx, "getting the workflow execution config from application configuration")
 	// Defaults to one from the application config
+	logger.Infof(ctx, "workflowExecConfig: final value [%+v]", workflowExecConfig)
 	return &workflowExecConfig, nil
 }
 
