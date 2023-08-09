@@ -31,7 +31,23 @@ const (
 	FromHTTPVal          = "true"
 )
 
-type PreRedirectHookFunc func(ctx context.Context, authCtx interfaces.AuthenticationContext, request *http.Request, w http.ResponseWriter) error
+type PreRedirectHookError struct {
+	Message string
+	Code    int
+}
+
+func (e *PreRedirectHookError) Error() string {
+	return e.Message
+}
+
+// PreRedirectHookFunc Interface used for running custom code before the redirect happens during a successful auth flow.
+// This might be useful in cases where the auth flow allows the user to login since the IDP has been configured
+// for eg: to allow all users from a particular domain to login
+// but you want to restrict access to only a particular set of user ids. eg : users@domain.com are allowed to login but user user1@domain.com, user2@domain.com
+// should only be allowed
+// PreRedirectHookError is the error interface which allows the user to set correct http status code and Message to be set in case the function returns an error
+// without which the current usage in GetCallbackHandler will set this to InternalServerError
+type PreRedirectHookFunc func(ctx context.Context, authCtx interfaces.AuthenticationContext, request *http.Request, w http.ResponseWriter) *PreRedirectHookError
 type HTTPRequestToMetadataAnnotator func(ctx context.Context, request *http.Request) metadata.MD
 type UserInfoForwardResponseHandler func(ctx context.Context, w http.ResponseWriter, m protoiface.MessageV1) error
 
@@ -145,7 +161,6 @@ func GetCallbackHandler(ctx context.Context, authCtx interfaces.AuthenticationCo
 
 		ctx = context.WithValue(ctx, oauth2.HTTPClient, authCtx.GetHTTPClient())
 
-		logger.Debugf(ctx, "Going to verify th CSRF cookie... for RequestURI %v", request.RequestURI)
 		err := VerifyCsrfCookie(ctx, request)
 		if err != nil {
 			logger.Errorf(ctx, "Invalid CSRF token cookie %s", err)
@@ -153,7 +168,6 @@ func GetCallbackHandler(ctx context.Context, authCtx interfaces.AuthenticationCo
 			return
 		}
 
-		logger.Debugf(ctx, "Going to exchange the token for the authorizationCode %v ... for RequestURI %v", authorizationCode, request.RequestURI)
 		token, err := authCtx.OAuth2ClientConfig(GetPublicURL(ctx, request, authCtx.Options())).Exchange(ctx, authorizationCode)
 		if err != nil {
 			logger.Errorf(ctx, "Error when exchanging code %s", err)
@@ -161,7 +175,6 @@ func GetCallbackHandler(ctx context.Context, authCtx interfaces.AuthenticationCo
 			return
 		}
 
-		logger.Debugf(ctx, "Going to set token cookies ... for RequestURI %v", request.RequestURI)
 		err = authCtx.CookieManager().SetTokenCookies(ctx, writer, token)
 		if err != nil {
 			logger.Errorf(ctx, "Error setting encrypted JWT cookie %s", err)
@@ -169,7 +182,6 @@ func GetCallbackHandler(ctx context.Context, authCtx interfaces.AuthenticationCo
 			return
 		}
 
-		logger.Debugf(ctx, "Going to query user info token  ... for RequestURI %v", request.RequestURI)
 		userInfo, err := QueryUserInfoUsingAccessToken(ctx, request, authCtx, token.AccessToken)
 		if err != nil {
 			logger.Errorf(ctx, "Failed to query user info. Error: %v", err)
@@ -177,7 +189,6 @@ func GetCallbackHandler(ctx context.Context, authCtx interfaces.AuthenticationCo
 			return
 		}
 
-		logger.Debugf(ctx, "Going to set user info cookie  ... for RequestURI %v with userInfo %v", request.RequestURI, userInfo)
 		err = authCtx.CookieManager().SetUserInfoCookie(ctx, writer, userInfo)
 		if err != nil {
 			logger.Errorf(ctx, "Error setting encrypted user info cookie. Error: %v", err)
@@ -185,16 +196,19 @@ func GetCallbackHandler(ctx context.Context, authCtx interfaces.AuthenticationCo
 			return
 		}
 
-		logger.Infof(ctx, "Going to look up the preredirect hook in the registry")
 		preRedirectHook := plugins.Get[PreRedirectHookFunc](pluginRegistry, plugins.PluginIDPreRedirectHook)
 		if preRedirectHook != nil {
 			logger.Infof(ctx, "preRedirect hook is set")
 			if err := preRedirectHook(ctx, authCtx, request, writer); err != nil {
-				logger.Errorf(ctx, "failed the preRedirect hook due to %v", err)
-				writer.WriteHeader(http.StatusInternalServerError)
+				logger.Errorf(ctx, "failed the preRedirect hook due %v with status code  %v", err.Message, err.Code)
+				if http.StatusText(err.Code) != "" {
+					writer.WriteHeader(err.Code)
+				} else {
+					writer.WriteHeader(http.StatusInternalServerError)
+				}
 				return
 			}
-			logger.Infof(ctx, "Successfully called the preRedirect hook")
+			logger.Info(ctx, "Successfully called the preRedirect hook")
 		}
 		redirectURL := getAuthFlowEndRedirect(ctx, authCtx, request)
 		logger.Infof(ctx, "Going to perform the redirect with redirectURl %v", redirectURL)
