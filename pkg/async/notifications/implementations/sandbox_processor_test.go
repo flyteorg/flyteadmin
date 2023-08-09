@@ -3,6 +3,7 @@ package implementations
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/flyteorg/flyteadmin/pkg/async/notifications/mocks"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
@@ -12,7 +13,7 @@ import (
 
 var mockSandboxEmailer mocks.MockEmailer
 
-func TestSandboxProcessor_StartProcessing(t *testing.T) {
+func TestSandboxProcessor_StartProcessingSuccess(t *testing.T) {
 	msgChan := make(chan []byte, 1)
 	msgChan <- msg
 	testSandboxProcessor := NewSandboxProcessor(msgChan, &mockSandboxEmailer)
@@ -29,12 +30,36 @@ func TestSandboxProcessor_StartProcessing(t *testing.T) {
 	assert.Nil(t, testSandboxProcessor.(*SandboxProcessor).run())
 }
 
+func TestSandboxProcessor_StartProcessingNoMessage(t *testing.T) {
+	msgChan := make(chan []byte, 1)
+	testSandboxProcessor := NewSandboxProcessor(msgChan, &mockSandboxEmailer)
+	go testSandboxProcessor.StartProcessing()
+	time.Sleep(1 * time.Second)
+}
+
+func TestSandboxProcessor_StartProcessingError(t *testing.T) {
+	msgChan := make(chan []byte, 1)
+	msgChan <- msg
+
+	emailError := errors.New("error running processor")
+	sendEmailValidationFunc := func(ctx context.Context, email admin.EmailMessage) error {
+		return emailError
+	}
+	mockSandboxEmailer.SetSendEmailFunc(sendEmailValidationFunc)
+
+	testSandboxProcessor := NewSandboxProcessor(msgChan, &mockSandboxEmailer)
+	go testSandboxProcessor.StartProcessing()
+
+	// give time to receive the err in StartProcessing
+	time.Sleep(1 * time.Second)
+	assert.Zero(t, len(msgChan))
+}
+
 func TestSandboxProcessor_StartProcessingMessageError(t *testing.T) {
 	msgChan := make(chan []byte, 1)
 	invalidProtoMessage := []byte("invalid message")
 	msgChan <- invalidProtoMessage
 	testSandboxProcessor := NewSandboxProcessor(msgChan, &mockSandboxEmailer)
-
 	assert.NotNil(t, testSandboxProcessor.(*SandboxProcessor).run())
 }
 
