@@ -29,6 +29,15 @@ func TestSandboxProcessor_StartProcessing(t *testing.T) {
 	assert.Nil(t, testSandboxProcessor.(*SandboxProcessor).run())
 }
 
+func TestSandboxProcessor_StartProcessingMessageError(t *testing.T) {
+	msgChan := make(chan []byte, 1)
+	invalidProtoMessage := []byte("invalid message")
+	msgChan <- invalidProtoMessage
+	testSandboxProcessor := NewSandboxProcessor(msgChan, &mockSandboxEmailer)
+
+	assert.NotNil(t, testSandboxProcessor.(*SandboxProcessor).run())
+}
+
 func TestSandboxProcessor_StartProcessingEmailError(t *testing.T) {
 	msgChan := make(chan []byte, 1)
 	msgChan <- msg
