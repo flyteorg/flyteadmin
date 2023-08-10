@@ -6,7 +6,7 @@ import (
 	"github.com/flyteorg/flytestdlib/config"
 )
 
-const clusterPoolsKey = "cluster_pools"
+const clusterPoolsKey = "clusterPools"
 
 var clusterPoolsConfig = config.MustRegisterSection(clusterPoolsKey, &interfaces.ClusterPoolAssignmentConfig{
 	ClusterPoolAssignments: make(interfaces.ClusterPoolAssignments),
