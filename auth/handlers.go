@@ -211,7 +211,6 @@ func GetCallbackHandler(ctx context.Context, authCtx interfaces.AuthenticationCo
 			logger.Info(ctx, "Successfully called the preRedirect hook")
 		}
 		redirectURL := getAuthFlowEndRedirect(ctx, authCtx, request)
-		logger.Infof(ctx, "Going to perform the redirect with redirectURl %v", redirectURL)
 		http.Redirect(writer, request, redirectURL, http.StatusTemporaryRedirect)
 	}
 }
