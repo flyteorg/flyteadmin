@@ -179,8 +179,7 @@ func TestGetCallbackHandler(t *testing.T) {
 	t.Run("successful callback with redirect and successful preredirect hook call", func(t *testing.T) {
 		mockAuthCtx := setupMockedAuthContextAtEndpoint(localServer.URL)
 		r := plugins.NewRegistry()
-		var redirectFunc PreRedirectHookFunc
-		redirectFunc = func(redirectContext context.Context, authCtx interfaces.AuthenticationContext, request *http.Request, responseWriter http.ResponseWriter) *PreRedirectHookError {
+		var redirectFunc PreRedirectHookFunc = func(redirectContext context.Context, authCtx interfaces.AuthenticationContext, request *http.Request, responseWriter http.ResponseWriter) *PreRedirectHookError {
 			return nil
 		}
 
@@ -208,8 +207,7 @@ func TestGetCallbackHandler(t *testing.T) {
 	t.Run("successful callback with pre-redirecthook failure", func(t *testing.T) {
 		mockAuthCtx := setupMockedAuthContextAtEndpoint(localServer.URL)
 		r := plugins.NewRegistry()
-		var redirectFunc PreRedirectHookFunc
-		redirectFunc = func(redirectContext context.Context, authCtx interfaces.AuthenticationContext, request *http.Request, responseWriter http.ResponseWriter) *PreRedirectHookError {
+		var redirectFunc PreRedirectHookFunc = func(redirectContext context.Context, authCtx interfaces.AuthenticationContext, request *http.Request, responseWriter http.ResponseWriter) *PreRedirectHookError {
 			return &PreRedirectHookError{
 				Code:    http.StatusPreconditionFailed,
 				Message: "precondition error",

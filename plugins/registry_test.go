@@ -29,8 +29,7 @@ func TestRedirectHook(t *testing.T) {
 	ar := NewAtomicRegistry(nil)
 	r := NewRegistry()
 
-	var redirectHookfn PreRedirectHookFunc
-	redirectHookfn = func(ctx context.Context) error {
+	var redirectHookfn PreRedirectHookFunc = func(ctx context.Context) error {
 		return fmt.Errorf("redirect hook error")
 	}
 	err := r.Register(PluginIDPreRedirectHook, redirectHookfn)
