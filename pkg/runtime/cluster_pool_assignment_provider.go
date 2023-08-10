@@ -12,7 +12,7 @@ var clusterPoolsConfig = config.MustRegisterSection(clusterPoolsKey, &interfaces
 	ClusterPoolAssignments: make(interfaces.ClusterPoolAssignments),
 })
 
-// Implementation of an interfaces.QueueConfiguration
+// Implementation of an interfaces.ClusterPoolAssignmentConfiguration
 type ClusterPoolAssignmentConfigurationProvider struct{}
 
 func (p *ClusterPoolAssignmentConfigurationProvider) GetClusterPoolAssignments() interfaces.ClusterPoolAssignments {
