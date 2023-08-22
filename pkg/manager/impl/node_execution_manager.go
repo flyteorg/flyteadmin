@@ -4,22 +4,26 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/flyteorg/flyteadmin/pkg/repositories/gormimpl"
+
 	cloudeventInterfaces "github.com/flyteorg/flyteadmin/pkg/async/cloudevent/interfaces"
 
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 
 	eventWriter "github.com/flyteorg/flyteadmin/pkg/async/events/interfaces"
 
-	notificationInterfaces "github.com/flyteorg/flyteadmin/pkg/async/notifications/interfaces"
 	"github.com/golang/protobuf/proto"
+
+	notificationInterfaces "github.com/flyteorg/flyteadmin/pkg/async/notifications/interfaces"
 
 	"github.com/flyteorg/flytestdlib/storage"
 
 	"github.com/flyteorg/flytestdlib/contextutils"
 
-	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
 
 	"github.com/flyteorg/flytestdlib/logger"
 
@@ -27,6 +31,10 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/validation"
 
 	"fmt"
+
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"google.golang.org/grpc/codes"
 
 	dataInterfaces "github.com/flyteorg/flyteadmin/pkg/data/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/errors"
@@ -36,9 +44,6 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"google.golang.org/grpc/codes"
 )
 
 type nodeExecutionMetrics struct {
@@ -378,23 +383,22 @@ func (m *NodeExecutionManager) listNodeExecutions(
 	if err != nil {
 		return nil, err
 	}
-	var sortParameter common.SortParameter
-	if sortBy != nil {
-		sortParameter, err = common.NewSortParameter(*sortBy)
-		if err != nil {
-			return nil, err
-		}
+
+	sortParameters, err := common.NewSortParameter(sortBy, gormimpl.NodeExecutionColumns)
+	if err != nil {
+		return nil, err
 	}
+
 	offset, err := validation.ValidateToken(requestToken)
 	if err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
 			"invalid pagination token %s for ListNodeExecutions", requestToken)
 	}
 	listInput := repoInterfaces.ListResourceInput{
-		Limit:         int(limit),
-		Offset:        offset,
-		InlineFilters: filters,
-		SortParameter: sortParameter,
+		Limit:          int(limit),
+		Offset:         offset,
+		InlineFilters:  filters,
+		SortParameters: sortParameters,
 	}
 
 	listInput.MapFilters = mapFilters

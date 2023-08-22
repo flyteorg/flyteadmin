@@ -9,14 +9,15 @@ import (
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	repositoryMocks "github.com/flyteorg/flyteadmin/pkg/repositories/mocks"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	runtimeMocks "github.com/flyteorg/flyteadmin/pkg/runtime/mocks"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/stretchr/testify/assert"
 )
 
 var mockProjectConfigProvider = runtimeMocks.NewMockConfigurationProvider(
@@ -55,7 +56,7 @@ func testListProjects(request admin.ProjectListRequest, token string, orderExpr 
 			q, _ := input.InlineFilters[0].GetGormQueryExpr()
 			assert.Equal(t, *queryExpr, q)
 		}
-		assert.Equal(t, orderExpr, input.SortParameter.GetGormOrderExpr())
+		assert.Equal(t, orderExpr, input.SortParameters.GetGormOrderExpr())
 		activeState := int32(admin.Project_ACTIVE)
 		return []models.Project{
 			{

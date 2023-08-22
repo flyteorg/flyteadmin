@@ -7,15 +7,27 @@ import (
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/promutils"
+	"k8s.io/apimachinery/pkg/util/sets"
+
+	"github.com/flyteorg/flytestdlib/logger"
+	"gorm.io/gorm"
 
 	adminErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
-	"github.com/flyteorg/flytestdlib/logger"
-	"gorm.io/gorm"
 )
 
 const launchPlanTableName = "launch_plans"
+
+var LaunchPlanColumns = BaseColumnSet.Union(sets.NewString(
+	Project,
+	Domain,
+	Name,
+	Version,
+	"workflow_id",
+	"state",
+	"schedule_type",
+))
 
 type launchPlanMetrics struct {
 	SetActiveDuration promutils.StopWatch
@@ -125,8 +137,8 @@ func (r *LaunchPlanRepo) List(ctx context.Context, input interfaces.ListResource
 		return interfaces.LaunchPlanCollectionOutput{}, err
 	}
 	// Apply sort ordering.
-	if input.SortParameter != nil {
-		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
+	for _, sortParam := range input.SortParameters {
+		tx = tx.Order(sortParam.GetGormOrderExpr())
 	}
 
 	timer := r.metrics.ListDuration.Start()
@@ -159,8 +171,8 @@ func (r *LaunchPlanRepo) ListLaunchPlanIdentifiers(ctx context.Context, input in
 		return interfaces.LaunchPlanCollectionOutput{}, err
 	}
 	// Apply sort ordering.
-	if input.SortParameter != nil {
-		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
+	for _, sortParam := range input.SortParameters {
+		tx = tx.Order(sortParam.GetGormOrderExpr())
 	}
 
 	// Scan the results into a list of launch plans

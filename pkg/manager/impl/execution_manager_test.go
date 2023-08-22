@@ -13,6 +13,13 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/benbjohnson/clock"
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+	"github.com/gogo/protobuf/jsonpb"
+	"github.com/golang/protobuf/ptypes"
+	"github.com/stretchr/testify/mock"
+	"google.golang.org/grpc/codes"
+
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	commonTestUtils "github.com/flyteorg/flyteadmin/pkg/common/testutils"
 	flyteAdminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
@@ -21,17 +28,12 @@ import (
 	managerInterfaces "github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 	managerMocks "github.com/flyteorg/flyteadmin/pkg/manager/mocks"
 	"github.com/flyteorg/flyteadmin/pkg/runtime"
-	"github.com/flyteorg/flyteidl/clients/go/coreutils"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
-	"github.com/gogo/protobuf/jsonpb"
-	"github.com/golang/protobuf/ptypes"
-	"github.com/stretchr/testify/mock"
-	"google.golang.org/grpc/codes"
 
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	eventWriterMocks "github.com/flyteorg/flyteadmin/pkg/async/events/mocks"
 	"k8s.io/apimachinery/pkg/util/sets"
+
+	eventWriterMocks "github.com/flyteorg/flyteadmin/pkg/async/events/mocks"
 
 	"github.com/flyteorg/flyteadmin/auth"
 
@@ -42,6 +44,13 @@ import (
 	"time"
 
 	"fmt"
+
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	mockScope "github.com/flyteorg/flytestdlib/promutils"
+	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/wrappers"
+	"github.com/stretchr/testify/assert"
 
 	notificationMocks "github.com/flyteorg/flyteadmin/pkg/async/notifications/mocks"
 	dataMocks "github.com/flyteorg/flyteadmin/pkg/data/mocks"
@@ -55,12 +64,6 @@ import (
 	runtimeMocks "github.com/flyteorg/flyteadmin/pkg/runtime/mocks"
 	workflowengineInterfaces "github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
 	workflowengineMocks "github.com/flyteorg/flyteadmin/pkg/workflowengine/mocks"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	mockScope "github.com/flyteorg/flytestdlib/promutils"
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/wrappers"
-	"github.com/stretchr/testify/assert"
 )
 
 var spec = testutils.GetExecutionRequest().Spec
@@ -2979,7 +2982,7 @@ func TestListExecutions(t *testing.T) {
 		assert.True(t, domainFilter, "Missing domain equality filter")
 		assert.False(t, nameFilter, "Included name equality filter")
 		assert.Equal(t, limit, input.Limit)
-		assert.Equal(t, "domain asc", input.SortParameter.GetGormOrderExpr())
+		assert.Equal(t, "domain asc", input.SortParameters.GetGormOrderExpr())
 		assert.Equal(t, 2, input.Offset)
 		assert.EqualValues(t, map[common.Entity]bool{
 			common.Execution: true,
@@ -3965,7 +3968,7 @@ func TestListExecutions_LegacyModel(t *testing.T) {
 		assert.True(t, domainFilter, "Missing domain equality filter")
 		assert.False(t, nameFilter, "Included name equality filter")
 		assert.Equal(t, limit, input.Limit)
-		assert.Equal(t, "domain asc", input.SortParameter.GetGormOrderExpr())
+		assert.Equal(t, "domain asc", input.SortParameters.GetGormOrderExpr())
 		assert.Equal(t, 2, input.Offset)
 		return interfaces.ExecutionCollectionOutput{
 			Executions: []models.Execution{

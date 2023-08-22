@@ -4,8 +4,11 @@ import (
 	"context"
 	"errors"
 
-	flyteAdminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	"google.golang.org/grpc/codes"
+
+	flyteAdminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flytestdlib/promutils"
@@ -16,6 +19,13 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 )
+
+var ProjectColumns = BaseColumnSet.Union(sets.NewString(
+	"identifier",
+	"name",
+	"description",
+	"state",
+))
 
 type ProjectRepo struct {
 	db               *gorm.DB
@@ -72,8 +82,8 @@ func (r *ProjectRepo) List(ctx context.Context, input interfaces.ListResourceInp
 	}
 
 	// Apply sort ordering
-	if input.SortParameter != nil {
-		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
+	for _, sortParam := range input.SortParameters {
+		tx = tx.Order(sortParam.GetGormOrderExpr())
 	}
 
 	timer := r.metrics.ListDuration.Start()

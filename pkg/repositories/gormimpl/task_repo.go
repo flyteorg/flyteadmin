@@ -4,15 +4,25 @@ import (
 	"context"
 	"errors"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/flyteorg/flytestdlib/promutils"
 
+	"gorm.io/gorm"
+
 	flyteAdminDbErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
-	"gorm.io/gorm"
 )
+
+var TaskColumns = BaseColumnSet.
+	Union(TaskKeyColumnSet).
+	Union(sets.NewString(
+		"type",
+		"short_description",
+	))
 
 // Implementation of TaskRepoInterface.
 type TaskRepo struct {
@@ -88,9 +98,10 @@ func (r *TaskRepo) List(
 		return interfaces.TaskCollectionOutput{}, err
 	}
 	// Apply sort ordering.
-	if input.SortParameter != nil {
-		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
+	for _, sortParam := range input.SortParameters {
+		tx = tx.Order(sortParam.GetGormOrderExpr())
 	}
+
 	timer := r.metrics.ListDuration.Start()
 	tx.Find(&tasks)
 	timer.Stop()
@@ -122,8 +133,8 @@ func (r *TaskRepo) ListTaskIdentifiers(ctx context.Context, input interfaces.Lis
 		tx = tx.Where(mapFilter.GetFilter())
 	}
 	// Apply sort ordering.
-	if input.SortParameter != nil {
-		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
+	for _, sortParam := range input.SortParameters {
+		tx = tx.Order(sortParam.GetGormOrderExpr())
 	}
 
 	// Scan the results into a list of tasks

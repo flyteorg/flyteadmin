@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	adminerrors "github.com/flyteorg/flyteadmin/pkg/errors"
 	flyteAdminDbErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
@@ -15,6 +17,12 @@ import (
 
 	"gorm.io/gorm"
 )
+
+var SignalColumns = BaseColumnSet.
+	Union(ExecutionKeyColumnSet).
+	Union(sets.NewString(
+		"signal_id",
+	))
 
 // SignalRepo is an implementation of SignalRepoInterface.
 type SignalRepo struct {
@@ -66,9 +74,10 @@ func (s *SignalRepo) List(ctx context.Context, input interfaces.ListResourceInpu
 		return nil, err
 	}
 	// Apply sort ordering.
-	if input.SortParameter != nil {
-		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
+	for _, sortParam := range input.SortParameters {
+		tx = tx.Order(sortParam.GetGormOrderExpr())
 	}
+
 	timer := s.metrics.ListDuration.Start()
 	tx.Find(&signals)
 	timer.Stop()

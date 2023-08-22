@@ -9,11 +9,12 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 
 	mocket "github.com/Selvatico/go-mocket"
+	mockScope "github.com/flyteorg/flytestdlib/promutils"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
-	mockScope "github.com/flyteorg/flytestdlib/promutils"
-	"github.com/stretchr/testify/assert"
 )
 
 func getMockNamedEntityResponseFromDb(expected models.NamedEntity) map[string]interface{} {
@@ -166,8 +167,8 @@ func TestListNamedEntity(t *testing.T) {
 		Project:      "admintests",
 		Domain:       "development",
 		ListResourceInput: interfaces.ListResourceInput{
-			Limit:         20,
-			SortParameter: sortParameter,
+			Limit:          20,
+			SortParameters: sortParameter,
 		},
 	})
 	assert.NoError(t, err)

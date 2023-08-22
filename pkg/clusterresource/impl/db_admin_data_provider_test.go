@@ -5,6 +5,11 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/manager/mocks"
 	repoInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
@@ -12,10 +17,6 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	configMocks "github.com/flyteorg/flyteadmin/pkg/runtime/mocks"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/stretchr/testify/assert"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 var errFoo = errors.New("foo")
@@ -104,7 +105,7 @@ func TestGetProjects(t *testing.T) {
 		mockRepo.(*repoMocks.MockRepository).ProjectRepoIface = &repoMocks.MockProjectRepo{
 			ListProjectsFunction: func(ctx context.Context, input repoInterfaces.ListResourceInput) ([]models.Project, error) {
 				assert.Len(t, input.InlineFilters, 1)
-				assert.Equal(t, input.SortParameter.GetGormOrderExpr(), "created_at desc")
+				assert.Equal(t, input.SortParameters.GetGormOrderExpr(), "created_at desc")
 				return []models.Project{
 					{
 						Identifier: "flytesnacks",

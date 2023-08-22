@@ -4,13 +4,26 @@ import (
 	"context"
 	"errors"
 
-	flyteAdminDbErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
-	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
-	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"gorm.io/gorm"
+
+	flyteAdminDbErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 )
+
+var WorkflowColumns = BaseColumnSet.
+	Union(sets.NewString(
+		Project,
+		Domain,
+		Name,
+		Version,
+		"remote_closure_identifier",
+		"short_description",
+	))
 
 // Implementation of WorkflowRepoInterface.
 type WorkflowRepo struct {
@@ -80,9 +93,10 @@ func (r *WorkflowRepo) List(
 		return interfaces.WorkflowCollectionOutput{}, err
 	}
 	// Apply sort ordering.
-	if input.SortParameter != nil {
-		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
+	for _, sortParam := range input.SortParameters {
+		tx = tx.Order(sortParam.GetGormOrderExpr())
 	}
+
 	timer := r.metrics.ListDuration.Start()
 	tx.Find(&workflows)
 	timer.Stop()
@@ -110,9 +124,9 @@ func (r *WorkflowRepo) ListIdentifiers(ctx context.Context, input interfaces.Lis
 		return interfaces.WorkflowCollectionOutput{}, err
 	}
 
-	// Apply sort ordering.
-	if input.SortParameter != nil {
-		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
+	// Apply sort ordering
+	for _, sortParam := range input.SortParameters {
+		tx = tx.Order(sortParam.GetGormOrderExpr())
 	}
 
 	// Scan the results into a list of workflows

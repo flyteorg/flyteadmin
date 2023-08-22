@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/flyteorg/flyteadmin/pkg/repositories/gormimpl"
+
 	cloudeventInterfaces "github.com/flyteorg/flyteadmin/pkg/async/cloudevent/interfaces"
 
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 
-	notificationInterfaces "github.com/flyteorg/flyteadmin/pkg/async/notifications/interfaces"
 	"github.com/golang/protobuf/proto"
+
+	notificationInterfaces "github.com/flyteorg/flyteadmin/pkg/async/notifications/interfaces"
 
 	"github.com/flyteorg/flytestdlib/storage"
 
@@ -18,6 +21,11 @@ import (
 
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytestdlib/logger"
+	"google.golang.org/grpc/codes"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	dataInterfaces "github.com/flyteorg/flyteadmin/pkg/data/interfaces"
@@ -29,10 +37,6 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flytestdlib/logger"
-	"google.golang.org/grpc/codes"
 )
 
 type taskExecutionMetrics struct {
@@ -258,12 +262,10 @@ func (m *TaskExecutionManager) ListTaskExecutions(
 	if err != nil {
 		return nil, err
 	}
-	var sortParameter common.SortParameter
-	if request.SortBy != nil {
-		sortParameter, err = common.NewSortParameter(*request.SortBy)
-		if err != nil {
-			return nil, err
-		}
+
+	sortParameters, err := common.NewSortParameter(request.SortBy, gormimpl.TaskExecutionColumns)
+	if err != nil {
+		return nil, err
 	}
 
 	offset, err := validation.ValidateToken(request.Token)
@@ -273,10 +275,10 @@ func (m *TaskExecutionManager) ListTaskExecutions(
 	}
 
 	output, err := m.db.TaskExecutionRepo().List(ctx, repoInterfaces.ListResourceInput{
-		InlineFilters: filters,
-		Offset:        offset,
-		Limit:         int(request.Limit),
-		SortParameter: sortParameter,
+		InlineFilters:  filters,
+		Offset:         offset,
+		Limit:          int(request.Limit),
+		SortParameters: sortParameters,
 	})
 	if err != nil {
 		logger.Debugf(ctx, "Failed to list task executions with request [%+v] with err %v",

@@ -3,15 +3,27 @@ package gormimpl
 import (
 	"context"
 
-	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/promutils"
+	"gorm.io/gorm"
+	"k8s.io/apimachinery/pkg/util/sets"
 
+	"github.com/flyteorg/flyteadmin/pkg/common"
 	flyteAdminDbErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
-	"gorm.io/gorm"
 )
+
+var DescriptionEntityColumns = BaseColumnSet.Union(sets.NewString(
+	ResourceType,
+	Project,
+	Domain,
+	Name,
+	Version,
+	"short_description",
+	"long_description",
+	"link",
+))
 
 // DescriptionEntityRepo Implementation of DescriptionEntityRepoInterface.
 type DescriptionEntityRepo struct {
@@ -61,8 +73,8 @@ func (r *DescriptionEntityRepo) List(
 		return interfaces.DescriptionEntityCollectionOutput{}, err
 	}
 	// Apply sort ordering.
-	if input.SortParameter != nil {
-		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
+	for _, sortParam := range input.SortParameters {
+		tx = tx.Order(sortParam.GetGormOrderExpr())
 	}
 	timer := r.metrics.ListDuration.Start()
 	tx.Find(&descriptionEntities)

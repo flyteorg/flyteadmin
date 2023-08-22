@@ -3,23 +3,33 @@ package gormimpl
 import (
 	"fmt"
 
+	"google.golang.org/grpc/codes"
+	"gorm.io/gorm"
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	adminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
-
-	"google.golang.org/grpc/codes"
-	"gorm.io/gorm"
 )
 
-const Project = "project"
-const Domain = "domain"
-const Name = "name"
-const Version = "version"
-const Description = "description"
-const ResourceType = "resource_type"
-const State = "state"
-const ID = "id"
+const (
+	Project          = "project"
+	Domain           = "domain"
+	Name             = "name"
+	Version          = "version"
+	Description      = "description"
+	ResourceType     = "resource_type"
+	State            = "state"
+	ID               = "id"
+	CreatedAt        = "created_at"
+	UpdatedAt        = "updated_at"
+	DeletedAt        = "deleted_at"
+	ExecutionProject = "execution_project"
+	ExecutionDomain  = "execution_domain"
+	ExecutionName    = "execution_name"
+	NodeID           = "node_id"
+)
 
 const executionTableName = "executions"
 const namedEntityMetadataTableName = "named_entity_metadata"
@@ -33,6 +43,13 @@ const executionAdminTagsTableName = "execution_admin_tags"
 
 const limit = "limit"
 const filters = "filters"
+
+var (
+	BaseColumnSet             = sets.NewString(ID, CreatedAt, UpdatedAt, DeletedAt, ResourceType)
+	TaskKeyColumnSet          = sets.NewString(Project, Domain, Name, Version)
+	ExecutionKeyColumnSet     = sets.NewString(ExecutionProject, ExecutionDomain, ExecutionName)
+	NodeExecutionKeyColumnSet = ExecutionKeyColumnSet.Union(sets.NewString(NodeID))
+)
 
 var identifierGroupBy = fmt.Sprintf("%s, %s, %s", Project, Domain, Name)
 

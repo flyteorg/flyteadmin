@@ -5,15 +5,41 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytestdlib/promutils"
+	"gorm.io/gorm"
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	adminErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flytestdlib/promutils"
-
-	"gorm.io/gorm"
 )
+
+var ExecutionColumns = BaseColumnSet.
+	Union(ExecutionKeyColumnSet).
+	Union(sets.NewString(
+		"launch_plan_id",
+		"workflow_id",
+		"task_id",
+		"phase",
+		"started_at",
+		"execution_created_at",
+		"execution_updated_at",
+		"duration",
+		"abort_cause",
+		"mode",
+		"source_execution_id",
+		"parent_node_execution_id",
+		"cluster",
+		"inputs_uri",
+		"user_inputs_uri",
+		"error_kind",
+		"error_code",
+		"user",
+		"state",
+		"launch_entity",
+	))
 
 // Implementation of ExecutionInterface.
 type ExecutionRepo struct {
@@ -102,8 +128,8 @@ func (r *ExecutionRepo) List(_ context.Context, input interfaces.ListResourceInp
 		return interfaces.ExecutionCollectionOutput{}, err
 	}
 	// Apply sort ordering.
-	if input.SortParameter != nil {
-		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
+	for _, sortParam := range input.SortParameters {
+		tx = tx.Order(sortParam.GetGormOrderExpr())
 	}
 
 	timer := r.metrics.ListDuration.Start()

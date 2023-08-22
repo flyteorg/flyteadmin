@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/flyteorg/flyteadmin/pkg/repositories/gormimpl"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/contextutils"
 
@@ -18,6 +20,9 @@ import (
 
 	"github.com/flyteorg/flytestdlib/logger"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"google.golang.org/grpc/codes"
+
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/resources"
@@ -28,8 +33,6 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	workflowengine "github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
-	"google.golang.org/grpc/codes"
 )
 
 type taskMetrics struct {
@@ -169,13 +172,12 @@ func (t *TaskManager) ListTasks(ctx context.Context, request admin.ResourceListR
 	if err != nil {
 		return nil, err
 	}
-	var sortParameter common.SortParameter
-	if request.SortBy != nil {
-		sortParameter, err = common.NewSortParameter(*request.SortBy)
-		if err != nil {
-			return nil, err
-		}
+
+	sortParameters, err := common.NewSortParameter(request.SortBy, gormimpl.TaskColumns)
+	if err != nil {
+		return nil, err
 	}
+
 	offset, err := validation.ValidateToken(request.Token)
 	if err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
@@ -183,10 +185,10 @@ func (t *TaskManager) ListTasks(ctx context.Context, request admin.ResourceListR
 	}
 	// And finally, query the database
 	listTasksInput := repoInterfaces.ListResourceInput{
-		Limit:         int(request.Limit),
-		Offset:        offset,
-		InlineFilters: filters,
-		SortParameter: sortParameter,
+		Limit:          int(request.Limit),
+		Offset:         offset,
+		InlineFilters:  filters,
+		SortParameters: sortParameters,
 	}
 	output, err := t.db.TaskRepo().List(ctx, listTasksInput)
 	if err != nil {
@@ -226,23 +228,22 @@ func (t *TaskManager) ListUniqueTaskIdentifiers(ctx context.Context, request adm
 	if err != nil {
 		return nil, err
 	}
-	var sortParameter common.SortParameter
-	if request.SortBy != nil {
-		sortParameter, err = common.NewSortParameter(*request.SortBy)
-		if err != nil {
-			return nil, err
-		}
+
+	sortParameters, err := common.NewSortParameter(request.SortBy, gormimpl.TaskColumns)
+	if err != nil {
+		return nil, err
 	}
+
 	offset, err := validation.ValidateToken(request.Token)
 	if err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
 			"invalid pagination token %s for ListUniqueTaskIdentifiers", request.Token)
 	}
 	listTasksInput := repoInterfaces.ListResourceInput{
-		Limit:         int(request.Limit),
-		Offset:        offset,
-		InlineFilters: filters,
-		SortParameter: sortParameter,
+		Limit:          int(request.Limit),
+		Offset:         offset,
+		InlineFilters:  filters,
+		SortParameters: sortParameters,
 	}
 
 	output, err := t.db.TaskRepo().ListTaskIdentifiers(ctx, listTasksInput)

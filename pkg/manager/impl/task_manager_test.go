@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/flyteorg/flytestdlib/promutils/labeled"
+	"github.com/golang/protobuf/proto"
+
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	adminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
@@ -14,16 +17,15 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	runtimeMocks "github.com/flyteorg/flyteadmin/pkg/runtime/mocks"
-	"github.com/flyteorg/flytestdlib/promutils/labeled"
-	"github.com/golang/protobuf/proto"
 
-	workflowengine "github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
-	workflowMocks "github.com/flyteorg/flyteadmin/pkg/workflowengine/mocks"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	mockScope "github.com/flyteorg/flytestdlib/promutils"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
+
+	workflowengine "github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
+	workflowMocks "github.com/flyteorg/flyteadmin/pkg/workflowengine/mocks"
 )
 
 // Static values for test
@@ -242,7 +244,7 @@ func TestListTasks(t *testing.T) {
 		assert.True(t, domainFilter, "Missing domain equality filter")
 		assert.True(t, nameFilter, "Missing name equality filter")
 		assert.Equal(t, 2, input.Limit)
-		assert.Equal(t, "domain asc", input.SortParameter.GetGormOrderExpr())
+		assert.Equal(t, "domain asc", input.SortParameters.GetGormOrderExpr())
 		return interfaces.TaskCollectionOutput{
 			Tasks: []models.Task{
 				{
@@ -365,7 +367,7 @@ func TestListUniqueTaskIdentifiers(t *testing.T) {
 			}
 		}
 		assert.Equal(t, 10, input.Offset)
-		assert.Equal(t, "domain asc", input.SortParameter.GetGormOrderExpr())
+		assert.Equal(t, "domain asc", input.SortParameters.GetGormOrderExpr())
 
 		return interfaces.TaskCollectionOutput{
 			Tasks: []models.Task{

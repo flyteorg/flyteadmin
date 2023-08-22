@@ -13,11 +13,12 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 
 	mocket "github.com/Selvatico/go-mocket"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
-	"github.com/stretchr/testify/assert"
 )
 
 var createdAt = time.Date(2018, time.February, 17, 00, 00, 00, 00, time.UTC).UTC()
@@ -258,7 +259,7 @@ func TestListExecutions_Order(t *testing.T) {
 		Key:       "name",
 	})
 	_, err := executionRepo.List(context.Background(), interfaces.ListResourceInput{
-		SortParameter: sortParameter,
+		SortParameters: sortParameter,
 		InlineFilters: []common.InlineFilter{
 			getEqualityFilter(common.Task, "project", project),
 			getEqualityFilter(common.Task, "domain", domain),
@@ -287,7 +288,7 @@ func TestListExecutions_WithTags(t *testing.T) {
 	tagFilter, err := common.NewRepeatedValueFilter(common.ExecutionAdminTag, common.ValueIn, "admin_tag_name", vals)
 	assert.NoError(t, err)
 	_, err = executionRepo.List(context.Background(), interfaces.ListResourceInput{
-		SortParameter: sortParameter,
+		SortParameters: sortParameter,
 		InlineFilters: []common.InlineFilter{
 			getEqualityFilter(common.Task, "project", project),
 			getEqualityFilter(common.Task, "domain", domain),

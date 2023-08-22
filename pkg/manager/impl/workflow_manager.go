@@ -6,7 +6,19 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/flyteorg/flyteadmin/pkg/repositories/gormimpl"
+
 	"github.com/flyteorg/flytestdlib/contextutils"
+
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	compiler "github.com/flyteorg/flytepropeller/pkg/compiler/common"
+	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/promutils"
+	"github.com/flyteorg/flytestdlib/storage"
+	"github.com/golang/protobuf/ptypes"
+	"github.com/prometheus/client_golang/prometheus"
+	"google.golang.org/grpc/codes"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/errors"
@@ -19,15 +31,6 @@ import (
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	workflowengine "github.com/flyteorg/flyteadmin/pkg/workflowengine/impl"
 	workflowengineInterfaces "github.com/flyteorg/flyteadmin/pkg/workflowengine/interfaces"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	compiler "github.com/flyteorg/flytepropeller/pkg/compiler/common"
-	"github.com/flyteorg/flytestdlib/logger"
-	"github.com/flyteorg/flytestdlib/promutils"
-	"github.com/flyteorg/flytestdlib/storage"
-	"github.com/golang/protobuf/ptypes"
-	"github.com/prometheus/client_golang/prometheus"
-	"google.golang.org/grpc/codes"
 )
 
 var defaultStorageOptions = storage.Options{}
@@ -252,23 +255,22 @@ func (w *WorkflowManager) ListWorkflows(
 	if err != nil {
 		return nil, err
 	}
-	var sortParameter common.SortParameter
-	if request.SortBy != nil {
-		sortParameter, err = common.NewSortParameter(*request.SortBy)
-		if err != nil {
-			return nil, err
-		}
+
+	sortParameters, err := common.NewSortParameter(request.SortBy, gormimpl.WorkflowColumns)
+	if err != nil {
+		return nil, err
 	}
+
 	offset, err := validation.ValidateToken(request.Token)
 	if err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
 			"invalid pagination token %s for ListWorkflows", request.Token)
 	}
 	listWorkflowsInput := repoInterfaces.ListResourceInput{
-		Limit:         int(request.Limit),
-		Offset:        offset,
-		InlineFilters: filters,
-		SortParameter: sortParameter,
+		Limit:          int(request.Limit),
+		Offset:         offset,
+		InlineFilters:  filters,
+		SortParameters: sortParameters,
 	}
 	output, err := w.db.WorkflowRepo().List(ctx, listWorkflowsInput)
 	if err != nil {
@@ -306,23 +308,22 @@ func (w *WorkflowManager) ListWorkflowIdentifiers(ctx context.Context, request a
 	if err != nil {
 		return nil, err
 	}
-	var sortParameter common.SortParameter
-	if request.SortBy != nil {
-		sortParameter, err = common.NewSortParameter(*request.SortBy)
-		if err != nil {
-			return nil, err
-		}
+
+	sortParameters, err := common.NewSortParameter(request.SortBy, gormimpl.WorkflowColumns)
+	if err != nil {
+		return nil, err
 	}
+
 	offset, err := validation.ValidateToken(request.Token)
 	if err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
 			"invalid pagination token %s for ListWorkflowIdentifiers", request.Token)
 	}
 	listWorkflowsInput := repoInterfaces.ListResourceInput{
-		Limit:         int(request.Limit),
-		Offset:        offset,
-		InlineFilters: filters,
-		SortParameter: sortParameter,
+		Limit:          int(request.Limit),
+		Offset:         offset,
+		InlineFilters:  filters,
+		SortParameters: sortParameters,
 	}
 
 	output, err := w.db.WorkflowRepo().ListIdentifiers(ctx, listWorkflowsInput)

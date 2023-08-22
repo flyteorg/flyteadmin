@@ -5,15 +5,36 @@ import (
 	"errors"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/flyteorg/flytestdlib/promutils"
 
+	"gorm.io/gorm"
+
 	adminErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
-	"gorm.io/gorm"
 )
+
+var NodeExecutionColumns = BaseColumnSet.
+	Union(NodeExecutionKeyColumnSet).
+	Union(sets.NewString(
+		"phase",
+		"input_uri",
+		"started_at",
+		"node_execution_created_at",
+		"node_execution_updated_at",
+		"duration",
+		"parent_id",
+		"parent_task_execution_id",
+		"parent_node_execution_id",
+		"error_kind",
+		"error_code",
+		"cache_status",
+		"dynamic_workflow_remote_closure_reference",
+	))
 
 // Implementation of NodeExecutionInterface.
 type NodeExecutionRepo struct {
@@ -127,8 +148,8 @@ func (r *NodeExecutionRepo) List(ctx context.Context, input interfaces.ListResou
 		return interfaces.NodeExecutionCollectionOutput{}, err
 	}
 	// Apply sort ordering.
-	if input.SortParameter != nil {
-		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
+	for _, sortParam := range input.SortParameters {
+		tx = tx.Order(sortParam.GetGormOrderExpr())
 	}
 
 	timer := r.metrics.ListDuration.Start()

@@ -6,14 +6,16 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
+
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	commonMocks "github.com/flyteorg/flyteadmin/pkg/common/mocks"
+
 	adminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	repositoryMocks "github.com/flyteorg/flyteadmin/pkg/repositories/mocks"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
-	"github.com/golang/protobuf/proto"
 
 	flyteErrors "github.com/flyteorg/flyteadmin/pkg/errors"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
@@ -387,7 +389,7 @@ func TestListWorkflows(t *testing.T) {
 		assert.True(t, domainFilter, "Missing domain equality filter")
 		assert.True(t, nameFilter, "Missing name equality filter")
 		assert.Equal(t, limit, input.Limit)
-		assert.Equal(t, "domain asc", input.SortParameter.GetGormOrderExpr())
+		assert.Equal(t, "domain asc", input.SortParameters.GetGormOrderExpr())
 		assert.Equal(t, 10, input.Offset)
 		return interfaces.WorkflowCollectionOutput{
 			Workflows: []models.Workflow{
@@ -524,7 +526,7 @@ func TestWorkflowManager_ListWorkflowIdentifiers(t *testing.T) {
 		assert.True(t, projectFilter, "Missing project equality filter")
 		assert.True(t, domainFilter, "Missing domain equality filter")
 		assert.Equal(t, limit, input.Limit)
-		assert.Equal(t, "domain asc", input.SortParameter.GetGormOrderExpr())
+		assert.Equal(t, "domain asc", input.SortParameters.GetGormOrderExpr())
 		return interfaces.WorkflowCollectionOutput{
 			Workflows: []models.Workflow{
 				{

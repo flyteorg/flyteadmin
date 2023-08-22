@@ -4,6 +4,11 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/flyteorg/flyteadmin/pkg/repositories/gormimpl"
+
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"google.golang.org/grpc/codes"
+
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/util"
@@ -12,8 +17,6 @@ import (
 	repoInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
-	"google.golang.org/grpc/codes"
 )
 
 type ProjectManager struct {
@@ -21,10 +24,10 @@ type ProjectManager struct {
 	config runtimeInterfaces.Configuration
 }
 
-var alphabeticalSortParam, _ = common.NewSortParameter(admin.Sort{
+var alphabeticalSortParam, _ = common.NewSortParameter(&admin.Sort{
 	Direction: admin.Sort_ASCENDING,
 	Key:       "identifier",
-})
+}, gormimpl.ProjectColumns)
 
 func (m *ProjectManager) CreateProject(ctx context.Context, request admin.ProjectRegisterRequest) (
 	*admin.ProjectRegisterResponse, error) {
@@ -61,14 +64,13 @@ func (m *ProjectManager) ListProjects(ctx context.Context, request admin.Project
 		return nil, err
 	}
 
-	var sortParameter common.SortParameter
-	if request.SortBy != nil {
-		sortParameter, err = common.NewSortParameter(*request.SortBy)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		sortParameter = alphabeticalSortParam
+	sortParameters, err := common.NewSortParameter(request.SortBy, gormimpl.ProjectColumns)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(sortParameters) == 0 {
+		sortParameters = alphabeticalSortParam
 	}
 
 	offset, err := validation.ValidateToken(request.Token)
@@ -79,10 +81,10 @@ func (m *ProjectManager) ListProjects(ctx context.Context, request admin.Project
 
 	// And finally, query the database
 	listProjectsInput := repoInterfaces.ListResourceInput{
-		Limit:         int(request.Limit),
-		Offset:        offset,
-		InlineFilters: filters,
-		SortParameter: sortParameter,
+		Limit:          int(request.Limit),
+		Offset:         offset,
+		InlineFilters:  filters,
+		SortParameters: sortParameters,
 	}
 	projectModels, err := m.db.ProjectRepo().List(ctx, listProjectsInput)
 	if err != nil {
@@ -119,7 +121,6 @@ func (m *ProjectManager) UpdateProject(ctx context.Context, projectUpdate admin.
 	// Transform the provided project into a model and apply to the DB.
 	projectUpdateModel := transformers.CreateProjectModel(&projectUpdate)
 	err = projectRepo.UpdateProject(ctx, projectUpdateModel)
-
 	if err != nil {
 		return nil, err
 	}

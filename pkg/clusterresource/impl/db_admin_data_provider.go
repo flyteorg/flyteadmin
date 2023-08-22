@@ -3,13 +3,14 @@ package impl
 import (
 	"context"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+
 	"github.com/flyteorg/flyteadmin/pkg/clusterresource/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	managerInterfaces "github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 	repositoryInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 )
 
 // Implementation of an interfaces.FlyteAdminDataProvider which fetches data directly from the provided database connection.
@@ -52,8 +53,8 @@ func (p dbAdminProvider) GetProjects(ctx context.Context) (*admin.Projects, erro
 		return nil, err
 	}
 	projectModels, err := p.db.ProjectRepo().List(ctx, repositoryInterfaces.ListResourceInput{
-		SortParameter: descCreatedAtSortDBParam,
-		InlineFilters: []common.InlineFilter{filter},
+		SortParameters: descCreatedAtSortDBParam,
+		InlineFilters:  []common.InlineFilter{filter},
 	})
 	if err != nil {
 		return nil, err

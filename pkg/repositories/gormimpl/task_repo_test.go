@@ -9,11 +9,12 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 
 	mocket "github.com/Selvatico/go-mocket"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
-	"github.com/stretchr/testify/assert"
 )
 
 const pythonTestTaskType = "python-task"
@@ -202,7 +203,7 @@ func TestListTasks_Order(t *testing.T) {
 		Key:       "project",
 	})
 	_, err := taskRepo.List(context.Background(), interfaces.ListResourceInput{
-		SortParameter: sortParameter,
+		SortParameters: sortParameter,
 		InlineFilters: []common.InlineFilter{
 			getEqualityFilter(common.Task, "project", project),
 			getEqualityFilter(common.Task, "domain", domain),

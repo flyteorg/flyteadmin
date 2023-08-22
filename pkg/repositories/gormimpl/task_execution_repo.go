@@ -4,15 +4,32 @@ import (
 	"context"
 	"errors"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/flyteorg/flytestdlib/promutils"
 
+	"gorm.io/gorm"
+
 	flyteAdminDbErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
-	"gorm.io/gorm"
 )
+
+var TaskExecutionColumns = BaseColumnSet.
+	Union(TaskKeyColumnSet).
+	Union(ExecutionKeyColumnSet).
+	Union(sets.NewString(
+		"retry_attempt",
+		"phase",
+		"phase_version",
+		"input_uri",
+		"started_at",
+		"task_execution_started_at",
+		"task_execution_updated_at",
+		"duration",
+	))
 
 // Implementation of TaskExecutionInterface.
 type TaskExecutionRepo struct {
@@ -113,8 +130,8 @@ func (r *TaskExecutionRepo) List(ctx context.Context, input interfaces.ListResou
 	}
 
 	// Apply sort ordering.
-	if input.SortParameter != nil {
-		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
+	for _, sortParam := range input.SortParameters {
+		tx = tx.Order(sortParam.GetGormOrderExpr())
 	}
 
 	timer := r.metrics.ListDuration.Start()

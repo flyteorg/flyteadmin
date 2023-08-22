@@ -4,6 +4,8 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/flyteorg/flyteadmin/pkg/repositories/gormimpl"
+
 	"github.com/flyteorg/flytestdlib/contextutils"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
@@ -83,12 +85,10 @@ func (s *SignalManager) ListSignals(ctx context.Context, request admin.SignalLis
 	if err != nil {
 		return nil, err
 	}
-	var sortParameter common.SortParameter
-	if request.SortBy != nil {
-		sortParameter, err = common.NewSortParameter(*request.SortBy)
-		if err != nil {
-			return nil, err
-		}
+
+	sortParameters, err := common.NewSortParameter(request.SortBy, gormimpl.SignalColumns)
+	if err != nil {
+		return nil, err
 	}
 
 	offset, err := validation.ValidateToken(request.Token)
@@ -98,10 +98,10 @@ func (s *SignalManager) ListSignals(ctx context.Context, request admin.SignalLis
 	}
 
 	signalModelList, err := s.db.SignalRepo().List(ctx, repoInterfaces.ListResourceInput{
-		InlineFilters: filters,
-		Offset:        offset,
-		Limit:         int(request.Limit),
-		SortParameter: sortParameter,
+		InlineFilters:  filters,
+		Offset:         offset,
+		Limit:          int(request.Limit),
+		SortParameters: sortParameters,
 	})
 	if err != nil {
 		logger.Debugf(ctx, "Failed to list signals with request [%+v] with err %v",

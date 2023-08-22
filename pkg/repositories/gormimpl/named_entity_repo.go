@@ -4,19 +4,31 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"google.golang.org/grpc/codes"
+
+	"github.com/flyteorg/flytestdlib/promutils"
+	"gorm.io/gorm"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	adminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
-	"github.com/flyteorg/flytestdlib/promutils"
-	"gorm.io/gorm"
 )
 
 const innerJoinTableAlias = "entities"
+
+var NamedEntityColumns = sets.NewString(
+	ResourceType,
+	Project,
+	Domain,
+	Name,
+	"description",
+	"state",
+)
 
 var resourceTypeToTableName = map[core.ResourceType]string{
 	core.ResourceType_LAUNCH_PLAN: launchPlanTableName,
@@ -37,8 +49,8 @@ func getSubQueryJoin(db *gorm.DB, tableName string, input interfaces.ListNamedEn
 		Group(identifierGroupBy)
 
 	// Apply consistent sort ordering.
-	if input.SortParameter != nil {
-		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
+	for _, sortParam := range input.SortParameters {
+		tx = tx.Order(sortParam.GetGormOrderExpr())
 	}
 
 	return db.Joins(fmt.Sprintf(joinString, input.ResourceType), tx)
@@ -190,8 +202,8 @@ func (r *NamedEntityRepo) List(ctx context.Context, input interfaces.ListNamedEn
 		return interfaces.NamedEntityCollectionOutput{}, err
 	}
 	// Apply sort ordering.
-	if input.SortParameter != nil {
-		tx = tx.Order(input.SortParameter.GetGormOrderExpr())
+	for _, sortParam := range input.SortParameters {
+		tx = tx.Order(sortParam.GetGormOrderExpr())
 	}
 
 	// Scan the results into a list of named entities

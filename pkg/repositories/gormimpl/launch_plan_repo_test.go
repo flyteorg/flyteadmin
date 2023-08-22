@@ -8,12 +8,13 @@ import (
 	mockScope "github.com/flyteorg/flytestdlib/promutils"
 
 	mocket "github.com/Selvatico/go-mocket"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/stretchr/testify/assert"
 )
 
 const workflowID = uint(1)
@@ -350,7 +351,7 @@ func TestListLaunchPlans_Order(t *testing.T) {
 		Key:       "project",
 	})
 	_, err := launchPlanRepo.List(context.Background(), interfaces.ListResourceInput{
-		SortParameter: sortParameter,
+		SortParameters: sortParameter,
 		InlineFilters: []common.InlineFilter{
 			getEqualityFilter(common.LaunchPlan, "project", project),
 			getEqualityFilter(common.LaunchPlan, "domain", domain),

@@ -11,8 +11,11 @@ import (
 
 	"github.com/flyteorg/flyteadmin/pkg/async/schedule/mocks"
 
-	scheduleInterfaces "github.com/flyteorg/flyteadmin/pkg/async/schedule/interfaces"
 	"github.com/golang/protobuf/ptypes"
+
+	scheduleInterfaces "github.com/flyteorg/flyteadmin/pkg/async/schedule/interfaces"
+
+	"github.com/golang/protobuf/proto"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	flyteAdminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
@@ -21,7 +24,6 @@ import (
 	repositoryMocks "github.com/flyteorg/flyteadmin/pkg/repositories/mocks"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
-	"github.com/golang/protobuf/proto"
 
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	runtimeMocks "github.com/flyteorg/flyteadmin/pkg/runtime/mocks"
@@ -1096,7 +1098,7 @@ func TestLaunchPlanManager_ListLaunchPlans(t *testing.T) {
 		assert.True(t, nameFilter, "Missing name equality filter")
 		assert.Equal(t, 10, input.Limit)
 		assert.Equal(t, 2, input.Offset)
-		assert.Equal(t, "domain asc", input.SortParameter.GetGormOrderExpr())
+		assert.Equal(t, "domain asc", input.SortParameters.GetGormOrderExpr())
 
 		return interfaces.LaunchPlanCollectionOutput{
 			LaunchPlans: []models.LaunchPlan{
@@ -1193,7 +1195,7 @@ func TestLaunchPlanManager_ListLaunchPlanIds(t *testing.T) {
 		assert.True(t, projectFilter, "Missing project equality filter")
 		assert.True(t, domainFilter, "Missing domain equality filter")
 		assert.Equal(t, 10, input.Limit)
-		assert.Equal(t, "domain asc", input.SortParameter.GetGormOrderExpr())
+		assert.Equal(t, "domain asc", input.SortParameters.GetGormOrderExpr())
 
 		return interfaces.LaunchPlanCollectionOutput{
 			LaunchPlans: []models.LaunchPlan{
@@ -1280,7 +1282,7 @@ func TestLaunchPlanManager_ListActiveLaunchPlans(t *testing.T) {
 		assert.True(t, domainFilter, "Missing domain equality filter")
 		assert.True(t, activeFilter, "Missing active filter")
 		assert.Equal(t, 10, input.Limit)
-		assert.Equal(t, "domain asc", input.SortParameter.GetGormOrderExpr())
+		assert.Equal(t, "domain asc", input.SortParameters.GetGormOrderExpr())
 
 		return interfaces.LaunchPlanCollectionOutput{
 			LaunchPlans: []models.LaunchPlan{

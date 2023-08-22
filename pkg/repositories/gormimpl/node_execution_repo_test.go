@@ -5,9 +5,10 @@ import (
 	"testing"
 	"time"
 
-	flyteAdminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"gorm.io/gorm"
+
+	flyteAdminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
 
 	mockScope "github.com/flyteorg/flytestdlib/promutils"
 
@@ -15,11 +16,12 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	mocket "github.com/Selvatico/go-mocket"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
-	"github.com/stretchr/testify/assert"
 )
 
 var nodePhase = core.NodeExecution_RUNNING.String()
@@ -256,7 +258,7 @@ func TestListNodeExecutions_Order(t *testing.T) {
 		Key:       "project",
 	})
 	_, err := nodeExecutionRepo.List(context.Background(), interfaces.ListResourceInput{
-		SortParameter: sortParameter,
+		SortParameters: sortParameter,
 		InlineFilters: []common.InlineFilter{
 			getEqualityFilter(common.NodeExecution, "phase", nodePhase),
 		},

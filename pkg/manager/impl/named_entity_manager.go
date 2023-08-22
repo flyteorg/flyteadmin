@@ -5,13 +5,20 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/flyteorg/flyteadmin/pkg/repositories/gormimpl"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/flyteorg/flytestdlib/contextutils"
 
+	"google.golang.org/grpc/codes"
+
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/errors"
-	"google.golang.org/grpc/codes"
+
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/promutils"
 
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/util"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/validation"
@@ -19,9 +26,6 @@ import (
 	repoInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/flyteorg/flytestdlib/logger"
-	"github.com/flyteorg/flytestdlib/promutils"
 )
 
 const state = "state"
@@ -119,13 +123,12 @@ func (m *NamedEntityManager) ListNamedEntities(ctx context.Context, request admi
 	if err != nil {
 		return nil, err
 	}
-	var sortParameter common.SortParameter
-	if request.SortBy != nil {
-		sortParameter, err = common.NewSortParameter(*request.SortBy)
-		if err != nil {
-			return nil, err
-		}
+
+	sortParameters, err := common.NewSortParameter(request.SortBy, gormimpl.NamedEntityColumns)
+	if err != nil {
+		return nil, err
 	}
+
 	offset, err := validation.ValidateToken(request.Token)
 	if err != nil {
 		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument,
@@ -133,10 +136,10 @@ func (m *NamedEntityManager) ListNamedEntities(ctx context.Context, request admi
 	}
 	listInput := repoInterfaces.ListNamedEntityInput{
 		ListResourceInput: repoInterfaces.ListResourceInput{
-			Limit:         int(request.Limit),
-			Offset:        offset,
-			InlineFilters: filters,
-			SortParameter: sortParameter,
+			Limit:          int(request.Limit),
+			Offset:         offset,
+			InlineFilters:  filters,
+			SortParameters: sortParameters,
 		},
 		Project:      request.Project,
 		Domain:       request.Domain,

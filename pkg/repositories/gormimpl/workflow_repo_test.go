@@ -5,13 +5,14 @@ import (
 	"testing"
 
 	mocket "github.com/Selvatico/go-mocket"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	mockScope "github.com/flyteorg/flytestdlib/promutils"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
-	mockScope "github.com/flyteorg/flytestdlib/promutils"
-	"github.com/stretchr/testify/assert"
 )
 
 var typedInterface = []byte{1, 2, 3}
@@ -187,7 +188,7 @@ func TestListWorkflows_Order(t *testing.T) {
 		Key:       "project",
 	})
 	_, err := workflowRepo.List(context.Background(), interfaces.ListResourceInput{
-		SortParameter: sortParameter,
+		SortParameters: sortParameter,
 		InlineFilters: []common.InlineFilter{
 			getEqualityFilter(common.Workflow, "project", project),
 			getEqualityFilter(common.Workflow, "domain", domain),
