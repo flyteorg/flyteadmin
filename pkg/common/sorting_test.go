@@ -48,3 +48,50 @@ func TestSortParameter_Descending(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "project desc", sortParameter[0].GetGormOrderExpr())
 }
+
+func TestSortParameters_SingleAndMultipleSortKeys(t *testing.T) {
+	expected := errors.NewFlyteAdminErrorf(codes.InvalidArgument, "cannot specify both sort_keys and sort_by")
+
+	_, err := NewSortParameters(&admin.ResourceListRequest{
+		SortBy:   &admin.Sort{},
+		SortKeys: []*admin.Sort{{}},
+	}, sets.NewString())
+
+	assert.Equal(t, expected, err)
+}
+
+func TestSortParameters_SingleSortKey(t *testing.T) {
+	params, err := NewSortParameters(&admin.ResourceListRequest{
+		SortBy: &admin.Sort{Key: "foo"},
+	}, sets.NewString("foo"))
+
+	assert.NoError(t, err)
+	assert.Equal(t, "foo desc", params[0].GetGormOrderExpr())
+}
+
+func TestSortParameters_OK(t *testing.T) {
+	params, err := NewSortParameters(&admin.ResourceListRequest{
+		SortKeys: []*admin.Sort{
+			{Key: "key"},
+			{Key: "foo", Direction: admin.Sort_ASCENDING},
+		},
+	}, sets.NewString("key", "foo"))
+
+	assert.NoError(t, err)
+	if assert.Len(t, params, 2) {
+		assert.Equal(t, "key desc", params[0].GetGormOrderExpr())
+		assert.Equal(t, "foo asc", params[1].GetGormOrderExpr())
+	}
+}
+
+func TestSortParameters_Invalid(t *testing.T) {
+	expected := errors.NewFlyteAdminErrorf(codes.InvalidArgument, "invalid sort_key: foo")
+
+	_, err := NewSortParameters(&admin.ResourceListRequest{
+		SortKeys: []*admin.Sort{
+			{Key: "foo"},
+		},
+	}, sets.NewString("key"))
+
+	assert.Equal(t, expected, err)
+}
