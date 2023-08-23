@@ -4,28 +4,18 @@ import (
 	"context"
 	"errors"
 
-	"k8s.io/apimachinery/pkg/util/sets"
-
-	"google.golang.org/grpc/codes"
-
-	flyteAdminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flytestdlib/promutils"
-
+	"google.golang.org/grpc/codes"
 	"gorm.io/gorm"
 
+	flyteAdminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
 	flyteAdminDbErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 )
 
-var ProjectColumns = BaseColumnSet.Union(sets.NewString(
-	"identifier",
-	"name",
-	"description",
-	"state",
-))
+var ProjectColumns = modelColumns(models.Project{})
 
 type ProjectRepo struct {
 	db               *gorm.DB

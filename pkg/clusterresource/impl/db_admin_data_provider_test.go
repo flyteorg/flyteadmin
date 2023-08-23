@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
@@ -10,6 +11,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/flyteorg/flyteadmin/pkg/common"
 	"github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/manager/mocks"
 	repoInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
@@ -105,7 +107,7 @@ func TestGetProjects(t *testing.T) {
 		mockRepo.(*repoMocks.MockRepository).ProjectRepoIface = &repoMocks.MockProjectRepo{
 			ListProjectsFunction: func(ctx context.Context, input repoInterfaces.ListResourceInput) ([]models.Project, error) {
 				assert.Len(t, input.InlineFilters, 1)
-				assert.Equal(t, input.SortParameters.GetGormOrderExpr(), "created_at desc")
+				assert.Equal(t, "created_at desc", sortParamsSQL(input.SortParameters))
 				return []models.Project{
 					{
 						Identifier: "flytesnacks",
@@ -141,4 +143,12 @@ func TestGetProjects(t *testing.T) {
 		_, err := provider.GetProjects(context.TODO())
 		assert.EqualError(t, err, errFoo.Error())
 	})
+}
+
+func sortParamsSQL(params []common.SortParameter) string {
+	sqls := make([]string, len(params))
+	for i, param := range params {
+		sqls[i] = param.GetGormOrderExpr()
+	}
+	return strings.Join(sqls, ", ")
 }

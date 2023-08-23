@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	mockScope "github.com/flyteorg/flytestdlib/promutils"
-
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 
 	mocket "github.com/Selvatico/go-mocket"
 	"github.com/stretchr/testify/assert"
@@ -254,12 +254,9 @@ func TestListExecutions_Order(t *testing.T) {
 	mockQuery := GlobalMock.NewMock().WithQuery(`name asc`)
 	mockQuery.WithReply(executions)
 
-	sortParameter, _ := common.NewSortParameter(admin.Sort{
-		Direction: admin.Sort_ASCENDING,
-		Key:       "name",
-	})
+	sortParameters := makeSortParameters(t, admin.Sort_ASCENDING, "name")
 	_, err := executionRepo.List(context.Background(), interfaces.ListResourceInput{
-		SortParameters: sortParameter,
+		SortParameters: sortParameters,
 		InlineFilters: []common.InlineFilter{
 			getEqualityFilter(common.Task, "project", project),
 			getEqualityFilter(common.Task, "domain", domain),
@@ -280,15 +277,12 @@ func TestListExecutions_WithTags(t *testing.T) {
 	mockQuery := GlobalMock.NewMock().WithQuery(`name asc`)
 	mockQuery.WithReply(executions)
 
-	sortParameter, _ := common.NewSortParameter(admin.Sort{
-		Direction: admin.Sort_ASCENDING,
-		Key:       "name",
-	})
+	sortParameters := makeSortParameters(t, admin.Sort_ASCENDING, "name")
 	vals := []string{"tag1", "tag2"}
 	tagFilter, err := common.NewRepeatedValueFilter(common.ExecutionAdminTag, common.ValueIn, "admin_tag_name", vals)
 	assert.NoError(t, err)
 	_, err = executionRepo.List(context.Background(), interfaces.ListResourceInput{
-		SortParameters: sortParameter,
+		SortParameters: sortParameters,
 		InlineFilters: []common.InlineFilter{
 			getEqualityFilter(common.Task, "project", project),
 			getEqualityFilter(common.Task, "domain", domain),

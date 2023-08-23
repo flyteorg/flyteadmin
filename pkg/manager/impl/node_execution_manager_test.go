@@ -809,7 +809,7 @@ func TestListNodeExecutionsLevelZero(t *testing.T) {
 				"parent_task_execution_id": nil,
 			}, filter)
 
-			assert.Equal(t, "domain asc", input.SortParameters.GetGormOrderExpr())
+			assert.Equal(t, "execution_domain asc", sortParamsSQL(input.SortParameters))
 			return interfaces.NodeExecutionCollectionOutput{
 				NodeExecutions: []models.NodeExecution{
 					{
@@ -860,10 +860,10 @@ func TestListNodeExecutionsLevelZero(t *testing.T) {
 		Token: "2",
 		SortBy: &admin.Sort{
 			Direction: admin.Sort_ASCENDING,
-			Key:       "domain",
+			Key:       "execution_domain",
 		},
 	})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Len(t, nodeExecutions.NodeExecutions, 1)
 	assert.True(t, proto.Equal(&admin.NodeExecution{
 		Id: &core.NodeExecutionIdentifier{
@@ -927,7 +927,7 @@ func TestListNodeExecutionsWithParent(t *testing.T) {
 			assert.Equal(t, parentID, queryExpr.Args)
 			assert.Equal(t, "parent_id = ?", queryExpr.Query)
 
-			assert.Equal(t, "domain asc", input.SortParameters.GetGormOrderExpr())
+			assert.Equal(t, "execution_domain asc", sortParamsSQL(input.SortParameters))
 			return interfaces.NodeExecutionCollectionOutput{
 				NodeExecutions: []models.NodeExecution{
 					{
@@ -960,7 +960,7 @@ func TestListNodeExecutionsWithParent(t *testing.T) {
 		Token: "2",
 		SortBy: &admin.Sort{
 			Direction: admin.Sort_ASCENDING,
-			Key:       "domain",
+			Key:       "execution_domain",
 		},
 		UniqueParentId: "parent_1",
 	})
@@ -1087,7 +1087,7 @@ func TestListNodeExecutions_NothingToReturn(t *testing.T) {
 		Token: "2",
 		SortBy: &admin.Sort{
 			Direction: admin.Sort_ASCENDING,
-			Key:       "domain",
+			Key:       "execution_domain",
 		},
 	})
 	assert.Nil(t, err)
@@ -1141,7 +1141,7 @@ func TestListNodeExecutionsForTask(t *testing.T) {
 			assert.Equal(t, uint(8), queryExpr.Args)
 			assert.Equal(t, "parent_task_execution_id = ?", queryExpr.Query)
 
-			assert.Equal(t, "domain asc", input.SortParameters.GetGormOrderExpr())
+			assert.Equal(t, "execution_domain asc", sortParamsSQL(input.SortParameters))
 			return interfaces.NodeExecutionCollectionOutput{
 				NodeExecutions: []models.NodeExecution{
 					{
@@ -1186,7 +1186,7 @@ func TestListNodeExecutionsForTask(t *testing.T) {
 		Token: "2",
 		SortBy: &admin.Sort{
 			Direction: admin.Sort_ASCENDING,
-			Key:       "domain",
+			Key:       "execution_domain",
 		},
 	})
 	assert.Nil(t, err)

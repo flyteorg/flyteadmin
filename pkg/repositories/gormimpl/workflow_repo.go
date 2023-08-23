@@ -7,22 +7,13 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"gorm.io/gorm"
-	"k8s.io/apimachinery/pkg/util/sets"
 
 	flyteAdminDbErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 )
 
-var WorkflowColumns = BaseColumnSet.
-	Union(sets.NewString(
-		Project,
-		Domain,
-		Name,
-		Version,
-		"remote_closure_identifier",
-		"short_description",
-	))
+var WorkflowColumns = modelColumns(models.Workflow{})
 
 // Implementation of WorkflowRepoInterface.
 type WorkflowRepo struct {

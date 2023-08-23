@@ -4,15 +4,16 @@ import (
 	"context"
 	"testing"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	mockScope "github.com/flyteorg/flytestdlib/promutils"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	repositoryMocks "github.com/flyteorg/flyteadmin/pkg/repositories/mocks"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
 	runtimeMocks "github.com/flyteorg/flyteadmin/pkg/runtime/mocks"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	mockScope "github.com/flyteorg/flytestdlib/promutils"
-	"github.com/stretchr/testify/assert"
 )
 
 var descriptionEntityIdentifier = core.Identifier{

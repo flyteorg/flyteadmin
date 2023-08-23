@@ -2,9 +2,11 @@ package gormimpl
 
 import (
 	"fmt"
+	"sync"
 
 	"google.golang.org/grpc/codes"
 	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
@@ -14,21 +16,14 @@ import (
 )
 
 const (
-	Project          = "project"
-	Domain           = "domain"
-	Name             = "name"
-	Version          = "version"
-	Description      = "description"
-	ResourceType     = "resource_type"
-	State            = "state"
-	ID               = "id"
-	CreatedAt        = "created_at"
-	UpdatedAt        = "updated_at"
-	DeletedAt        = "deleted_at"
-	ExecutionProject = "execution_project"
-	ExecutionDomain  = "execution_domain"
-	ExecutionName    = "execution_name"
-	NodeID           = "node_id"
+	Project      = "project"
+	Domain       = "domain"
+	Name         = "name"
+	Version      = "version"
+	Description  = "description"
+	ResourceType = "resource_type"
+	State        = "state"
+	ID           = "id"
 )
 
 const executionTableName = "executions"
@@ -43,13 +38,6 @@ const executionAdminTagsTableName = "execution_admin_tags"
 
 const limit = "limit"
 const filters = "filters"
-
-var (
-	BaseColumnSet             = sets.NewString(ID, CreatedAt, UpdatedAt, DeletedAt, ResourceType)
-	TaskKeyColumnSet          = sets.NewString(Project, Domain, Name, Version)
-	ExecutionKeyColumnSet     = sets.NewString(ExecutionProject, ExecutionDomain, ExecutionName)
-	NodeExecutionKeyColumnSet = ExecutionKeyColumnSet.Union(sets.NewString(NodeID))
-)
 
 var identifierGroupBy = fmt.Sprintf("%s, %s, %s", Project, Domain, Name)
 
@@ -131,4 +119,12 @@ func applyScopedFilters(tx *gorm.DB, inlineFilters []common.InlineFilter, mapFil
 		tx = tx.Where(mapFilter.GetFilter())
 	}
 	return tx, nil
+}
+
+func modelColumns(v any) sets.String {
+	s, err := schema.Parse(v, &sync.Map{}, schema.NamingStrategy{})
+	if err != nil {
+		panic(err)
+	}
+	return sets.NewString(s.DBNames...)
 }

@@ -8,9 +8,10 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 
 	mocket "github.com/Selvatico/go-mocket"
-	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	mockScope "github.com/flyteorg/flytestdlib/promutils"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 )
 
 const shortDescription = "hello"
@@ -35,7 +36,8 @@ func TestGetDescriptionEntity(t *testing.T) {
 	GlobalMock := mocket.Catcher.Reset()
 	GlobalMock.Logging = true
 	// Only match on queries that append expected filters
-	GlobalMock.NewMock().WithQuery(`SELECT * FROM "description_entities" WHERE project = $1 AND domain = $2 AND name = $3 AND version = $4 LIMIT 1`).
+	GlobalMock.NewMock().
+		WithQuery(`SELECT * FROM "description_entities" WHERE project = $1 AND domain = $2 AND name = $3 AND version = $4 LIMIT 1`).
 		WithReply(descriptionEntities)
 	output, err = descriptionEntityRepo.Get(context.Background(), interfaces.GetDescriptionEntityInput{
 		ResourceType: resourceType,

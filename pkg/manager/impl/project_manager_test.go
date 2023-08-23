@@ -56,7 +56,7 @@ func testListProjects(request admin.ProjectListRequest, token string, orderExpr 
 			q, _ := input.InlineFilters[0].GetGormQueryExpr()
 			assert.Equal(t, *queryExpr, q)
 		}
-		assert.Equal(t, orderExpr, input.SortParameters.GetGormOrderExpr())
+		assert.Equal(t, orderExpr, sortParamsSQL(input.SortParameters))
 		activeState := int32(admin.Project_ACTIVE)
 		return []models.Project{
 			{

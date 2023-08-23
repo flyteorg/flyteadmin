@@ -244,7 +244,7 @@ func TestListTasks(t *testing.T) {
 		assert.True(t, domainFilter, "Missing domain equality filter")
 		assert.True(t, nameFilter, "Missing name equality filter")
 		assert.Equal(t, 2, input.Limit)
-		assert.Equal(t, "domain asc", input.SortParameters.GetGormOrderExpr())
+		assert.Equal(t, "domain asc", sortParamsSQL(input.SortParameters))
 		return interfaces.TaskCollectionOutput{
 			Tasks: []models.Task{
 				{
@@ -367,7 +367,7 @@ func TestListUniqueTaskIdentifiers(t *testing.T) {
 			}
 		}
 		assert.Equal(t, 10, input.Offset)
-		assert.Equal(t, "domain asc", input.SortParameters.GetGormOrderExpr())
+		assert.Equal(t, "domain asc", sortParamsSQL(input.SortParameters))
 
 		return interfaces.TaskCollectionOutput{
 			Tasks: []models.Task{

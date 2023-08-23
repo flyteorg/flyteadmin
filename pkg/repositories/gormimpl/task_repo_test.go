@@ -198,12 +198,9 @@ func TestListTasks_Order(t *testing.T) {
 	mockQuery.WithQuery(`project desc`)
 	mockQuery.WithReply(tasks)
 
-	sortParameter, _ := common.NewSortParameter(admin.Sort{
-		Direction: admin.Sort_DESCENDING,
-		Key:       "project",
-	})
+	sortParameters := makeSortParameters(t, admin.Sort_DESCENDING, "project")
 	_, err := taskRepo.List(context.Background(), interfaces.ListResourceInput{
-		SortParameters: sortParameter,
+		SortParameters: sortParameters,
 		InlineFilters: []common.InlineFilter{
 			getEqualityFilter(common.Task, "project", project),
 			getEqualityFilter(common.Task, "domain", domain),

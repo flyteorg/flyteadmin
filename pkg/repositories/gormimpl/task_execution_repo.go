@@ -7,26 +7,13 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"gorm.io/gorm"
-	"k8s.io/apimachinery/pkg/util/sets"
 
 	flyteAdminDbErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 )
 
-var TaskExecutionColumns = BaseColumnSet.
-	Union(TaskKeyColumnSet).
-	Union(NodeExecutionKeyColumnSet).
-	Union(sets.NewString(
-		"retry_attempt",
-		"phase",
-		"phase_version",
-		"input_uri",
-		"started_at",
-		"task_execution_started_at",
-		"task_execution_updated_at",
-		"duration",
-	))
+var TaskExecutionColumns = modelColumns(models.TaskExecution{})
 
 // Implementation of TaskExecutionInterface.
 type TaskExecutionRepo struct {

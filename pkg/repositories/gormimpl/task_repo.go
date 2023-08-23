@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"k8s.io/apimachinery/pkg/util/sets"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/flyteorg/flytestdlib/promutils"
@@ -17,12 +15,7 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 )
 
-var TaskColumns = BaseColumnSet.
-	Union(TaskKeyColumnSet).
-	Union(sets.NewString(
-		"type",
-		"short_description",
-	))
+var TaskColumns = modelColumns(models.Task{})
 
 // Implementation of TaskRepoInterface.
 type TaskRepo struct {

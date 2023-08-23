@@ -6,10 +6,8 @@ import (
 	"time"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flytestdlib/promutils"
-	"k8s.io/apimachinery/pkg/util/sets"
-
 	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/promutils"
 	"gorm.io/gorm"
 
 	adminErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
@@ -19,15 +17,7 @@ import (
 
 const launchPlanTableName = "launch_plans"
 
-var LaunchPlanColumns = BaseColumnSet.Union(sets.NewString(
-	Project,
-	Domain,
-	Name,
-	Version,
-	"workflow_id",
-	"state",
-	"schedule_type",
-))
+var LaunchPlanColumns = modelColumns(models.LaunchPlan{})
 
 type launchPlanMetrics struct {
 	SetActiveDuration promutils.StopWatch

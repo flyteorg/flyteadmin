@@ -253,12 +253,9 @@ func TestListNodeExecutions_Order(t *testing.T) {
 	mockQuery.WithQuery(`project desc`)
 	mockQuery.WithReply(nodeExecutions)
 
-	sortParameter, _ := common.NewSortParameter(admin.Sort{
-		Direction: admin.Sort_DESCENDING,
-		Key:       "project",
-	})
+	sortParameters := makeSortParameters(t, admin.Sort_DESCENDING, "project")
 	_, err := nodeExecutionRepo.List(context.Background(), interfaces.ListResourceInput{
-		SortParameters: sortParameter,
+		SortParameters: sortParameters,
 		InlineFilters: []common.InlineFilter{
 			getEqualityFilter(common.NodeExecution, "phase", nodePhase),
 		},

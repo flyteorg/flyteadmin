@@ -13,10 +13,11 @@ import (
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
-	"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/flyteorg/flyteadmin/pkg/manager/impl/testutils"
 )
 
 const project, domain, name = "project", "domain", "execution name"

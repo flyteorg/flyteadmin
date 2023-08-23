@@ -8,29 +8,13 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"gorm.io/gorm"
-	"k8s.io/apimachinery/pkg/util/sets"
 
 	adminErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 )
 
-var NodeExecutionColumns = BaseColumnSet.
-	Union(NodeExecutionKeyColumnSet).
-	Union(sets.NewString(
-		"phase",
-		"input_uri",
-		"started_at",
-		"node_execution_created_at",
-		"node_execution_updated_at",
-		"duration",
-		"parent_id",
-		"parent_task_execution_id",
-		"error_kind",
-		"error_code",
-		"cache_status",
-		"dynamic_workflow_remote_closure_reference",
-	))
+var NodeExecutionColumns = modelColumns(models.NodeExecution{})
 
 // Implementation of NodeExecutionInterface.
 type NodeExecutionRepo struct {

@@ -346,12 +346,9 @@ func TestListLaunchPlans_Order(t *testing.T) {
 	mockQuery.WithQuery(`project desc`)
 	mockQuery.WithReply(launchPlans)
 
-	sortParameter, _ := common.NewSortParameter(admin.Sort{
-		Direction: admin.Sort_DESCENDING,
-		Key:       "project",
-	})
+	sortParameters := makeSortParameters(t, admin.Sort_DESCENDING, "project")
 	_, err := launchPlanRepo.List(context.Background(), interfaces.ListResourceInput{
-		SortParameters: sortParameter,
+		SortParameters: sortParameters,
 		InlineFilters: []common.InlineFilter{
 			getEqualityFilter(common.LaunchPlan, "project", project),
 			getEqualityFilter(common.LaunchPlan, "domain", domain),

@@ -183,12 +183,9 @@ func TestListWorkflows_Order(t *testing.T) {
 	mockQuery.WithQuery(`project desc`)
 	mockQuery.WithReply(workflows)
 
-	sortParameter, _ := common.NewSortParameter(admin.Sort{
-		Direction: admin.Sort_DESCENDING,
-		Key:       "project",
-	})
+	sortParameters := makeSortParameters(t, admin.Sort_DESCENDING, "project")
 	_, err := workflowRepo.List(context.Background(), interfaces.ListResourceInput{
-		SortParameters: sortParameter,
+		SortParameters: sortParameters,
 		InlineFilters: []common.InlineFilter{
 			getEqualityFilter(common.Workflow, "project", project),
 			getEqualityFilter(common.Workflow, "domain", domain),

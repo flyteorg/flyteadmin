@@ -4,12 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"k8s.io/apimachinery/pkg/util/sets"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"google.golang.org/grpc/codes"
-
 	"github.com/flyteorg/flytestdlib/promutils"
+	"google.golang.org/grpc/codes"
 	"gorm.io/gorm"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
@@ -21,14 +18,7 @@ import (
 
 const innerJoinTableAlias = "entities"
 
-var NamedEntityColumns = sets.NewString(
-	ResourceType,
-	Project,
-	Domain,
-	Name,
-	"description",
-	"state",
-)
+var NamedEntityColumns = modelColumns(models.NamedEntity{})
 
 var resourceTypeToTableName = map[core.ResourceType]string{
 	core.ResourceType_LAUNCH_PLAN: launchPlanTableName,

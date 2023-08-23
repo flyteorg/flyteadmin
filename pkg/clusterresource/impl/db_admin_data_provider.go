@@ -8,6 +8,7 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/clusterresource/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	managerInterfaces "github.com/flyteorg/flyteadmin/pkg/manager/interfaces"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/gormimpl"
 	repositoryInterfaces "github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
@@ -46,6 +47,13 @@ func (p dbAdminProvider) getDomains() []*admin.Domain {
 	}
 	return domains
 }
+
+var descCreatedAtSortParam = admin.Sort{
+	Direction: admin.Sort_DESCENDING,
+	Key:       "created_at",
+}
+
+var descCreatedAtSortDBParam, _ = common.NewSortParameter(&descCreatedAtSortParam, gormimpl.ProjectColumns)
 
 func (p dbAdminProvider) GetProjects(ctx context.Context) (*admin.Projects, error) {
 	filter, err := common.NewSingleValueFilter(common.Project, common.NotEqual, "state", int32(admin.Project_ARCHIVED))

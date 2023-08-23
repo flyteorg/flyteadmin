@@ -8,7 +8,6 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"gorm.io/gorm"
-	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	adminErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
@@ -16,30 +15,7 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 )
 
-var ExecutionColumns = BaseColumnSet.
-	Union(ExecutionKeyColumnSet).
-	Union(sets.NewString(
-		"launch_plan_id",
-		"workflow_id",
-		"task_id",
-		"phase",
-		"started_at",
-		"execution_created_at",
-		"execution_updated_at",
-		"duration",
-		"abort_cause",
-		"mode",
-		"source_execution_id",
-		"parent_node_execution_id",
-		"cluster",
-		"inputs_uri",
-		"user_inputs_uri",
-		"error_kind",
-		"error_code",
-		"user",
-		"state",
-		"launch_entity",
-	))
+var ExecutionColumns = modelColumns(models.Execution{})
 
 // Implementation of ExecutionInterface.
 type ExecutionRepo struct {

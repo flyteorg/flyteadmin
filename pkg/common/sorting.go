@@ -27,16 +27,21 @@ func (s *sortParamImpl) GetGormOrderExpr() string {
 }
 
 func NewSortParameter(sort *admin.Sort, allowed sets.String) ([]SortParameter, error) {
-	if !allowed.Has(sort.Key) {
-		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "invalid sort_key: %s", sort.Key)
+	if sort == nil {
+		return nil, nil
+	}
+
+	key := sort.GetKey()
+	if !allowed.Has(key) {
+		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "invalid sort_key: %s", key)
 	}
 
 	var gormOrderExpression string
-	switch sort.Direction {
+	switch sort.GetDirection() {
 	case admin.Sort_DESCENDING:
-		gormOrderExpression = fmt.Sprintf(gormDescending, sort.Key)
+		gormOrderExpression = fmt.Sprintf(gormDescending, key)
 	case admin.Sort_ASCENDING:
-		gormOrderExpression = fmt.Sprintf(gormAscending, sort.Key)
+		gormOrderExpression = fmt.Sprintf(gormAscending, key)
 	default:
 		return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "invalid sort order specified: %v", sort)
 	}

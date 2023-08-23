@@ -15,10 +15,10 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 )
 
-var alphabeticalSortParam, _ = common.NewSortParameter(admin.Sort{
+var alphabeticalSortParam, _ = common.NewSortParameter(&admin.Sort{
 	Direction: admin.Sort_ASCENDING,
 	Key:       "identifier",
-})
+}, ProjectColumns)
 
 func TestCreateProject(t *testing.T) {
 	projectRepo := NewProjectRepo(GetDbForTest(t), errors.NewTestErrorTransformer(), mockScope.NewTestScope())
