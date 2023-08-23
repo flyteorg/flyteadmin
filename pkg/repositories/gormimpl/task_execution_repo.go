@@ -4,13 +4,10 @@ import (
 	"context"
 	"errors"
 
-	"k8s.io/apimachinery/pkg/util/sets"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-
 	"github.com/flyteorg/flytestdlib/promutils"
-
 	"gorm.io/gorm"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	flyteAdminDbErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
@@ -19,7 +16,7 @@ import (
 
 var TaskExecutionColumns = BaseColumnSet.
 	Union(TaskKeyColumnSet).
-	Union(ExecutionKeyColumnSet).
+	Union(NodeExecutionKeyColumnSet).
 	Union(sets.NewString(
 		"retry_attempt",
 		"phase",

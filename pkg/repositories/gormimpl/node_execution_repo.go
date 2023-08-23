@@ -5,13 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	"k8s.io/apimachinery/pkg/util/sets"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-
 	"github.com/flyteorg/flytestdlib/promutils"
-
 	"gorm.io/gorm"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	adminErrors "github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
@@ -29,7 +26,6 @@ var NodeExecutionColumns = BaseColumnSet.
 		"duration",
 		"parent_id",
 		"parent_task_execution_id",
-		"parent_node_execution_id",
 		"error_kind",
 		"error_code",
 		"cache_status",
