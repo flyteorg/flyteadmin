@@ -3,12 +3,15 @@ package gormimpl
 import (
 	"context"
 
+	"github.com/flyteorg/flytestdlib/promutils"
+	"gorm.io/gorm"
+
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
-	"github.com/flyteorg/flytestdlib/promutils"
-	"gorm.io/gorm"
 )
+
+var NodeExecutionEventColumns = modelColumns(models.NodeExecutionEvent{})
 
 type NodeExecutionEventRepo struct {
 	db               *gorm.DB

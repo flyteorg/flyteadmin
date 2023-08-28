@@ -3,6 +3,7 @@ package util
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -10,14 +11,13 @@ import (
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/logger"
-
-	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"google.golang.org/grpc/codes"
-
-	"fmt"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
+	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/manager/impl/shared"
+	"github.com/flyteorg/flyteadmin/pkg/repositories/gormimpl"
 )
 
 const (
@@ -120,6 +120,54 @@ func prepareValues(field string, values []string) (interface{}, error) {
 	return preparedValues, nil
 }
 
+var allowedJoinTableColumns = map[common.Entity]map[common.Entity]sets.String{
+	common.Execution: {
+		common.Execution:  gormimpl.ExecutionColumns,
+		common.LaunchPlan: gormimpl.LaunchPlanColumns,
+		common.Workflow:   gormimpl.WorkflowColumns,
+		common.Task:       gormimpl.TaskColumns,
+		common.AdminTag:   gormimpl.AdminTagColumns,
+	},
+	common.LaunchPlan: {
+		common.LaunchPlan: gormimpl.LaunchPlanColumns,
+		common.Workflow:   gormimpl.WorkflowColumns,
+	},
+	common.NodeExecution: {
+		common.NodeExecution: gormimpl.NodeExecutionColumns,
+		common.Execution:     gormimpl.ExecutionColumns,
+	},
+	common.NodeExecutionEvent: {
+		common.NodeExecutionEvent: gormimpl.NodeExecutionEventColumns,
+	},
+	common.Task: {
+		common.Task: gormimpl.TaskColumns,
+	},
+	common.TaskExecution: {
+		common.TaskExecution: gormimpl.TaskExecutionColumns,
+		common.Task:          gormimpl.TaskColumns,
+		common.Execution:     gormimpl.ExecutionColumns,
+		common.NodeExecution: gormimpl.NodeExecutionColumns,
+	},
+	common.Workflow: {
+		common.Workflow: gormimpl.WorkflowColumns,
+	},
+	common.NamedEntity: {
+		common.NamedEntity: gormimpl.NamedEntityColumns,
+	},
+	common.NamedEntityMetadata: {
+		common.NamedEntityMetadata: gormimpl.NamedEntityMetadataColumns,
+	},
+	common.Project: {
+		common.Project: gormimpl.ProjectColumns,
+	},
+	common.Signal: {
+		common.Signal: gormimpl.SignalColumns,
+	},
+	common.AdminTag: {
+		common.AdminTag: gormimpl.AdminTagColumns,
+	},
+}
+
 func ParseFilters(filterParams string, primaryEntity common.Entity) ([]common.InlineFilter, error) {
 	// Multiple filters can be appended as URI-escaped strings joined by filterExpressionSeperator
 	filterExpressions := strings.Split(filterParams, filterExpressionSeperator)
@@ -132,6 +180,20 @@ func ParseFilters(filterParams string, primaryEntity common.Entity) ([]common.In
 			return nil, shared.GetInvalidArgumentError(shared.Filters)
 		}
 		referencedEntity, field := parseField(matches[fieldMatchIndex], primaryEntity)
+
+		allowedJoinEntities, ok := allowedJoinTableColumns[primaryEntity]
+		if !ok {
+			return nil, fmt.Errorf("unsupported entity '%s'", primaryEntity)
+		}
+
+		referencedEntityColumns, ok := allowedJoinEntities[referencedEntity]
+		if !ok {
+			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "'%s' entity is not allowed in filters", referencedEntity)
+		}
+
+		if !referencedEntityColumns.Has(field) {
+			return nil, errors.NewFlyteAdminErrorf(codes.InvalidArgument, "'%s.%s' is invalid filter", referencedEntity, field)
+		}
 
 		// Parse and transform values
 		parsedValues := parseRepeatedValues(matches[valueMatchIndex])

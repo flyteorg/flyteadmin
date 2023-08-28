@@ -7,13 +7,19 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"google.golang.org/grpc/codes"
 
+	"github.com/flyteorg/flytestdlib/promutils"
+	"gorm.io/gorm"
+
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	adminErrors "github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
-	"github.com/flyteorg/flytestdlib/promutils"
-	"gorm.io/gorm"
+)
+
+var (
+	NamedEntityColumns         = modelColumns(models.NamedEntity{})
+	NamedEntityMetadataColumns = modelColumns(models.NamedEntityMetadata{})
 )
 
 const innerJoinTableAlias = "entities"
