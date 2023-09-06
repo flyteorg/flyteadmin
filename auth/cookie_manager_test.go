@@ -115,31 +115,22 @@ func TestCookieManager_SetTokenCookies(t *testing.T) {
 		assert.EqualError(t, err, "[EMPTY_OAUTH_TOKEN] Error reading existing secure cookie [flyte_idt]. Error: [SECURE_COOKIE_ERROR] Error reading secure cookie flyte_idt, caused by: securecookie: error - caused by: crypto/aes: invalid key size 75")
 	})
 
-	t.Run("logout_access_cookie", func(t *testing.T) {
-		cookie := manager.getLogoutAccessCookie()
-
-		assert.True(t, time.Now().After(cookie.Expires))
-		assert.Equal(t, cookieSetting.Domain, cookie.Domain)
-	})
-
-	t.Run("logout_refresh_cookie", func(t *testing.T) {
-		cookie := manager.getLogoutRefreshCookie()
-
-		assert.True(t, time.Now().After(cookie.Expires))
-		assert.Equal(t, cookieSetting.Domain, cookie.Domain)
-	})
-
 	t.Run("delete_cookies", func(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		manager.DeleteCookies(ctx, w)
 
 		cookies := w.Result().Cookies()
-		require.Equal(t, 2, len(cookies))
+		require.Equal(t, 3, len(cookies))
 		assert.True(t, time.Now().After(cookies[0].Expires))
 		assert.Equal(t, cookieSetting.Domain, cookies[0].Domain)
+		assert.Equal(t, accessTokenCookieName, cookies[0].Name)
 		assert.True(t, time.Now().After(cookies[1].Expires))
 		assert.Equal(t, cookieSetting.Domain, cookies[1].Domain)
+		assert.Equal(t, refreshTokenCookieName, cookies[1].Name)
+		assert.True(t, time.Now().After(cookies[1].Expires))
+		assert.Equal(t, cookieSetting.Domain, cookies[1].Domain)
+		assert.Equal(t, idTokenCookieName, cookies[2].Name)
 	})
 
 	t.Run("get_http_same_site_policy", func(t *testing.T) {
