@@ -27,7 +27,7 @@ jobs:
   endtoend:
     name: End2End Test
     needs: [ docker-build ]
-    uses: flyteorg/flytetools/.github/workflows/end2end.yml@update-python-version
+    uses: flyteorg/flytetools/.github/workflows/end2end.yml@master
     with:
       priorities: "P0"
       cache_key: ${{ needs.docker-build.outputs.cache_key }}
