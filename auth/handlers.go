@@ -124,7 +124,7 @@ func RefreshTokensIfExists(ctx context.Context, authCtx interfaces.Authenticatio
 			return
 		}
 
-		redirectURL := getAuthFlowEndRedirect(ctx, authCtx, request)
+		redirectURL := GetAuthFlowEndRedirect(ctx, authCtx, request)
 		http.Redirect(writer, request, redirectURL, http.StatusTemporaryRedirect)
 	}
 }
@@ -211,7 +211,7 @@ func GetCallbackHandler(ctx context.Context, authCtx interfaces.AuthenticationCo
 			}
 			logger.Info(ctx, "Successfully called the preRedirect hook")
 		}
-		redirectURL := getAuthFlowEndRedirect(ctx, authCtx, request)
+		redirectURL := GetAuthFlowEndRedirect(ctx, authCtx, request)
 		http.Redirect(writer, request, redirectURL, http.StatusTemporaryRedirect)
 	}
 }
