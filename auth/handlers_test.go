@@ -52,8 +52,8 @@ func setupMockedAuthContextAtEndpoint(endpoint string) *mocks.AuthenticationCont
 		Timeout: IdpConnectionTimeout,
 	}
 	mockAuthCtx.OnCookieManagerMatch().Return(mockCookieHandler)
-	mockCookieHandler.EXPECT().SetTokenCookies(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-	mockCookieHandler.EXPECT().SetUserInfoCookie(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+	mockCookieHandler.OnSetTokenCookiesMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+	mockCookieHandler.OnSetUserInfoCookieMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	mockAuthCtx.OnOAuth2ClientConfigMatch(mock.Anything).Return(&dummyOAuth2Config)
 	mockAuthCtx.OnGetHTTPClient().Return(dummyHTTPClient)
 	return mockAuthCtx
@@ -261,11 +261,10 @@ func TestGetLogoutHandler(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("no_hook_no_redirect", func(t *testing.T) {
-		cookieHandler := new(mocks.CookieHandler)
+		cookieHandler := &CookieManager{}
 		authCtx := mocks.AuthenticationContext{}
 		authCtx.OnCookieManager().Return(cookieHandler).Once()
 		w := httptest.NewRecorder()
-		cookieHandler.EXPECT().DeleteCookies(ctx, w).Once()
 		r := plugins.NewRegistry()
 		req, err := http.NewRequest(http.MethodGet, "/logout", nil)
 		require.NoError(t, err)
@@ -273,17 +272,16 @@ func TestGetLogoutHandler(t *testing.T) {
 		GetLogoutEndpointHandler(ctx, &authCtx, r)(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
+		require.Len(t, w.Result().Cookies(), 3)
 		authCtx.AssertExpectations(t)
-		cookieHandler.AssertExpectations(t)
 	})
 
 	t.Run("no_hook_with_redirect", func(t *testing.T) {
 		ctx := context.Background()
-		cookieHandler := new(mocks.CookieHandler)
+		cookieHandler := &CookieManager{}
 		authCtx := mocks.AuthenticationContext{}
 		authCtx.OnCookieManager().Return(cookieHandler).Once()
 		w := httptest.NewRecorder()
-		cookieHandler.EXPECT().DeleteCookies(ctx, w).Once()
 		r := plugins.NewRegistry()
 		req, err := http.NewRequest(http.MethodGet, "/logout?redirect_url=/foo", nil)
 		require.NoError(t, err)
@@ -292,16 +290,15 @@ func TestGetLogoutHandler(t *testing.T) {
 
 		assert.Equal(t, http.StatusTemporaryRedirect, w.Code)
 		authCtx.AssertExpectations(t)
-		cookieHandler.AssertExpectations(t)
+		require.Len(t, w.Result().Cookies(), 3)
 	})
 
 	t.Run("with_hook_with_redirect", func(t *testing.T) {
 		ctx := context.Background()
-		cookieHandler := new(mocks.CookieHandler)
+		cookieHandler := &CookieManager{}
 		authCtx := mocks.AuthenticationContext{}
 		authCtx.OnCookieManager().Return(cookieHandler).Once()
 		w := httptest.NewRecorder()
-		cookieHandler.EXPECT().DeleteCookies(ctx, w).Once()
 		r := plugins.NewRegistry()
 		hook := new(mock.Mock)
 		err := r.Register(plugins.PluginIDLogoutHook, LogoutHookFunc(func(
@@ -319,8 +316,8 @@ func TestGetLogoutHandler(t *testing.T) {
 		GetLogoutEndpointHandler(ctx, &authCtx, r)(w, req)
 
 		assert.Equal(t, http.StatusTemporaryRedirect, w.Code)
+		require.Len(t, w.Result().Cookies(), 3)
 		authCtx.AssertExpectations(t)
-		cookieHandler.AssertExpectations(t)
 		hook.AssertExpectations(t)
 	})
 
@@ -345,6 +342,7 @@ func TestGetLogoutHandler(t *testing.T) {
 		GetLogoutEndpointHandler(ctx, &authCtx, r)(w, req)
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Empty(t, w.Result().Cookies())
 		authCtx.AssertExpectations(t)
 		hook.AssertExpectations(t)
 	})
