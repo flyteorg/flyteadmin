@@ -210,6 +210,9 @@ require (
 
 replace github.com/robfig/cron/v3 => github.com/unionai/cron/v3 v3.0.2-0.20220915080349-5790c370e63a
 
+// TODO: update version references once dependent PR is merged
+replace github.com/flyteorg/flyteidl => github.com/andrewwdye/flyteidl v0.0.0-20230921054948-85b9c706f792
+
 // Retracted versions
 // This was published in error when attempting to create 1.5.1 Flyte release.
 retract v1.1.94

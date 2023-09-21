@@ -386,7 +386,18 @@ func UpdateTaskExecutionModel(ctx context.Context, request *admin.TaskExecutionE
 	}
 	taskExecutionClosure.UpdatedAt = reportedAt
 	taskExecutionClosure.Logs = mergeLogs(taskExecutionClosure.Logs, request.Event.Logs)
-	if len(request.Event.Reason) > 0 {
+	if len(request.Event.Reasons) > 0 {
+		for _, reason := range request.Event.Reasons {
+			taskExecutionClosure.Reasons = append( // TODO: this is where to unpack batch
+				taskExecutionClosure.Reasons,
+				&admin.Reason{
+					OccurredAt: reason.OccurredAt,
+					Message:    reason.Reason,
+				})
+		}
+		// TODO: avoid dupes?
+		// taskExecutionClosure.Reason = request.Event.Reason
+	} else if len(request.Event.Reason) > 0 {
 		if taskExecutionClosure.Reason != request.Event.Reason {
 			// by tracking a time-series of reasons we increase the size of the TaskExecutionClosure in scenarios where
 			// a task reports a large number of unique reasons. if this size increase becomes problematic we this logic

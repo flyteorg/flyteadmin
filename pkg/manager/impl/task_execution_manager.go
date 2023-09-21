@@ -9,15 +9,19 @@ import (
 
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 
-	notificationInterfaces "github.com/flyteorg/flyteadmin/pkg/async/notifications/interfaces"
 	"github.com/golang/protobuf/proto"
+
+	notificationInterfaces "github.com/flyteorg/flyteadmin/pkg/async/notifications/interfaces"
 
 	"github.com/flyteorg/flytestdlib/storage"
 
 	"github.com/flyteorg/flytestdlib/contextutils"
 
-	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/flyteorg/flytestdlib/promutils"
+
+	"google.golang.org/grpc/codes"
 
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	dataInterfaces "github.com/flyteorg/flyteadmin/pkg/data/interfaces"
@@ -32,7 +36,6 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/logger"
-	"google.golang.org/grpc/codes"
 )
 
 type taskExecutionMetrics struct {
@@ -194,7 +197,7 @@ func (m *TaskExecutionManager) CreateTaskExecutionEvent(ctx context.Context, req
 		return nil, err
 	}
 
-	if request.Event.Phase == core.TaskExecution_RUNNING && request.Event.PhaseVersion == 0 {
+	if request.Event.Phase == core.TaskExecution_RUNNING && request.Event.PhaseVersion == 0 { // TODO: need to be careful about missing inc/decs
 		m.metrics.ActiveTaskExecutions.Inc()
 	} else if common.IsTaskExecutionTerminal(request.Event.Phase) && request.Event.PhaseVersion == 0 {
 		m.metrics.ActiveTaskExecutions.Dec()
