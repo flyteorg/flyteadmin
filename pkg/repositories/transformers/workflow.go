@@ -1,6 +1,7 @@
 package transformers
 
 import (
+	"fmt"
 	"github.com/flyteorg/flyteadmin/pkg/errors"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
@@ -47,11 +48,26 @@ func FromWorkflowModel(workflowModel models.Workflow) (admin.Workflow, error) {
 		return admin.Workflow{}, errors.NewFlyteAdminErrorf(codes.Internal, "failed to read created at timestamp")
 	}
 
+	var workflowInterface core.TypedInterface
+	if workflowModel.TypedInterface != nil && len(workflowModel.TypedInterface) > 0 {
+		err = proto.Unmarshal(workflowModel.TypedInterface, &workflowInterface)
+		if err != nil {
+			return admin.Workflow{}, errors.NewFlyteAdminErrorf(codes.Internal, fmt.Sprintf("failed to unmarshal workflow %v inputs", workflowModel.ID))
+		}
+	}
+
 	// Because the spec if offloaded, it is not populated in the model returned here.
 	return admin.Workflow{
 		Id: &id,
 		Closure: &admin.WorkflowClosure{
 			CreatedAt: createdAt,
+			CompiledWorkflow: &core.CompiledWorkflowClosure{
+				Primary: &core.CompiledWorkflow{
+					Template: &core.WorkflowTemplate{
+						Interface: &workflowInterface,
+					},
+				},
+			},
 		},
 		ShortDescription: workflowModel.ShortDescription,
 	}, nil
