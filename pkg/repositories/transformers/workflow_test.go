@@ -134,8 +134,7 @@ func TestFromWorkflowModels(t *testing.T) {
 		Version:      "version a",
 	}, workflowList[0].Id))
 
-	var workflowInterface0 core.TypedInterface
-	err = proto.Unmarshal(workflowModels[0].TypedInterface, &workflowInterface0)
+	workflowInterface := testutils.GetWorkflowRequestInterface()
 	assert.NoError(t, err)
 
 	assert.True(t, proto.Equal(&admin.WorkflowClosure{
@@ -143,7 +142,7 @@ func TestFromWorkflowModels(t *testing.T) {
 		CompiledWorkflow: &core.CompiledWorkflowClosure{
 			Primary: &core.CompiledWorkflow{
 				Template: &core.WorkflowTemplate{
-					Interface: &workflowInterface0,
+					Interface: workflowInterface,
 				},
 			},
 		},
@@ -157,17 +156,12 @@ func TestFromWorkflowModels(t *testing.T) {
 		Version:      "version b",
 	}, workflowList[1].Id))
 
-	// Expected to be nil
-	var workflowInterface1 core.TypedInterface
-	err = proto.Unmarshal(workflowModels[1].TypedInterface, &workflowInterface1)
-	assert.NoError(t, err)
-
 	assert.True(t, proto.Equal(&admin.WorkflowClosure{
 		CreatedAt: createdAtBProto,
 		CompiledWorkflow: &core.CompiledWorkflowClosure{
 			Primary: &core.CompiledWorkflow{
 				Template: &core.WorkflowTemplate{
-					Interface: &workflowInterface1,
+					Interface: &core.TypedInterface{},
 				},
 			},
 		},
