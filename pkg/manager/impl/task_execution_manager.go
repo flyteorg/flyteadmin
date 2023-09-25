@@ -5,24 +5,20 @@ import (
 	"fmt"
 	"strconv"
 
-	cloudeventInterfaces "github.com/flyteorg/flyteadmin/pkg/async/cloudevent/interfaces"
-
-	"github.com/flyteorg/flytestdlib/promutils/labeled"
-
 	"github.com/golang/protobuf/proto"
-
-	notificationInterfaces "github.com/flyteorg/flyteadmin/pkg/async/notifications/interfaces"
-
-	"github.com/flyteorg/flytestdlib/storage"
-
-	"github.com/flyteorg/flytestdlib/contextutils"
-
 	"github.com/prometheus/client_golang/prometheus"
-
-	"github.com/flyteorg/flytestdlib/promutils"
-
 	"google.golang.org/grpc/codes"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytestdlib/contextutils"
+	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/promutils"
+	"github.com/flyteorg/flytestdlib/promutils/labeled"
+	"github.com/flyteorg/flytestdlib/storage"
+
+	cloudeventInterfaces "github.com/flyteorg/flyteadmin/pkg/async/cloudevent/interfaces"
+	notificationInterfaces "github.com/flyteorg/flyteadmin/pkg/async/notifications/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/common"
 	dataInterfaces "github.com/flyteorg/flyteadmin/pkg/data/interfaces"
 	"github.com/flyteorg/flyteadmin/pkg/errors"
@@ -33,9 +29,6 @@ import (
 	"github.com/flyteorg/flyteadmin/pkg/repositories/models"
 	"github.com/flyteorg/flyteadmin/pkg/repositories/transformers"
 	runtimeInterfaces "github.com/flyteorg/flyteadmin/pkg/runtime/interfaces"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flytestdlib/logger"
 )
 
 type taskExecutionMetrics struct {
@@ -261,12 +254,10 @@ func (m *TaskExecutionManager) ListTaskExecutions(
 	if err != nil {
 		return nil, err
 	}
-	var sortParameter common.SortParameter
-	if request.SortBy != nil {
-		sortParameter, err = common.NewSortParameter(*request.SortBy)
-		if err != nil {
-			return nil, err
-		}
+
+	sortParameter, err := common.NewSortParameter(request.SortBy, models.TaskExecutionColumns)
+	if err != nil {
+		return nil, err
 	}
 
 	offset, err := validation.ValidateToken(request.Token)

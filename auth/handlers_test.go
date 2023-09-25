@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,18 +11,20 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/coreos/go-oidc"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
+	stdConfig "github.com/flyteorg/flytestdlib/config"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/oauth2"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/flyteorg/flyteadmin/auth/config"
+	"github.com/flyteorg/flyteadmin/auth/interfaces"
 	"github.com/flyteorg/flyteadmin/auth/interfaces/mocks"
 	"github.com/flyteorg/flyteadmin/pkg/common"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
-	stdConfig "github.com/flyteorg/flytestdlib/config"
-
-	"github.com/coreos/go-oidc"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"golang.org/x/oauth2"
+	"github.com/flyteorg/flyteadmin/plugins"
 )
 
 const (
@@ -49,8 +52,8 @@ func setupMockedAuthContextAtEndpoint(endpoint string) *mocks.AuthenticationCont
 		Timeout: IdpConnectionTimeout,
 	}
 	mockAuthCtx.OnCookieManagerMatch().Return(mockCookieHandler)
-	mockCookieHandler.OnSetTokenCookiesMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	mockCookieHandler.OnSetUserInfoCookieMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	mockCookieHandler.OnSetTokenCookiesMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+	mockCookieHandler.OnSetUserInfoCookieMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	mockAuthCtx.OnOAuth2ClientConfigMatch(mock.Anything).Return(&dummyOAuth2Config)
 	mockAuthCtx.OnGetHTTPClient().Return(dummyHTTPClient)
 	return mockAuthCtx
@@ -81,7 +84,8 @@ func TestGetCallbackHandlerWithErrorOnToken(t *testing.T) {
 	defer localServer.Close()
 	http.DefaultClient = localServer.Client()
 	mockAuthCtx := setupMockedAuthContextAtEndpoint(localServer.URL)
-	callbackHandlerFunc := GetCallbackHandler(ctx, mockAuthCtx)
+	r := plugins.NewRegistry()
+	callbackHandlerFunc := GetCallbackHandler(ctx, mockAuthCtx, r)
 	request := httptest.NewRequest("GET", localServer.URL+"/callback", nil)
 	addCsrfCookie(request)
 	addStateString(request)
@@ -102,7 +106,8 @@ func TestGetCallbackHandlerWithUnAuthorized(t *testing.T) {
 	defer localServer.Close()
 	http.DefaultClient = localServer.Client()
 	mockAuthCtx := setupMockedAuthContextAtEndpoint(localServer.URL)
-	callbackHandlerFunc := GetCallbackHandler(ctx, mockAuthCtx)
+	r := plugins.NewRegistry()
+	callbackHandlerFunc := GetCallbackHandler(ctx, mockAuthCtx, r)
 	request := httptest.NewRequest("GET", localServer.URL+"/callback", nil)
 	writer := httptest.NewRecorder()
 	callbackHandlerFunc(writer, request)
@@ -153,7 +158,8 @@ func TestGetCallbackHandler(t *testing.T) {
 
 	t.Run("forbidden request when accessing user info", func(t *testing.T) {
 		mockAuthCtx := setupMockedAuthContextAtEndpoint(localServer.URL)
-		callbackHandlerFunc := GetCallbackHandler(ctx, mockAuthCtx)
+		r := plugins.NewRegistry()
+		callbackHandlerFunc := GetCallbackHandler(ctx, mockAuthCtx, r)
 		request := httptest.NewRequest("GET", localServer.URL+"/callback", nil)
 		addCsrfCookie(request)
 		addStateString(request)
@@ -172,9 +178,15 @@ func TestGetCallbackHandler(t *testing.T) {
 		assert.Equal(t, "403 Forbidden", writer.Result().Status)
 	})
 
-	t.Run("successful callback and redirect", func(t *testing.T) {
+	t.Run("successful callback with redirect and successful preredirect hook call", func(t *testing.T) {
 		mockAuthCtx := setupMockedAuthContextAtEndpoint(localServer.URL)
-		callbackHandlerFunc := GetCallbackHandler(ctx, mockAuthCtx)
+		r := plugins.NewRegistry()
+		var redirectFunc PreRedirectHookFunc = func(redirectContext context.Context, authCtx interfaces.AuthenticationContext, request *http.Request, responseWriter http.ResponseWriter) *PreRedirectHookError {
+			return nil
+		}
+
+		r.RegisterDefault(plugins.PluginIDPreRedirectHook, redirectFunc)
+		callbackHandlerFunc := GetCallbackHandler(ctx, mockAuthCtx, r)
 		request := httptest.NewRequest("GET", localServer.URL+"/callback", nil)
 		addCsrfCookie(request)
 		addStateString(request)
@@ -192,6 +204,37 @@ func TestGetCallbackHandler(t *testing.T) {
 		mockAuthCtx.OnOidcProviderMatch().Return(oidcProvider)
 		callbackHandlerFunc(writer, request)
 		assert.Equal(t, "307 Temporary Redirect", writer.Result().Status)
+	})
+
+	t.Run("successful callback with pre-redirecthook failure", func(t *testing.T) {
+		mockAuthCtx := setupMockedAuthContextAtEndpoint(localServer.URL)
+		r := plugins.NewRegistry()
+		var redirectFunc PreRedirectHookFunc = func(redirectContext context.Context, authCtx interfaces.AuthenticationContext, request *http.Request, responseWriter http.ResponseWriter) *PreRedirectHookError {
+			return &PreRedirectHookError{
+				Code:    http.StatusPreconditionFailed,
+				Message: "precondition error",
+			}
+		}
+
+		r.RegisterDefault(plugins.PluginIDPreRedirectHook, redirectFunc)
+		callbackHandlerFunc := GetCallbackHandler(ctx, mockAuthCtx, r)
+		request := httptest.NewRequest("GET", localServer.URL+"/callback", nil)
+		addCsrfCookie(request)
+		addStateString(request)
+		writer := httptest.NewRecorder()
+		openIDConfigJSON = fmt.Sprintf(`{
+				"userinfo_endpoint": "%v/userinfo",
+				"issuer": "%v",
+				"authorization_endpoint": "%v/auth",
+				"token_endpoint": "%v/token",
+				"jwks_uri": "%v/keys",
+				"id_token_signing_alg_values_supported": ["RS256"]
+			}`, issuer, issuer, issuer, issuer, issuer)
+		oidcProvider, err := oidc.NewProvider(ctx, issuer)
+		assert.Nil(t, err)
+		mockAuthCtx.OnOidcProviderMatch().Return(oidcProvider)
+		callbackHandlerFunc(writer, request)
+		assert.Equal(t, "412 Precondition Failed", writer.Result().Status)
 	})
 }
 
@@ -212,6 +255,97 @@ func TestGetLoginHandler(t *testing.T) {
 	assert.Equal(t, 307, w.Code)
 	assert.True(t, strings.Contains(w.Header().Get("Location"), "response_type=code&scope=openid+other"))
 	assert.True(t, strings.Contains(w.Header().Get("Set-Cookie"), "flyte_csrf_state="))
+}
+
+func TestGetLogoutHandler(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("no_hook_no_redirect", func(t *testing.T) {
+		cookieHandler := &CookieManager{}
+		authCtx := mocks.AuthenticationContext{}
+		authCtx.OnCookieManager().Return(cookieHandler).Once()
+		w := httptest.NewRecorder()
+		r := plugins.NewRegistry()
+		req, err := http.NewRequest(http.MethodGet, "/logout", nil)
+		require.NoError(t, err)
+
+		GetLogoutEndpointHandler(ctx, &authCtx, r)(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		require.Len(t, w.Result().Cookies(), 3)
+		authCtx.AssertExpectations(t)
+	})
+
+	t.Run("no_hook_with_redirect", func(t *testing.T) {
+		ctx := context.Background()
+		cookieHandler := &CookieManager{}
+		authCtx := mocks.AuthenticationContext{}
+		authCtx.OnCookieManager().Return(cookieHandler).Once()
+		w := httptest.NewRecorder()
+		r := plugins.NewRegistry()
+		req, err := http.NewRequest(http.MethodGet, "/logout?redirect_url=/foo", nil)
+		require.NoError(t, err)
+
+		GetLogoutEndpointHandler(ctx, &authCtx, r)(w, req)
+
+		assert.Equal(t, http.StatusTemporaryRedirect, w.Code)
+		authCtx.AssertExpectations(t)
+		require.Len(t, w.Result().Cookies(), 3)
+	})
+
+	t.Run("with_hook_with_redirect", func(t *testing.T) {
+		ctx := context.Background()
+		cookieHandler := &CookieManager{}
+		authCtx := mocks.AuthenticationContext{}
+		authCtx.OnCookieManager().Return(cookieHandler).Once()
+		w := httptest.NewRecorder()
+		r := plugins.NewRegistry()
+		hook := new(mock.Mock)
+		err := r.Register(plugins.PluginIDLogoutHook, LogoutHookFunc(func(
+			ctx context.Context,
+			authCtx interfaces.AuthenticationContext,
+			request *http.Request,
+			w http.ResponseWriter) error {
+			return hook.MethodCalled("hook").Error(0)
+		}))
+		hook.On("hook").Return(nil).Once()
+		require.NoError(t, err)
+		req, err := http.NewRequest(http.MethodGet, "/logout?redirect_url=/foo", nil)
+		require.NoError(t, err)
+
+		GetLogoutEndpointHandler(ctx, &authCtx, r)(w, req)
+
+		assert.Equal(t, http.StatusTemporaryRedirect, w.Code)
+		require.Len(t, w.Result().Cookies(), 3)
+		authCtx.AssertExpectations(t)
+		hook.AssertExpectations(t)
+	})
+
+	t.Run("hook_error", func(t *testing.T) {
+		ctx := context.Background()
+		authCtx := mocks.AuthenticationContext{}
+		w := httptest.NewRecorder()
+		r := plugins.NewRegistry()
+		hook := new(mock.Mock)
+		err := r.Register(plugins.PluginIDLogoutHook, LogoutHookFunc(func(
+			ctx context.Context,
+			authCtx interfaces.AuthenticationContext,
+			request *http.Request,
+			w http.ResponseWriter) error {
+			return hook.MethodCalled("hook").Error(0)
+		}))
+		hook.On("hook").Return(errors.New("fail")).Once()
+		require.NoError(t, err)
+		req, err := http.NewRequest(http.MethodGet, "/logout?redirect_url=/foo", nil)
+		require.NoError(t, err)
+
+		GetLogoutEndpointHandler(ctx, &authCtx, r)(w, req)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Empty(t, w.Result().Cookies())
+		authCtx.AssertExpectations(t)
+		hook.AssertExpectations(t)
+	})
 }
 
 func TestGetHTTPRequestCookieToMetadataHandler(t *testing.T) {
