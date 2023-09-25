@@ -52,7 +52,7 @@ func FromWorkflowModel(workflowModel models.Workflow) (admin.Workflow, error) {
 	if len(workflowModel.TypedInterface) > 0 {
 		err = proto.Unmarshal(workflowModel.TypedInterface, &workflowInterface)
 		if err != nil {
-			return admin.Workflow{}, errors.NewFlyteAdminErrorf(codes.Internal, fmt.Sprintf("failed to unmarshal workflow %v interface", workflowModel.ID))
+			return admin.Workflow{}, errors.NewFlyteAdminErrorf(codes.Internal, fmt.Sprintf("failed to unmarshal workflow %v interface. Error message: %v", workflowModel.ID, err.Error()))
 		}
 	}
 
