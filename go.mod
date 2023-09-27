@@ -13,7 +13,7 @@ require (
 	github.com/cloudevents/sdk-go/v2 v2.8.0
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/evanphx/json-patch v4.12.0+incompatible
-	github.com/flyteorg/flyteidl v1.5.14
+	github.com/flyteorg/flyteidl v1.5.21
 	github.com/flyteorg/flyteplugins v1.0.67
 	github.com/flyteorg/flytepropeller v1.1.98
 	github.com/flyteorg/flytestdlib v1.0.22
@@ -209,9 +209,6 @@ require (
 )
 
 replace github.com/robfig/cron/v3 => github.com/unionai/cron/v3 v3.0.2-0.20220915080349-5790c370e63a
-
-// TODO: update version references once dependent PR is merged
-replace github.com/flyteorg/flyteidl => github.com/andrewwdye/flyteidl v0.0.0-20230921054948-85b9c706f792
 
 // Retracted versions
 // This was published in error when attempting to create 1.5.1 Flyte release.
