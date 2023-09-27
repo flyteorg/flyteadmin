@@ -462,7 +462,7 @@ func TestCreateTaskExecutionModelBatchedEvents(t *testing.T) {
 				},
 				OccurredAt: taskEventOccurredAtProto,
 				Reason:     "Task event 1", // Here for backwards compatibility
-				Reasons: []*event.BatchedReason{
+				Reasons: []*event.EventReason{
 					{
 						OccurredAt: taskEventOccurredAtProto,
 						Reason:     "Task event 1",
@@ -797,6 +797,7 @@ func TestUpdateTaskExecutionModelBatchedEvents(t *testing.T) {
 	assert.Nil(t, err)
 	secondOccuredAt := taskEventOccurredAt.Add(time.Minute * 2)
 	secondOccuredAtProto, err := ptypes.TimestampProto(secondOccuredAt)
+	assert.Nil(t, err)
 
 	taskEventRequest := &admin.TaskExecutionEventRequest{
 		Event: &event.TaskExecutionEvent{
@@ -812,12 +813,12 @@ func TestUpdateTaskExecutionModelBatchedEvents(t *testing.T) {
 			},
 			OccurredAt: occuredAtProto,
 			Reason:     "update 1", // Here for backwards compatibility
-			Reasons: []*event.BatchedReason{
-				&event.BatchedReason{
+			Reasons: []*event.EventReason{
+				{
 					OccurredAt: occuredAtProto,
 					Reason:     "update 1",
 				},
-				&event.BatchedReason{
+				{
 					OccurredAt: secondOccuredAtProto,
 					Reason:     "update 2",
 				},
