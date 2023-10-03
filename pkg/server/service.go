@@ -128,6 +128,13 @@ func newGRPCServer(ctx context.Context, pluginRegistry *plugins.Registry, cfg *c
 	pluginRegistry.RegisterDefault(plugins.PluginIDDataProxy, dataProxySvc)
 	service.RegisterDataProxyServiceServer(grpcServer, plugins.Get[service.DataProxyServiceServer](pluginRegistry, plugins.PluginIDDataProxy))
 
+	additionalService := plugins.Get[common.RegisterAdditionalGRPCService](pluginRegistry, plugins.PluginIDAdditionalGRPCService)
+	if additionalService != nil {
+		if err := additionalService(ctx, grpcServer); err != nil {
+			return nil, err
+		}
+	}
+
 	service.RegisterSignalServiceServer(grpcServer, rpc.NewSignalServer(ctx, configuration, scope.NewSubScope("signal")))
 
 	healthServer := health.NewServer()
