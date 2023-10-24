@@ -55,6 +55,7 @@ var childExecutionID = &core.WorkflowExecutionIdentifier{
 const dynamicWorkflowClosureRef = "s3://bucket/admin/metadata/workflow"
 
 const testInputURI = "fake://bucket/inputs.pb"
+const DeckURI = "fake://bucket/deck.html"
 
 var testInputs = &core.LiteralMap{
 	Literals: map[string]*core.Literal{
@@ -69,6 +70,7 @@ func TestAddRunningState(t *testing.T) {
 		Event: &event.NodeExecutionEvent{
 			Phase:      core.NodeExecution_RUNNING,
 			OccurredAt: startedAtProto,
+			DeckUri:    DeckURI,
 		},
 	}
 	nodeExecutionModel := models.NodeExecution{}
@@ -77,6 +79,7 @@ func TestAddRunningState(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, startedAt, *nodeExecutionModel.StartedAt)
 	assert.True(t, proto.Equal(startedAtProto, closure.StartedAt))
+	assert.Equal(t, DeckURI, closure.DeckUri)
 }
 
 func TestAddTerminalState_OutputURI(t *testing.T) {
@@ -88,6 +91,7 @@ func TestAddTerminalState_OutputURI(t *testing.T) {
 				OutputUri: outputURI,
 			},
 			OccurredAt: occurredAtProto,
+			DeckUri:    DeckURI,
 		},
 	}
 	startedAt := occurredAt.Add(-time.Minute)
@@ -103,6 +107,7 @@ func TestAddTerminalState_OutputURI(t *testing.T) {
 	assert.Nil(t, err)
 	assert.EqualValues(t, outputURI, closure.GetOutputUri())
 	assert.Equal(t, time.Minute, nodeExecutionModel.Duration)
+	assert.Equal(t, DeckURI, closure.DeckUri)
 }
 
 func TestAddTerminalState_OutputData(t *testing.T) {
