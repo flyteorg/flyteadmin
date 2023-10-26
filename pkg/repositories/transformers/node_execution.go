@@ -98,6 +98,7 @@ func addTerminalState(
 		nodeExecutionModel.ErrorCode = &request.Event.GetError().Code
 	}
 	closure.DeckUri = request.Event.DeckUri
+	closure.SpanUri = request.Event.SpanUri
 
 	return nil
 }

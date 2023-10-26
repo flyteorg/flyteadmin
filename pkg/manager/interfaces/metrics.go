@@ -12,4 +12,7 @@ import (
 type MetricsInterface interface {
 	GetExecutionMetrics(ctx context.Context, request admin.WorkflowExecutionGetMetricsRequest) (
 		*admin.WorkflowExecutionGetMetricsResponse, error)
+
+	GetTaskMetrics(ctx context.Context, request admin.GetTaskMetricsRequest) (
+		*admin.GetTaskMetricsResponse, error)
 }

@@ -20,6 +20,9 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	dataInterfaces "github.com/flyteorg/flyteadmin/pkg/data/interfaces"
+	"github.com/flyteorg/flytestdlib/storage"
 )
 
 const (
@@ -59,6 +62,8 @@ type MetricsManager struct {
 	nodeExecutionManager interfaces.NodeExecutionInterface
 	taskExecutionManager interfaces.TaskExecutionInterface
 	metrics              metrics
+	urlData              dataInterfaces.RemoteURLInterface
+	storageClient        *storage.DataStore
 }
 
 // createOperationSpan returns a Span defined by the provided arguments.
@@ -663,13 +668,39 @@ func (m *MetricsManager) GetExecutionMetrics(ctx context.Context,
 	return &admin.WorkflowExecutionGetMetricsResponse{Span: span}, nil
 }
 
+func (m *MetricsManager) GetTaskMetrics(ctx context.Context,
+	request admin.GetTaskMetricsRequest) (*admin.GetTaskMetricsResponse, error) {
+
+	nodeExecution, err := m.nodeExecutionManager.GetNodeExecution(ctx, admin.NodeExecutionGetRequest{
+		Id: request.Id,
+	},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	blob, err := m.urlData.Get(ctx, nodeExecution.Closure.SpanUri)
+	if err != nil {
+		return nil, err
+	}
+
+	var flyteKitSpan core.Span
+	err = m.storageClient.ReadProtobuf(ctx, storage.DataReference(blob.Url), &flyteKitSpan)
+	if err != nil {
+		return nil, err
+	}
+
+	return &admin.GetTaskMetricsResponse{Span: &flyteKitSpan}, nil
+}
+
 // NewMetricsManager returns a new MetricsManager constructed with the provided arguments.
 func NewMetricsManager(
 	workflowManager interfaces.WorkflowInterface,
 	executionManager interfaces.ExecutionInterface,
 	nodeExecutionManager interfaces.NodeExecutionInterface,
 	taskExecutionManager interfaces.TaskExecutionInterface,
-	scope promutils.Scope) interfaces.MetricsInterface {
+	scope promutils.Scope, urlData dataInterfaces.RemoteURLInterface, storageClient *storage.DataStore,
+) interfaces.MetricsInterface {
 	metrics := metrics{
 		Scope: scope,
 	}
@@ -680,5 +711,7 @@ func NewMetricsManager(
 		nodeExecutionManager: nodeExecutionManager,
 		taskExecutionManager: taskExecutionManager,
 		metrics:              metrics,
+		urlData:              urlData,
+		storageClient:        storageClient,
 	}
 }
