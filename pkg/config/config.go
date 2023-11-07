@@ -80,12 +80,21 @@ type ServerSecurityOptions struct {
 	// These are the Access-Control-Request-Headers that the server will respond to.
 	// By default, the server will allow Accept, Accept-Language, Content-Language, and Content-Type.
 	// DeprecatedUser this setting to add any additional headers which are needed
-	AllowedHeaders []string `json:"allowedHeaders"`
+	AllowedHeaders []string         `json:"allowedHeaders"`
+	RateLimit      RateLimitOptions `json:"rateLimit"`
 }
 
 type SslOptions struct {
 	CertificateFile string `json:"certificateFile"`
 	KeyFile         string `json:"keyFile"`
+}
+
+// RateLimitOptions is a type to hold rate limit configuration options.
+type RateLimitOptions struct {
+	Enabled           bool            `json:"enabled" pflag:",Controls whether rate limiting is enabled. If enabled, the rate limit is applied to all requests using the TokenBucket algorithm."`
+	RequestsPerSecond int             `json:"requestsPerSecond" pflag:",The number of requests allowed per second."`
+	BurstSize         int             `json:"burstSize" pflag:",The number of requests allowed to burst. 0 implies the TokenBucket algorithm cannot hold any tokens."`
+	CleanupInterval   config.Duration `json:"cleanupInterval" pflag:",The interval at which the rate limiter cleans up entries that have not been used for a certain period of time."`
 }
 
 var defaultServerConfig = &ServerConfig{

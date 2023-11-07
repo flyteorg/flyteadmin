@@ -91,9 +91,17 @@ func newGRPCServer(ctx context.Context, pluginRegistry *plugins.Registry, cfg *c
 			auth.AuthenticationLoggingInterceptor,
 			middlewareInterceptors,
 		)
+		if cfg.Security.RateLimit.Enabled {
+			rateLimiter := plugins.NewRateLimiter(cfg.Security.RateLimit.RequestsPerSecond, cfg.Security.RateLimit.BurstSize, cfg.Security.RateLimit.CleanupInterval.Duration)
+			rateLimitInterceptors := plugins.RateLimiteInterceptor(*rateLimiter)
+			chainedUnaryInterceptors = grpcmiddleware.ChainUnaryServer(chainedUnaryInterceptors, rateLimitInterceptors)
+		}
 	} else {
 		logger.Infof(ctx, "Creating gRPC server without authentication")
 		chainedUnaryInterceptors = grpcmiddleware.ChainUnaryServer(grpcprometheus.UnaryServerInterceptor)
+		if cfg.Security.RateLimit.Enabled {
+			logger.Warningf(ctx, "Rate limit is enabled but auth is not")
+		}
 	}
 
 	serverOpts := []grpc.ServerOption{
@@ -298,6 +306,7 @@ func serveGatewayInsecure(ctx context.Context, pluginRegistry *plugins.Registry,
 			}
 
 			oauth2ResourceServer = oauth2Provider
+
 		} else {
 			oauth2ResourceServer, err = authzserver.NewOAuth2ResourceServer(ctx, authCfg.AppAuth.ExternalAuthServer, authCfg.UserAuth.OpenID.BaseURL)
 			if err != nil {
